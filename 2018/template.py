@@ -3,10 +3,7 @@
 import utils
 
 utils.setup(2018, xxx)
-
 fin = utils.get_input()
-ans = 0
-ans2 = 0
 
 ##################################################
 
