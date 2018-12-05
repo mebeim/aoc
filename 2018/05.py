@@ -14,7 +14,7 @@ def react_fast(p, ignore=set()):
 		if c in ignore:
 			continue
 
-		if len(l) and ord(c) ^ ord(l[-1]) == 0x20:
+		if len(l) and c ^ l[-1] == 0x20:
 			l.pop()
 		else:
 			l.append(c)
@@ -23,10 +23,10 @@ def react_fast(p, ignore=set()):
 
 
 utils.setup(2018, 5, dry_run=True)
-fin = utils.get_input()
+fin = utils.get_input(mode='rb')
 
 polymer = fin.read().rstrip()
-trimmed = ''.join(react_fast(polymer))
+trimmed = react_fast(polymer)
 
 reacted_len = len(trimmed)
 # assert reacted_len == 9900
@@ -35,7 +35,7 @@ utils.submit_answer(1, reacted_len)
 
 best_reacted_len = reacted_len
 
-for l, L in zip(ascii_lowercase, ascii_uppercase):
+for l, L in zip(ascii_lowercase.encode(), ascii_uppercase.encode()):
 	reacted_len = len(react_fast(trimmed, {l, L}))
 
 	if reacted_len < best_reacted_len:
