@@ -3,8 +3,11 @@
 import utils
 from collections import defaultdict
 
-def get_min(event):
-	return int(e[1][e[1].find(':')+1:-1])
+def get_hour(event):
+	return int(event[1][:event[1].find(':')])
+
+def get_minute(event):
+	return int(event[1][event[1].find(':')+1:-1])
 
 def sum_intervals(intervals):
 	return sum(b-a for a, b in intervals)
@@ -23,12 +26,12 @@ guards = defaultdict(list)
 for e in events:
 	if 'begins' in e:
 		gid = int(e[3][1:])
-		lastw = get_min(e)
+		lastw = get_minute(e) if get_hour(e) == 0 else 0
 	elif 'wakes' in e:
-		lastw = get_min(e)
+		lastw = get_minute(e)
 		guards[gid].append((lasts, lastw))
 	elif 'falls' in e:
-		lasts = get_min(e)
+		lasts = get_minute(e)
 
 worst_guard = max(guards, key=lambda g: sum_intervals(guards[g]))
 worst_guard_min = max(range(60), key=lambda m: times_slept(worst_guard, m))
