@@ -15,6 +15,7 @@ def sum_intervals(intervals):
 def times_slept(guard_id, minute):
 	return sum(a <= minute < b for a, b in guards[guard_id])
 
+
 utils.setup(2018, 4, dry_run=True)
 fin = utils.get_input()
 
