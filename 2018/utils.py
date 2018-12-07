@@ -15,14 +15,14 @@ def read_n_close(fname):
 
 def check_or_die(resp):
 	if resp.status_code != 200:
-		log('\n[utils] ERROR (response: {}) url: {}\n', resp.status_code, resp.url)
+		log('\n[utils] ERROR: response {}, url: {}\n', resp.status_code, resp.url)
 
 		if resp.status_code == 500:
 			log('[utils] Did you log in and update your session cookie?\n')
 
 		exit(1)
 
-def check_year_day_once():
+def check_setup_once():
 	global YEAR
 	global DAY
 
@@ -32,16 +32,16 @@ def check_year_day_once():
 
 		if m != 12 or (m == 12 and d > 25):
 			log('[utils] ERROR: year and day not set, and no event currently running!')
-			exit(0)
+			sys.exit(1)
 
 		log('[utils] Year and day not set, assuming today: Dec {}, {}.\n', d, y)
-		YEAR = y
-		DAY = d
+		setup(y, d)
 
 def setup(year, day, dry_run=False):
 	global YEAR
 	global DAY
 	global DRY_RUN
+	global SESSION
 
 	assert year >= 2015
 	assert 1 <= day <= 25
@@ -50,29 +50,39 @@ def setup(year, day, dry_run=False):
 	DAY     = day
 	DRY_RUN = dry_run
 
+	if os.path.isfile('secret_session_cookie'):
+		with open('secret_session_cookie') as f:
+			SESSION = f.read().rstrip()
+
 def get_input(fname=None, mode='r'):
-	check_year_day_once()
+	check_setup_once()
 	log('[utils] Getting input for year {} day {}... ', YEAR, DAY)
 
 	if fname is None:
 		fname = os.path.join(CACHE_DIR, '{}_{:02d}.txt'.format(YEAR, DAY))
 
 	if not os.path.isfile(fname):
-		log('downloading... ')
-		r = s.get(URL.format(YEAR, DAY, 'input'))
-		check_or_die(r)
+		if SESSION:
+			log('downloading... ')
 
-		with open(fname, 'wb') as f:
-			f.write(r.content)
+			r = s.get(URL.format(YEAR, DAY, 'input'))
+			check_or_die(r)
 
-		log('done.\n')
+			with open(fname, 'wb') as f:
+				f.write(r.content)
+
+			log('done.\n')
+		else:
+			log('err!\n')
+			log('[utils] ERROR: cannot download input file without session cooke!\n')
+			sys.exit(1)
 	else:
-		log('done (from cache).\n')
+		log('done (from disk).\n')
 
 	return open(fname, mode)
 
 def submit_answer(level, answer):
-	check_year_day_once()
+	check_setup_once()
 
 	if DRY_RUN:
 		print('Level {}: {}'.format(level, answer))
@@ -92,7 +102,7 @@ def submit_answer(level, answer):
 			log('[utils] Right answer!\n')
 			return True
 
-		if 'you have to wait' or 'please wait' in t:
+		if 'you have to wait' in t:
 			log('[utils] Submitting too fast, slow down!')
 			return False
 
@@ -100,7 +110,7 @@ def submit_answer(level, answer):
 		return False
 
 URL       = 'https://adventofcode.com/{:d}/day/{:d}/{:s}'
-SESSION   = open('secret_session_cookie').read().rstrip()
+SESSION   = ''
 CACHE_DIR = './inputs'
 YEAR      = -1
 DAY       = -1
