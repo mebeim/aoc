@@ -20,7 +20,7 @@ def check_or_die(resp):
 		if resp.status_code == 500:
 			log('[utils] Did you log in and update your session cookie?\n')
 
-		exit(1)
+		sys.exit(1)
 
 def check_setup_once():
 	global YEAR
@@ -53,6 +53,7 @@ def setup(year, day, dry_run=False):
 	if os.path.isfile('secret_session_cookie'):
 		with open('secret_session_cookie') as f:
 			SESSION = f.read().rstrip()
+			s.cookies.set('session', SESSION)
 
 def get_input(fname=None, mode='r'):
 	check_setup_once()
@@ -74,7 +75,7 @@ def get_input(fname=None, mode='r'):
 			log('done.\n')
 		else:
 			log('err!\n')
-			log('[utils] ERROR: cannot download input file without session cooke!\n')
+			log('[utils] ERROR: cannot download input file without session cookie!\n')
 			sys.exit(1)
 	else:
 		log('done (from disk).\n')
@@ -117,4 +118,3 @@ DAY       = -1
 DRY_RUN   = False
 
 s = requests.Session()
-s.cookies.set('session', SESSION)
