@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+
+import utils
+import re
+
+def simulate(pts, t):
+	xs = [x + t*v for x,_,v,_ in pts]
+	ys = [y + t*v for _,y,_,v in pts]
+	return tuple(zip(xs, ys))
+
+def box(pts):
+	minx, maxx = min(p[0] for p in pts), max(p[0] for p in pts)
+	miny, maxy = min(p[1] for p in pts), max(p[1] for p in pts)
+	return minx, miny, maxx-minx, maxy-miny
+
+def search(pts):
+	t1 = 0
+	t2 = 10**5
+
+	while 1:
+		t = (t1 + t2)//2
+		l = box(simulate(pts, t - 1))[3]
+		m = box(simulate(pts, t    ))[3]
+		r = box(simulate(pts, t + 1))[3]
+
+		if l > m < r:
+			return t
+
+		if l < m:
+			t2 = t
+		else:
+			t1 = t
+
+
+utils.setup(2018, 10, dry_run=True)
+fin = utils.get_input()
+
+points = []
+for line in fin:
+	points.append(tuple(map(int, re.findall(r'-?\d+', line))))
+
+t = search(points)
+
+final_points = set(simulate(points, t))
+x, y, w, h = box(final_points)
+
+word = ''
+for j in range(y, y + h + 1):
+	for i in range(x, x + w + 1):
+		word += '#' if (i, j) in final_points else ' '
+	word += '\n'
+
+# assert (word ==
+# '#####   #####   #    #  #    #  #    #  ######  ######  ##### \n' +
+# '#    #  #    #  ##   #  ##   #  #    #  #            #  #    #\n' +
+# '#    #  #    #  ##   #  ##   #   #  #   #            #  #    #\n' +
+# '#    #  #    #  # #  #  # #  #   #  #   #           #   #    #\n' +
+# '#####   #####   # #  #  # #  #    ##    #####      #    ##### \n' +
+# '#  #    #       #  # #  #  # #    ##    #         #     #  #  \n' +
+# '#   #   #       #  # #  #  # #   #  #   #        #      #   # \n' +
+# '#   #   #       #   ##  #   ##   #  #   #       #       #   # \n' +
+# '#    #  #       #   ##  #   ##  #    #  #       #       #    #\n' +
+# '#    #  #       #    #  #    #  #    #  #       ######  #    #\n')
+
+# Can't submit this LOL
+print("Level 1:", word.rstrip(), sep='\n')
+
+# assert t == 10946
+
+utils.submit_answer(2, t)
