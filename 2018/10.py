@@ -15,22 +15,23 @@ def box(pts):
 
 def search(pts):
 	t1 = 0
-	t2 = 10**5
+	t2 = 1
+	f1 = box(simulate(pts, t1))[3]
 
-	while 1:
+	while f1 > box(simulate(pts, t2))[3]:
+		t2 <<= 1
+
+	while t1 != t2:
 		t = (t1 + t2)//2
-		l = box(simulate(pts, t - 1))[3]
 		m = box(simulate(pts, t    ))[3]
 		r = box(simulate(pts, t + 1))[3]
 
-		if l > m < r:
-			return t
-
-		if l < m:
+		if r > m:
 			t2 = t
 		else:
-			t1 = t
+			t1 = t+1
 
+	return t1
 
 utils.setup(2018, 10, dry_run=True)
 fin = utils.get_input()
