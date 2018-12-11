@@ -61,7 +61,7 @@ if not os.path.isdir('pngs'):
 	os.mkdir('pngs')
 
 scale = 8
-crop_top = (300, 300) # Inverted, height first! Max 300x300.
+crop_top = (90, 160) # Inverted, height first! Max 300x300.
 
 for n in range(len(os.listdir('grids'))):
 	sys.stderr.write('Generating frame #{}... '.format(n))
