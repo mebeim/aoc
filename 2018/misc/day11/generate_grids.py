@@ -57,7 +57,7 @@ def run(serial_no):
 		else:
 			consecutive_desc = 0
 
-		if consecutive_desc >= 10:
+		if consecutive_desc >= 5:
 			break
 
 		prevp = p
@@ -77,7 +77,7 @@ if not os.path.isdir('grids'):
 
 tot = 500
 
-sys.stdwrr.write('Generating first {} grids... this will take a while!\n'.format(tot))
+sys.stderr.write('Generating first {} grids... this will take a while!\n'.format(tot))
 sys.stderr.flush()
 
 for n in range(tot):
