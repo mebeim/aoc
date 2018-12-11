@@ -67,20 +67,20 @@ for sz in range(1, 301):
 
 utils.submit_answer(2, '{},{},{}'.format(*maxans, maxpsize))
 
-#
-# PLot the grid for fun:
-#
+# #
+# # Plot the grid for fun:
+# #
 
 # from PIL import Image
 # im = Image.new('RGB', (300, 300))
 # px = im.load()
-# m = min(grid[i][j] for j in range(1, 301) for j in range(1, 301))
-# M = max(grid[i][j] for j in range(1, 301) for j in range(1, 301))
+# m = min(grid[i][j] for i in range(1, 301) for j in range(1, 301))
+# M = max(grid[i][j] for i in range(1, 301) for j in range(1, 301))
 
 # # Hardcoded values because I'm lazy as hell...
 # # 231,107,14 p2
 # # 233,36,3 p1
-#
+
 # for j in range(1, 301):
 # 	for i in range(1, 301):
 # 		if grid[j][i] < 0:
