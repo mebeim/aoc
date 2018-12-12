@@ -2,7 +2,6 @@
 
 import utils
 import heapq
-import blist
 
 from string import *
 from collections import defaultdict, deque, namedtuple, Counter

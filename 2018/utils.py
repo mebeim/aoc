@@ -2,7 +2,7 @@
 
 import os
 import sys
-import requests
+import platform
 from datetime import datetime, timedelta
 
 def log(s, *a):
@@ -50,7 +50,7 @@ def setup(year, day, dry_run=False):
 	DAY     = day
 	DRY_RUN = dry_run
 
-	if os.path.isfile('secret_session_cookie'):
+	if not PYPY and os.path.isfile('secret_session_cookie'):
 		with open('secret_session_cookie') as f:
 			SESSION = f.read().rstrip()
 			s.cookies.set('session', SESSION)
@@ -63,6 +63,10 @@ def get_input(fname=None, mode='r'):
 		fname = os.path.join(CACHE_DIR, '{}_{:02d}.txt'.format(YEAR, DAY))
 
 	if not os.path.isfile(fname):
+		if PYPY:
+			log('[utils] ERROR: cannot download input running with PyPy, use CPython!\n')
+			sys.exit(1)
+
 		if SESSION:
 			log('downloading... ')
 
@@ -86,6 +90,9 @@ def submit_answer(level, answer):
 	check_setup_once()
 
 	if DRY_RUN:
+		print('Level {}: {}'.format(level, answer))
+	elif PYPY:
+		log('[utils] Cannot upload answer running with PyPy, use CPython!\n')
 		print('Level {}: {}'.format(level, answer))
 	else:
 		log('[utils] Submitting day {} level {} answer: {}\n', DAY, level, answer)
@@ -116,5 +123,9 @@ CACHE_DIR = './inputs'
 YEAR      = -1
 DAY       = -1
 DRY_RUN   = False
+PYPY      = platform.python_implementation() == 'PyPy'
 
-s = requests.Session()
+if not PYPY:
+	import requests
+
+	s = requests.Session()
