@@ -7,38 +7,41 @@ from subprocess import call
 from multiprocessing import Pool
 from PIL import Image, ImageFont, ImageDraw
 
+def gen_base_frame(data_fname):
+	with open(data_fname, 'rb') as f:
+		base_grid = pickle.load(f)
+
+	h, w = len(base_grid), len(base_grid[0])
+	h, w = h*FONTSIZE, w*FONTW
+
+	im   = Image.new('RGB', (w, h))
+	draw = ImageDraw.Draw(im)
+
+	for i, line in enumerate(base_grid):
+		draw.text((0, i*FONTSIZE), ''.join(line), font=FONT, fill=(64, 64, 64))
+
+	return im
+
 def gen_frame(n):
 	sys.stderr.write('Generating frame #{}...\r'.format(n))
 	sys.stderr.flush()
 
-	fontsize = 16
-	fontw = fontsize - 7 # dat fine tuning right there
-
-	with open('grids/grid_{:03d}.pkl'.format(n), 'rb') as f:
+	with open('data/diff_{:04d}.pkl'.format(n), 'rb') as f:
 		data = pickle.load(f)
 
-	grid    = data['grid']
 	carts   = data['carts']
 	crashed = data['crashed']
 
-	h, w = len(grid), len(grid[0])
-	h, w = h*fontsize, w*fontw
-
-	font = ImageFont.truetype('consolas.ttf', fontsize)
-
-	im   = Image.open(open('_pngs/frame_{:03d}.png'.format(n), 'rb'), mode='r')
+	im   = BASE_FRAME.copy()
 	draw = ImageDraw.Draw(im)
 
-	for i, line in enumerate(grid, 1):
-		draw.text((0, i*fontsize), ''.join(line), font=font, fill=(64, 64, 64))
-
 	for i, j in crashed:
-		draw.text((j*fontw, (i+1)*fontsize), 'X', font=font, fill=(255, 0, 0))
+		draw.text((j*FONTW, i*FONTSIZE), 'X', font=FONT, fill=(255, 0, 0))
 
 	for i, j, d, _ in carts:
-		draw.text((j*fontw, (i+1)*fontsize), d, font=font, fill=(255, 255, 255))
+		draw.text((j*FONTW, i*FONTSIZE), d, font=FONT, fill=(255, 255, 255))
 
-	im.save('pngs/frame_{:03d}.png'.format(n))
+	im.save('frames/frame_{:04d}.png'.format(n))
 
 ###########################################################
 
@@ -47,23 +50,33 @@ DOWN     = 'v'
 RIGHT    = '>'
 LEFT     = '<'
 
-DIRECTIONS = (UP, DOWN, RIGHT, LEFT)
-crashed = set()
+DIRECTIONS       = (UP, DOWN, RIGHT, LEFT)
+BASE_GRID_FNAME  = 'data/base.pkl'
+BASE_FRAME       = None
+FONTSIZE         = 16           # Careful here LOL
+FONTW            = FONTSIZE - 7 # dat fine tuning right there
+FONT             = ImageFont.truetype('consolas.ttf', FONTSIZE)
 
-if not os.path.isdir('grids') or len(os.listdir('grids')) == 0:
-	sys.stderr.write('First generate the grids running generate_grids.py script!\n')
+if not os.path.isdir('data') or len(os.listdir('data')) == 0:
+	sys.stderr.write('First generate the data running generate_data.py script!\n')
 	sys.exit(1)
 
-if not all(f.endswith('.pkl') for f in os.listdir('grids')):
-	sys.stderr.write('Unrecognized file in the ./grids/ folder, clean it and regenerate the files!\n')
-	sys.stderr.write('Make sure all file names are in the format grid_XXX.pkl\n')
+if not all(f.endswith('.pkl') for f in os.listdir('data')):
+	sys.stderr.write('Unrecognized file in the ./data/ folder, clean it and regenerate the files!\n')
 	sys.exit(1)
 
-if not os.path.isdir('pngs'):
-	os.mkdir('pngs')
+if not os.path.isdir('frames'):
+	os.mkdir('frames')
 
 nthreads = 8
-nframes = len(os.listdir('grids'))
+nframes = len(os.listdir('data')) - 1
+crashed = set()
+
+sys.stderr.write('Generating base frame... ')
+
+BASE_FRAME = gen_base_frame(BASE_GRID_FNAME)
+
+sys.stderr.write('done.\n')
 
 sys.stderr.write('Starting {} threads to generate {} frames.\n'.format(nthreads, nframes))
 sys.stderr.write('This... might take some time... sit back and relax!\n')
@@ -75,6 +88,6 @@ sys.stderr.write('\nDone! All {} fames generated.        \n'.format(nframes))
 sys.stderr.write('Now launching ffmpeg...\n')
 
 videoname = 'animation.mp4'
-call(['ffmpeg', '-i', 'pngs/frame_%03d.png', '-vf', 'transpose=2', '-vframes', str(nframes), videoname])
+call(['ffmpeg', '-i', 'frames/frame_%04d.png', '-vf', 'transpose=2', '-vframes', str(nframes), videoname])
 
 sys.stderr.write('Done! Created {}\n'.format(videoname))

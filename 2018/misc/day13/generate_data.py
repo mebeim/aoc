@@ -10,7 +10,7 @@ def kill(crashxy):
 			carts.pop(i)
 			break
 
-def gen_grid(n, crashed):
+def gen_base_grid(fname):
 	grid = [l[:] for l in matrix]
 
 	for i in range(1, len(grid)-1):
@@ -27,17 +27,13 @@ def gen_grid(n, crashed):
 			if c in GRID_CHARMAP:
 				grid[i][j] = GRID_CHARMAP[c]
 
-	for x, y, d, _ in carts:
-		grid[x][y] = d
+	with open(fname, 'wb') as f:
+		grid = list(map(lambda l: ''.join(l), grid))
+		pickle.dump(grid, f, protocol=4)
 
-	for x, y in crashed:
-		grid[x][y] = 'X'
-
-	grid = list(map(lambda l: ''.join(l), grid))
-
-	with open('grids/grid_{:03d}.pkl'.format(n), 'wb') as f:
+def gen_diff(n, carts, crashed):
+	with open('data/diff_{:04d}.pkl'.format(n), 'wb') as f:
 		pickle.dump({
-			'grid'   : grid,
 			'carts'  : carts,
 			'crashed': crashed
 		}, f, protocol=4)
@@ -115,13 +111,6 @@ def step(stop_at_first):
 
 ###########################################################33
 
-# fin = open('mebeim.in') # ~16k iterations
-fin = open('cyphase.in') # ~10k iterations
-
-matrix = list(map(lambda l: list(l.strip('\n')), fin))
-
-assert all(len(x) == len(y) for x, y in zip(matrix[:-1], matrix[1:]))
-
 UP       = '^'
 DOWN     = 'v'
 RIGHT    = '>'
@@ -140,6 +129,16 @@ GRID_CHARMAP = {
 	'+': '┼'
 }
 
+BASE_GRID_FNAME = 'data/base.pkl'
+
+fin = open('example.in') # < 100 iterations
+# fin = open('mebeim.in') # ~16k iterations
+# fin = open('cyphase.in') # ~10k iterations
+
+matrix = list(map(lambda l: list(l.strip('\n')), fin))
+
+assert all(len(x) == len(y) for x, y in zip(matrix[:-1], matrix[1:]))
+
 carts = []
 for i, l in enumerate(matrix):
 	for j, c in enumerate(l):
@@ -151,27 +150,39 @@ for i, l in enumerate(matrix):
 			else:
 				matrix[i][j] = '-'
 
-if not os.path.isdir('grids'):
-	os.mkdir('grids')
+if not os.path.isdir('data'):
+	os.mkdir('data')
 
-grid_no = 0
-sys.stderr.write('Generating grid #{}...\r'.format(grid_no))
+sys.stderr.write('Generating base grid... ')
 sys.stderr.flush()
 
-gen_grid(grid_no, [])
+gen_base_grid(BASE_GRID_FNAME)
 
+sys.stderr.write('done.\n')
+
+diff_no = 0
 crashed_so_far = set()
 
 while len(carts) > 1:
 	crashed = set()
 	while not crashed:
+		sys.stderr.write('Generating grid #{}...\r'.format(diff_no))
+		sys.stderr.flush()
+
 		crashed = step(False)
 		crashed_so_far = crashed_so_far.union(crashed)
 
-		grid_no += 1
-		sys.stderr.write('Generating grid #{}...\r'.format(grid_no))
-		sys.stderr.flush()
+		gen_diff(diff_no, carts, crashed_so_far)
+		diff_no += 1
 
-		gen_grid(grid_no, crashed_so_far)
+# Generate 100 additional frames for the only remaining cart.
+for _ in range(100):
+	sys.stderr.write('Generating grid #{}...\r'.format(diff_no))
+	sys.stderr.flush()
 
-sys.stderr.write('Done! All grids generated.        \n')
+	step(False)
+
+	gen_diff(diff_no, carts, crashed_so_far)
+	diff_no += 1
+
+sys.stderr.write('\nDone! All data generated.        \n')
