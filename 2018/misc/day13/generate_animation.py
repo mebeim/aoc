@@ -7,10 +7,7 @@ from subprocess import call
 from multiprocessing import Pool
 from PIL import Image, ImageFont, ImageDraw
 
-def gen_base_frame(data_fname):
-	with open(data_fname, 'rb') as f:
-		base_grid = pickle.load(f)
-
+def gen_base_frame(base_grid):
 	h, w = len(base_grid), len(base_grid[0])
 	h, w = h*FONTSIZE, w*FONTW
 
@@ -22,17 +19,22 @@ def gen_base_frame(data_fname):
 
 	return im
 
+def get_data():
+	with open(BASE_GRID_FNAME, 'rb') as f:
+		base_grid = pickle.load(f)
+
+	with open(DIFFS_FNAME, 'rb') as f:
+		diffs = pickle.load(f)
+
+	return gen_base_frame(base_grid), diffs
+
 def gen_frame(n):
 	sys.stderr.write('Generating frame #{}...\r'.format(n))
 	sys.stderr.flush()
 
-	with open('data/diff_{:04d}.pkl'.format(n), 'rb') as f:
-		data = pickle.load(f)
+	carts, crashed = diffs[n]['carts'], diffs[n]['crashed']
 
-	carts   = data['carts']
-	crashed = data['crashed']
-
-	im   = BASE_FRAME.copy()
+	im   = base_frame.copy()
 	draw = ImageDraw.Draw(im)
 
 	for i, j in crashed:
@@ -51,43 +53,40 @@ RIGHT    = '>'
 LEFT     = '<'
 
 DIRECTIONS       = (UP, DOWN, RIGHT, LEFT)
-BASE_GRID_FNAME  = 'data/base.pkl'
-BASE_FRAME       = None
+BASE_GRID_FNAME  = 'data/base_grid.pkl'
+DIFFS_FNAME      = 'data/diffs.pkl'
 FONTSIZE         = 16           # Careful here LOL
 FONTW            = FONTSIZE - 7 # dat fine tuning right there
 FONT             = ImageFont.truetype('consolas.ttf', FONTSIZE)
+VIDEO_FNAME      = 'animation.mp4'
 
-if not os.path.isdir('data') or len(os.listdir('data')) == 0:
-	sys.stderr.write('First generate the data running generate_data.py script!\n')
-	sys.exit(1)
-
-if not all(f.endswith('.pkl') for f in os.listdir('data')):
-	sys.stderr.write('Unrecognized file in the ./data/ folder, clean it and regenerate the files!\n')
+if not os.path.isfile(BASE_GRID_FNAME) or not os.path.isfile(DIFFS_FNAME):
+	sys.stderr.write('Missing required data. Generate it running ./generate_data.py first!\n')
 	sys.exit(1)
 
 if not os.path.isdir('frames'):
 	os.mkdir('frames')
 
-nthreads = 8
-nframes = len(os.listdir('data')) - 1
-crashed = set()
+sys.stderr.write('Getting data and generating base frame... ')
 
-sys.stderr.write('Generating base frame... ')
-
-BASE_FRAME = gen_base_frame(BASE_GRID_FNAME)
+base_frame, diffs = get_data()
 
 sys.stderr.write('done.\n')
 
-sys.stderr.write('Starting {} threads to generate {} frames.\n'.format(nthreads, nframes))
-sys.stderr.write('This... might take some time... sit back and relax!\n')
-threadpool = Pool(nthreads)
+nthreads    = 8
+nframes     = len(diffs)
+crashed     = set()
+ffmpeg_args = ['ffmpeg', '-i', 'frames/frame_%04d.png', '-vf', 'transpose=2', '-vframes', str(nframes), VIDEO_FNAME]
 
+sys.stderr.write('Starting {} threads to generate {} frames.\n'.format(nthreads, nframes))
+
+threadpool = Pool(nthreads)
 threadpool.map(gen_frame, range(nframes))
 
-sys.stderr.write('\nDone! All {} fames generated.        \n'.format(nframes))
+sys.stderr.write('Done! All {} fames generated.          \n'.format(nframes))
 sys.stderr.write('Now launching ffmpeg...\n')
+sys.stderr.write(' '.join(ffmpeg_args) + '\n')
 
-videoname = 'animation.mp4'
-call(['ffmpeg', '-i', 'frames/frame_%04d.png', '-vf', 'transpose=2', '-vframes', str(nframes), videoname])
+call(ffmpeg_args)
 
 sys.stderr.write('Done! Created {}\n'.format(videoname))

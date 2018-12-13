@@ -2,6 +2,7 @@
 
 import os
 import sys
+import copy
 import pickle
 
 def kill(crashxy):
@@ -10,7 +11,7 @@ def kill(crashxy):
 			carts.pop(i)
 			break
 
-def gen_base_grid(fname):
+def gen_base_grid():
 	grid = [l[:] for l in matrix]
 
 	for i in range(1, len(grid)-1):
@@ -27,16 +28,15 @@ def gen_base_grid(fname):
 			if c in GRID_CHARMAP:
 				grid[i][j] = GRID_CHARMAP[c]
 
-	with open(fname, 'wb') as f:
-		grid = list(map(lambda l: ''.join(l), grid))
-		pickle.dump(grid, f, protocol=4)
+	return list(map(lambda l: ''.join(l), grid))
 
-def gen_diff(n, carts, crashed):
-	with open('data/diff_{:04d}.pkl'.format(n), 'wb') as f:
-		pickle.dump({
-			'carts'  : carts,
-			'crashed': crashed
-		}, f, protocol=4)
+def gen_diff():
+	d = {
+		'carts'  : carts,
+		'crashed': crashed_so_far
+	}
+
+	return copy.deepcopy(d)
 
 def step(stop_at_first):
 	cartset = set(tuple(c[:2]) for c in carts)
@@ -129,14 +129,19 @@ GRID_CHARMAP = {
 	'+': '┼'
 }
 
-BASE_GRID_FNAME = 'data/base.pkl'
+BASE_GRID_FNAME = 'data/base_grid.pkl'
 
-fin = open('example.in') # < 100 iterations
-# fin = open('mebeim.in') # ~16k iterations
+if len(sys.argv[1:]) != 1:
+	sys.stderr.write('Usage {} input_file.in\n'.format(sys.argv[0]))
+	sys.exit(1)
+
+fin = open(sys.argv[1])
+# fin = open('example.in') # 21 iterations
 # fin = open('cyphase.in') # ~10k iterations
+# fin = open('mebeim.in')  # ~17k iterations
 
-matrix = list(map(lambda l: list(l.strip('\n')), fin))
-
+matrix = list(map(lambda l: list(' ' + l.rstrip('\n') + ' '), fin))
+matrix = [[' '] * len(matrix[0])] + matrix + [[' '] * len(matrix[0])]
 assert all(len(x) == len(y) for x, y in zip(matrix[:-1], matrix[1:]))
 
 carts = []
@@ -156,33 +161,42 @@ if not os.path.isdir('data'):
 sys.stderr.write('Generating base grid... ')
 sys.stderr.flush()
 
-gen_base_grid(BASE_GRID_FNAME)
+grid = gen_base_grid()
+with open(BASE_GRID_FNAME, 'wb') as f:
+	pickle.dump(grid, f, protocol=4)
 
 sys.stderr.write('done.\n')
 
+diffs = []
 diff_no = 0
 crashed_so_far = set()
 
 while len(carts) > 1:
 	crashed = set()
 	while not crashed:
-		sys.stderr.write('Generating grid #{}...\r'.format(diff_no))
+		sys.stderr.write('Generating diff #{}...\r'.format(diff_no))
 		sys.stderr.flush()
 
 		crashed = step(False)
 		crashed_so_far = crashed_so_far.union(crashed)
 
-		gen_diff(diff_no, carts, crashed_so_far)
+		diffs.append(gen_diff())
 		diff_no += 1
 
 # Generate 100 additional frames for the only remaining cart.
 for _ in range(100):
-	sys.stderr.write('Generating grid #{}...\r'.format(diff_no))
+	sys.stderr.write('Generating diff #{}...\r'.format(diff_no))
 	sys.stderr.flush()
 
 	step(False)
 
-	gen_diff(diff_no, carts, crashed_so_far)
+	diffs.append(gen_diff())
 	diff_no += 1
 
-sys.stderr.write('\nDone! All data generated.        \n')
+sys.stderr.write('\nDone! All data generated, saving... ')
+sys.stderr.flush()
+
+with open('data/diffs.pkl', 'wb') as f:
+	pickle.dump(diffs, f, protocol=4)
+
+sys.stderr.write('done.\n')
