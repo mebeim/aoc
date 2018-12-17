@@ -126,15 +126,16 @@ for x, y1, y2 in vertical:
 	for y in range(y1, y2 + 1):
 		grid[y][x] = CLAY
 
+padw   = 2
 gridh += 1
-gridw += 2
+gridw += padw * 2
 
 for i in range(len(grid)):
-	grid[i] = [SAND] + grid[i] + [SAND] # pad left and right
-grid = [[SAND] * gridw] + grid          # pad top
+	grid[i] = [SAND] * padw + grid[i] + [SAND] * padw
+grid = [[SAND] * gridw] + grid
 
 
-filled = fill(500 - minx + 1, 0) - 1
+filled = fill(500 - minx + padw, 0) - 1
 # assert filled == 31013
 
 utils.submit_answer(1, filled)
@@ -151,20 +152,16 @@ utils.submit_answer(1, filled)
 
 still = filled
 
-for row in grid[1:]:
-	prev = SAND
-	for x, cell in enumerate(row):
-		if cell == WATER and prev in (SAND, MOVING_WATER):
-			row[x] = MOVING_WATER
+for y in range(1, gridh):
+	for x in range(1, gridw - 1):
+		if grid[y][x] == WATER and grid[y][x-1] in (SAND, MOVING_WATER):
+			grid[y][x] = MOVING_WATER
 			still -= 1
-		prev = row[x]
 
-	prev = SAND
-	for x, cell in enumerate(row[::-1]):
-		if cell == WATER and prev in (SAND, MOVING_WATER):
-			row[gridw-x-1] = MOVING_WATER
+	for x in range(gridw - 2, 0, -1):
+		if grid[y][x] == WATER and grid[y][x+1] in (SAND, MOVING_WATER):
+			grid[y][x] = MOVING_WATER
 			still -= 1
-		prev = row[gridw-x-1]
 
 # assert still == 25448
 
