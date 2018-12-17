@@ -31,7 +31,7 @@ def check_setup_once():
 		y, m, d = now.year, now.month, now.day
 
 		if m != 12 or (m == 12 and d > 25):
-			log('[utils] ERROR: year and day not set, and no event currently running!')
+			log('[utils] ERROR: year and day not set, and no event currently running!\n')
 			sys.exit(1)
 
 		log('[utils] Year and day not set, assuming today: Dec {}, {}.\n', d, y)
@@ -86,18 +86,18 @@ def get_input(fname=None, mode='r'):
 
 	return open(fname, mode)
 
-def submit_answer(level, answer):
+def submit_answer(part, answer):
 	check_setup_once()
 
 	if DRY_RUN:
-		print('Level {}: {}'.format(level, answer))
+		print('Part {}: {}'.format(part, answer))
 	elif PYPY:
 		log('[utils] Cannot upload answer running with PyPy, use CPython!\n')
-		print('Level {}: {}'.format(level, answer))
+		print('Part {}: {}'.format(part, answer))
 	else:
-		log('[utils] Submitting day {} level {} answer: {}\n', DAY, level, answer)
+		log('[utils] Submitting day {} part {} answer: {}\n', DAY, part, answer)
 
-		r = s.post(URL.format(YEAR, DAY, 'answer'), data={'level': level, 'answer': answer})
+		r = s.post(URL.format(YEAR, DAY, 'answer'), data={'level': part, 'answer': answer})
 		check_or_die(r)
 
 		t = r.text.lower()
@@ -111,7 +111,7 @@ def submit_answer(level, answer):
 			return True
 
 		if 'you have to wait' in t:
-			log('[utils] Submitting too fast, slow down!')
+			log('[utils] Submitting too fast, slow down!\n')
 			return False
 
 		log('[utils] Wrong answer :(\n')
