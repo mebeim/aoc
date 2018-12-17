@@ -3,6 +3,16 @@
 import utils
 import re
 
+# This program assumes that a situation like
+# the following one does not happen (i.e. two
+# reservoirs 1 cell apart from each other).
+#
+#     .|...#   #
+#     #||||#   #
+#     #~~#|#   #
+#     ####|#   #
+#     ....|#####
+
 def should_spread(sx, sy):
 	if grid[sy+1][sx] != WATER:
 		return True
@@ -140,29 +150,19 @@ filled = fill(500 - minx + padw, 0) - 1
 
 utils.submit_answer(1, filled)
 
-# The following code is assuming that a situation like this
-# one does not happen (in such case the water marked with X
-# would incorrectly be considered "still").
-
-# .|...#      .|...#
-# #||||#      #XXXX#
-# #~~#|# ---> #~~#X#
-# ####|#      ####X#
-# ....|#      ....|#
-
-still = filled
+retained = filled
 
 for y in range(1, gridh):
 	for x in range(1, gridw - 1):
 		if grid[y][x] == WATER and grid[y][x-1] in (SAND, MOVING_WATER):
 			grid[y][x] = MOVING_WATER
-			still -= 1
+			retained -= 1
 
 	for x in range(gridw - 2, 0, -1):
 		if grid[y][x] == WATER and grid[y][x+1] in (SAND, MOVING_WATER):
 			grid[y][x] = MOVING_WATER
-			still -= 1
+			retained -= 1
 
-# assert still == 25448
+# assert retained == 25448
 
-utils.submit_answer(2, still)
+utils.submit_answer(2, retained)
