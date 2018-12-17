@@ -2,6 +2,7 @@
 
 import utils
 
+import re
 import sys
 import heapq
 from string import *
