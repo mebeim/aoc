@@ -83,7 +83,7 @@ sys.stderr.write('Starting {} threads to generate {} frames.\n'.format(nthreads,
 threadpool = Pool(nthreads)
 threadpool.map(gen_frame, range(nframes))
 
-sys.stderr.write('Done! All {} fames generated.          \n'.format(nframes))
+sys.stderr.write('Done! All {} frames generated.          \n'.format(nframes))
 sys.stderr.write('Now launching ffmpeg...\n')
 sys.stderr.write(' '.join(ffmpeg_args) + '\n')
 
