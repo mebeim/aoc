@@ -89,4 +89,4 @@ sys.stderr.write(' '.join(ffmpeg_args) + '\n')
 
 call(ffmpeg_args)
 
-sys.stderr.write('Done! Created {}\n'.format(videoname))
+sys.stderr.write('Done! Created {}\n'.format(VIDEO_FNAME))
