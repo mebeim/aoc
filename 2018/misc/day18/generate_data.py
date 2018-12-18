@@ -26,7 +26,7 @@ def transform(curgrid, x, y):
 	elif cell == LUMB : return LUMB if nlumb >= 1 and ntrees >= 1 else EMPTY
 
 def gen(startgrid, n):
-	if n <= 1:
+	if n < 1:
 		return
 
 	grid = copy.deepcopy(startgrid)
