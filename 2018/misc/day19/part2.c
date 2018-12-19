@@ -1,4 +1,7 @@
-/* Just compile this with gcc and then disassmeble the binary LUL */
+/**
+ * Just compile with -O3 and let gcc
+ * do half the job for you.
+ */
 
 typedef long long int reg;
 
