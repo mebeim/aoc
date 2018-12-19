@@ -68,7 +68,7 @@ def gen_frame(n):
 			x = frame_width//2 + CELL_WIDTH*(j - diaglen//2) + (CELL_WIDTH//2)*(i%2) - tile.cx
 			y = PAD_VERTICAL + (CELL_HEIGHT//2)*(i+1) - tile.cy
 
-			im.paste(tile.img.copy(), (x, y), tile.img.copy())
+			im.paste(tile.img, (x, y), tile.img)
 
 	im.save('frames/frame_{:04d}.png'.format(n))
 
