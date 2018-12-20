@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 
 import sys
 import heapq
 from string import *
 from collections import defaultdict, deque, namedtuple, Counter
 
-utils.setup(2018, 14, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 14, dry_run=True)
+fin = advent.get_input()
 # print(*fin)
 
 ##################################################
@@ -75,5 +75,5 @@ while True:
 
 ans = ''.join(map(str, recipes[target:target+10]))
 
-utils.submit_answer(1, ans)
-utils.submit_answer(2, ans2)
+advent.submit_answer(1, ans)
+advent.submit_answer(2, ans2)

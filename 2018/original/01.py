@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 
-utils.setup(2018, 1)
+advent.setup(2018, 1)
 
 done = False
-ans = sum(map(int, utils.get_input()))
+ans = sum(map(int, advent.get_input()))
 
-utils.submit_answer(1, ans)
+advent.submit_answer(1, ans)
 
 seen = set()
 seen.add(0)
 ans = 0
 
 while not done:
-	for d in utils.get_input():
+	for d in advent.get_input():
 		ans += int(d)
 
 		if ans in seen:
@@ -24,4 +24,4 @@ while not done:
 
 		seen.add(ans)
 
-utils.submit_answer(2, ans2)
+advent.submit_answer(2, ans2)

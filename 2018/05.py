@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 from string import ascii_lowercase, ascii_uppercase
 from collections import deque
 
@@ -22,8 +22,8 @@ def react_fast(p, ignore=set()):
 	return l
 
 
-utils.setup(2018, 5, dry_run=True)
-fin = utils.get_input(mode='rb')
+advent.setup(2018, 5, dry_run=True)
+fin = advent.get_input(mode='rb')
 
 polymer = fin.read().rstrip()
 trimmed = react_fast(polymer)
@@ -31,7 +31,7 @@ trimmed = react_fast(polymer)
 reacted_len = len(trimmed)
 # assert reacted_len == 9900
 
-utils.submit_answer(1, reacted_len)
+advent.submit_answer(1, reacted_len)
 
 best_reacted_len = reacted_len
 
@@ -43,4 +43,4 @@ for l, L in zip(ascii_lowercase.encode(), ascii_uppercase.encode()):
 
 # assert best_reacted_len == 4992
 
-utils.submit_answer(2, best_reacted_len)
+advent.submit_answer(2, best_reacted_len)

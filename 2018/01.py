@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 
-utils.setup(2018, 1, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 1, dry_run=True)
+fin = advent.get_input()
 
 deltas = list(map(int, fin.readlines()))
 done = False
@@ -22,7 +22,7 @@ for d in deltas:
 
 # assert freq == 435
 
-utils.submit_answer(1, freq)
+advent.submit_answer(1, freq)
 
 while not done:
 	for d in deltas:
@@ -36,4 +36,4 @@ while not done:
 
 # assert freq == 245
 
-utils.submit_answer(2, freq)
+advent.submit_answer(2, freq)

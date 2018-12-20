@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 
 import re
 import sys
@@ -13,8 +13,8 @@ def log(s, *a):
 	sys.stderr.write(s.format(*a))
 	sys.stderr.flush()
 
-utils.setup(2018, 20, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 20, dry_run=True)
+fin = advent.get_input()
 print(*fin)
 
 ##################################################
@@ -25,8 +25,8 @@ print(*fin)
 
 
 
-# utils.submit_answer(1, ans)
+# advent.submit_answer(1, ans)
 
 
 
-# utils.submit_answer(2, ans2)
+# advent.submit_answer(2, ans2)

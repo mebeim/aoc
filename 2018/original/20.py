@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 
 import sys
 import networkx as nx
@@ -16,8 +16,8 @@ def reclog(depth):
 		log(' |'*depth + ' ' + s, *a)
 	return fn
 
-utils.setup(2018, 20, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 20, dry_run=True)
+fin = advent.get_input()
 # print(*fin)
 
 ##################################################
@@ -75,7 +75,7 @@ ans = max(paths.values())
 
 # dump_graph(graph)
 
-utils.submit_answer(1, ans)
+advent.submit_answer(1, ans)
 
 tot = 0
 for p in  paths.values():
@@ -84,4 +84,4 @@ for p in  paths.values():
 
 ans2 = tot
 
-utils.submit_answer(2, ans2)
+advent.submit_answer(2, ans2)

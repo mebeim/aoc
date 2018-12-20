@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 
-utils.setup(2018, 4)
+advent.setup(2018, 4)
 
-fin = utils.get_input()
+fin = advent.get_input()
 ans = 0
 ans2 = 0
 
@@ -95,7 +95,7 @@ for i in range(60):
 
 print(mostsleepid, minsofsleep[mostsleepid], mostsleepedminute)
 ans = mostsleepid * mostsleepedminute
-utils.submit_answer(1, ans)
+advent.submit_answer(1, ans)
 
 globalminsmap = {}
 for gid in minsofsleep:
@@ -124,4 +124,4 @@ ans2 = bestsleeper * globalminsmap[bestsleeper][0]
 print(bestsleeper, globalminsmap[bestsleeper][0])
 print('ans2:', ans2)
 
-utils.submit_answer(2, ans2)
+advent.submit_answer(2, ans2)

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 from collections import namedtuple, defaultdict
 
-utils.setup(2018, 6)
-fin = utils.get_input()
+advent.setup(2018, 6)
+fin = advent.get_input()
 
 ##################################################
 
@@ -63,7 +63,7 @@ for l in fin:
 print(pts)
 
 # compute_counts runs for ages, comment out everything
-# from here to utils.submit_answer(1, ...) for part 2
+# from here to advent.submit_answer(1, ...) for part 2
 
 cnts1 = compute_counts(500)
 cnts2 = compute_counts(600)
@@ -91,8 +91,8 @@ for p in pts:
 
 assert best_count == 4215
 
-utils.submit_answer(1, best_count)
+advent.submit_answer(1, best_count)
 
 ans2 = count_within_distance(10000)
 
-utils.submit_answer(2, ans2)
+advent.submit_answer(2, ans2)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 import re
 
 def simulate(pts, t):
@@ -33,8 +33,8 @@ def search(pts):
 
 	return t1
 
-utils.setup(2018, 10, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 10, dry_run=True)
+fin = advent.get_input()
 
 points = []
 for line in fin:
@@ -68,4 +68,4 @@ print("Level 1:", word.rstrip(), sep='\n')
 
 # assert t == 10946
 
-utils.submit_answer(2, t)
+advent.submit_answer(2, t)

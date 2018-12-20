@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 from collections import defaultdict
 from string import ascii_lowercase
 
-utils.setup(2018, 5)
+advent.setup(2018, 5)
 
-fin = utils.get_input()
+fin = advent.get_input()
 ans = 0
 ans2 = 0
 
@@ -37,11 +37,11 @@ for c in units:
 	if c:
 		ans += 1
 
-utils.submit_answer(1, ans)
+advent.submit_answer(1, ans)
 
 results = []
 
-fin = utils.get_input()
+fin = advent.get_input()
 iunits = list(map(ord, fin.read().rstrip()))
 
 for l in map(ord, ascii_lowercase):
@@ -63,4 +63,4 @@ for l in map(ord, ascii_lowercase):
 
 ans2 = min(results)
 
-utils.submit_answer(2, ans2)
+advent.submit_answer(2, ans2)

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 import sys
 
-utils.setup(2018, 10, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 10, dry_run=True)
+fin = advent.get_input()
 
 ##################################################
 
@@ -91,5 +91,5 @@ print('#    #  #       #   ##  #   ##  #    #  #       #       #    #')
 print('#    #  #       #    #  #    #  #    #  #       ######  #    #')
 print('\nSo a total of', init_sims + 4 + 1, 'seconds to get to it.')
 print('\nGiven how I solved this, as you can imagine the following answers are only valid for this input.')
-utils.submit_answer(1, 'RPNNXFZR')
-utils.submit_answer(2, init_sims + 4 + 1)
+advent.submit_answer(1, 'RPNNXFZR')
+advent.submit_answer(2, init_sims + 4 + 1)

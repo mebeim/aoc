@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 import heapq
 
-utils.setup(2018, 12, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 12, dry_run=True)
+fin = advent.get_input()
 
 ##################################################
 
@@ -89,7 +89,7 @@ print(info)
 # 	if pots[i] == '#':
 # 		ans += i - offset
 
-# utils.submit_answer(1, ans)
+# advent.submit_answer(1, ans)
 
 # day 91 ans 2391
 # day 92 ans 2412
@@ -113,4 +113,4 @@ for i in range(len(pots)):
 
 ans += alive*remaining
 
-utils.submit_answer(2, ans)
+advent.submit_answer(2, ans)

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 from string import ascii_letters
 from collections import Counter
 
-utils.setup(2018, 2, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 2, dry_run=True)
+fin = advent.get_input()
 
 ids = list(map(str.rstrip, fin))
 counts = list(map(Counter, ids))
@@ -16,7 +16,7 @@ three_letters = sum(3 in c.values() for c in counts)
 ans = two_letters * three_letters
 # assert ans == 5166
 
-utils.submit_answer(1, ans)
+advent.submit_answer(1, ans)
 
 l = len(ids[0])
 assert all(len(x) == l for x in ids)
@@ -40,4 +40,4 @@ for i in range(l):
 
 # assert s == 'cypueihajytordkgzxfqplbwn'
 
-utils.submit_answer(2, s)
+advent.submit_answer(2, s)

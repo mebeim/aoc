@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 import re
 
-utils.setup(2018, 17, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 17, dry_run=True)
+fin = advent.get_input()
 # print(*fin)
 
 ##################################################
@@ -197,7 +197,7 @@ for row in grid[1:]:
 		if cell == WATER:
 			filled += 1
 
-utils.submit_answer(1, filled)
+advent.submit_answer(1, filled)
 
 
 # Assuming that a situation like this one will never happen:
@@ -240,4 +240,4 @@ for row in grid[1:]:
 			filled += 1
 
 # 25447 too low
-utils.submit_answer(2, filled)
+advent.submit_answer(2, filled)

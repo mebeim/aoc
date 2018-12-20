@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 
-utils.setup(2018, 11, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 11, dry_run=True)
+fin = advent.get_input()
 
 ##################################################
 
@@ -33,7 +33,7 @@ for j in range(300+1):
 # 	print(l[33:33+3])
 
 ans = max(((x, y) for x in range(1, 301-3+1) for y in range(1, 301-3+1)), key=get_power)
-utils.submit_answer(1, '{},{}'.format(*ans))
+advent.submit_answer(1, '{},{}'.format(*ans))
 
 maxp = get_power(ans)
 maxpsize = 2
@@ -65,7 +65,7 @@ for sz in range(1, 301):
 
 	prevp = p
 
-utils.submit_answer(2, '{},{},{}'.format(*maxans, maxpsize))
+advent.submit_answer(2, '{},{},{}'.format(*maxans, maxpsize))
 
 # #
 # # Plot the grid for fun:

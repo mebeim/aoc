@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 
 import sys
 import copy
 
-utils.setup(2018, 13, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 13, dry_run=True)
+fin = advent.get_input()
 # print(*fin)
 
 ##################################################
@@ -146,7 +146,7 @@ while not crashed:
 assert len(crashed) == 1
 
 ans = ','.join(map(str, crashed[0][::-1]))
-utils.submit_answer(1, ans)
+advent.submit_answer(1, ans)
 
 
 carts = copy.deepcopy(original_carts)
@@ -160,4 +160,4 @@ assert len(carts) == 1
 
 ans2 = ','.join(map(str, carts[0][:2][::-1]))
 
-utils.submit_answer(2, ans2)
+advent.submit_answer(2, ans2)

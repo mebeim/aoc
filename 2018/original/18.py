@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 
 import sys
 import copy
 
-utils.setup(2018, 18, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 18, dry_run=True)
+fin = advent.get_input()
 # print(*fin)
 
 ##################################################
@@ -105,7 +105,7 @@ for i in range(10):
 	grid = newgrid
 
 res = get_ans(grid)
-utils.submit_answer(1, res)
+advent.submit_answer(1, res)
 
 # dump(grid)
 
@@ -168,4 +168,4 @@ period = {
 
 res = period[3882 + (1000000000-3882) % len(period)]
 
-utils.submit_answer(2, res)
+advent.submit_answer(2, res)

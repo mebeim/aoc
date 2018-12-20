@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 
 import re
 import sys
 
-utils.setup(2018, 19, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 19, dry_run=True)
+fin = advent.get_input()
 # print(*fin)
 
 ##################################################
@@ -64,7 +64,7 @@ print(regs)
 
 ans = regs[0]
 
-utils.submit_answer(1, ans)
+advent.submit_answer(1, ans)
 
 
 divsum = 0
@@ -76,4 +76,4 @@ for i in range(1, 10551319 + 1):
 # 111330332639761 too high
 # 55665171595540 too high
 # 600041 wrong
-utils.submit_answer(2, divsum)
+advent.submit_answer(2, divsum)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 import re
 import z3
 
@@ -42,8 +42,8 @@ opmap = list(set(range(16)) for i in range(16))
 rexp  = re.compile(r'-?\d+')
 
 
-utils.setup(2018, 16, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 16, dry_run=True)
+fin = advent.get_input()
 
 data    = fin.read().strip().split('\n\n\n\n')
 samples = [l.split('\n') for l in data[0].split('\n\n')]
@@ -68,7 +68,7 @@ for sample in samples:
 
 # assert ans == 529
 
-utils.submit_answer(1, ans)
+advent.submit_answer(1, ans)
 
 opmap = solve(opmap)
 
@@ -79,4 +79,4 @@ for instr in program:
 ans2 = regs[0]
 # assert ans2 == 573
 
-utils.submit_answer(2, ans2)
+advent.submit_answer(2, ans2)

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 from collections import defaultdict
 
-utils.setup(2018, 3, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 3, dry_run=True)
+fin = advent.get_input()
 
 canvas = defaultdict(set)
 claim_ids = set()
@@ -26,7 +26,7 @@ for line in fin:
 overlapping = sum(map(lambda x: len(x) > 1, canvas.values()))
 # assert overlapping == 118322
 
-utils.submit_answer(1, overlapping)
+advent.submit_answer(1, overlapping)
 
 for c in filter(lambda x: len(x) > 1, canvas.values()):
 	claim_ids -= c
@@ -36,4 +36,4 @@ assert len(claim_ids) == 1
 good = claim_ids.pop()
 # assert good == 1178
 
-utils.submit_answer(2, good)
+advent.submit_answer(2, good)

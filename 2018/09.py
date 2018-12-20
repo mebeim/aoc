@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 from collections import deque
 
 def play(nplayers, max_marble):
@@ -19,8 +19,8 @@ def play(nplayers, max_marble):
 	return max(scores)
 
 
-utils.setup(2018, 9, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 9, dry_run=True)
+fin = advent.get_input()
 
 s = fin.read().split()
 nplayers, last_marble = int(s[0]), int(s[6])
@@ -28,9 +28,9 @@ nplayers, last_marble = int(s[0]), int(s[6])
 winner1 = play(nplayers, last_marble)
 # assert winner1 == 398730
 
-utils.submit_answer(1, winner1)
+advent.submit_answer(1, winner1)
 
 winner2 = play(nplayers, last_marble * 100)
 # assert winner2 == 3349635509
 
-utils.submit_answer(2, winner2)
+advent.submit_answer(2, winner2)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 
 def simulate(first_gen, rules, days):
 	cur_gen      = first_gen
@@ -38,8 +38,8 @@ def simulate(first_gen, rules, days):
 	return idx_sum + alive * days_left
 
 
-utils.setup(2018, 12, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 12, dry_run=True)
+fin = advent.get_input()
 
 plants = fin.readline().replace('initial state:', '').strip()
 fin.readline()
@@ -55,9 +55,9 @@ for line in fin:
 ans = simulate(plants, rules, 20)
 # assert ans == 1447
 
-utils.submit_answer(1, ans)
+advent.submit_answer(1, ans)
 
 ans2 = simulate(plants, rules, 50*10**9)
 # assert ans2 == 1050000000480
 
-utils.submit_answer(2, ans2)
+advent.submit_answer(2, ans2)

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 import sys
 
 from blist import blist
 
-utils.setup(2018, 9, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 9, dry_run=True)
+fin = advent.get_input()
 
 ##################################################
 
@@ -44,7 +44,7 @@ while cur_marble < last_marble:
 
 
 winner_score = max(scores.values())
-utils.submit_answer(1, winner_score)
+advent.submit_answer(1, winner_score)
 
 
 marbles = blist([0])
@@ -75,4 +75,4 @@ while cur_marble < last_marble:
 
 
 winner_score = max(scores.values())
-utils.submit_answer(2, winner_score)
+advent.submit_answer(2, winner_score)

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 
-utils.setup(2018, 16, dry_run=False)
-fin = utils.get_input()
+advent.setup(2018, 16, dry_run=False)
+fin = advent.get_input()
 # print(*fin)
 
 ##################################################
@@ -204,7 +204,7 @@ for s in sims:
 	if simulate(before, op, after) >= 3:
 		ans += 1
 
-utils.submit_answer(1, ans)
+advent.submit_answer(1, ans)
 
 ok = simplify(ops)
 
@@ -220,4 +220,4 @@ for instr in program:
 
 ans2 = regs[0]
 
-utils.submit_answer(2, ans2)
+advent.submit_answer(2, ans2)

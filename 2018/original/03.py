@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 
-utils.setup(2018, 3)
+advent.setup(2018, 3)
 
-fin = utils.get_input()
+fin = advent.get_input()
 ans = 0
 ans2 = 0
 
@@ -34,7 +34,7 @@ for cid, c in claims.items():
 for row in canvas:
 	ans += sum(map(lambda x: x['tot'] > 1, row))
 
-utils.submit_answer(1, ans)
+advent.submit_answer(1, ans)
 
 ok = set(claims.keys())
 for row in canvas:
@@ -47,4 +47,4 @@ for row in canvas:
 assert len(ok) == 1
 
 ans2 = ok.pop()
-utils.submit_answer(2, ans2)
+advent.submit_answer(2, ans2)

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-import utils
+import advent
 from collections import defaultdict, namedtuple
 from string import *
 
-utils.setup(2018, 7, dry_run=True)
-fin = utils.get_input()
+advent.setup(2018, 7, dry_run=True)
+fin = advent.get_input()
 
 ##################################################
 
@@ -111,7 +111,7 @@ lol = ''
 
 wtf(graph, roots[0], set(roots[1:]), set())
 
-utils.submit_answer(1, lol)
+advent.submit_answer(1, lol)
 
 ############
 
@@ -149,4 +149,4 @@ ans2 = wtf2(graph, roots, set())
 
 # 234 too low
 # 1134 too high
-utils.submit_answer(2, ans2)
+advent.submit_answer(2, ans2)
