@@ -9,7 +9,11 @@ import heapq
 from string import *
 from collections import defaultdict, deque, namedtuple, Counter
 
-utils.setup(2018, xxx, dry_run=True)
+def log(s, *a):
+	sys.stderr.write(s.format(*a))
+	sys.stderr.flush()
+
+utils.setup(2018, 20, dry_run=True)
 fin = utils.get_input()
 print(*fin)
 
