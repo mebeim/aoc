@@ -23,9 +23,6 @@ def check_or_die(resp):
 		sys.exit(1)
 
 def check_setup_once():
-	global YEAR
-	global DAY
-
 	if YEAR == -1 and DAY == -1:
 		now = datetime.utcnow() + timedelta(hours=-5)
 		y, m, d = now.year, now.month, now.day
