@@ -8,6 +8,21 @@ import string
 import time
 from collections import defaultdict, deque, namedtuple, Counter
 
+def seconds_to_most_relevant_unit(s):
+	s *= 1e6
+	if s < 1000: return '{:.3f}µs'.format(s)
+
+	s /= 1000
+	if s < 1000: return '{:.3f}ms'.format(s)
+
+	s /= 1000
+	if s < 60: return '{:.3f}s'.format(s)
+
+	s /= 60
+	return '{:d}m {}s'.format(int(s), s/60%60)
+
+#############################################################
+
 def log(s, *a):
 	sys.stderr.write(s.format(*a))
 	sys.stderr.flush()
@@ -18,13 +33,13 @@ def rlog(recursion_depth):
 
 	return fn
 
-def dump_list(lst, fmt='{}\n'):
+def dump_list(lst, fmt='{}'):
 	for el in lst:
-		log(fmt, el)
+		log(fmt + '\n', el)
 
-def dump_dict(dct, fmt='{}: {}\n'):
+def dump_dict(dct, fmt='{}: {}'):
 	for k, v in dct.items():
-		log(fmt, k, v)
+		log(fmt + '\n', k, v)
 
 def dump_char_matrix(mat, transpose=False):
 	if transpose:
@@ -40,25 +55,27 @@ def dump_char_matrix(mat, transpose=False):
 
 	sys.stderr.flush()
 
-def timer_start(name=1):
+def timer_start(name=sys.argv[0]):
 	now_wall, now_cpu = time.time(), time.clock()
 	GLOBAL_TIMERS[name] = (now_wall, now_cpu, now_wall, now_cpu, 1)
 
-def timer_stop(name=1):
+def timer_stop(name=sys.argv[0]):
 	now_wall, now_cpu = time.time(), time.clock()
 	prev_wall, prev_cpu, *_ = GLOBAL_TIMERS.pop(name)
-	dt_wall = now_wall - prev_wall
-	dt_cpu = now_cpu - prev_cpu
 
-	log('Timer {}: wall: {:.3f}ms CPU: {:.3f}ms\n'.format(name, dt_wall, dt_cpu))
+	dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
+	dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
 
-def timer_lap(name=1):
+	log('Timer {}: {} wall, {} CPU\n'.format(name, dt_wall, dt_cpu))
+
+def timer_lap(name=sys.argv[0]):
 	now_wall, now_cpu = time.time(), time.clock()
 	*x, prev_wall, prev_cpu, lap = GLOBAL_TIMERS[name]
-	dt_wall = now_wall - prev_wall
-	dt_cpu = now_cpu - prev_cpu
 
-	log('Timer {} lap #{}: wall: {:.3f}ms CPU: {:.3f}ms\n'.format(name, lap, dt_wall, dt_cpu))
+	dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
+	dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
+
+	log('Timer {} lap #{}: {} wall, {} CPU\n'.format(name, lap, dt_wall, dt_cpu))
 
 	GLOBAL_TIMERS[name] = (*x, time.time(), time.clock(), lap + 1)
 
