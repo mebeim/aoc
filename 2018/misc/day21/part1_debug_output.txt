@@ -1846,36 +1846,3 @@
         1845 | ip 16: seti       27        9 1 |      3941014      16       1       1       1      3941014
         1846 | ip 28: eqrr        5        0 3 |      3941014      28       1       1       1      3941014
         1847 | ip 29: addr        3        1 1 |      3941014      29       1       1       1      3941014
-------------------------
-opcode  0 executed 1 times
-opcode  1 executed 1 times
-opcode  2 executed 1 times
-opcode  3 executed 0 times
-opcode  4 executed 1 times
-opcode  5 executed 1 times
-opcode  6 executed 1 times
-opcode  7 executed 3 times
-opcode  8 executed 3 times
-opcode  9 executed 3 times
-opcode 10 executed 3 times
-opcode 11 executed 3 times
-opcode 12 executed 3 times
-opcode 13 executed 3 times
-opcode 14 executed 2 times
-opcode 15 executed 1 times
-opcode 16 executed 2 times
-opcode 17 executed 259 times
-opcode 18 executed 259 times
-opcode 19 executed 259 times
-opcode 20 executed 259 times
-opcode 21 executed 257 times
-opcode 22 executed 2 times
-opcode 23 executed 257 times
-opcode 24 executed 257 times
-opcode 25 executed 2 times
-opcode 26 executed 2 times
-opcode 27 executed 1 times
-opcode 28 executed 1 times
-opcode 29 executed 0 times
-opcode 30 executed 1 times
-------------------------

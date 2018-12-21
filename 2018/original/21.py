@@ -44,7 +44,7 @@ def sim(r0value, max_same_instr):
 		mnemonic, a, b, c = prog[regs[ip]]
 		regs[c] = opcodes[mnemonic](regs, a, b)
 
-		instrmap[regs[ip]] += 1
+		instrmap[regs[ip]] += 1 # whoops, this is off by one every time
 		regs[ip] += 1
 		i += 1
 
