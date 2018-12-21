@@ -6,6 +6,7 @@ import copy
 import heapq
 import string
 import time
+import atexit
 from collections import defaultdict, deque, namedtuple, Counter
 
 def seconds_to_most_relevant_unit(s):
@@ -19,7 +20,7 @@ def seconds_to_most_relevant_unit(s):
 	if s < 60: return '{:.3f}s'.format(s)
 
 	s /= 60
-	return '{:d}m {}s'.format(int(s), s/60%60)
+	return '{:d}m {:.3f}s'.format(int(s), s/60%60)
 
 #############################################################
 
@@ -79,6 +80,17 @@ def timer_lap(name=sys.argv[0]):
 
 	GLOBAL_TIMERS[name] = (*x, time.time(), time.clock(), lap + 1)
 
+def timer_stop_all():
+	now_wall, now_cpu = time.time(), time.clock()
+
+	while GLOBAL_TIMERS:
+		k, v = GLOBAL_TIMERS.popitem()
+		prev_wall, prev_cpu, *_ = v
+		dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
+		dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
+
+		log('Timer {}: {} wall, {} CPU\n'.format(k, dt_wall, dt_cpu))
+
 def get_ints(file, use_regexp=False, regexp=r'-?\d+'):
 	return list(map(int, file.read().split()))
 
@@ -107,7 +119,6 @@ def get_lines(file, strip=True):
 ########################################################
 
 GLOBAL_TIMERS = {}
-PROCESS_START_TIME = None
 
 ########################################################
 
@@ -116,3 +127,5 @@ from platform import python_implementation
 if python_implementation() == 'CPython':
 	import blist
 	import networkx as nx
+
+atexit.register(timer_stop_all)
