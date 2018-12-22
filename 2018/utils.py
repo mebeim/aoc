@@ -44,8 +44,8 @@ def dump_dict(dct, fmt='{}: {}'):
 
 def dump_char_matrix(mat, transpose=False):
 	if transpose:
-		for j in range(len(mat)):
-			for i in range(len(mat[j])):
+		for j in range(len(mat[0])):
+			for i in range(len(mat)):
 				sys.stderr.write(mat[i][j])
 			sys.stderr.write('\n')
 	else:
@@ -92,8 +92,6 @@ def timer_stop_all():
 		log('Timer {}: {} wall, {} CPU\n'.format(k, dt_wall, dt_cpu))
 
 def get_ints(file, use_regexp=False, regexp=r'-?\d+'):
-	if use_regexp:
-		return list(map(int, re.findall(regexp, file.read())))
 	return list(map(int, file.read().split()))
 
 def get_int_matrix(file, use_regexp=False, regexp=r'-?\d+'):
