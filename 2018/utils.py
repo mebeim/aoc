@@ -8,6 +8,7 @@ import string
 import time
 import atexit
 from collections import defaultdict, deque, namedtuple, Counter
+from functools import lru_cache
 
 def seconds_to_most_relevant_unit(s):
 	s *= 1e6
@@ -92,6 +93,8 @@ def timer_stop_all():
 		log('Timer {}: {} wall, {} CPU\n'.format(k, dt_wall, dt_cpu))
 
 def get_ints(file, use_regexp=False, regexp=r'-?\d+'):
+	if use_regexp:
+		return list(map(int, re.findall(regexp, file.read())))
 	return list(map(int, file.read().split()))
 
 def get_int_matrix(file, use_regexp=False, regexp=r'-?\d+'):
