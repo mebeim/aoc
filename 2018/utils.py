@@ -92,32 +92,45 @@ def timer_stop_all():
 
 		log('Timer {}: {} wall, {} CPU\n'.format(k, dt_wall, dt_cpu))
 
-def get_ints(file, use_regexp=False, regexp=r'-?\d+'):
-	if use_regexp:
-		return list(map(int, re.findall(regexp, file.read())))
-	return list(map(int, file.read().split()))
-
-def get_int_matrix(file, use_regexp=False, regexp=r'-?\d+'):
-	matrix = []
+def get_ints(file, use_regexp=False, regexp=r'-?\d+', as_tuple=False):
+	kind = tuple if as_tuple else list
+	exp  = re.compile(regexp)
 
 	if use_regexp:
-		for line in map(str.rstrip, file):
-			matrix.append(list(map(int, re.findall(regexp, line))))
-	else:
-		for line in map(str.rstrip, file):
-			matrix.append(list(map(int, line.split())))
+		return kind(map(int, exp.findall(file.read())))
+	return kind(map(int, file.read().split()))
 
-	return matrix
+def get_int_matrix(file, use_regexp=False, regexp=r'-?\d+', as_tuples=False):
+	kind = tuple if as_tuples else list
+	exp  = re.compile(regexp)
 
-def get_char_matrix(file, strip=True):
-	if strip:
-		return [list(l.strip())for l in file]
-	return list(map(list, file.readlines()))
+	if use_regexp:
+		return kind(kind(map(int, exp.findall(l))) for l in file)
+	return kind(kind(map(int, l.split())) for l in file)
 
-def get_lines(file, strip=True):
-	if strip:
-		return [l.strip() for l in file]
-	return file.readlines()
+def get_lines(file, rstrip=True, lstrip=True, as_tuple=False):
+	kind  = tuple if as_tuple else list
+	lines = map(lambda l: l.rstrip('\n'), file)
+
+	if rstrip and lstrip:
+		return kind(map(str.strip, lines))
+	if rstrip:
+		return kind(map(str.rstrip, lines))
+	if lstrip:
+		return kind(map(str.lstrip, lines))
+	return kind(lines)
+
+def get_char_matrix(file, rstrip=True, lstrip=True, as_tuples=False):
+	kind  = tuple if as_tuples else list
+	lines = map(lambda l: l.rstrip('\n'), file)
+
+	if rstrip and lstrip:
+		return kind(kind(l.strip()) for l in lines)
+	if rstrip:
+		return kind(kind(l.rstrip()) for l in lines)
+	if lstrip:
+		return kind(kind(l.lstrip()) for l in lines)
+	return kind(map(kind, lines))
 
 ########################################################
 
