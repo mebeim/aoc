@@ -1,29 +1,9 @@
-#!/usr/bin/env python3
-
-import re
 import sys
-import copy
-import heapq
-import string
 import time
 import atexit
-from collections import defaultdict, deque, namedtuple, Counter
-from functools import lru_cache
+import re
 
-def seconds_to_most_relevant_unit(s):
-	s *= 1e6
-	if s < 1000: return '{:.3f}µs'.format(s)
-
-	s /= 1000
-	if s < 1000: return '{:.3f}ms'.format(s)
-
-	s /= 1000
-	if s < 60: return '{:.3f}s'.format(s)
-
-	s /= 60
-	return '{:d}m {:.3f}s'.format(int(s), s/60%60)
-
-#############################################################
+from .meta_helpers import *
 
 def log(s, *a):
 	sys.stderr.write(s.format(*a))
@@ -59,33 +39,33 @@ def dump_char_matrix(mat, transpose=False):
 
 def timer_start(name=sys.argv[0]):
 	now_wall, now_cpu = time.time(), time.clock()
-	GLOBAL_TIMERS[name] = (now_wall, now_cpu, now_wall, now_cpu, 1)
-
-def timer_stop(name=sys.argv[0]):
-	now_wall, now_cpu = time.time(), time.clock()
-	prev_wall, prev_cpu, *_ = GLOBAL_TIMERS.pop(name)
-
-	dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
-	dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
-
-	log('Timer {}: {} wall, {} CPU\n'.format(name, dt_wall, dt_cpu))
+	TIMERS[name] = (now_wall, now_cpu, now_wall, now_cpu, 1)
 
 def timer_lap(name=sys.argv[0]):
 	now_wall, now_cpu = time.time(), time.clock()
-	*x, prev_wall, prev_cpu, lap = GLOBAL_TIMERS[name]
+	*x, prev_wall, prev_cpu, lap = TIMERS[name]
 
 	dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
 	dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
 
 	log('Timer {} lap #{}: {} wall, {} CPU\n'.format(name, lap, dt_wall, dt_cpu))
 
-	GLOBAL_TIMERS[name] = (*x, time.time(), time.clock(), lap + 1)
+	TIMERS[name] = (*x, time.time(), time.clock(), lap + 1)
+
+def timer_stop(name=sys.argv[0]):
+	now_wall, now_cpu = time.time(), time.clock()
+	prev_wall, prev_cpu, *_ = TIMERS.pop(name)
+
+	dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
+	dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
+
+	log('Timer {}: {} wall, {} CPU\n'.format(name, dt_wall, dt_cpu))
 
 def timer_stop_all():
 	now_wall, now_cpu = time.time(), time.clock()
 
-	while GLOBAL_TIMERS:
-		k, v = GLOBAL_TIMERS.popitem()
+	while TIMERS:
+		k, v = TIMERS.popitem()
 		prev_wall, prev_cpu, *_ = v
 		dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
 		dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
@@ -132,16 +112,14 @@ def get_char_matrix(file, rstrip=True, lstrip=True, as_tuples=False):
 		return kind(kind(l.lstrip()) for l in lines)
 	return kind(map(kind, lines))
 
-########################################################
+#################################################
 
-GLOBAL_TIMERS = {}
-
-########################################################
-
-from platform import python_implementation
-
-if python_implementation() == 'CPython':
-	import blist
-	import networkx as nx
-
+TIMERS = {}
 atexit.register(timer_stop_all)
+
+__all__ = [
+	'log', 'rlog',
+	'timer_start', 'timer_lap', 'timer_stop', 'timer_stop_all',
+	'dump_list', 'dump_dict', 'dump_char_matrix',
+	'get_ints', 'get_int_matrix', 'get_lines', 'get_char_matrix'
+]
