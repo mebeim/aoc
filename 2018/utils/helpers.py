@@ -3,6 +3,8 @@ import time
 import atexit
 import re
 
+from functools import wraps
+
 from .meta_helpers import *
 
 def log(s, *a):
@@ -10,10 +12,14 @@ def log(s, *a):
 	sys.stderr.flush()
 
 def rlog(recursion_depth):
+	@wraps(log)
 	def fn(s, *a):
 		log(' |' * recursion_depth + ' ' + s, *a)
 
 	return fn
+
+def eprint(*a, **kwa):
+	print(*a, **kwa, file=sys.stderr)
 
 def dump_list(lst, fmt='{}'):
 	for el in lst:
@@ -118,7 +124,7 @@ TIMERS = {}
 atexit.register(timer_stop_all)
 
 __all__ = [
-	'log', 'rlog',
+	'log', 'rlog', 'eprint',
 	'timer_start', 'timer_lap', 'timer_stop', 'timer_stop_all',
 	'dump_list', 'dump_dict', 'dump_char_matrix',
 	'get_ints', 'get_int_matrix', 'get_lines', 'get_char_matrix'
