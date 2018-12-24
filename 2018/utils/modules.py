@@ -7,6 +7,7 @@ import string
 from importlib import find_loader
 from functools import lru_cache, reduce, partial
 from collections import defaultdict, deque, namedtuple, Counter
+from operator import itemgetter, attrgetter, methodcaller
 
 if find_loader('z3') is not None:
 	import z3
