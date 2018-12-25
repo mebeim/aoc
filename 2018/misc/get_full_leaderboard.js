@@ -18,6 +18,7 @@ function getFullLeaderboard(excludedDays=[]) {
 							    aocpp    = e.querySelector('.supporter-badge'),
 							    sponsor  = e.querySelector('.sponsor-badge'),
 							    anon     = e.querySelector('.leaderboard-anon'),
+							    image    = e.querySelector('.leaderboard-userphoto > img'),
 							    link     = null,
     						    username = null
 
@@ -42,14 +43,16 @@ function getFullLeaderboard(excludedDays=[]) {
 								}
 							}
 
-							if (todayUsers[username]) {
-								todayUsers[username].score += score
-								todayUsers[username].times += 1
+							let key = username + (link ? link.href : '') + (image ? image.src : '')
+
+							if (todayUsers[key]) {
+								todayUsers[key].score += score
+								todayUsers[key].times += 1
 							} else {
-								todayUsers[username] = {username, score, times: 1}
+								todayUsers[key] = {username, score, times: 1}
 
 								if (link)
-									todayUsers[username].link = link.href
+									todayUsers[key].link = link.href
 							}
 						}
 
