@@ -164,7 +164,7 @@ for xy, r in cave.items():
 		for v, delta in reachable(n):
 			graph.add_edge(n, v, weight=delta)
 
-# dump_list(reachable(source))
+# dump_iterable(reachable(source))
 # ans = explore(source, targets)
 
 pathlens = nx.single_source_dijkstra_path_length(graph, source)
@@ -172,7 +172,7 @@ minimum = 1e99
 
 for target in targets:
 	# log('{}: {}\n', target, pathlens[target])
-	# dump_list(nx.dijkstra_path(graph, source, target))
+	# dump_iterable(nx.dijkstra_path(graph, source, target))
 	# log('-'*50 + '\n')
 
 	cur = pathlens[target]

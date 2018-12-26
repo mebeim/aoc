@@ -21,9 +21,9 @@ def rlog(recursion_depth):
 def eprint(*a, **kwa):
 	print(*a, **kwa, file=sys.stderr)
 
-def dump_list(lst, fmt='{}'):
-	for el in lst:
-		log(fmt + '\n', el)
+def dump_iterable(iterable, fmt='{}'):
+	for item in iterable:
+		log(fmt + '\n', item)
 
 def dump_dict(dct, fmt='{}: {}'):
 	for k, v in dct.items():
@@ -126,6 +126,6 @@ atexit.register(timer_stop_all)
 __all__ = [
 	'log', 'rlog', 'eprint',
 	'timer_start', 'timer_lap', 'timer_stop', 'timer_stop_all',
-	'dump_list', 'dump_dict', 'dump_char_matrix',
+	'dump_iterable', 'dump_dict', 'dump_char_matrix',
 	'get_ints', 'get_int_matrix', 'get_lines', 'get_char_matrix'
 ]

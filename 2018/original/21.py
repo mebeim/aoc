@@ -96,7 +96,7 @@ def sim_intelligent(r0value, threshold):
 		regs[ip] += 1
 		i += 1
 
-	# dump_list(sorted(targets))
+	# dump_iterable(sorted(targets))
 
 	return last_unique_target
 
