@@ -9,10 +9,6 @@ def log(s, *a):
 	sys.stderr.write(s.format(*a))
 	sys.stderr.flush()
 
-def read_n_close(fname):
-	with open(fname) as f:
-		return f.read().rstrip()
-
 def check_or_die(resp):
 	if resp.status_code != 200:
 		log('\n[utils] ERROR: response {}, url: {}\n', resp.status_code, resp.url)
