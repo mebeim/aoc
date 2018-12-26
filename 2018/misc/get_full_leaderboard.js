@@ -31,7 +31,7 @@ function getFullLeaderboard(excludedDays=[]) {
 							link = e.querySelector('a')
 
 							if (anon) {
-								username = anon.textContent.trim().replace(')', '').replace('(', '')
+								username = `(anon ${anon.textContent.match(/#\d+/)[0]})`
 							} else {
 								if (link) {
 									username = link.textContent
@@ -97,16 +97,20 @@ getFullLeaderboard([6]).then(l => window.l = l)
 
 // Run after getFullLeaderBoard has finished.
 (leaderboard =>  {
+	console.log('Generating leaderboard Markdown.')
+
 	let sorted = Object.keys(leaderboard).map(name => leaderboard[name])
 
 	sorted.sort((b, a) => a.score - b.score)
 
-	let md = '| Rank | User | Score | Times in leaderboard |\n'
-		md += '|-|-|-|-|\n'
+	let md = 'Rank | User | Score | Times (days) on leaderboard\n'
+		md += '-|-|-|-\n'
 
 	let rank = 0, lastScore = -1, acc = 1
 
 	for (let user of sorted) {
+		let username = user.link ? `[${user.username}](${user.link})` : `${user.username}`
+
 		if (user.score != lastScore) {
 			rank += acc
 			acc = 1
@@ -114,13 +118,12 @@ getFullLeaderboard([6]).then(l => window.l = l)
 			acc++
 		}
 
-		if (user.link)
-			md += `| ${rank} | [${user.username}](${user.link}) | ${user.score} | ${user.times} (${user.days} day${user.days > 1 ? 's' : ''}) |\n`
-		else
-			md += `| ${rank} | ${user.username} | ${user.score} | ${user.times} (${user.days} day${user.days > 1 ? 's' : ''}) |\n`
+		md += `${rank} | ${username} | ${user.score} | ${user.times} (${user.days})\n`
 
 		lastScore = user.score
 	}
 
 	copy(md)
+
+	console.log('Leaderboard copied to clipboard.')
 })(l)
