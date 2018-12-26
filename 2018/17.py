@@ -7,10 +7,10 @@ import re
 # the following one does not happen (i.e. two
 # reservoirs 1 cell apart from each other).
 #
-#     .|...#   #
-#     #||||#   #
-#     #~~#|#   #
-#     ####|#   #
+#     .|...#...#
+#     #||||#...#
+#     #~~#|#...#
+#     ####|#...#
 #     ....|#####
 
 def should_spread(sx, sy):
