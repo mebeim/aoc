@@ -53,11 +53,11 @@ for line in fin:
 		rules.add(k)
 
 ans = simulate(plants, rules, 20)
-# assert ans == 1447
 
+assert ans == 1447
 advent.submit_answer(1, ans)
 
 ans2 = simulate(plants, rules, 50*10**9)
-# assert ans2 == 1050000000480
 
+assert ans2 == 1050000000480
 advent.submit_answer(2, ans2)

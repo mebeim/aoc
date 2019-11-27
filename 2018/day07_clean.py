@@ -68,8 +68,8 @@ for letter, node in graph.items():
 		heapq.heappush(roots, letter)
 
 order = lex_toposort(copy.deepcopy(graph), roots[:])
-# assert order == 'JMQZELVYXTIGPHFNSOADKWBRUC'
 
+assert order == 'JMQZELVYXTIGPHFNSOADKWBRUC'
 advent.submit_answer(1, order)
 
 durations = {}
@@ -77,6 +77,6 @@ for c in graph:
 	durations[c] = ord(c) - ord('A') + 61
 
 total = work(graph, roots, durations, 5)
-# assert total == 1133
 
+assert total == 1133
 advent.submit_answer(2, total)

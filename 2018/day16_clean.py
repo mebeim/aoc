@@ -66,8 +66,7 @@ for sample in samples:
 	if count >= 3:
 		ans += 1
 
-# assert ans == 529
-
+assert ans == 529
 advent.submit_answer(1, ans)
 
 opmap = solve(opmap)
@@ -77,6 +76,6 @@ for instr in program:
 	regs[instr[3]] = opcodes[opmap[instr[0]]](regs, instr[1], instr[2])
 
 ans2 = regs[0]
-# assert ans2 == 573
 
+assert ans2 == 573
 advent.submit_answer(2, ans2)

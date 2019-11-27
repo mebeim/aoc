@@ -11,7 +11,6 @@ freq = 0
 seen = set()
 seen.add(0)
 
-
 for d in deltas:
 	freq += d
 
@@ -20,8 +19,7 @@ for d in deltas:
 
 	seen.add(freq)
 
-# assert freq == 435
-
+assert freq == 435
 advent.submit_answer(1, freq)
 
 while not done:
@@ -34,6 +32,5 @@ while not done:
 
 		seen.add(freq)
 
-# assert freq == 245
-
+assert freq == 245
 advent.submit_answer(2, freq)
