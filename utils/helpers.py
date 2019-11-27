@@ -80,17 +80,17 @@ def timer_stop_all():
 
 def get_ints(file, use_regexp=False, regexp=r'-?\d+', as_tuple=False):
 	kind = tuple if as_tuple else list
-	exp  = re.compile(regexp)
 
 	if use_regexp:
+		exp = re.compile(regexp)
 		return kind(map(int, exp.findall(file.read())))
 	return kind(map(int, file.read().split()))
 
 def get_int_matrix(file, use_regexp=False, regexp=r'-?\d+', as_tuples=False):
 	kind = tuple if as_tuples else list
-	exp  = re.compile(regexp)
 
 	if use_regexp:
+		exp = re.compile(regexp)
 		return kind(kind(map(int, exp.findall(l))) for l in file)
 	return kind(kind(map(int, l.split())) for l in file)
 
