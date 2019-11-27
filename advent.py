@@ -55,23 +55,24 @@ def get_input(fname=None, mode='r'):
 
 	if not os.path.isfile(fname):
 		if not REQUESTS:
+			log('err!\n')
 			log('[utils] ERROR: cannot download input, no requests module installed!\n')
 			sys.exit(1)
-
-		if SESSION:
-			log('downloading... ')
-
-			r = s.get(URL.format(YEAR, DAY, 'input'))
-			check_or_die(r)
-
-			with open(fname, 'wb') as f:
-				f.write(r.content)
-
-			log('done.\n')
-		else:
+		elif not SESSION:
 			log('err!\n')
 			log('[utils] ERROR: cannot download input file without session cookie!\n')
 			sys.exit(1)
+
+		log('downloading... ')
+
+		r = s.get(URL.format(YEAR, DAY, 'input'))
+		check_or_die(r)
+
+		with open(fname, 'wb') as f:
+			f.write(r.content)
+
+		log('done.\n')
+
 	else:
 		log('done (from disk).\n')
 
