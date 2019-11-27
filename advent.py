@@ -9,10 +9,10 @@ def log(s, *a):
 
 def check_or_die(resp):
 	if resp.status_code != 200:
-		log('\n[utils] ERROR: response {}, url: {}\n', resp.status_code, resp.url)
+		log('\n[advent] ERROR: response {}, url: {}\n', resp.status_code, resp.url)
 
 		if resp.status_code == 500:
-			log('[utils] Did you log in and update your session cookie?\n')
+			log('[advent] Did you log in and update your session cookie?\n')
 
 		sys.exit(1)
 
@@ -22,10 +22,10 @@ def check_setup_once():
 		y, m, d = now.year, now.month, now.day
 
 		if m != 12 or (m == 12 and d > 25):
-			log('[utils] ERROR: year and day not set, and no event currently running!\n')
+			log('[advent] ERROR: year and day not set, and no event currently running!\n')
 			sys.exit(1)
 
-		log('[utils] Year and day not set, assuming today: Dec {}, {}.\n', d, y)
+		log('[advent] Year and day not set, assuming today: Dec {}, {}.\n', d, y)
 		setup(y, d)
 
 def setup(year, day, dry_run=False):
@@ -48,7 +48,7 @@ def setup(year, day, dry_run=False):
 
 def get_input(fname=None, mode='r'):
 	check_setup_once()
-	log('[utils] Getting input for year {} day {}... ', YEAR, DAY)
+	log('[advent] Getting input for year {} day {}... ', YEAR, DAY)
 
 	if fname is None:
 		fname = os.path.join(CACHE_DIR, '{}_{:02d}.txt'.format(YEAR, DAY))
@@ -56,11 +56,11 @@ def get_input(fname=None, mode='r'):
 	if not os.path.isfile(fname):
 		if not REQUESTS:
 			log('err!\n')
-			log('[utils] ERROR: cannot download input, no requests module installed!\n')
+			log('[advent] ERROR: cannot download input, no requests module installed!\n')
 			sys.exit(1)
 		elif not SESSION:
 			log('err!\n')
-			log('[utils] ERROR: cannot download input file without session cookie!\n')
+			log('[advent] ERROR: cannot download input file without session cookie!\n')
 			sys.exit(1)
 
 		log('downloading... ')
@@ -84,10 +84,10 @@ def submit_answer(part, answer):
 	if DRY_RUN:
 		print('Part {}: {}'.format(part, answer))
 	elif not REQUESTS:
-		log('[utils] Cannot upload answer, no requests module installed!\n')
+		log('[advent] Cannot upload answer, no requests module installed!\n')
 		print('Part {}: {}'.format(part, answer))
 	else:
-		log('[utils] Submitting day {} part {} answer: {}\n', DAY, part, answer)
+		log('[advent] Submitting day {} part {} answer: {}\n', DAY, part, answer)
 
 		r = s.post(URL.format(YEAR, DAY, 'answer'), data={'level': part, 'answer': answer})
 		check_or_die(r)
@@ -95,18 +95,18 @@ def submit_answer(part, answer):
 		t = r.text.lower()
 
 		if 'did you already complete it' in t:
-			log('[utils] Already completed!\n')
+			log('[advent] Already completed!\n')
 			return True
 
 		if "that's the right answer" in t:
-			log('[utils] Right answer!\n')
+			log('[advent] Right answer!\n')
 			return True
 
 		if 'you have to wait' in t:
-			log('[utils] Submitting too fast, slow down!\n')
+			log('[advent] Submitting too fast, slow down!\n')
 			return False
 
-		log('[utils] Wrong answer :(\n')
+		log('[advent] Wrong answer :(\n')
 		return False
 
 URL       = 'https://adventofcode.com/{:d}/day/{:d}/{:s}'
