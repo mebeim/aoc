@@ -48,6 +48,16 @@ def setup(year, day, dry_run=False):
 
 def get_input(fname=None, mode='r'):
 	check_setup_once()
+
+	if not os.path.isdir(CACHE_DIR):
+		try:
+			os.mkdir(CACHE_DIR)
+			log("[advent] Created cache directory '{}' since it did not exist.\n", CACHE_DIR)
+		except Exception as e:
+			log("[advent] ERROR: could not create cache directory '{}'.\n", CACHE_DIR)
+			log('[advent] {}\n', str(e))
+			sys.exit(1)
+
 	log('[advent] Getting input for year {} day {}... ', YEAR, DAY)
 
 	if fname is None:
