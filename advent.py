@@ -8,12 +8,15 @@ def log(s, *a):
 	sys.stderr.flush()
 
 def check_or_die(resp):
+	pls_identify = 'please identify yourself' in resp.text.lower()
+
 	if resp.status_code != 200:
 		log('\n[advent] ERROR: response {}, url: {}\n', resp.status_code, resp.url)
-
-		if resp.status_code == 500:
-			log('[advent] Did you log in and update your session cookie?\n')
-
+		log('[advent] Did you log in and update your session cookie?\n')
+		sys.exit(1)
+	elif pls_identify:
+		log('\n[advent] ERROR: Server returned 200, but is asking for identification.\n')
+		log('[advent] Did you log in and update your session cookie?\n')
 		sys.exit(1)
 
 def check_setup_once():
