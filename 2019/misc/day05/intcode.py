@@ -39,13 +39,16 @@ class Op:
 
 	def pp(self):
 		s = '{:>6d}:  '.format(self.vm.pc)
-		s += '{:<4s}'.format(self.mnemonic)
+
+		opcode = self.vm.code[self.vm.pc]
+		s += '{:03d} {:02d} '.format(opcode // 100, opcode % 100)
+		s += '    {:<4s}'.format(self.mnemonic)
 
 		for a, m in zip(self.args, self.argmodes):
 			if m == ARGMODE_DEREF:
-				s += '{:>8s}] '.format('[{:d}'.format(a).replace('0x-', '-0x'))
+				s += '{:>8s}] '.format('[{:d}'.format(a))
 			else:
-				s += '{:>8s}  '.format('{:d}'.format(a).replace('0x-', '-0x'))
+				s += '{:>8s}  '.format('{:d}'.format(a))
 
 		sys.stderr.write(s.rstrip() + '\n')
 
@@ -227,23 +230,22 @@ OPMAP = {
 
 ARGMODE_DEREF, ARGMODE_IMMEDIATE = 0, 1
 
-################################################################################
+if __name__ == '__main__':
+	if len(sys.argv) != 3:
+		usage()
 
-if len(sys.argv) != 3:
-	usage()
+	with open(sys.argv[2]) as fin:
+		program = list(map(int, fin.read().split(',')))
 
-with open(sys.argv[2]) as fin:
-	program = list(map(int, fin.read().split(',')))
+	vm = IntcodeVM(program)
 
-vm = IntcodeVM(program)
-
-if sys.argv[1] == 'run':
-	res = vm.run()
-	sys.exit(res)
-elif sys.argv[1] == 'debug':
-	res = vm.run(True)
-	sys.exit(res)
-elif sys.argv[1] == 'dis':
-	vm.dis()
-else:
-	usage()
+	if sys.argv[1] == 'run':
+		res = vm.run()
+		sys.exit(res)
+	elif sys.argv[1] == 'debug':
+		res = vm.run(True)
+		sys.exit(res)
+	elif sys.argv[1] == 'dis':
+		vm.dis()
+	else:
+		usage()
