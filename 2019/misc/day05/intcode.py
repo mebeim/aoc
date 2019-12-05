@@ -15,7 +15,7 @@ class Op:
 		self.mnemonic = mnemonic
 
 		if not (0 <= self.pc < len(self.vm.code)):
-			raise VMRuntimeError('invalid program counter')
+			raise VMRuntimeError('invalid program counter (pc = {:d}'.format(self.pc))
 
 		div = 100
 		opcode = self.vm.code[self.pc]
@@ -24,7 +24,7 @@ class Op:
 			i = self.pc + self.length
 
 			if i >= len(self.vm.code):
-				raise VMRuntimeError('incomplete instruction')
+				raise VMRuntimeError('incomplete instruction (pc = {:d}'.format(self.pc))
 
 			self.args.append(self.vm.code[i])
 			self.argmodes.append(opcode // div % 10)
