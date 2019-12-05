@@ -65,6 +65,16 @@ class Op:
 
 		self.vm.mem[addr] = value
 
+	def decode_arg(self, i):
+		a, m = self.args[i], self.argmodes[i]
+
+		if m == ARGMODE_DEREF:
+			return self.read_mem(a)
+		elif m == ARGMODE_IMMEDIATE:
+			return a
+		else:
+			raise VMRuntimeError('invalid argument {:d} mode {:d} (pc = {:d})'.format(i, m, self.pc))
+
 	def exec(self):
 		raise NotImplementedError()
 
@@ -80,9 +90,7 @@ class OpAdd(Op):
 		super(OpAdd, self).__init__(vm, pc, 'add', 3)
 
 	def exec(self):
-		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
-		b = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.read_mem(self.args[1])
-		self.write_mem(self.args[2], a + b)
+		self.write_mem(self.args[2], self.decode_arg(0) + self.decode_arg(1))
 		self.vm.pc += self.length
 
 class OpMul(Op):
@@ -90,9 +98,7 @@ class OpMul(Op):
 		super(OpMul, self).__init__(vm, pc, 'mul', 3)
 
 	def exec(self):
-		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
-		b = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.read_mem(self.args[1])
-		self.write_mem(self.args[2], a * b)
+		self.write_mem(self.args[2], self.decode_arg(0) * self.decode_arg(1))
 		self.vm.pc += self.length
 
 class OpIn(Op):
@@ -108,8 +114,7 @@ class OpOut(Op):
 		super(OpOut, self).__init__(vm, pc, 'out', 1)
 
 	def exec(self):
-		value = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
-		self.vm.write(value)
+		self.vm.write(self.decode_arg(0))
 		self.vm.pc += self.length
 
 class OpJnz(Op):
@@ -117,8 +122,7 @@ class OpJnz(Op):
 		super(OpJnz, self).__init__(vm, pc, 'jnz', 2)
 
 	def exec(self):
-		value = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
-		addr = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.read_mem(self.args[1])
+		value, addr = self.decode_arg(0), self.decode_arg(1)
 		self.vm.pc = addr if value != 0 else self.vm.pc + self.length
 
 class OpJz(Op):
@@ -126,8 +130,7 @@ class OpJz(Op):
 		super(OpJz, self).__init__(vm, pc, 'jz', 2)
 
 	def exec(self):
-		value = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
-		addr = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.read_mem(self.args[1])
+		value, addr = self.decode_arg(0), self.decode_arg(1)
 		self.vm.pc = addr if value == 0 else self.vm.pc + self.length
 
 class OpLt(Op):
@@ -135,8 +138,7 @@ class OpLt(Op):
 		super(OpLt, self).__init__(vm, pc, 'lt', 3)
 
 	def exec(self):
-		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
-		b = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.read_mem(self.args[1])
+		a, b = self.decode_arg(0), self.decode_arg(1)
 		self.write_mem(self.args[2], 1 if a < b else 0)
 		self.vm.pc += self.length
 
@@ -145,8 +147,7 @@ class OpEq(Op):
 		super(OpEq, self).__init__(vm, pc, 'eq', 3)
 
 	def exec(self):
-		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
-		b = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.read_mem(self.args[1])
+		a, b = self.decode_arg(0), self.decode_arg(1)
 		self.write_mem(self.args[2], 1 if a == b else 0)
 		self.vm.pc += self.length
 
