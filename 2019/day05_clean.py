@@ -2,7 +2,6 @@
 
 import advent
 import sys
-from collections import defaultdict
 
 class VMRuntimeError(Exception):
 	pass
@@ -49,9 +48,6 @@ class Op:
 			else:
 				s += '{:>8s}  '.format('{:d}'.format(a).replace('0x-', '-0x'))
 
-		if self.args:
-			s = s[:-1]
-
 		sys.stderr.write(s.rstrip() + '\n')
 
 	def exec(self):
@@ -64,10 +60,10 @@ class OpInvalid(Op):
 	def exec(self):
 		raise VMRuntimeError('invalid opcode {:d} (pc = {:d})'.format(self.vm.code[self.vm.pc], self.vm.pc))
 
-class OpSum(Op):
+class OpAdd(Op):
 	def __init__(self, vm):
-		super(OpSum, self).__init__(vm, 3)
-		self.mnemonic = 'sum'
+		super(OpAdd, self).__init__(vm, 3)
+		self.mnemonic = 'add'
 
 	def exec(self):
 		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.vm.mem[self.args[0]]
@@ -188,7 +184,7 @@ class IntcodeVM:
 		self.running = False
 
 OPMAP = {
-	1 : OpSum,
+	1 : OpAdd,
 	2 : OpMul,
 	3 : OpIn,
 	4 : OpOut,
