@@ -6,21 +6,22 @@ class VMRuntimeError(Exception):
 	pass
 
 class Op:
-	def __init__(self, vm, n_args=0):
+	def __init__(self, vm, pc, mnemonic='(bad)', n_args=0):
 		self.vm       = vm
+		self.pc       = pc
 		self.args     = []
 		self.argmodes = []
 		self.length   = 1
-		self.mnemonic = '(bad)'
+		self.mnemonic = mnemonic
 
-		if not (0 <= self.vm.pc < len(self.vm.code)):
+		if not (0 <= self.pc < len(self.vm.code)):
 			raise VMRuntimeError('invalid program counter')
 
 		div = 100
-		opcode = self.vm.code[self.vm.pc]
+		opcode = self.vm.code[self.pc]
 
 		for _ in range(n_args):
-			i = self.vm.pc + self.length
+			i = self.pc + self.length
 
 			if i >= len(self.vm.code):
 				raise VMRuntimeError('incomplete instruction')
@@ -31,16 +32,16 @@ class Op:
 			div *= 10
 
 	@staticmethod
-	def fromcode(vm):
-		op = vm.code[vm.pc] % 100
+	def fromcode(vm, pc):
+		op = vm.code[pc] % 100
 		if op in OPMAP:
-			return OPMAP[op](vm)
-		return OpInvalid(vm)
+			return OPMAP[op](vm, pc)
+		return OpInvalid(vm, pc)
 
 	def pp(self):
-		s = '{:>6d}:  '.format(self.vm.pc)
+		s = '{:>6d}:  '.format(self.pc)
 
-		opcode = self.vm.code[self.vm.pc]
+		opcode = self.vm.code[self.pc]
 		s += '{:03d} {:02d} '.format(opcode // 100, opcode % 100)
 		s += '    {:<4s}'.format(self.mnemonic)
 
@@ -54,13 +55,13 @@ class Op:
 
 	def read_mem(self, addr):
 		if addr < 0 or addr >= len(self.vm.mem):
-			raise VMRuntimeError('out of bounds memory read at {:d} (pc = {:d})'.format(addr, self.vm.pc))
+			raise VMRuntimeError('out of bounds memory read at {:d} (pc = {:d})'.format(addr, self.pc))
 
 		return self.vm.mem[addr]
 
 	def write_mem(self, addr, value):
 		if addr < 0 or addr >= len(self.vm.mem):
-			raise VMRuntimeError('out of bounds memory write at {:d} (pc = {:d})'.format(addr, self.vm.pc))
+			raise VMRuntimeError('out of bounds memory write at {:d} (pc = {:d})'.format(addr, self.pc))
 
 		self.vm.mem[addr] = value
 
@@ -68,16 +69,15 @@ class Op:
 		raise NotImplementedError()
 
 class OpInvalid(Op):
-	def __init__(self, vm):
-		super(OpInvalid, self).__init__(vm)
+	def __init__(self, vm, pc):
+		super(OpInvalid, self).__init__(vm, pc)
 
 	def exec(self):
-		raise VMRuntimeError('invalid opcode {:d} (pc = {:d})'.format(self.vm.code[self.vm.pc], self.vm.pc))
+		raise VMRuntimeError('invalid opcode {:d} (pc = {:d})'.format(self.vm.code[self.pc], self.pc))
 
 class OpAdd(Op):
-	def __init__(self, vm):
-		super(OpAdd, self).__init__(vm, 3)
-		self.mnemonic = 'add'
+	def __init__(self, vm, pc):
+		super(OpAdd, self).__init__(vm, pc, 'add', 3)
 
 	def exec(self):
 		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
@@ -86,9 +86,8 @@ class OpAdd(Op):
 		self.vm.pc += self.length
 
 class OpMul(Op):
-	def __init__(self, vm):
-		super(OpMul, self).__init__(vm, 3)
-		self.mnemonic = 'mul'
+	def __init__(self, vm, pc):
+		super(OpMul, self).__init__(vm, pc, 'mul', 3)
 
 	def exec(self):
 		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
@@ -97,18 +96,16 @@ class OpMul(Op):
 		self.vm.pc += self.length
 
 class OpIn(Op):
-	def __init__(self, vm):
-		super(OpIn, self).__init__(vm, 1)
-		self.mnemonic = 'in'
+	def __init__(self, vm, pc):
+		super(OpIn, self).__init__(vm, pc, 'in', 1)
 
 	def exec(self):
 		self.write_mem(self.args[0], self.vm.read())
 		self.vm.pc += self.length
 
 class OpOut(Op):
-	def __init__(self, vm):
-		super(OpOut, self).__init__(vm, 1)
-		self.mnemonic = 'out'
+	def __init__(self, vm, pc):
+		super(OpOut, self).__init__(vm, pc, 'out', 1)
 
 	def exec(self):
 		value = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
@@ -116,9 +113,8 @@ class OpOut(Op):
 		self.vm.pc += self.length
 
 class OpJnz(Op):
-	def __init__(self, vm):
-		super(OpJnz, self).__init__(vm, 2)
-		self.mnemonic = 'jnz'
+	def __init__(self, vm, pc):
+		super(OpJnz, self).__init__(vm, pc, 'jnz', 2)
 
 	def exec(self):
 		value = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
@@ -126,9 +122,8 @@ class OpJnz(Op):
 		self.vm.pc = addr if value != 0 else self.vm.pc + self.length
 
 class OpJz(Op):
-	def __init__(self, vm):
-		super(OpJz, self).__init__(vm, 2)
-		self.mnemonic = 'jz'
+	def __init__(self, vm, pc):
+		super(OpJz, self).__init__(vm, pc, 'jz', 2)
 
 	def exec(self):
 		value = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
@@ -136,9 +131,8 @@ class OpJz(Op):
 		self.vm.pc = addr if value == 0 else self.vm.pc + self.length
 
 class OpLt(Op):
-	def __init__(self, vm):
-		super(OpLt, self).__init__(vm, 3)
-		self.mnemonic = 'lt'
+	def __init__(self, vm, pc):
+		super(OpLt, self).__init__(vm, pc, 'lt', 3)
 
 	def exec(self):
 		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
@@ -147,9 +141,8 @@ class OpLt(Op):
 		self.vm.pc += self.length
 
 class OpEq(Op):
-	def __init__(self, vm):
-		super(OpEq, self).__init__(vm, 3)
-		self.mnemonic = 'eq'
+	def __init__(self, vm, pc):
+		super(OpEq, self).__init__(vm, pc, 'eq', 3)
 
 	def exec(self):
 		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
@@ -158,8 +151,8 @@ class OpEq(Op):
 		self.vm.pc += self.length
 
 class OpHlt(Op):
-	def __init__(self, vm):
-		super(OpHlt, self).__init__(vm, 0)
+	def __init__(self, vm, pc):
+		super(OpHlt, self).__init__(vm, pc, 'hlt', 0)
 		self.mnemonic = 'hlt'
 
 	def exec(self):
@@ -178,7 +171,7 @@ class IntcodeVM:
 		self.mem = self.code
 
 		while self.pc < len(self.code):
-			op = Op.fromcode(self)
+			op = Op.fromcode(self, self.pc)
 			op.pp()
 
 			self.pc += op.length
@@ -189,7 +182,7 @@ class IntcodeVM:
 		self.running = True
 
 		while vm.running:
-			op = Op.fromcode(self)
+			op = Op.fromcode(self, self.pc)
 
 			if debug:
 				op.pp()
