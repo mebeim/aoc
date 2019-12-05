@@ -49,6 +49,18 @@ class Op:
 
 		sys.stderr.write(s.rstrip() + '\n')
 
+	def read_mem(self, addr):
+		if addr < 0 or addr >= len(self.vm.mem):
+			raise VMRuntimeError('out of bounds memory read at {:d} (pc = {:d})'.format(addr, self.vm.pc))
+
+		return self.vm.mem[addr]
+
+	def write_mem(self, addr, value):
+		if addr < 0 or addr >= len(self.vm.mem):
+			raise VMRuntimeError('out of bounds memory write at {:d} (pc = {:d})'.format(addr, self.vm.pc))
+
+		self.vm.mem[addr] = value
+
 	def exec(self):
 		raise NotImplementedError()
 
@@ -65,9 +77,9 @@ class OpAdd(Op):
 		self.mnemonic = 'add'
 
 	def exec(self):
-		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.vm.mem[self.args[0]]
-		b = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.vm.mem[self.args[1]]
-		self.vm.mem[self.args[2]] = a + b
+		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
+		b = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.read_mem(self.args[1])
+		self.write_mem(self.args[2], a + b)
 		self.vm.pc += self.length
 
 class OpMul(Op):
@@ -76,9 +88,9 @@ class OpMul(Op):
 		self.mnemonic = 'mul'
 
 	def exec(self):
-		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.vm.mem[self.args[0]]
-		b = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.vm.mem[self.args[1]]
-		self.vm.mem[self.args[2]] = a * b
+		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
+		b = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.read_mem(self.args[1])
+		self.write_mem(self.args[2], a * b)
 		self.vm.pc += self.length
 
 class OpIn(Op):
@@ -87,7 +99,7 @@ class OpIn(Op):
 		self.mnemonic = 'in'
 
 	def exec(self):
-		self.vm.mem[self.args[0]] = self.vm.read()
+		self.write_mem(self.args[0], self.vm.read())
 		self.vm.pc += self.length
 
 class OpOut(Op):
@@ -96,7 +108,7 @@ class OpOut(Op):
 		self.mnemonic = 'out'
 
 	def exec(self):
-		value = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.vm.mem[self.args[0]]
+		value = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
 		self.vm.write(value)
 		self.vm.pc += self.length
 
@@ -106,8 +118,8 @@ class OpJnz(Op):
 		self.mnemonic = 'jnz'
 
 	def exec(self):
-		value = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.vm.mem[self.args[0]]
-		addr = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.vm.mem[self.args[1]]
+		value = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
+		addr = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.read_mem(self.args[1])
 		self.vm.pc = addr if value != 0 else self.vm.pc + self.length
 
 class OpJz(Op):
@@ -116,8 +128,8 @@ class OpJz(Op):
 		self.mnemonic = 'jz'
 
 	def exec(self):
-		value = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.vm.mem[self.args[0]]
-		addr = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.vm.mem[self.args[1]]
+		value = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
+		addr = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.read_mem(self.args[1])
 		self.vm.pc = addr if value == 0 else self.vm.pc + self.length
 
 class OpLt(Op):
@@ -126,9 +138,9 @@ class OpLt(Op):
 		self.mnemonic = 'lt'
 
 	def exec(self):
-		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.vm.mem[self.args[0]]
-		b = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.vm.mem[self.args[1]]
-		self.vm.mem[self.args[2]] = 1 if a < b else 0
+		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
+		b = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.read_mem(self.args[1])
+		self.write_mem(self.args[2], 1 if a < b else 0)
 		self.vm.pc += self.length
 
 class OpEq(Op):
@@ -137,9 +149,9 @@ class OpEq(Op):
 		self.mnemonic = 'eq'
 
 	def exec(self):
-		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.vm.mem[self.args[0]]
-		b = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.vm.mem[self.args[1]]
-		self.vm.mem[self.args[2]] = 1 if a == b else 0
+		a = self.args[0] if self.argmodes[0] == ARGMODE_IMMEDIATE else self.read_mem(self.args[0])
+		b = self.args[1] if self.argmodes[1] == ARGMODE_IMMEDIATE else self.read_mem(self.args[1])
+		self.write_mem(self.args[2], 1 if a == b else 0)
 		self.vm.pc += self.length
 
 class OpHlt(Op):
@@ -179,7 +191,13 @@ class IntcodeVM:
 			if debug:
 				op.pp()
 
-			op.exec()
+			try:
+				op.exec()
+			except VMRuntimeError as e:
+				sys.stderr.write('FATAL runtime error: ' + str(e) + '\n')
+				return 1
+
+		return 0
 
 	def read(self):
 		value = int(input())
@@ -220,9 +238,11 @@ with open(sys.argv[2]) as fin:
 vm = IntcodeVM(program)
 
 if sys.argv[1] == 'run':
-	vm.run()
+	res = vm.run()
+	sys.exit(res)
 elif sys.argv[1] == 'debug':
-	vm.run(True)
+	res = vm.run(True)
+	sys.exit(res)
 elif sys.argv[1] == 'dis':
 	vm.dis()
 else:
