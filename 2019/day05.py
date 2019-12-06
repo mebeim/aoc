@@ -25,13 +25,13 @@ def run(prog, input_id):
 			opp = add if op == 1 else mul
 			a, b, c = prog[pc + 1:pc + 4]
 
-			log('{:30} | {} {:-8d}{} {:-8d}{} {:-8d} \n',
-				repr(prog[pc:pc + 4]),
-				'SUM' if opp == add else 'MUL',
-				a, '*' if derefa else ' ',
-				b, '*' if derefb else ' ',
-				c
-			)
+			# log('{:30} | {} {:-8d}{} {:-8d}{} {:-8d} \n',
+			# 	repr(prog[pc:pc + 4]),
+			# 	'SUM' if opp == add else 'MUL',
+			# 	a, '*' if derefa else ' ',
+			# 	b, '*' if derefb else ' ',
+			# 	c
+			# )
 
 			if derefa: a = prog[a]
 			if derefb: b = prog[b]
@@ -43,17 +43,17 @@ def run(prog, input_id):
 			a = prog[pc + 1]
 
 			if op == 3:
-				log('{:30} | IN  {:-8d}\n',  repr(prog[pc:pc+2]), a)
+				# log('{:30} | IN  {:-8d}\n',  repr(prog[pc:pc+2]), a)
 
 				# provide id as only input
 				prog[a] = input_id
 			else:
-				log('{:30} | OUT {:-8d}{}\n', repr(prog[pc:pc+2])+modes, a, '*' if derefa else '')
+				# log('{:30} | OUT {:-8d}{}\n', repr(prog[pc:pc+2])+modes, a, '*' if derefa else '')
 
 				if derefa:
 					a = prog[a]
 
-				log('-'*80 + ' OUTPUT: {}\n', a)
+				# log('-'*80 + ' OUTPUT: {}\n', a)
 				lastout = a
 
 			pc += 2
@@ -62,21 +62,21 @@ def run(prog, input_id):
 			if derefa: a = prog[a]
 			if derefb: b = prog[b]
 
-			log('{:30} | JNZ {:-8d}{} {:-8d}{}\n',
-				repr(prog[pc:pc + 3]),
-				a, '*' if derefa else ' ',
-				b, '*' if derefb else ' ',
-			)
+			# log('{:30} | JNZ {:-8d}{} {:-8d}{}\n',
+			# 	repr(prog[pc:pc + 3]),
+			# 	a, '*' if derefa else ' ',
+			# 	b, '*' if derefb else ' ',
+			# )
 
 			if a != 0: pc = b
 			else: pc += 3
 		elif op == 6:
 			a, b = prog[pc + 1:pc + 3]
-			log('{:30} | JZ  {:-8d}{} {:-8d}{}\n',
-				repr(prog[pc:pc + 3]),
-				a, '*' if derefa else ' ',
-				b, '*' if derefb else ' ',
-			)
+			# log('{:30} | JZ  {:-8d}{} {:-8d}{}\n',
+			# 	repr(prog[pc:pc + 3]),
+			# 	a, '*' if derefa else ' ',
+			# 	b, '*' if derefb else ' ',
+			# )
 
 			if derefa: a = prog[a]
 			if derefb: b = prog[b]
