@@ -38,18 +38,31 @@ class Op:
 			return OPMAP[op](vm, pc)
 		return OpInvalid(vm, pc)
 
-	def pp(self):
+	def pp(self, debug=False):
 		s = '{:>6d}:  '.format(self.pc)
 
 		opcode = self.vm.code[self.pc]
 		s += '{:03d} {:02d} '.format(opcode // 100, opcode % 100)
 		s += '    {:<4s}'.format(self.mnemonic)
 
-		for a, m in zip(self.args, self.argmodes):
-			if m == ARGMODE_DEREF:
-				s += '{:>8s}] '.format('[{:d}'.format(a))
-			else:
-				s += '{:>8s}  '.format('{:d}'.format(a))
+		if debug:
+			l = len(self.args) - 1
+			o = self.mnemonic not in ('jnz', 'jz', 'out')
+
+			for i, (a, m) in enumerate(zip(self.args, self.argmodes)):
+				if m == ARGMODE_DEREF:
+					s += '{:>7s}'.format('[{:d}]'.format(a))
+
+					if not o or i != l:
+						s += '→{:<11d}'.format(self.decode_arg(i))
+				else:
+					s += '{:<11d}'.format(a).rjust(19)
+		else:
+			for a, m in zip(self.args, self.argmodes):
+				if m == ARGMODE_DEREF:
+					s += '{:>10s}] '.format('[{:d}'.format(a))
+				else:
+					s += '{:>10s}  '.format('{:d}'.format(a))
 
 		sys.stderr.write(s.rstrip() + '\n')
 
@@ -186,7 +199,7 @@ class IntcodeVM:
 			op = Op.fromcode(self, self.pc)
 
 			if debug:
-				op.pp()
+				op.pp(True)
 
 			try:
 				op.exec()
