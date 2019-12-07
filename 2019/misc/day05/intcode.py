@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+#
+# Virtual Machine to execure, disassemble and debug Intcode programs.
+# Disassembler output is always on standard error. Input is taken from standard
+# input, each input number must followed by a newline. Output is printed to
+# standard output.
+#
+# (C) 2019 Marco Bonelli -- https://github.com/mebeim/aoc
+#
 
 import sys
 
@@ -219,7 +227,7 @@ class IntcodeVM:
 	def halt(self):
 		self.running = False
 
-def usage():
+def _usage():
 	sys.stderr.write('Usage: %s {run|debug|dis} intcode.txt\n' % sys.argv[0])
 	sys.exit(1)
 
@@ -239,7 +247,7 @@ ARGMODE_DEREF, ARGMODE_IMMEDIATE = 0, 1
 
 if __name__ == '__main__':
 	if len(sys.argv) != 3:
-		usage()
+		_usage()
 
 	with open(sys.argv[2]) as fin:
 		program = list(map(int, fin.read().split(',')))
@@ -255,4 +263,4 @@ if __name__ == '__main__':
 	elif sys.argv[1] == 'dis':
 		vm.dis()
 	else:
-		usage()
+		_usage()
