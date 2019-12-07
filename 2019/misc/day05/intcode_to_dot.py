@@ -131,7 +131,7 @@ def cfg(program, out_fname):
 		G.add_node(i, label=disassemble(b))
 
 	for src, dst, kind in edges:
-		G.add_edge(src, dst, color=COLORS[kind])
+		G.add_edge(src, dst, color=COLORS[kind]) #**J_ATTRS[kind])
 
 	G.write(out_fname)
 
@@ -142,6 +142,14 @@ def _usage():
 
 J_UNCONDITIONAL, J_TRUE, J_FALSE = range(3)
 COLORS = ('grey30', 'green3', 'red')
+
+# Meh, not that cool...
+# J_ATTRS = (
+# 	{'tailport': 's', 'headport': 'n'},
+# 	{'tailport': 'se', 'headport': 'ne'},
+# 	{'tailport': 'sw', 'headport': 'nw'}
+# )
+
 GRAPH_ATTRS = {}
 NODE_ATTRS = {'shape': 'box', 'fontname': 'monospace'}
 EDGE_ATTRS = {}

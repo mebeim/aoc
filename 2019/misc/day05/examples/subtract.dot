@@ -4,15 +4,15 @@ strict digraph  {
 		shape=box
 	];
 	0	 [label=<<font color="blue4"><font color="gray50">   0:</font>  <font color="blue3">in  </font> <font color="indigo">     [7]</font></font><br align="left"/><font color="blue4"><font color="gray50">   2:</font>  <font color="blue3">in  </font> <font color="indigo">     [8]</font></font><br align="left"/><font color="blue4"><font color="gray50">   4:</font>  <font color="blue3">jnz </font> <font color="indigo">     [4]</font> <font color="blue3">     11 </font></font><br align="left"/>>];
-	2	 [label=<<font color="blue4"><font color="gray50">  11:</font>  <font color="blue3">lt  </font> <font color="indigo">     [8]</font> <font color="indigo">     [7]</font> <font color="indigo">    [10]</font></font><br align="left"/><font color="blue4"><font color="gray50">  15:</font>  <font color="blue3">jz  </font> <font color="indigo">    [10]</font> <font color="blue3">     29 </font></font><br align="left"/>>];
-	0 -> 2	 [color=green3];
 	1	 [label=<<font color="blue4"><font color="gray50">   7:</font>  <font color="crimson">(bad)</font></font><br align="left"/><font color="blue4"><font color="gray50">   8:</font>  <font color="crimson">(bad)</font></font><br align="left"/><font color="blue4"><font color="gray50">   9:</font>  <font color="crimson">(bad)</font></font><br align="left"/><font color="blue4"><font color="gray50">  10:</font>  <font color="crimson">(bad)</font></font><br align="left"/>>];
 	0 -> 1	 [color=red];
-	4	 [label=<<font color="blue4"><font color="gray50">  29:</font>  <font color="blue3">out </font> <font color="indigo">     [9]</font></font><br align="left"/><font color="blue4"><font color="gray50">  31:</font>  <font color="blue3">hlt </font></font><br align="left"/>>];
-	2 -> 4	 [color=green3];
+	2	 [label=<<font color="blue4"><font color="gray50">  11:</font>  <font color="blue3">lt  </font> <font color="indigo">     [8]</font> <font color="indigo">     [7]</font> <font color="indigo">    [10]</font></font><br align="left"/><font color="blue4"><font color="gray50">  15:</font>  <font color="blue3">jz  </font> <font color="indigo">    [10]</font> <font color="blue3">     29 </font></font><br align="left"/>>];
+	0 -> 2	 [color=green3];
+	1 -> 2	 [color=grey30];
 	3	 [label=<<font color="blue4"><font color="gray50">  18:</font>  <font color="blue3">add </font> <font color="indigo">     [8]</font> <font color="blue3">      1 </font> <font color="indigo">     [8]</font></font><br align="left"/><font color="blue4"><font color="gray50">  22:</font>  <font color="blue3">add </font> <font color="indigo">     [9]</font> <font color="blue3">      1 </font> <font color="indigo">     [9]</font></font><br align="left"/><font color="blue4"><font color="gray50">  26:</font>  <font color="blue3">jnz </font> <font color="indigo">    [25]</font> <font color="blue3">     11 </font></font><br align="left"/>>];
 	2 -> 3	 [color=red];
-	1 -> 2	 [color=grey30];
+	4	 [label=<<font color="blue4"><font color="gray50">  29:</font>  <font color="blue3">out </font> <font color="indigo">     [9]</font></font><br align="left"/><font color="blue4"><font color="gray50">  31:</font>  <font color="blue3">hlt </font></font><br align="left"/>>];
+	2 -> 4	 [color=green3];
 	3 -> 2	 [color=green3];
 	3 -> 4	 [color=red];
 }
