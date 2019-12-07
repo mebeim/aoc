@@ -1,0 +1,7 @@
+strict digraph  {
+	node [fontname=monospace,
+		label="\N",
+		shape=box
+	];
+	0	 [label=<<font color="blue4"><font color="gray50">   0:</font>  <font color="blue3">in  </font> <font color="indigo">     [9]</font></font><br align="left"/><font color="blue4"><font color="gray50">   2:</font>  <font color="blue3">in  </font> <font color="indigo">     [5]</font></font><br align="left"/><font color="blue4"><font color="gray50">   4:</font>  <font color="blue3">mul </font> <font color="blue3">      0 </font> <font color="blue3">     -1 </font> <font color="indigo">    [10]</font></font><br align="left"/><font color="blue4"><font color="gray50">   8:</font>  <font color="blue3">add </font> <font color="blue3">      0 </font> <font color="blue3">      0 </font> <font color="indigo">    [13]</font></font><br align="left"/><font color="blue4"><font color="gray50">  12:</font>  <font color="blue3">out </font> <font color="blue3">      0 </font></font><br align="left"/><font color="blue4"><font color="gray50">  14:</font>  <font color="blue3">hlt </font></font><br align="left"/>>];
+}
