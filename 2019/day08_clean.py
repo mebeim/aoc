@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+
+import advent
+
+WIDTH, HEIGHT = 25, 6
+SIZE = WIDTH * HEIGHT
+
+advent.setup(2019, 8, dry_run=True)
+fin = advent.get_input()
+
+chars = fin.readline().strip()
+layers = [chars[i:i + SIZE] for i in range(0, len(chars), SIZE)]
+
+best = min(layers, key=lambda l: sum(x == '0' for x in l))
+ones = sum(x == '1' for x in best)
+twos = sum(x == '2' for x in best)
+checksum = ones * twos
+
+assert checksum == 1064
+advent.submit_answer(1, checksum)
+
+image = ['2'] * SIZE
+
+for l in layers:
+	for i, x in enumerate(l):
+		if image[i] == '2':
+			image[i] = x
+
+conv = {'0': ' ', '1': '#'}
+decoded = ''
+
+for i in range(0, SIZE, WIDTH):
+	decoded += ''.join(map(conv.get, image[i:i + WIDTH])) + '\n'
+
+assert (decoded ==
+	'###  ####  ##   ##  #  # \n'
+	'#  # #    #  # #  # # #  \n'
+	'#  # ###  #    #  # ##   \n'
+	'###  #    #    #### # #  \n'
+	'#    #    #  # #  # # #  \n'
+	'#    #     ##  #  # #  # \n'
+)
+
+# Can't submit this as is, LOL
+advent.submit_answer(2, 'PFCAK')
