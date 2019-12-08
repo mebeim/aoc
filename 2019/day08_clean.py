@@ -21,10 +21,11 @@ advent.submit_answer(1, checksum)
 
 image = ['2'] * SIZE
 
-for l in layers:
-	for i, x in enumerate(l):
-		if image[i] == '2':
-			image[i] = x
+for i in range(SIZE):
+	for l in layers:
+		if l[i] != '2':
+			image[i] = l[i]
+			break
 
 conv = {'0': ' ', '1': '#'}
 decoded = ''
