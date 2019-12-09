@@ -58,19 +58,26 @@ class Op:
 			o = self.mnemonic not in ('jnz', 'jz', 'out')
 
 			for i, (a, m) in enumerate(zip(self.args, self.argmodes)):
-				if m == ARGMODE_DEREF:
-					s += '{:>7s}'.format('[{:d}]'.format(a))
+				if m == ARGMODE_POSITIONAL:
+					s += '{:>10s}'.format('[{:d}]'.format(a))
 
 					if not o or i != l:
 						s += '→{:<11d}'.format(self.decode_arg(i))
+				elif m == ARGMODE_RELATIVE:
+					s += '{:>10s}'.format('[{:d}{:s}{:d}]'.format(self.vm.relative_base, '+' if a >= 0 else '', a))
+
+					if not o or i != l or type(self) == OpRel:
+						s += '→{:<11d}'.format(self.decode_arg(i))
 				else:
-					s += '{:<11d}'.format(a).rjust(19)
+					s += '{:<11d}'.format(a).rjust(22)
 		else:
 			for a, m in zip(self.args, self.argmodes):
-				if m == ARGMODE_DEREF:
-					s += '{:>10s}] '.format('[{:d}'.format(a))
+				if m == ARGMODE_POSITIONAL:
+					s += '{:>13s}] '.format('[{:d}'.format(a))
+				elif m == ARGMODE_RELATIVE:
+					s += '{:>14s}'.format('[r{:s}{:d}]'.format('+' if a >= 0 else '', a))
 				else:
-					s += '{:>10s}  '.format('{:d}'.format(a))
+					s += '{:>13s}  '.format('{:d}'.format(a))
 
 		sys.stderr.write(s.rstrip() + '\n')
 
@@ -86,15 +93,25 @@ class Op:
 
 		self.vm.mem[addr] = value
 
-	def decode_arg(self, i):
+	def decode_arg(self, i, is_destination=False):
 		a, m = self.args[i], self.argmodes[i]
 
-		if m == ARGMODE_DEREF:
+		if is_destination:
+			if m == ARGMODE_POSITIONAL:
+				return a
+			elif m == ARGMODE_RELATIVE:
+				return a + self.vm.relative_base
+			else:
+				raise VMRuntimeError('invalid argument #{:d} mode ({:d}) for instruction {:s} (pc = {:d})'.format(i + 1, m, self.mnemonic, self.pc))
+
+		if m == ARGMODE_POSITIONAL:
 			return self.read_mem(a)
 		elif m == ARGMODE_IMMEDIATE:
 			return a
+		elif m == ARGMODE_RELATIVE:
+			return self.read_mem(a + self.vm.relative_base)
 		else:
-			raise VMRuntimeError('invalid argument {:d} mode {:d} (pc = {:d})'.format(i, m, self.pc))
+			raise VMRuntimeError('invalid argument #{:d} mode ({:d}) for instruction {:s} (pc = {:d})'.format(i + 1, m, self.mnemonic, self.pc))
 
 	def exec(self):
 		raise NotImplementedError()
@@ -111,7 +128,8 @@ class OpAdd(Op):
 		super(OpAdd, self).__init__(vm, pc, 'add', 3)
 
 	def exec(self):
-		self.write_mem(self.args[2], self.decode_arg(0) + self.decode_arg(1))
+		a, b, dst = self.decode_arg(0), self.decode_arg(1), self.decode_arg(2, True)
+		self.write_mem(dst, a + b)
 		self.vm.pc += self.length
 
 class OpMul(Op):
@@ -119,7 +137,8 @@ class OpMul(Op):
 		super(OpMul, self).__init__(vm, pc, 'mul', 3)
 
 	def exec(self):
-		self.write_mem(self.args[2], self.decode_arg(0) * self.decode_arg(1))
+		a, b, dst = self.decode_arg(0), self.decode_arg(1), self.decode_arg(2, True)
+		self.write_mem(dst, a * b)
 		self.vm.pc += self.length
 
 class OpIn(Op):
@@ -127,7 +146,8 @@ class OpIn(Op):
 		super(OpIn, self).__init__(vm, pc, 'in', 1)
 
 	def exec(self):
-		self.write_mem(self.args[0], self.vm.read())
+		addr = self.decode_arg(0, True)
+		self.write_mem(addr, self.vm.read())
 		self.vm.pc += self.length
 
 class OpOut(Op):
@@ -159,8 +179,8 @@ class OpLt(Op):
 		super(OpLt, self).__init__(vm, pc, 'lt', 3)
 
 	def exec(self):
-		a, b = self.decode_arg(0), self.decode_arg(1)
-		self.write_mem(self.args[2], 1 if a < b else 0)
+		a, b, dst = self.decode_arg(0), self.decode_arg(1), self.decode_arg(2, True)
+		self.write_mem(dst, 1 if a < b else 0)
 		self.vm.pc += self.length
 
 class OpEq(Op):
@@ -168,8 +188,16 @@ class OpEq(Op):
 		super(OpEq, self).__init__(vm, pc, 'eq', 3)
 
 	def exec(self):
-		a, b = self.decode_arg(0), self.decode_arg(1)
-		self.write_mem(self.args[2], 1 if a == b else 0)
+		a, b, dst = self.decode_arg(0), self.decode_arg(1), self.decode_arg(2, True)
+		self.write_mem(dst, 1 if a == b else 0)
+		self.vm.pc += self.length
+
+class OpRel(Op):
+	def __init__(self, vm, pc):
+		super(OpRel, self).__init__(vm, pc, 'rel', 1)
+
+	def exec(self):
+		self.vm.relative_base += self.decode_arg(0)
 		self.vm.pc += self.length
 
 class OpHlt(Op):
@@ -182,15 +210,16 @@ class OpHlt(Op):
 
 class IntcodeVM:
 	def __init__(self, code):
-		self.pc        = 0
-		self.orig_code = code
-		self.code      = None
-		self.mem       = None
-		self.running   = True
+		self.pc            = 0
+		self.orig_code     = code
+		self.code          = None
+		self.mem           = None
+		self.running       = True
+		self.relative_base = 0
 
 	def dis(self):
 		self.code = self.orig_code[:]
-		self.mem = self.code
+		self.mem  = self.code
 
 		while self.pc < len(self.code):
 			op = Op.fromcode(self, self.pc)
@@ -199,9 +228,11 @@ class IntcodeVM:
 			self.pc += op.length
 
 	def run(self, debug=False):
-		self.code = self.orig_code[:]
-		self.mem = self.code
-		self.running = True
+		self.code          = self.orig_code[:]
+		self.mem           = self.code + [0] * 1000000
+		self.running       = True
+		self.pc            = 0
+		self.relative_base = 0
 
 		while vm.running:
 			op = Op.fromcode(self, self.pc)
@@ -240,10 +271,11 @@ OPMAP = {
 	6 : OpJz,
 	7 : OpLt,
 	8 : OpEq,
+	9 : OpRel,
 	99: OpHlt
 }
 
-ARGMODE_DEREF, ARGMODE_IMMEDIATE = 0, 1
+ARGMODE_POSITIONAL, ARGMODE_IMMEDIATE, ARGMODE_RELATIVE = 0, 1, 2
 
 if __name__ == '__main__':
 	if len(sys.argv) != 3:
