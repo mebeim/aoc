@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Virtual Machine to execure, disassemble and debug Intcode programs.
+# Virtual Machine to execute, disassemble and debug Intcode programs.
 # Disassembler output is always on standard error. Input is taken from standard
 # input, each input number must followed by a newline. Output is printed to
 # standard output.
