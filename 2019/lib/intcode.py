@@ -209,13 +209,17 @@ class OpHlt(Op):
 		self.vm.halt()
 
 class IntcodeVM:
-	def __init__(self, code):
-		self.pc            = 0
-		self.orig_code     = code
-		self.code          = None
-		self.mem           = None
-		self.running       = True
-		self.relative_base = 0
+	def __init__(self, code, as_exe=False):
+		self.standalone_exe = as_exe
+		self.orig_code      = code
+		self.code           = None
+		self.mem            = None
+		self.input          = None
+		self.output         = None
+		self.running        = True
+		self.pc             = 0
+		self.relative_base  = 0
+		self.input_position = 0
 
 	def dis(self):
 		self.code = self.orig_code[:]
@@ -227,33 +231,59 @@ class IntcodeVM:
 
 			self.pc += op.length
 
-	def run(self, debug=False):
-		self.code          = self.orig_code[:]
-		self.mem           = self.code + [0] * 1000000
-		self.running       = True
-		self.pc            = 0
-		self.relative_base = 0
+	def run(self, inp=None, debug=False):
+		self.code           = self.orig_code[:]
+		self.mem            = self.code + [0] * 1000000
+		self.running        = True
+		self.pc             = 0
+		self.relative_base  = 0
 
-		while vm.running:
-			op = Op.fromcode(self, self.pc)
+		if self.standalone_exe:
+			while self.running:
+				op = Op.fromcode(self, self.pc)
 
-			if debug:
-				op.pp(True)
+				if debug:
+					op.pp(True)
 
-			try:
+				try:
+					op.exec()
+				except VMRuntimeError as e:
+					sys.stderr.write('FATAL runtime error: ' + str(e) + '\n')
+					return 1
+
+			return 0
+		else:
+			self.input  = [] if inp is None else inp
+			self.output = []
+			self.input_position = 0
+
+			while self.running:
+				op = Op.fromcode(self, self.pc)
+
+				if debug:
+					op.pp(True)
+
 				op.exec()
-			except VMRuntimeError as e:
-				sys.stderr.write('FATAL runtime error: ' + str(e) + '\n')
-				return 1
 
-		return 0
+			return self.output
 
 	def read(self):
-		value = int(input())
+		if self.standalone_exe:
+			value = int(input())
+		else:
+			if self.input_position < len(self.input):
+				value = self.input[self.input_position]
+				self.input_position += 1
+			else:
+				raise VMRuntimeError('trying to read past the end of the input (index = {:d})'.format(self.input_position))
+
 		return value
 
 	def write(self, value):
-		print(value)
+		if self.standalone_exe:
+			print(value)
+		else:
+			self.output.append(value)
 
 	def halt(self):
 		self.running = False
@@ -284,13 +314,13 @@ if __name__ == '__main__':
 	with open(sys.argv[2]) as fin:
 		program = list(map(int, fin.read().split(',')))
 
-	vm = IntcodeVM(program)
+	vm = IntcodeVM(program, as_exe=True)
 
 	if sys.argv[1] == 'run':
 		res = vm.run()
 		sys.exit(res)
 	elif sys.argv[1] == 'debug':
-		res = vm.run(True)
+		res = vm.run(debug=True)
 		sys.exit(res)
 	elif sys.argv[1] == 'dis':
 		vm.dis()
