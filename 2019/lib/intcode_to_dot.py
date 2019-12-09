@@ -51,8 +51,15 @@ def disassemble(block):
 			fmtargs['cmnemonic'] = 'blue3'
 
 		for i, (a, m) in enumerate(zip(op.args, op.argmodes), 1):
-			fmtargs['arg%d' % i] = ('[%d]' % a) if m == ARGMODE_DEREF else ('%d ' % a)
-			fmtargs['carg%d' % i] = 'indigo' if m == ARGMODE_DEREF else 'blue3'
+			if m == ARGMODE_IMMEDIATE:
+				fmtargs['arg%d' % i] = '{} '.format(a)
+				fmtargs['carg%d' % i] = 'blue3'
+			elif m == ARGMODE_POSITIONAL:
+				fmtargs['arg%d' % i] = '[{}]'.format(a)
+				fmtargs['carg%d' % i] = 'indigo'
+			elif m == ARGMODE_RELATIVE:
+				fmtargs['arg%d' % i] = '[r{}{}]'.format('+' if a >= 0 else '', a)
+				fmtargs['carg%d' % i] = 'purple'
 
 		line = fmts[l].format(**fmtargs)
 		lines.append(line)
