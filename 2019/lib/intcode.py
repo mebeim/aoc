@@ -231,12 +231,13 @@ class IntcodeVM:
 
 			self.pc += op.length
 
-	def run(self, inp=None, debug=False):
-		self.code           = self.orig_code[:]
-		self.mem            = self.code + [0] * 1000000
-		self.running        = True
-		self.pc             = 0
-		self.relative_base  = 0
+	def run(self, inp=None, n_out=-1, resume=False, debug=False):
+		if not resume:
+			self.code           = self.orig_code[:] + [0] * 100000
+			self.mem            = self.code
+			self.running        = True
+			self.pc             = 0
+			self.relative_base  = 0
 
 		if self.standalone_exe:
 			while self.running:
@@ -253,9 +254,11 @@ class IntcodeVM:
 
 			return 0
 		else:
-			self.input  = [] if inp is None else inp
+			if inp is not None:
+				self.input = inp
+				self.input_position = 0
+
 			self.output = []
-			self.input_position = 0
 
 			while self.running:
 				op = Op.fromcode(self, self.pc)
@@ -264,6 +267,9 @@ class IntcodeVM:
 					op.pp(True)
 
 				op.exec()
+
+				if type(op) == OpOut and len(self.output) == n_out:
+					break
 
 			return self.output
 
