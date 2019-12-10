@@ -3,8 +3,8 @@ Intcode!
 
 Some tools to work with Intcode programs.
 
-Intcode VM & disassebler
-------------------------
+Intcode VM & disassembler
+-------------------------
 
 The program `intcode.py` is a python script capable of disassembling and running
 Intcode programs. It takes input from standard input and outputs to standard
