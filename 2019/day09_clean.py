@@ -8,7 +8,6 @@ fin = advent.get_input()
 
 program = list(map(int, fin.read().split(',')))
 vm = IntcodeVM(program)
-
 out = vm.run([1])[-1]
 
 assert out == 4234906522
