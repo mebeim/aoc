@@ -349,14 +349,193 @@ Notice that wrapping `zip(digits, digits[1:])` into `tuple()` is not needed
 anymore now, since we only use the iterator once.
 
 
+Day 5 - Sunny with a Chance of Asteroids
+----------------------------------------
+
+[Problem statement][d05-problem] — [Complete solution][d05-solution]
+
+**Disclaimer**: my complete solution for this problem uses an `IntcodeVM` class
+that I wrote on day 5 after solving the problem, so it's not the same solution
+as described below. The VM will come in handy for future days. It will allow me
+to simply do `from lib.intcode import IntcodeVM` to solve Intcode-related
+problems. Here's [the Intcode library][lib] I wrote and used.
+
+### Part 1
+
+Second Intcode puzzle of the year. In addition to what we know from day 2, now
+two more opcodes are added:
+
+- Opcode `3`: take an integer as *input* and store it in the position indicated
+  by the (only) given parameter (length: 2).
+- Opcode `4`: *output* the value of the (only) given parameter (length: 2).
+
+In addition to this, now opcode parameters become more complex to handle. In
+particular, each opcode is either 1 or 2 digits. Every other more significant
+digit is a *parameter mode* for the corresponding parameter.
+
+Parameter modes are:
+
+- `0`: position mode, the parameter refers to a memory address (that is, a
+  position). The value to use is the number stored at that address. For
+  destination parameters, it is still the location where to write.
+- `1`: immediate mode, the parameter itself is interpreted as the value to use.
+  This mode is not allowed for destination parameters.
+
+Leading zero digits are left off. So, for example, `1002,2,3,4` now means:
+`program[4] = program[2] + 3`, since parameter modes are (from left to right)
+`0`, `1` and `0` (implicit leading zero).
+
+The program we are given will only request one input, and we should provide it
+with `1` as the only input value. It then outputs a series of numbers, and we
+need to get the last one.
+
+This parameter mode thing complicates our solution a fair amount, but it's still
+doable. We now need to fetch the modes first, then evaluate them to compute the
+needed values. Let's drop the use of the [`operator`][py-operator] module from
+day 2, as it didn't turn out to be useful.
+
+To parse opcode and parameter modes, we can just use integer division and
+modulo:
+
+```python
+modes  = ((op // 100) % 10, (op // 1000) % 10, (op // 10000) % 10)
+```
+
+Other than this, we now need to look into memory only if the mode is `0`,
+otherwise we can use the parameter value as is. We can just use an `if` for
+this.
+
+```python
+param1 = prog[pc + 1]
+if modes[0] == 0:
+	param1 = prog[param1]
+```
+
+Our previously written `run()` function now becomes:
+
+```python
+def run(prog, input_value):
+	pc = 0
+	lastout = None
+
+	while prog[pc] != 99:
+		op = prog[pc]
+		modes = ((op // 100) % 10, (op // 1000) % 10, (op // 10000) % 10)
+		op = op % 10
+
+		if op == 1: # add
+			a, b, c = prog[pc + 1:pc + 4]
+			if modes[0] == 0: a = prog[a]
+			if modes[1] == 0: b = prog[b]
+			prog[c] = a + b
+			pc += 4
+		elif op == 2: # mul
+			a, b, c = prog[pc + 1:pc + 4]
+			if modes[0] == 0: a = prog[a]
+			if modes[1] == 0: b = prog[b]
+			prog[c] = a * b
+			pc += 4
+		elif op == 3: # in
+			a = prog[pc + 1]
+			prog[a] = input_value
+			pc += 2
+		elif op == 4: # out
+			a = prog[pc + 1]
+			if modes[0] == 0: a = prog[a]
+			lastout = a
+			pc += 2
+
+	return lastout
+```
+
+Cool, now let's just run it against our input and it's done:
+
+```python
+program = list(map(int, fin.read().split(',')))
+result = run(program[:], 1)
+print('Part 1:', result)
+```
+
+### Part 2
+
+Ok, now things starts to get messy... four more opcodes are added:
+
+- Opcode `5` is *jump if true*: if the first parameter is non-zero, it sets the
+  instruction pointer to the value from the second parameter. Otherwise, it does
+  nothing.
+- Opcode `6` is *jump if false*: if the first parameter is zero, it sets the
+  instruction pointer to the value from the second parameter. Otherwise, it does
+  nothing.
+- Opcode `7` is *less than*: if the first parameter is less than the second
+  parameter, it stores `1` in the position given by the third parameter.
+  Otherwise, it stores `0`.
+- Opcode `8` is *equals*: if the first parameter is equal to the second
+  parameter, it stores 1 in the position given by the third parameter.
+  Otherwise, it stores `0`.
+
+In addition to this, of course the new opcodes all need to support the parameter
+modes described in part 1. The program now will need to be run with `5` as its
+only input, and we still need to get the last output value.
+
+The good thing is, the code we just wrote can be easily extended to support
+these, we just need four more `elif` branches. To implement *less than* and
+*equals*, and also for updating the program counter for the jump instructions,
+Python [onditional expressions][py-cond-expr] come in handy:
+
+```python
+# less than:
+prog[param3] = 1 if param1 < param2 else 0
+```
+
+Here are the added opcodes (continuing from the last branch in the previous
+snippet):
+
+```python
+		#...
+
+		elif op == 5: # jnz
+			a, b = prog[pc + 1:pc + 3]
+			if modes[0] == 0: a = prog[a]
+			if modes[1] == 0: b = prog[b]
+			pc = b if a != 0 else pc + 3
+		elif op == 6: # jz
+			a, b = prog[pc + 1:pc + 3]
+			if modes[0] == 0: a = prog[a]
+			if modes[1] == 0: b = prog[b]
+			pc = b if a == 0 else pc + 3
+		elif op == 7: # lt
+			a, b, c = prog[pc + 1:pc + 4]
+			if modes[0] == 0: a = prog[a]
+			if modes[1] == 0: b = prog[b]
+			prog[c] = 1 if a < b else 0
+			pc += 4
+		elif op == 8: # eq
+			a, b, c = prog[pc + 1:pc + 4]
+			if modes[0] == 0: a = prog[a]
+			if modes[1] == 0: b = prog[b]
+			prog[c] = 1 if a == b else 0
+			pc += 4
+```
+
+Now we can just run the program with the updated code and the new input to get
+the answer:
+
+```python
+result = run(program[:], 5)
+print('Part 2:', result)
+```
+
+
 [d01-problem]: https://adventofcode.com/2019/day/1
 [d02-problem]: https://adventofcode.com/2019/day/2
 [d03-problem]: https://adventofcode.com/2019/day/3
 [d04-problem]: https://adventofcode.com/2019/day/4
+[d05-problem]: https://adventofcode.com/2019/day/5
 [d01-solution]: day01_clean.py
 [d02-solution]: day02_clean.py
 [d03-solution]: day03_clean.py
 [d04-solution]: day04_clean.py
+[d05-solution]: day05_clean.py
 
 [py-map]: https://docs.python.org/3.7/library/functions.html#map
 [py-sum]: https://docs.python.org/3.7/library/functions.html#sum
