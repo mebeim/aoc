@@ -75,7 +75,7 @@ class Op:
 				if m == ARGMODE_POSITIONAL:
 					s += '{:>13s}] '.format('[{:d}'.format(a))
 				elif m == ARGMODE_RELATIVE:
-					s += '{:>14s}'.format('[r{:s}{:d}]'.format('+' if a >= 0 else '', a))
+					s += '{:>14s} '.format('[r{:s}{:d}]'.format('+' if a >= 0 else '', a))
 				else:
 					s += '{:>13s}  '.format('{:d}'.format(a))
 
