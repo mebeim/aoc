@@ -1,50 +1,52 @@
 #!/usr/bin/env python3
 
 import advent
-from collections import defaultdict
+
+MOVE_DX = {'U': 0, 'D':  0, 'R': 1, 'L': -1}
+MOVE_DY = {'U': 1, 'D': -1, 'R': 0, 'L':  0}
 
 def make_move(s):
 	return s[0], int(s[1:])
 
-def get_visited(moves):
-	dx = {'U': 0, 'D':  0, 'R': 1, 'L': -1}
-	dy = {'U': 1, 'D': -1, 'R': 0, 'L':  0}
-	visited = set()
-	pathlen = defaultdict(lambda: float('inf'))
-	cur_pathlen = 0
+def get_visited_and_steps(moves):
 	p = (0, 0)
+	cur_steps = 0
+	visited = set()
+	steps = {}
 
 	for d, n in moves:
 		for _ in range(n):
-			p = (p[0] + dx[d], p[1] + dy[d])
-			cur_pathlen += 1
-			pathlen[p] = min(pathlen[p], cur_pathlen)
+			p = (p[0] + MOVE_DX[d], p[1] + MOVE_DY[d])
 			visited.add(p)
+			cur_steps += 1
 
-	return visited, pathlen
+			if p not in steps:
+				steps[p] = cur_steps
 
-def manhattan(ax, ay, bx, by):
-	return abs(ax - bx) + abs(ay - by)
+	return visited, steps
+
+def manhattan(p):
+	return abs(p[0]) + abs(p[1])
 
 
 advent.setup(2019, 3, dry_run=True)
 lines = advent.get_input().readlines()
 
 all_visited = []
-all_pathlen = []
+all_steps = []
 
 for l in lines:
-	visited, pathlen = get_visited(map(make_move, l.split(',')))
+	visited, steps = get_visited_and_steps(map(make_move, l.split(',')))
 	all_visited.append(visited)
-	all_pathlen.append(pathlen)
+	all_steps.append(steps)
 
 intersections = set.intersection(*all_visited)
-min_distance = min(manhattan(*p, 0, 0) for p in intersections)
+min_distance = min(map(manhattan, intersections))
 
 assert min_distance == 3247
 advent.submit_answer(1, min_distance)
 
-shortest_path = min(sum(l[p] for l in all_pathlen) for p in intersections)
+shortest_path = min(sum(l[p] for l in all_steps) for p in intersections)
 
 assert shortest_path == 48054
 advent.submit_answer(2, shortest_path)
