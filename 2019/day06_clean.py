@@ -1,21 +1,66 @@
 #!/usr/bin/env python3
 
 import advent
-import networkx as nx
+import heapq
+from collections import defaultdict
+
+def count_orbits(planet):
+	total = 0
+	while planet in T:
+		total += 1
+		planet = T[planet]
+
+	return total
+
+def dijkstra(G, src, dst):
+	queue = [(0, src)]
+	visited = set()
+	distance = defaultdict(lambda: float('inf'))
+	distance[src] = 0
+
+	while queue:
+		dist, planet = heapq.heappop(queue)
+
+		if planet not in visited:
+			visited.add(planet)
+
+			if planet == dst:
+				return dist
+
+			for neighbor in filter(lambda p: p not in visited, G[planet]):
+				new_dist = dist + 1
+
+				if new_dist < distance[neighbor]:
+					distance[neighbor] = new_dist
+					heapq.heappush(queue, (new_dist, neighbor))
+
+	return float('inf')
+
 
 advent.setup(2019, 6, dry_run=True)
 fin = advent.get_input()
 
 orbits = tuple(map(lambda l: l.strip().split(')'), fin.readlines()))
 
-G = nx.DiGraph(orbits)
-n_orbits = sum(len(nx.descendants(G, n)) for n in G)
+T = {child: parent for parent, child in orbits}
+n_orbits = sum(map(count_orbits, T))
 
 assert n_orbits == 253104
 advent.submit_answer(1, n_orbits)
 
-G = G.to_undirected()
-transfers = len(nx.shortest_path(G, 'YOU', 'SAN')) - 3
 
-assert transfers == 499
-advent.submit_answer(2, transfers)
+G = defaultdict(set)
+
+for a, b in orbits:
+	G[a].add(b)
+	G[b].add(a)
+
+min_transfers = dijkstra(G, T['YOU'], T['SAN'])
+
+assert min_transfers == 499
+advent.submit_answer(2, min_transfers)
+
+# Using networkx:
+# G = nx.DiGraph(orbits)
+# n_orbits = sum(len(nx.descendants(G, n)) for n in G)
+# min_transfers = len(nx.shortest_path(G.to_undirected(), 'YOU', 'SAN')) - 3
