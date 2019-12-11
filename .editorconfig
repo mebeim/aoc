@@ -10,3 +10,6 @@ trim_trailing_whitespace = true
 
 [*.txt]
 trim_trailing_whitespace = false
+
+[*.md]
+indent_style = unset
