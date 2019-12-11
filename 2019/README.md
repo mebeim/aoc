@@ -4,7 +4,7 @@ AoC 2019 walkthrough
 Day 1 - The Tyranny of the Rocket Equation
 ------------------------------------------
 
-[Problem statement](https://adventofcode.com/2019/day/1) — [Complete solution](day01_clean.py)
+[Problem statement][d01-problem] — [Complete solution][d01-solution]
 
 ### Part 1
 
@@ -49,7 +49,7 @@ First puzzle of the year, so not really that much of a challenge, but still fun!
 Day 2 - 1202 Program Alarm
 --------------------------
 
-[Problem statement](https://adventofcode.com/2019/day/2) — [Complete solution](day02_clean.py)
+[Problem statement][d02-problem] — [Complete solution][d02-solution]
 
 ### Part 1
 
@@ -126,7 +126,7 @@ print('Part 2:', a * 100 + b)
 Day 3 - Crossed Wires
 ---------------------
 
-[Problem statement](https://adventofcode.com/2019/day/3) — [Complete solution](day03_clean.py)
+[Problem statement][d03-problem] — [Complete solution][d03-solution]
 
 ### Part 1
 
@@ -236,7 +236,7 @@ print('Part 2:', best)
 Day 4 - Secure Container
 ------------------------
 
-[Problem statement](https://adventofcode.com/2019/day/4) — [Complete solution](day04_clean.py)
+[Problem statement][d04-problem] — [Complete solution][d04-solution]
 
 ### Part 1
 
@@ -336,18 +336,27 @@ for pwd in range(lo, hi + 1):
 	pairs = zip(digits, digits[1:])
 	quadruplets = zip(digits, digits[1:], digits[2:], digits[3:])
 
-	non_decreasing = all(a <= b for a, b in pairs)
+	is_non_decreasing = all(a <= b for a, b in pairs)
 	has_isolated = any(a != b and b == c and c != d for a, b, c, d in quadruplets)
 
 	if is_non_decreasing and has_isolated:
 		n_valid += 1
 
-print('Part 1:', n_valid)
+print('Part 2:', n_valid)
 ```
 
 Notice that wrapping `zip(digits, digits[1:])` into `tuple()` is not needed
 anymore now, since we only use the iterator once.
 
+
+[d01-problem]: https://adventofcode.com/2019/day/1
+[d02-problem]: https://adventofcode.com/2019/day/2
+[d03-problem]: https://adventofcode.com/2019/day/3
+[d04-problem]: https://adventofcode.com/2019/day/4
+[d01-solution]: day01_clean.py
+[d02-solution]: day02_clean.py
+[d03-solution]: day03_clean.py
+[d04-solution]: day04_clean.py
 
 [py-map]: https://docs.python.org/3.7/library/functions.html#map
 [py-sum]: https://docs.python.org/3.7/library/functions.html#sum
