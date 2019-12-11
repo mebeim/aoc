@@ -216,6 +216,7 @@ class IntcodeVM:
 		self.mem            = None
 		self.input          = None
 		self.output         = None
+		self.started        = False
 		self.running        = True
 		self.pc             = 0
 		self.relative_base  = 0
@@ -231,13 +232,18 @@ class IntcodeVM:
 
 			self.pc += op.length
 
+	def reset(self):
+		self.code           = self.orig_code[:] + [0] * 100000
+		self.mem            = self.code
+		self.running        = True
+		self.pc             = 0
+		self.relative_base  = 0
+		self.started        = False
+
 	def run(self, inp=None, n_out=-1, resume=False, debug=False):
-		if not resume:
-			self.code           = self.orig_code[:] + [0] * 100000
-			self.mem            = self.code
-			self.running        = True
-			self.pc             = 0
-			self.relative_base  = 0
+		if not self.started or not resume:
+			self.reset()
+			self.started = True
 
 		if self.standalone_exe:
 			while self.running:
