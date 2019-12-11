@@ -6,19 +6,16 @@ advent.setup(2019, 1, dry_run=True)
 fin = advent.get_input()
 
 nums = map(int, fin.readlines())
-
-nums = list(map(lambda n: n // 3 - 2, nums))
+nums = tuple(map(lambda n: n // 3 - 2, nums))
 total = sum(nums)
 
 assert total == 3576689
 advent.submit_answer(1, total)
 
-for i, n in enumerate(nums):
+for n in nums:
 	while n > 0:
 		n = max(n // 3 - 2, 0)
-		nums[i] += n
-
-total = sum(nums)
+		total += n
 
 assert total == 5362136
 advent.submit_answer(2, total)
