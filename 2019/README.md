@@ -1,6 +1,14 @@
 AoC 2019 walkthrough
 ====================
 
+### Quick links
+
+- [Day 1 - The Tyranny of the Rocket Equation](#day-1---the-tyranny-of-the-rocket-equation)
+- [Day 2 - 1202 Program Alarm](#day-2---1202-program-alarm)
+- [Day 3 - Crossed Wires](#day-3---crossed-wires)
+- [Day 4 - Secure Container](#day-4---secure-container)
+- [Day 5 - Sunny with a Chance of Asteroids](#day-5---sunny-with-a-chance-of-asteroids)
+
 Day 1 - The Tyranny of the Rocket Equation
 ------------------------------------------
 
@@ -537,11 +545,12 @@ print('Part 2:', result)
 [d04-solution]: day04_clean.py
 [d05-solution]: day05_clean.py
 
-[py-map]: https://docs.python.org/3.7/library/functions.html#map
-[py-sum]: https://docs.python.org/3.7/library/functions.html#sum
-[py-zip]: https://docs.python.org/3.7/library/functions.html#zip
-[py-any]: https://docs.python.org/3.7/library/functions.html#any
-[py-all]: https://docs.python.org/3.7/library/functions.html#all
-[py-operator]: https://docs.python.org/3.7/library/operator.html
-[py-operator-add]: https://docs.python.org/3.7/library/operator.html#operator.add
-[py-operator-mul]: https://docs.python.org/3.7/library/operator.html#operator.mul
+[py-map]: https://docs.python.org/3/library/functions.html#map
+[py-sum]: https://docs.python.org/3/library/functions.html#sum
+[py-zip]: https://docs.python.org/3/library/functions.html#zip
+[py-any]: https://docs.python.org/3/library/functions.html#any
+[py-all]: https://docs.python.org/3/library/functions.html#all
+[py-operator]: https://docs.python.org/3/library/operator.html
+[py-operator-add]: https://docs.python.org/3/library/operator.html#operator.add
+[py-operator-mul]: https://docs.python.org/3/library/operator.html#operator.mul
+[py-cond-expr]: https://docs.python.org/3/reference/expressions.html#conditional-expressions
