@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 from importlib import find_loader
 from datetime import datetime, timedelta
 
@@ -116,7 +117,13 @@ def submit_answer(part, answer):
 			return True
 
 		if 'you have to wait' in t:
-			log('[advent] Submitting too fast, slow down!\n')
+			matches = re.compile(r'you have ([\w ]+) left to wait').matchall(t)
+
+			if matches:
+				log('[advent] Submitting too fast, {} left to wait.\n', matches[0])
+			else:
+				log('[advent] Submitting too fast, slow down!\n')
+
 			return False
 
 		log('[advent] Wrong answer :(\n')
