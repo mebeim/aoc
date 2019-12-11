@@ -46,9 +46,9 @@ function.
 ```python
 total = 0
 for n in numbers:
-	while n > 0:
-		n = max(n // 3 - 2)
-		total += n
+    while n > 0:
+        n = max(n // 3 - 2)
+        total += n
 
 print('Part 2:', total)
 ```
@@ -98,17 +98,17 @@ could just have a dictionary of `{opcode: operator}`).
 from operator import add, mul
 
 def run(program, v0, v1):
-	program[0] = v0
-	program[1] = v1
-	pc = 0
+    program[0] = v0
+    program[1] = v1
+    pc = 0
 
-	while program[pc] != 99:
-		opcode = program[pc]
-		op = add if op == 1 else mul
-		program[pc + 1] = op(program[pc + 2], program[pc + 3])
-		pc += 4
+    while program[pc] != 99:
+        opcode = program[pc]
+        op = add if op == 1 else mul
+        program[pc + 1] = op(program[pc + 2], program[pc + 3])
+        pc += 4
 
-	return program[0]
+    return program[0]
 
 output = run(program[:], 1, 12)
 print('Part 1:', output)
@@ -125,9 +125,9 @@ we can just run a brute-force search trying all of them:
 
 ```python
 for a in range(100):
-	for b in range(100):
-		if run(program[:], a, b) == 19690720:
-			break
+    for b in range(100):
+        if run(program[:], a, b) == 19690720:
+            break
 
 print('Part 2:', a * 100 + b)
 ```
@@ -156,7 +156,7 @@ string and splits it into direction and number of steps.
 
 ```python
 def make_move(s):
-	return s[0], int(s[1:])
+    return s[0], int(s[1:])
 
 lines = fin.readlines()
 moves1 = tuple(map(make_move, line[0].split(',')))
@@ -173,15 +173,15 @@ MOVE_DX = {'U': 0, 'D':  0, 'R': 1, 'L': -1}
 MOVE_DY = {'U': 1, 'D': -1, 'R': 0, 'L':  0}
 
 def get_visited(moves):
-	visited = set()
-	p = (0, 0)
+    visited = set()
+    p = (0, 0)
 
-	for d, n in moves:
-		for _ in range(n):
-			p = (p[0] + MOVE_DX[d], p[1] + MOVE_DY[d])
-			visited.add(p)
+    for d, n in moves:
+        for _ in range(n):
+            p = (p[0] + MOVE_DX[d], p[1] + MOVE_DY[d])
+            visited.add(p)
 
-	return visited
+    return visited
 
 visited1 = get_visited(moves1)
 visited2 = get_visited(moves2)
@@ -198,7 +198,7 @@ the sum of the absolute values of the two coordinates of the point.
 
 ```python
 def manhattan(p):
-	return abs(p[0]) + abs(p[1])
+    return abs(p[0]) + abs(p[1])
 
 intersections = visited1 & visited2
 min_distance = min(map(manhattan, intersections))
@@ -219,21 +219,21 @@ count steps.
 
 ```python
 def get_visited_and_steps(moves):
-	p = (0, 0)
-	cur_steps = 0
-	visited = set()
-	steps = {}
+    p = (0, 0)
+    cur_steps = 0
+    visited = set()
+    steps = {}
 
-	for d, n in moves:
-		for _ in range(n):
-			p = (p[0] + MOVE_DX[d], p[1] + MOVE_DY[d])
-			visited.add(p)
-			cur_steps += 1
+    for d, n in moves:
+        for _ in range(n):
+            p = (p[0] + MOVE_DX[d], p[1] + MOVE_DY[d])
+            visited.add(p)
+            cur_steps += 1
 
-			if p not in steps:
-				steps[p] = cur_steps
+            if p not in steps:
+                steps[p] = cur_steps
 
-	return visited, steps
+    return visited, steps
 
 visited1, steps1 = get_visited(moves1)
 visited2, steps2 = get_visited(moves2)
@@ -294,14 +294,14 @@ lo, hi = map(int, fin.read().split('-'))
 n_valid = 0
 
 for pwd in range(lo, hi + 1):
-	digits = str(pwd)
-	pairs = tuple(zip(digits, digits[1:]))
+    digits = str(pwd)
+    pairs = tuple(zip(digits, digits[1:]))
 
-	is_non_decreasing = all(a <= b for a, b in pairs)
-	has_matching_pair = any(a == b for a, b in pairs)
+    is_non_decreasing = all(a <= b for a, b in pairs)
+    has_matching_pair = any(a == b for a, b in pairs)
 
-	if is_non_decreasing and has_matching_pair:
-		n_valid += 1
+    if is_non_decreasing and has_matching_pair:
+        n_valid += 1
 
 print('Part 1:', n_valid)
 ```
@@ -342,15 +342,15 @@ We can now count the number of valid passwords again:
 n_valid = 0
 
 for pwd in range(lo, hi + 1):
-	digits = str(pwd)
-	pairs = zip(digits, digits[1:])
-	quadruplets = zip(digits, digits[1:], digits[2:], digits[3:])
+    digits = str(pwd)
+    pairs = zip(digits, digits[1:])
+    quadruplets = zip(digits, digits[1:], digits[2:], digits[3:])
 
-	is_non_decreasing = all(a <= b for a, b in pairs)
-	has_isolated = any(a != b and b == c and c != d for a, b, c, d in quadruplets)
+    is_non_decreasing = all(a <= b for a, b in pairs)
+    has_isolated = any(a != b and b == c and c != d for a, b, c, d in quadruplets)
 
-	if is_non_decreasing and has_isolated:
-		n_valid += 1
+    if is_non_decreasing and has_isolated:
+        n_valid += 1
 
 print('Part 2:', n_valid)
 ```
@@ -418,44 +418,44 @@ this.
 ```python
 param1 = prog[pc + 1]
 if modes[0] == 0:
-	param1 = prog[param1]
+    param1 = prog[param1]
 ```
 
 Our previously written `run()` function now becomes:
 
 ```python
 def run(prog, input_value):
-	pc = 0
-	lastout = None
+    pc = 0
+    lastout = None
 
-	while prog[pc] != 99:
-		op = prog[pc]
-		modes = ((op // 100) % 10, (op // 1000) % 10, (op // 10000) % 10)
-		op = op % 10
+    while prog[pc] != 99:
+        op = prog[pc]
+        modes = ((op // 100) % 10, (op // 1000) % 10, (op // 10000) % 10)
+        op = op % 10
 
-		if op == 1: # add
-			a, b, c = prog[pc + 1:pc + 4]
-			if modes[0] == 0: a = prog[a]
-			if modes[1] == 0: b = prog[b]
-			prog[c] = a + b
-			pc += 4
-		elif op == 2: # mul
-			a, b, c = prog[pc + 1:pc + 4]
-			if modes[0] == 0: a = prog[a]
-			if modes[1] == 0: b = prog[b]
-			prog[c] = a * b
-			pc += 4
-		elif op == 3: # in
-			a = prog[pc + 1]
-			prog[a] = input_value
-			pc += 2
-		elif op == 4: # out
-			a = prog[pc + 1]
-			if modes[0] == 0: a = prog[a]
-			lastout = a
-			pc += 2
+        if op == 1: # add
+            a, b, c = prog[pc + 1:pc + 4]
+            if modes[0] == 0: a = prog[a]
+            if modes[1] == 0: b = prog[b]
+            prog[c] = a + b
+            pc += 4
+        elif op == 2: # mul
+            a, b, c = prog[pc + 1:pc + 4]
+            if modes[0] == 0: a = prog[a]
+            if modes[1] == 0: b = prog[b]
+            prog[c] = a * b
+            pc += 4
+        elif op == 3: # in
+            a = prog[pc + 1]
+            prog[a] = input_value
+            pc += 2
+        elif op == 4: # out
+            a = prog[pc + 1]
+            if modes[0] == 0: a = prog[a]
+            lastout = a
+            pc += 2
 
-	return lastout
+    return lastout
 ```
 
 Cool, now let's just run it against our input and it's done:
@@ -501,32 +501,32 @@ Here are the added opcodes (continuing from the last branch in the previous
 snippet):
 
 ```python
-		# ...
+        # ...
 
-		elif op == 5: # jnz
-			a, b = prog[pc + 1:pc + 3]
-			if modes[0] == 0: a = prog[a]
-			if modes[1] == 0: b = prog[b]
-			pc = b if a != 0 else pc + 3
-		elif op == 6: # jz
-			a, b = prog[pc + 1:pc + 3]
-			if modes[0] == 0: a = prog[a]
-			if modes[1] == 0: b = prog[b]
-			pc = b if a == 0 else pc + 3
-		elif op == 7: # lt
-			a, b, c = prog[pc + 1:pc + 4]
-			if modes[0] == 0: a = prog[a]
-			if modes[1] == 0: b = prog[b]
-			prog[c] = 1 if a < b else 0
-			pc += 4
-		elif op == 8: # eq
-			a, b, c = prog[pc + 1:pc + 4]
-			if modes[0] == 0: a = prog[a]
-			if modes[1] == 0: b = prog[b]
-			prog[c] = 1 if a == b else 0
-			pc += 4
+        elif op == 5: # jnz
+            a, b = prog[pc + 1:pc + 3]
+            if modes[0] == 0: a = prog[a]
+            if modes[1] == 0: b = prog[b]
+            pc = b if a != 0 else pc + 3
+        elif op == 6: # jz
+            a, b = prog[pc + 1:pc + 3]
+            if modes[0] == 0: a = prog[a]
+            if modes[1] == 0: b = prog[b]
+            pc = b if a == 0 else pc + 3
+        elif op == 7: # lt
+            a, b, c = prog[pc + 1:pc + 4]
+            if modes[0] == 0: a = prog[a]
+            if modes[1] == 0: b = prog[b]
+            prog[c] = 1 if a < b else 0
+            pc += 4
+        elif op == 8: # eq
+            a, b, c = prog[pc + 1:pc + 4]
+            if modes[0] == 0: a = prog[a]
+            if modes[1] == 0: b = prog[b]
+            prog[c] = 1 if a == b else 0
+            pc += 4
 
-		# ...
+        # ...
 ```
 
 Now we can just run the program with the updated code and the new input to get
@@ -574,12 +574,12 @@ our tree dictionary (because it has no parent).
 
 ```python
 def count_orbits(planet):
-	total = 0
-	while planet in T:
-		total += 1
-		planet = T[planet]
+    total = 0
+    while planet in T:
+        total += 1
+        planet = T[planet]
 
-	return total
+    return total
 ```
 
 We don't pass `T` as a variable just for simplicity, since it's global anyway.
@@ -626,8 +626,8 @@ from collections import defaultdict
 G = defaultdict(set)
 
 for a, b in orbits:
-	G[a].add(b)
-	G[b].add(a)
+    G[a].add(b)
+    G[b].add(a)
 ```
 
 After building the graph, all we need to do is apply a good shortest path
@@ -646,30 +646,30 @@ steps away.
 import heapq
 
 def dijkstra(G, src, dst):
-	# List of (distance, planet) used as heap to choose the next planet to visit.
-	queue = [(0, src)]
+    # List of (distance, planet) used as heap to choose the next planet to visit.
+    queue = [(0, src)]
 
-	visited = set()
-	distance = defaultdict(lambda: float('inf'))
-	distance[src] = 0
+    visited = set()
+    distance = defaultdict(lambda: float('inf'))
+    distance[src] = 0
 
-	while queue:
-		dist, planet = heapq.heappop(queue)
+    while queue:
+        dist, planet = heapq.heappop(queue)
 
-		if planet not in visited:
-			visited.add(planet)
+        if planet not in visited:
+            visited.add(planet)
 
-			if planet == dst:
-				return dist
+            if planet == dst:
+                return dist
 
-			for neighbor in filter(lambda p: p not in visited, G[planet]):
-				new_dist = dist + 1
+            for neighbor in filter(lambda p: p not in visited, G[planet]):
+                new_dist = dist + 1
 
-				if new_dist < distance[neighbor]:
-					distance[neighbor] = new_dist
-					heapq.heappush(queue, (new_dist, neighbor))
+                if new_dist < distance[neighbor]:
+                    distance[neighbor] = new_dist
+                    heapq.heappush(queue, (new_dist, neighbor))
 
-	return float('inf')
+    return float('inf')
 ```
 
 Cool, now we can just call the function to get the answer:
