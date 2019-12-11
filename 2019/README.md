@@ -1,13 +1,15 @@
 AoC 2019 walkthrough
 ====================
 
-### Quick links
+Table of Contents
+-----------------
 
 - [Day 1 - The Tyranny of the Rocket Equation](#day-1---the-tyranny-of-the-rocket-equation)
 - [Day 2 - 1202 Program Alarm](#day-2---1202-program-alarm)
 - [Day 3 - Crossed Wires](#day-3---crossed-wires)
 - [Day 4 - Secure Container](#day-4---secure-container)
 - [Day 5 - Sunny with a Chance of Asteroids](#day-5---sunny-with-a-chance-of-asteroids)
+- [Day 6 - Universal Orbit Map](#day-6---universal-orbit-map)
 
 Day 1 - The Tyranny of the Rocket Equation
 ------------------------------------------
@@ -536,23 +538,173 @@ print('Part 2:', result)
 ```
 
 
+Day 6 - Universal Orbit Map
+---------------------------
+
+[Problem statement][d06-problem] — [Complete solution][d06-solution]
+
+### Part 1
+
+We are given a list of "orbits". Each orbit is represented as the name of two
+planets divided by a closed parens `)` symbol. `A)B` means that planet `B`
+orbits planet `A`. We are asked to count the total number of orbits, direct or
+indirect.
+
+A planet `X` indirectly orbits another planet `Y` if there is a chain of orbits
+from `X` to `Y`. For example, if we have `A)B` and `B)C`, then `C` indirectly
+orbits `A`. This chain can be arbitrarily long, and it's pretty obvious that
+this ends up building a directed graph... or better, a tree, since a planet can
+only directly orbit a single other planet (physics, heh).
+
+We need an adequate data structure to keep track of who orbits who, let's call
+the inside planet of an orbit the `parent` and the outside planet the `child`
+for simplicity: we will build a dictionary `{child: parent}` to represent our
+tree.
+
+```python
+lines = map(str.strip, fin.readlines())
+orbits = tuple(line.split(')') for line in lines)
+
+T = {child: parent for parent, child in orbits}
+```
+
+The simplest way to count all the orbits for a planet is now to just follow the
+list of its parents until we get to the root, which will not appear as a key in
+our tree dictionary (because it has no parent).
+
+```python
+def count_orbits(planet):
+	total = 0
+	while planet in T:
+		total += 1
+		planet = T[planet]
+
+	return total
+```
+
+We don't pass `T` as a variable just for simplicity, since it's global anyway.
+Seems pretty simple, the result is now just one [`map()`][py-map] and
+[`sum()`][py-sum] away:
+
+```python
+total_orbits = sum(map(count_orbits, T))
+print('Part 1:', total_orbits)
+```
+
+### Part 2
+
+We now need to find the minimum number of "orbital transfers" needed to get the
+planet `YOU` to orbit the same planet as `SAN`. We start at the planet that
+`YOU` is orbiting, and we want to get to the planet that `SAN` is orbiting.
+
+As an example, in the below situation we wolud need `4` transfers to get to
+`SAN`:
+
+               *YOU*
+               /
+          E - F - G                 E - F - G
+         /                         /
+    A - C - D          ==>    A - C - D
+     \                         \
+      B - SAN                   B - SAN
+                                 \
+                                 *YOU*
+
+The path would be `F->E->C->A->B`, four arrows == four transfers.
+
+Now our tree clearly became an undirected graph, since we don't need to respect
+the orbit hierarchy to make a transfer. In other words, we don't care about who
+is the child and who is the parent anymore. We need a different data structure:
+a dictionary of sets `{planet: set_of_connected_planets}`. We can use the very
+cool [`defaultdict`][py-defaultdict], which is just like a `dict`, but
+automatically creates entries when we try to access them. The source and
+destination can just be taken by the old `T` tree.
+
+```python
+from collections import defaultdict
+
+G = defaultdict(set)
+
+for a, b in orbits:
+	G[a].add(b)
+	G[b].add(a)
+```
+
+After building the graph, all we need to do is apply a good shortest path
+finding algorithm, like
+[Dijkstra's algorithm](https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm).
+
+For this purpose the [`heapq`][py-heapq] module is very useful: it provides the
+heap data structure, which is capable of maintaining an ordered structure of
+elements that lets us efficiently pop the smallest element. We'll use it as a
+queue to hold planets to visit. We will also use the built-in
+[`filter()`][py-filter] function for convenience. A `defaultdict` that returns
+`float('inf')` is also useful to treat not-yet-seen planets as being infinite
+steps away.
+
+```python
+import heapq
+
+def dijkstra(G, src, dst):
+	# List of (distance, planet) used as heap to choose the next planet to visit.
+	queue = [(0, src)]
+
+	visited = set()
+	distance = defaultdict(lambda: float('inf'))
+	distance[src] = 0
+
+	while queue:
+		dist, planet = heapq.heappop(queue)
+
+		if planet not in visited:
+			visited.add(planet)
+
+			if planet == dst:
+				return dist
+
+			for neighbor in filter(lambda p: p not in visited, G[planet]):
+				new_dist = dist + 1
+
+				if new_dist < distance[neighbor]:
+					distance[neighbor] = new_dist
+					heapq.heappush(queue, (new_dist, neighbor))
+
+	return float('inf')
+```
+
+Cool, now we can just call the function to get the answer:
+
+```python
+source = T['YOU']
+destination = T['SAN']
+
+min_transfers = dijkstra(G, source, destination)
+print('Part 2:', min_transfers)
+```
+
+
 [d01-problem]: https://adventofcode.com/2019/day/1
 [d02-problem]: https://adventofcode.com/2019/day/2
 [d03-problem]: https://adventofcode.com/2019/day/3
 [d04-problem]: https://adventofcode.com/2019/day/4
 [d05-problem]: https://adventofcode.com/2019/day/5
+[d06-problem]: https://adventofcode.com/2019/day/6
 [d01-solution]: day01_clean.py
 [d02-solution]: day02_clean.py
 [d03-solution]: day03_clean.py
 [d04-solution]: day04_clean.py
 [d05-solution]: day05_clean.py
+[d06-solution]: day06_clean.py
 
 [py-map]: https://docs.python.org/3/library/functions.html#map
 [py-sum]: https://docs.python.org/3/library/functions.html#sum
 [py-zip]: https://docs.python.org/3/library/functions.html#zip
 [py-any]: https://docs.python.org/3/library/functions.html#any
 [py-all]: https://docs.python.org/3/library/functions.html#all
+[py-filter]: https://docs.python.org/3/library/functions.html#filter
 [py-operator]: https://docs.python.org/3/library/operator.html
 [py-operator-add]: https://docs.python.org/3/library/operator.html#operator.add
 [py-operator-mul]: https://docs.python.org/3/library/operator.html#operator.mul
 [py-cond-expr]: https://docs.python.org/3/reference/expressions.html#conditional-expressions
+[py-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
+[py-heapq]: https://docs.python.org/3/library/heapq.html
