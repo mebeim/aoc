@@ -3,7 +3,8 @@ Advent of Code
 
 Personal repository of Advent of Code solutions.
 
-![2018 Advent Calendar][calendar]
+- Advent of Code 2018 walkthrough: TODO
+- [**Advent of Code 2019 walkthrough**](2019/README.md)
 
 
 About Advent of Code
@@ -23,11 +24,10 @@ In this repository you can find my solutions for the puzzles as well as other mi
 Solutions by year
 -----------------
 
-Here you can find quick links the solutions for each year. Ideally, I will update these two links to point to a detailed README with a walkthrough for each year's solutions when/if I find the time.
+Here you can find quick links the solutions for each year.
 
- - [Advent of Code 2018](2018)
- - [Advent of Code 2019](2019)
+ - [Advent of Code 2018 solutions](2018)
+ - [Advent of Code 2019 solutions](2019)
 
- [calendar]: 2018/misc/calendar.gif
  [aoc-about]: https://adventofcode.com/2019/about
  [aoc-support]: https://adventofcode.com/2019/support
