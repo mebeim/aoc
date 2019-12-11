@@ -488,7 +488,7 @@ only input, and we still need to get the last output value.
 The good thing is, the code we just wrote can be easily extended to support
 these, we just need four more `elif` branches. To implement *less than* and
 *equals*, and also for updating the program counter for the jump instructions,
-Python [onditional expressions][py-cond-expr] come in handy:
+Python [conditional expressions][py-cond-expr] come in handy:
 
 ```python
 # less than:
@@ -499,7 +499,7 @@ Here are the added opcodes (continuing from the last branch in the previous
 snippet):
 
 ```python
-		#...
+		# ...
 
 		elif op == 5: # jnz
 			a, b = prog[pc + 1:pc + 3]
@@ -523,6 +523,8 @@ snippet):
 			if modes[1] == 0: b = prog[b]
 			prog[c] = 1 if a == b else 0
 			pc += 4
+
+		# ...
 ```
 
 Now we can just run the program with the updated code and the new input to get
