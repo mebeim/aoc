@@ -90,7 +90,7 @@ then run the Intcode program until it halts: the output will be at position `0`.
 
 Quite simple, we can just emuate it with a loop. To make it fancier, we can
 import [`add`][py-operator-add] and [`mul`][py-operator-mul] from the
-[`operator` module][py-operator] and use them instead of a chain of `if/elif`:
+[`operator`][py-operator] module and use them instead of a chain of `if/elif`:
 `add()` is a function that takes two arguments and performs the same operation
 of the `+` operator, while `mul()` does the same for the `*` operator. Using
 these might also come in handy if in the future more operations are added (we
@@ -631,7 +631,7 @@ the orbit hierarchy to make a transfer. In other words, we don't care about who
 is the child and who is the parent anymore. We need a different data structure:
 a dictionary of sets `{planet: set_of_connected_planets}`. We can use the very
 cool [`defaultdict`][py-collections-defaultdict] from the
-[`collections` module][py-collections], which is just like a normal `dict`, but
+[`collections`][py-collections] module, which is just like a normal `dict`, but
 automatically creates entries when we try to access them. The source and
 destination can just be taken by the old `T` tree.
 
@@ -888,7 +888,7 @@ and its *kinetic energy*, and that:
 
 First of all, let's parse the input: each moon's initial position is in the form
 `<x=1, y=2, z=3>`, so matching wth a regular expression using the
-[`re` module][py-re] is the easiest way to go:
+[`re`][py-re] module is the easiest way to go:
 
 ```python
 exp = re.compile(r'-?\d+')
@@ -928,7 +928,7 @@ If we apply the above to all moons, putting the whole thing in a `for` loop, we
 can easily simulate 1000 steps.
 
 We can take advantage of the [`combinations()`][py-itertools-combinations]
-function from the [`itertools` module][py-itertools] instead of two `for` loops
+function from the [`itertools`][py-itertools] module instead of two `for` loops
 to efficently get all the unique couples of moons. This means that we'll need to
 modify the velocity of both inside the loop, but that's no problem! Now let's
 dive into it and simulate the first 1000 steps.
@@ -1032,7 +1032,7 @@ for dim in range(3):
 
 Let's calculate the least common multiple of all periods to get our answer.
 We'll use [`gcd()`][py-fractions-gcd] (gratest common divisor) from the
-[`fractions`][py-fractions] to write our own `lcm` function, and
+[`fractions`][py-fractions] module to write our own `lcm` function, and
 [`reduce()`][py-functools-reduce] from [`functools`][py-functools] as a cool
 functional way to apply it to the three periods (since our `lcm()` will take two
 arguments).
