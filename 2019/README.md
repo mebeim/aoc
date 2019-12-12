@@ -10,6 +10,7 @@ Table of Contents
 - [Day 4 - Secure Container](#day-4---secure-container)
 - [Day 5 - Sunny with a Chance of Asteroids](#day-5---sunny-with-a-chance-of-asteroids)
 - [Day 6 - Universal Orbit Map](#day-6---universal-orbit-map)
+- [Day 7 - Amplification Circuit](#day-7---amplification-circuit)
 
 Day 1 - The Tyranny of the Rocket Equation
 ------------------------------------------
@@ -695,18 +696,179 @@ print('Part 2:', min_transfers)
 ```
 
 
+Day 7 - Amplification Circuit
+-----------------------------
+
+[Problem statement][d07-problem] — [Complete solution][d07-solution]
+
+### A working Intcode VM
+
+This problem requires a working Intcode virtual machine built following
+instructions in the day 2 and day 5 problem statements! The machine could be as
+simple as a single function, or something more complicated like a class with
+multiple methods.
+
+I ended up using [my `IntcodeVM` class](lib/intcode.py) to solve this puzzle.
+The important thing here is that our VM needs to have the following features:
+
+1. Possibility to stop after every output instruction to collect the outputs one
+   by one.
+2. Possibility to resume after previously stopping, also taking additional
+   input.
+3. Preferably the possibility to reset and restart easily. This could be more
+   convenient than re-instantiating the whole thing every time.
+4. Preferably, the possibility to pretty print each instruction for debugging
+   purposes, if we ever get stuck somewhere.
+
+My `IntcodeVM` accomplishes all the above through a `run()` method which takes
+an optional `inp=` parameter (a list of input values), an optional `n_out=`
+integer parameter (the number of output instructions to execute before pausing
+and returning the accumulated outputs), and an optional `resume=` boolean
+parameter (whether to restart or resume execution).
+
+### Part 1
+
+So, we are given an interesting task: we have 5 amplifiers connected in series,
+each one running the same Intcode program (the puzzle input). We will need to
+start each of them with a different initial *phase setting* as input (an integer
+from `0` to `4`).
+
+        O-------O  O-------O  O-------O  O-------O  O-------O
+    0 ->| Amp A |->| Amp B |->| Amp C |->| Amp D |->| Amp E |-> output signal
+        O-------O  O-------O  O-------O  O-------O  O-------O
+
+After the first input, which is given by us, each machine's output is connected
+to the next one's input, and the last machine will give us a final *output
+signal*. The first machine will also get a `0` as second input to compensate for
+the fact that its input is not connected to any other machine. We want to find
+the best combination of phase settings such that the output signal is maximized.
+The maximum output signal will be the answer to the puzzle.
+
+So, first of all, let's parse the input and instantiate 5 different VMs:
+
+```python
+program = list(map(int, fin.read().split(',')))
+vms = [IntcodeVM(program) for _ in range(5)]
+```
+
+A single run of the amplifiers to get one output signal can simply be done by
+starting with a previous output of `[0]`, and looping through the VMs feeding
+each one with one phase setting integer plus the previous output:
+
+```python
+phase_settings = (1, 4, 3, 2, 0)
+out = [0]
+
+for vm, inp in zip(vms, phase_settings):
+    out = vm.run([inp, *out])
+
+output_signal = out[0]
+```
+
+To solve the puzzle and find the maximum output signal, we need to test all
+possible inputs, which means all possible
+[permutations](https://en.wikipedia.org/wiki/Permutation) of the phase settings.
+We can take advantage of the [`permutations()`][py-itertools-permutations]
+generator function from the [`itertools`][py-itertools] module. This function
+takes an iterable as its only required parameter, and returns a generator which
+generates all the possible permutations of the items in the iterable.
+
+All this talking and explaining finally boils down to the following code:
+
+```python
+from itertools import permutations
+
+max_signal = float('-inf')
+
+for inputs in permutations(range(5)):
+    out = [0]
+
+    for vm, inp in zip(vms, inputs):
+        out = vm.run([inp, *out])
+
+    if out[0] > max_signal:
+        max_signal = out[0]
+
+print('Part 1:', max_signal)
+```
+
+And we have our part one solution!
+
+### Part 2
+
+Things get a little bit more complicated. Machines are now connected in a
+feedback loop, meaning that after stargint each one with a different phase
+setting and connecting them, we will also need to connect the last one to the
+first one. The computation will be over after the fifth machine halts. Its last
+output value will be the signal to maximize this time.
+
+          O-------O  O-------O  O-------O  O-------O  O-------O
+    0 -+->| Amp A |->| Amp B |->| Amp C |->| Amp D |->| Amp E |-.
+       |  O-------O  O-------O  O-------O  O-------O  O-------O |
+       |                                                        |
+       '----<----------<----------<----------<----------<-------+
+                                                                |
+                                                                v
+                                                            output signal
+
+This time, the phase settings need to be 5 different values from `5` to `9`.
+
+The approach is the same as before, but our VMs now need to support pausing and
+resuming execution on demand. An initial cycle to restart the VMs and supply the
+starting phase signal is needed, then we can keep them running until one of them
+halts, and keep the last output of the fifth VM.
+
+```python
+max_signal = float('-inf')
+
+for inputs in permutations(range(5, 10)):
+    out = [0]
+
+    for vm, inp in zip(vms, inputs):
+        # reset and run until first output, then pause and return it
+        out = vm.run([inp, *out], n_out=1)
+
+    last_signal = out[0]
+
+    while all(vm.running for vm in vms):
+        for i, vm in enumerate(vms):
+            # resume execution and run until first output, then pause and return it
+            out = vm.run(out, n_out=1, resume=True)
+
+            if not vm.running:
+                break
+
+            if i == 4:
+                last_signal = out[0]
+
+    if last_signal > max_signal:
+        max_signal = last_signal
+
+print('Part 2:', max_signal)
+```
+
+The lesson to learn from this puzzle is that code
+[**reusability**](https://en.wikipedia.org/wiki/Reusability) and
+[**extensibility**](https://en.wikipedia.org/wiki/Extensibility) are two very
+important concepts in software engineering. Not having an already working VM
+ready at hand would have made working towards a solution much slower. Not having
+written easily extensible code for the VM would have been an annoyance too.
+
+
 [d01-problem]: https://adventofcode.com/2019/day/1
 [d02-problem]: https://adventofcode.com/2019/day/2
 [d03-problem]: https://adventofcode.com/2019/day/3
 [d04-problem]: https://adventofcode.com/2019/day/4
 [d05-problem]: https://adventofcode.com/2019/day/5
 [d06-problem]: https://adventofcode.com/2019/day/6
+[d07-problem]: https://adventofcode.com/2019/day/7
 [d01-solution]: day01_clean.py
 [d02-solution]: day02_clean.py
 [d03-solution]: day03_clean.py
 [d04-solution]: day04_clean.py
 [d05-solution]: day05_clean.py
 [d06-solution]: day06_clean.py
+[d07-solution]: day07_clean.py
 
 [py-map]: https://docs.python.org/3/library/functions.html#map
 [py-sum]: https://docs.python.org/3/library/functions.html#sum
@@ -720,3 +882,5 @@ print('Part 2:', min_transfers)
 [py-cond-expr]: https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-heapq]: https://docs.python.org/3/library/heapq.html
+[py-itertools]: https://docs.python.org/3/library/itertools.html
+[py-itertools-permutations]: https://docs.python.org/3/library/itertools.html#itertools.permutations
