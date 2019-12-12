@@ -747,6 +747,8 @@ The maximum output signal will be the answer to the puzzle.
 So, first of all, let's parse the input and instantiate 5 different VMs:
 
 ```python
+from lib.intcode import IntcodeVM
+
 program = list(map(int, fin.read().split(',')))
 vms = [IntcodeVM(program) for _ in range(5)]
 ```
