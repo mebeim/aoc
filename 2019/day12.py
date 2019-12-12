@@ -23,14 +23,7 @@ vels = [
 	[0,0,0]
 ]
 
-periods = [
-	[-1, -1, -1],
-	[-1, -1, -1],
-	[-1, -1, -1],
-	[-1, -1, -1],
-]
-
-for step_ in range(1000):
+for _ in range(1000):
 	accels = [
 		[0,0,0],
 		[0,0,0],
@@ -67,7 +60,6 @@ for step_ in range(1000):
 		moons[i][0] += vels[i][0]
 		moons[i][1] += vels[i][1]
 		moons[i][2] += vels[i][2]
-
 
 pot = [sum(map(abs, m)) for m in moons]
 kin = [sum(map(abs, m)) for m in vels]
