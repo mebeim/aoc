@@ -11,6 +11,7 @@ Table of Contents
 - [Day 5 - Sunny with a Chance of Asteroids](#day-5---sunny-with-a-chance-of-asteroids)
 - [Day 6 - Universal Orbit Map](#day-6---universal-orbit-map)
 - [Day 7 - Amplification Circuit](#day-7---amplification-circuit)
+- [Day 12 - Day 12 - The N-Body Problem](#day-12---the-n-body-problem)
 
 Day 1 - The Tyranny of the Rocket Equation
 ------------------------------------------
@@ -857,6 +858,177 @@ ready at hand would have made working towards a solution much slower. Not having
 written easily extensible code for the VM would have been an annoyance too.
 
 
+Day 12 - The N-Body Problem
+---------------------------
+
+[Problem statement][d12-problem] — [Complete solution][d12-solution]
+
+For today's puzzle we get to work with 3D coordinates. We are given exactly four
+points in the 3D space, which represent four moons in space. All moons attract
+and are attracted by each other. We need to simulate 1000 steps of moon movement
+knowing that each step:
+
+1. Each moon's velocity on a given axis changes by `+1` for each other moon
+   which has a higher coordinate value on that axis, and by `-1` for each other
+   moon which has a lower coordinate value.
+2. Each moon's position changes according to its velocity. In other words,
+   velocity is added to the current position to get the next position.
+
+Moons start with velocity `(0, 0, 0)` and positions given by our input. After
+simulating 1000 steps, we need to calculate the total energy in the system,
+knowing that the energy of each moon is the product of its *potential energy*
+and its *kinetic energy*, and that:
+
+- Potential energy = sum of the absolute values of the moon's coordinates.
+- Kinetic energy = sum of the absolute values of the moon's velocity in each
+  coordinate.
+
+Seems complicated, but it's actually pretty simple. For a single moon, each step
+the following happens (using convenient names for simplicity's sake, in reality
+everything is a tuple of 3 integers):
+
+```python
+for other_moon in moons:
+    if other_moon.position.x > moon.position.x:
+        moon.velocity.x += 1
+    elif other_moon.position.x < moon.position.x:
+        moon.velocity.x -= 1
+
+    # same for other dimensions (y and z)
+
+moon.position.x += moon.velocity.x
+# same for other dimensions (y and z)
+```
+
+If we apply the above for each moon, and put the whole thing in a `for` loop, we
+can easily simulate 1000 steps, so let's do it!
+
+First of all, let's get the input: each moon's initial position is in the form
+`<x=1, y=2, z=3>`, so regular expressions from the [`re` module][py-re] really
+come in handy:
+
+```python
+rexp = re.compile(r'-?\d+')
+moons = [list(map(int, rexp.findall(line))) for line in fin]
+```
+
+Now let's dive into it and emulate the first 1000 steps. We'll be (ab)using
+[`enumerate`][py-enumerate] here to work on each position and velocity alone
+instead of using list indexes all around the place.
+
+```python
+positions = [m[:] for m in moons]
+velocities = [[0] * 3 for _ in range(len(moons))]
+
+for step in range(1000):
+    for i, (p, v) in enumerate(zip(positions, velocities)):
+        for j, p2 in enumerate(positions):
+            if i == j:
+                continue
+
+            for dim in range(3):
+                if   p2[dim] > p[dim]: v[dim] += 1
+                elif p2[dim] < p[dim]: v[dim] -= 1
+
+    for i, (p, v) in enumerate(zip(positions, velocities)):
+        for dim in range(3):
+            p[dim] += v[dim]
+```
+
+Once this is done, we only need to calculate the total energy as described in
+the problem statement, and we get the answer:
+
+```python
+potential = (sum(map(abs, p)) for p in positions)
+kinetic   = (sum(map(abs, v)) for v in velocities)
+total     = sum(p * k for p, k in zip(potential, kinetic))
+print('Part 1:', total)
+```
+
+### Part 2
+
+For the second part of this task we are told that the initial state of the
+system (initial positions and all-zero velocities) will somehow end up repeating
+itself at some very, very far point in the future (millions of millions of
+steps). Clearly, bruteforcing is unfeasible (or, well, probably going to take
+ages), we want a smarter solution.
+
+If we take a look at each dimension, we can see that they are independent from
+each other. Velocity and position of a moon on the X axis will never affect
+velocity or position of any other moon on a *different* axis. Therefore, if we
+want to find the same state again, we can split the problem in three and find
+out how much time it takes for each dimension to go back to the initial values.
+This simplifies things by an order of magnitude, and makes it possible to find
+the solution in a very reasonable amount of time, by advancing each direction by
+its own until it gets back to the initial state, then saving the number of steps
+it took for it to reset.
+
+We can represent a state for a given dimension as a tuple of pairs of positions
+and velocities for each moon. Let's build the initial initial_states:
+
+```python
+initial_states = []
+for dim in range(3):
+    # tuple of pairs (pos, vel) for each moon
+    initial_states.append(tuple((m[dim], 0) for m in moons))
+```
+
+The loops we wrote for part 1 basically remain the same, we'll just add some
+state checking logic. We also don't need to reset `step`, `positions` or
+`velocity`, we can just keep going from where we stopped. We continue until we
+find all periods. Since we use `zip(positions, velocities)` a lot, we can also
+save it as a tuple and re-use it, since list references will not change.
+
+```python
+periods = [0] * 3
+pos_vel = tuple(zip(positions, velocities))
+
+while not all(periods):
+    step += 1
+
+    for dim in range(3):
+        if not periods[dim]:
+            # Build current state as a tuple of pairs (pos, vel) for each moon.
+            cur_state = tuple((p[dim], v[dim]) for p, v in pos_vel)
+
+            if cur_state == initial_states[dim]:
+                periods[dim] = step
+
+    for i, (p, v) in enumerate(pos_vel):
+        for j, p2 in enumerate(positions):
+            if i == j:
+                continue
+
+            for dim in range(3):
+                if   p2[dim] > p[dim]: v[dim] += 1
+                elif p2[dim] < p[dim]: v[dim] -= 1
+
+    for i, (p, v) in enumerate(pos_vel):
+        for dim in range(3):
+            p[dim] += v[dim]
+```
+
+We'll end up with three different periods, and when different things repeat with
+different periods, they will all repeat together exactly at the least common
+multiple of those periods.
+
+Let's calculate the least common multiple of all periods to get our answer.
+We'll use `gcd()` from the `fractions` module to write our own `lcm` function,
+and `reduce()` from `functools` as a cool functional way to apply it to the
+three periods (since `lcm()` takes two arguments).
+
+```python
+from fractions import gcd
+from functools import reduce
+
+def lcm(a, b):
+    return abs(a * b) // gcd(a, b)
+
+total_steps = reduce(lcm, periods, 1)
+print('Part 2:', total_steps)
+```
+
+
 [d01-problem]: https://adventofcode.com/2019/day/1
 [d02-problem]: https://adventofcode.com/2019/day/2
 [d03-problem]: https://adventofcode.com/2019/day/3
@@ -864,6 +1036,7 @@ written easily extensible code for the VM would have been an annoyance too.
 [d05-problem]: https://adventofcode.com/2019/day/5
 [d06-problem]: https://adventofcode.com/2019/day/6
 [d07-problem]: https://adventofcode.com/2019/day/7
+[d12-problem]: https://adventofcode.com/2019/day/12
 [d01-solution]: day01_clean.py
 [d02-solution]: day02_clean.py
 [d03-solution]: day03_clean.py
@@ -871,6 +1044,7 @@ written easily extensible code for the VM would have been an annoyance too.
 [d05-solution]: day05_clean.py
 [d06-solution]: day06_clean.py
 [d07-solution]: day07_clean.py
+[d12-solution]: day12_clean.py
 
 [py-map]: https://docs.python.org/3/library/functions.html#map
 [py-sum]: https://docs.python.org/3/library/functions.html#sum
@@ -878,6 +1052,7 @@ written easily extensible code for the VM would have been an annoyance too.
 [py-any]: https://docs.python.org/3/library/functions.html#any
 [py-all]: https://docs.python.org/3/library/functions.html#all
 [py-filter]: https://docs.python.org/3/library/functions.html#filter
+[py-enumerate]: https://docs.python.org/3/library/functions.html#enumerate
 [py-operator]: https://docs.python.org/3/library/operator.html
 [py-operator-add]: https://docs.python.org/3/library/operator.html#operator.add
 [py-operator-mul]: https://docs.python.org/3/library/operator.html#operator.mul
@@ -886,3 +1061,4 @@ written easily extensible code for the VM would have been an annoyance too.
 [py-heapq]: https://docs.python.org/3/library/heapq.html
 [py-itertools]: https://docs.python.org/3/library/itertools.html
 [py-itertools-permutations]: https://docs.python.org/3/library/itertools.html#itertools.permutations
+[py-re]: https://docs.python.org/3/library/re.html
