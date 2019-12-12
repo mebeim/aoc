@@ -4,6 +4,8 @@ import advent
 import re
 from fractions import gcd
 from functools import reduce
+from collections import namedtuple
+from itertools import combinations, count
 
 def lcm(a, b):
 	return abs(a * b) // gcd(a, b)
@@ -12,65 +14,56 @@ def lcm(a, b):
 advent.setup(2019, 12, dry_run=True)
 fin = advent.get_input()
 
-rexp = re.compile(r'-?\d+')
-moons = [list(map(int, rexp.findall(line))) for line in fin]
+exp = re.compile(r'-?\d+')
+initial_positions = [list(map(int, exp.findall(line))) for line in fin]
 
-positions  = [m[:] for m in moons]
-velocities = [[0] * 3 for _ in range(len(moons))]
-pos_vel    = tuple(zip(positions, velocities))
+Moon = namedtuple('Moon', ['pos', 'vel'])
+moons = [Moon(pos.copy(), [0, 0, 0]) for pos in initial_positions]
 
 for step in range(1000):
-	for i, (p, v) in enumerate(pos_vel):
-		for j, p2 in enumerate(positions):
-			if i == j:
-				continue
-
-			for dim in range(3):
-				if   p2[dim] > p[dim]: v[dim] += 1
-				elif p2[dim] < p[dim]: v[dim] -= 1
-
-	for i, (p, v) in enumerate(pos_vel):
+	for moon1, moon2 in combinations(moons, 2):
 		for dim in range(3):
-			p[dim] += v[dim]
+			if moon2.pos[dim] > moon1.pos[dim]:
+				moon1.vel[dim] += 1
+				moon2.vel[dim] -= 1
+			elif moon2.pos[dim] < moon1.pos[dim]:
+				moon1.vel[dim] -= 1
+				moon2.vel[dim] += 1
 
-potential = (sum(map(abs, p)) for p in positions)
-kinetic   = (sum(map(abs, v)) for v in velocities)
+	for moon in moons:
+		for dim in range(3):
+			moon.pos[dim] += moon.vel[dim]
+
+potential = (sum(map(abs, m.pos)) for m in moons)
+kinetic   = (sum(map(abs, m.vel)) for m in moons)
 total     = sum(p * k for p, k in zip(potential, kinetic))
 
 assert total == 7013
 advent.submit_answer(1, total)
 
 
-initial_states = []
+periods = []
+start = step + 1
+
 for dim in range(3):
-	initial_states.append(tuple((m[dim], 0) for m in moons))
+	for period in count(start):
+		if all(m.vel[dim] == 0 for m in moons):
+			break
 
-periods = [0] * 3
+		for moon1, moon2 in combinations(moons, 2):
+			if moon2.pos[dim] > moon1.pos[dim]:
+				moon1.vel[dim] += 1
+				moon2.vel[dim] -= 1
+			elif moon2.pos[dim] < moon1.pos[dim]:
+				moon1.vel[dim] -= 1
+				moon2.vel[dim] += 1
 
-while not all(periods):
-	step += 1
+		for moon in moons:
+			moon.pos[dim] += moon.vel[dim]
 
-	for dim in range(3):
-		if not periods[dim]:
-			cur_state = tuple((p[dim], v[dim]) for p, v in pos_vel)
+	periods.append(period)
 
-			if cur_state == initial_states[dim]:
-				periods[dim] = step
-
-	for i, (p, v) in enumerate(pos_vel):
-		for j, p2 in enumerate(positions):
-			if i == j:
-				continue
-
-			for dim in range(3):
-				if   p2[dim] > p[dim]: v[dim] += 1
-				elif p2[dim] < p[dim]: v[dim] -= 1
-
-	for i, (p, v) in enumerate(pos_vel):
-		for dim in range(3):
-			p[dim] += v[dim]
-
-total_steps = reduce(lcm, periods, 1)
+total_steps = 2 * reduce(lcm, periods, 1)
 
 assert total_steps == 324618307124784
 advent.submit_answer(2, total_steps)

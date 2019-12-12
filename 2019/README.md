@@ -883,139 +883,155 @@ and its *kinetic energy*, and that:
 - Kinetic energy = sum of the absolute values of the moon's velocity in each
   coordinate.
 
-Seems complicated, but it's actually pretty simple. For a single moon, each step
-the following happens (using convenient names for simplicity's sake, in reality
-everything is a tuple of 3 integers):
+First of all, let's parse the input: each moon's initial position is in the form
+`<x=1, y=2, z=3>`, so matching wth a regular expression using the
+[`re` module][py-re] is the easiest way to go:
+
+```python
+exp = re.compile(r'-?\d+')
+initial_positions = [list(map(int, exp.findall(line))) for line in fin]
+```
+
+So, let's get a decent data structure to hold position and velocity of a moon:
+a [`namedtuple`][py-collections-namedtuple] is the easiest way to go:
+
+```python
+from collections import namedtuple
+
+# we will have m = Moon([px, py, pz], [vx, vy, vz])
+Moon = namedtuple('Moon', ['pos', 'vel'])
+moons = [Moon(pos.copy(), [0, 0, 0]) for pos in initial_positions]
+```
+
+As the problem states, for every moon, each step the following happens:
 
 ```python
 for other_moon in moons:
-    if other_moon.position.x > moon.position.x:
-        moon.velocity.x += 1
-    elif other_moon.position.x < moon.position.x:
-        moon.velocity.x -= 1
+    if other_moon is moon:
+        continue
 
-    # same for other dimensions (y and z)
+    if other_moon.pos[0] > moon.pos[0]:
+        moon.vel[0] += 1
+    elif other_moon.pos[0] < moon.pos[0]:
+        moon.vel[0] -= 1
 
-moon.position.x += moon.velocity.x
-# same for other dimensions (y and z)
+    # same for dimensions 1 and 2 (y and z)
+
+moon.pos[0] += moon.vel[0]
+# same for dimensions 1 and 2 (y and z)
 ```
 
-If we apply the above for each moon, and put the whole thing in a `for` loop, we
-can easily simulate 1000 steps, so let's do it!
+If we apply the above to all moons, putting the whole thing in a `for` loop, we
+can easily simulate 1000 steps.
 
-First of all, let's get the input: each moon's initial position is in the form
-`<x=1, y=2, z=3>`, so regular expressions from the [`re` module][py-re] really
-come in handy:
-
-```python
-rexp = re.compile(r'-?\d+')
-moons = [list(map(int, rexp.findall(line))) for line in fin]
-```
-
-Now let's dive into it and emulate the first 1000 steps. We'll be (ab)using
-[`enumerate`][py-enumerate] here to work on each position and velocity alone
-instead of using list indexes all around the place.
+We can take advantage of the [`combinations()`][py-itertools-combinations]
+function from the [`itertools` module][py-itertools] instead of two `for` loops
+to efficently get all the unique couples of moons. This means that we'll need to
+modify the velocity of both inside the loop, but that's no problem! Now let's
+dive into it and simulate the first 1000 steps.
 
 ```python
-positions = [m[:] for m in moons]
-velocities = [[0] * 3 for _ in range(len(moons))]
+from itertools import combinations
 
 for step in range(1000):
-    for i, (p, v) in enumerate(zip(positions, velocities)):
-        for j, p2 in enumerate(positions):
-            if i == j:
-                continue
-
-            for dim in range(3):
-                if   p2[dim] > p[dim]: v[dim] += 1
-                elif p2[dim] < p[dim]: v[dim] -= 1
-
-    for i, (p, v) in enumerate(zip(positions, velocities)):
+    for moon1, moon2 in combinations(moons, 2):
         for dim in range(3):
-            p[dim] += v[dim]
+            if moon2.pos[dim] > moon1.pos[dim]:
+                moon1.vel[dim] += 1
+                moon2.vel[dim] -= 1
+            elif moon2.pos[dim] < moon1.pos[dim]:
+                moon1.vel[dim] -= 1
+                moon2.vel[dim] += 1
+
+    for moon in moons:
+        for dim in range(3):
+            moon.pos[dim] += moon.vel[dim]
 ```
 
-Once this is done, we only need to calculate the total energy as described in
-the problem statement, and we get the answer:
+We could optimize this a little bit further by pre-calculating `range(3)` and
+turing it into a tuple to use each time, but we are not going for this level of
+optimization here, just a reasonably good and cool loking solution.
+
+Anyway, now we only need to calculate the total energy as described in the
+problem statement, and we get the answer:
 
 ```python
-potential = (sum(map(abs, p)) for p in positions)
-kinetic   = (sum(map(abs, v)) for v in velocities)
+potential = (sum(map(abs, m.pos)) for m in moons)
+kinetic   = (sum(map(abs, m.vel)) for m in moons)
 total     = sum(p * k for p, k in zip(potential, kinetic))
 print('Part 1:', total)
 ```
 
 ### Part 2
 
-For the second part of this task we are told that the initial state of the
-system (initial positions and all-zero velocities) will somehow end up repeating
-itself at some very, very far point in the future (millions of millions of
-steps). Clearly, bruteforcing is unfeasible (or, well, probably going to take
-ages), we want a smarter solution.
+For the second part of this problem we are told that the initial state of the
+system (initial positions and velocities) will somehow end up repeating itself
+at some very, very far point in the future (millions of millions of steps).
+Clearly, bruteforcing is unfeasible (or, well, probably going to take ages), so
+we want a smarter solution.
 
 If we take a look at each dimension, we can see that they are independent from
 each other. Velocity and position of a moon on the X axis will never affect
 velocity or position of any other moon on a *different* axis. Therefore, if we
 want to find the same state again, we can split the problem in three and find
-out how much time it takes for each dimension to go back to the initial values.
+out how much time it takes for each dimension to go back to the initial state.
 This simplifies things by an order of magnitude, and makes it possible to find
 the solution in a very reasonable amount of time, by advancing each direction by
 its own until it gets back to the initial state, then saving the number of steps
 it took for it to reset.
 
-We can represent a state for a given dimension as a tuple of pairs of positions
-and velocities for each moon. Let's build the initial initial_states:
-
-```python
-initial_states = []
-for dim in range(3):
-    # tuple of pairs (pos, vel) for each moon
-    initial_states.append(tuple((m[dim], 0) for m in moons))
-```
-
-The loops we wrote for part 1 basically remain the same, we'll just add some
-state checking logic. We also don't need to reset `step`, `positions` or
-`velocity`, we can just keep going from where we stopped. We continue until we
-find all periods. Since we use `zip(positions, velocities)` a lot, we can also
-save it as a tuple and re-use it, since list references will not change.
-
-```python
-periods = [0] * 3
-pos_vel = tuple(zip(positions, velocities))
-
-while not all(periods):
-    step += 1
-
-    for dim in range(3):
-        if not periods[dim]:
-            # Build current state as a tuple of pairs (pos, vel) for each moon.
-            cur_state = tuple((p[dim], v[dim]) for p, v in pos_vel)
-
-            if cur_state == initial_states[dim]:
-                periods[dim] = step
-
-    for i, (p, v) in enumerate(pos_vel):
-        for j, p2 in enumerate(positions):
-            if i == j:
-                continue
-
-            for dim in range(3):
-                if   p2[dim] > p[dim]: v[dim] += 1
-                elif p2[dim] < p[dim]: v[dim] -= 1
-
-    for i, (p, v) in enumerate(pos_vel):
-        for dim in range(3):
-            p[dim] += v[dim]
-```
-
 We'll end up with three different periods, and when different things repeat with
 different periods, they will all repeat together exactly at the least common
 multiple of those periods.
 
+The inner loops we wrote for part 1 basically remain the same, we'll just bring
+the `for dim in range(3)` loop that iterates over dimensions at the top level,
+then add some state checking logic. The initial position of each moon is saved
+in `initial_positions`, and the initial velocity is always `[0, 0, 0]`, so we
+can just check these values. We continue from the previous `step` until we find
+all periods. Since we already are using `itertools`, let's also use it to count
+to infinity with the [`count()`][py-itertools-count] generator.
+
+Here we go:
+
+```python
+from itertools import count
+
+periods = []
+start = step + 1
+
+for dim in range(3):
+    for period in count(start):
+        back_to_initial = True
+
+        for moon, initial_pos in zip(moons, initial_positions):
+            if moon.vel[dim] != 0 or moon.pos[dim] != initial_pos[dim]:
+                back_to_initial = False
+                break
+
+        if back_to_initial:
+            break
+
+        for moon1, moon2 in combinations(moons, 2):
+            if moon2.pos[dim] > moon1.pos[dim]:
+                moon1.vel[dim] += 1
+                moon2.vel[dim] -= 1
+            elif moon2.pos[dim] < moon1.pos[dim]:
+                moon1.vel[dim] -= 1
+                moon2.vel[dim] += 1
+
+        for moon in moons:
+            moon.pos[dim] += moon.vel[dim]
+
+    periods.append(period)
+```
+
 Let's calculate the least common multiple of all periods to get our answer.
-We'll use `gcd()` from the `fractions` module to write our own `lcm` function,
-and `reduce()` from `functools` as a cool functional way to apply it to the
-three periods (since `lcm()` takes two arguments).
+We'll use [`gcd()`][py-fractions-gcd] (gratest common divisor) from the
+[`fractions`][py-fractions] to write our own `lcm` function, and
+[`reduce()`][py-functools-reduce] from [`functools`][py-functools] as a cool
+functional way to apply it to the three periods (since our `lcm()` will take two
+arguments).
 
 ```python
 from fractions import gcd
@@ -1027,6 +1043,37 @@ def lcm(a, b):
 total_steps = reduce(lcm, periods, 1)
 print('Part 2:', total_steps)
 ```
+
+### Considerations
+
+One more cool thing: by observing the behavior of moons, we can notice that
+their velocity only gets to zero one time before going back to the initnal
+state. This means that we could just check until all moon velocities hit 0 and
+ignore their position. Once they do, in exactly double the number of steps they
+will all converge back to the initial position.
+
+Our "initial state check" code then becomes just:
+
+```python
+if all(m.vel[dim] == 0 for m in moons):
+    break
+```
+
+This property is pretty cool, but I am not enough of a matematician to write a
+proof for it for N objects (in our case 4). It's easy to see that it holds true
+for two objects and one dimension, as Reddit user
+[u/encse](https://www.reddit.com/user/encse) points out in
+[a comment](https://www.reddit.com/r/adventofcode/comments/e9o2sk/2019_day_12_part_2accidental_optimization_why_is/fak6kcw/).
+
+Two objects accelerate towards each other starting with v = 0. When meeting in
+the middle, the acceleration changes sign and they begin to slow down to v = 0.
+At this point the distance is the same as it was at the beginning, but the
+objects swapped place. It now takes the same amount of time to get back to the
+original position. In particular, those two objects will keep swapping places
+over and over again until the end of time, since that in our magic physics
+system acceleration never decreases with distance. This can be easy extended in
+N dimensions, since dimensions are independent, but is not as simple to
+generalize for more than two objects.
 
 
 [d01-problem]: https://adventofcode.com/2019/day/1
@@ -1058,7 +1105,14 @@ print('Part 2:', total_steps)
 [py-operator-mul]: https://docs.python.org/3/library/operator.html#operator.mul
 [py-cond-expr]: https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
+[py-collections-namedtuple]: https://docs.python.org/3/library/collections.html#collections.namedtuple
 [py-heapq]: https://docs.python.org/3/library/heapq.html
 [py-itertools]: https://docs.python.org/3/library/itertools.html
 [py-itertools-permutations]: https://docs.python.org/3/library/itertools.html#itertools.permutations
+[py-itertools-combinations]: https://docs.python.org/3/library/itertools.html#itertools.combinations
+[py-itertools-count]: https://docs.python.org/3/library/itertools.html#itertools.count
 [py-re]: https://docs.python.org/3/library/re.html
+[py-functools]: https://docs.python.org/3/library/functools.html
+[py-functools-reduce]: https://docs.python.org/3/library/functools.html#functools.reduce
+[py-fractions]: https://docs.python.org/3/library/fractions.html
+[py-fractions-gcd]: https://docs.python.org/3/library/fractions.html#fractions.gcd
