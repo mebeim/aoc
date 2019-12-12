@@ -368,7 +368,7 @@ Day 5 - Sunny with a Chance of Asteroids
 that I wrote on day 5 after solving the problem, so it's not the same solution
 as described below. The VM will come in handy for future days. It will allow me
 to simply do `from lib.intcode import IntcodeVM` to solve Intcode-related
-problems. Here's [the Intcode library][lib] I wrote and used.
+problems. Here's [the Intcode library](lib) I wrote and used.
 
 ### Part 1
 
