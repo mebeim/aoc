@@ -864,6 +864,8 @@ Day 12 - The N-Body Problem
 
 [Problem statement][d12-problem] — [Complete solution][d12-solution]
 
+### Part 1
+
 For today's puzzle we get to work with 3D coordinates. We are given exactly four
 points in the 3D space, which represent four moons in space. All moons attract
 and are attracted by each other. We need to simulate 1000 steps of moon movement
