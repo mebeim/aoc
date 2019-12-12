@@ -194,7 +194,7 @@ easier to apply a delta given a direction, instead of writing a long chain of
 
 We then get the intersection of the two sets, and calculate the Manhattan
 distance from each point to the origin, keeping the lowest value. Since the
-originis `(0, 0)` the Manhattan distance from a point to the origin is simply
+origin is `(0, 0)`, the Manhattan distance from a point to the origin is simply
 the sum of the absolute values of the two coordinates of the point.
 
 ```python
