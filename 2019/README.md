@@ -30,8 +30,8 @@ We are asked to first apply a function to all of them, and them sum all the
 results. The function is `x / 3 - 2`, where the division is an *integer*
 division.
 
-We can simply use the built-in [`map()`][py-map] and [`sum()`][py-sum] functions
-to solve this in one line:
+We can simply use the built-in [`map()`][py-builtin-map] and
+[`sum()`][py-builtin-sum] functions to solve this in one line:
 
 ```python
 total = sum(map(lambda n: n // 3 - 2, numbers))
@@ -153,8 +153,8 @@ such direction.
 The two wires will intersect each other, and we are asked to calculate the
 Manhattan distance from the origin to the closest intersection.
 
-First, parse the moves with [`map()`][py-map] and a simple funciton that takes a
-string and splits it into direction and number of steps.
+First, parse the moves with [`map()`][py-builtin-map] and a simple funciton that
+takes a string and splits it into direction and number of steps.
 
 ```python
 def make_move(s):
@@ -262,11 +262,11 @@ A valid password must:
 - Be composed of non-decreasing digits (from left to right).
 
 An iterator over pairs of adjacent characters of a string can be easily obtained
-using the [`zip()`][py-zip] build-in function. If we convert our values in
-string form: this will make our life much easier. Since we are only dealing with
-ASCII digits, and the ASCII values for digits are ordered just like the digits,
-we don't even need to care about converting them back to integers to compare
-them.
+using the [`zip()`][py-builtin-zip] build-in function. If we convert our values
+in string form: this will make our life much easier. Since we are only dealing
+with ASCII digits, and the ASCII values for digits are ordered just like the
+digits, we don't even need to care about converting them back to integers to
+compare them.
 
 ```python
 digits = str(value)
@@ -275,7 +275,7 @@ pairs = tuple(zip(digits, digits[1:]))
 
 To check if there are at least two adjacent matching digits, we can iterate over
 the pairs of adjacent digits and check if any pair of equal digits exists using
-the [`any()`][py-any] build-in function.
+the [`any()`][py-builtin-any] build-in function.
 
 ```python
 has_matching_pair = any(a == b for a, b in pairs)
@@ -283,8 +283,8 @@ has_matching_pair = any(a == b for a, b in pairs)
 
 As per the second requirement, to check if a number is only composed of
 non-decreasing digits, we can iterate over the pairs of adjacent digits and use
-the [`all()`][py-all] build-in function to check if the condition is met for
-each pair.
+the [`all()`][py-builtin-all] build-in function to check if the condition is met
+for each pair.
 
 ```python
 is_non_decreasing = all(a <= b for a, b in pairs)
@@ -325,15 +325,15 @@ this:
   digits.
 
 To check if a group of two equal digits is isolated, we now need an iterator
-over a *quadruplet* of consecutive digits. We can use [`zip()`][py-zip] as
-before:
+over a *quadruplet* of consecutive digits. We can use [`zip()`][py-builtin-zip]
+as before:
 
 ```python
 quadruplets = zip(digits, digits[1:], digits[2:], digits[3:])
 ```
 
-Then, using the same [`any()`][py-any] function as before, we also need to
-account for isolated digits at the beginning and at the end of the string. We
+Then, using the same [`any()`][py-builtin-any] function as before, we also need
+to account for isolated digits at the beginning and at the end of the string. We
 can just cheat and add two random characters to the extremes of the string.
 
 ```python
@@ -597,8 +597,8 @@ def count_orbits(planet):
 ```
 
 We don't pass `T` as a variable just for simplicity, since it's global anyway.
-Seems pretty simple, the result is now just one [`map()`][py-map] and
-[`sum()`][py-sum] away:
+Seems pretty simple, the result is now just one [`map()`][py-builtin-map] and
+[`sum()`][py-builtin-sum] away:
 
 ```python
 total_orbits = sum(map(count_orbits, T))
@@ -630,7 +630,8 @@ Now our tree clearly became an undirected graph, since we don't need to respect
 the orbit hierarchy to make a transfer. In other words, we don't care about who
 is the child and who is the parent anymore. We need a different data structure:
 a dictionary of sets `{planet: set_of_connected_planets}`. We can use the very
-cool [`defaultdict`][py-defaultdict], which is just like a `dict`, but
+cool [`defaultdict`][py-collections-defaultdict] from the
+[`collections` module][py-collections], which is just like a normal `dict`, but
 automatically creates entries when we try to access them. The source and
 destination can just be taken by the old `T` tree.
 
@@ -652,9 +653,9 @@ For this purpose the [`heapq`][py-heapq] module is very useful: it provides the
 heap data structure, which is capable of maintaining an ordered structure of
 elements that lets us efficiently pop the smallest element. We'll use it as a
 queue to hold planets to visit. We will also use the built-in
-[`filter()`][py-filter] function for convenience. A `defaultdict` that returns
-`float('inf')` is also useful to treat not-yet-seen planets as being infinite
-steps away.
+[`filter()`][py-builtin-filter] function for convenience. A `defaultdict` that
+returns `float('inf')` is also useful to treat not-yet-seen planets as being
+infinite steps away.
 
 ```python
 import heapq
@@ -953,7 +954,8 @@ turing it into a tuple to use each time, but we are not going for this level of
 optimization here, just a reasonably good and cool loking solution.
 
 Anyway, now we only need to calculate the total energy as described in the
-problem statement, and we get the answer:
+problem statement, and we get the answer. The classic [`map()`][py-builtin-map]
+& [`sum()`][py-builtin-sum] approach works like a charm as usual.
 
 ```python
 potential = (sum(map(abs, m.pos)) for m in moons)
@@ -1093,26 +1095,27 @@ generalize for more than two objects.
 [d07-solution]: day07_clean.py
 [d12-solution]: day12_clean.py
 
-[py-map]: https://docs.python.org/3/library/functions.html#map
-[py-sum]: https://docs.python.org/3/library/functions.html#sum
-[py-zip]: https://docs.python.org/3/library/functions.html#zip
-[py-any]: https://docs.python.org/3/library/functions.html#any
-[py-all]: https://docs.python.org/3/library/functions.html#all
-[py-filter]: https://docs.python.org/3/library/functions.html#filter
-[py-enumerate]: https://docs.python.org/3/library/functions.html#enumerate
-[py-operator]: https://docs.python.org/3/library/operator.html
-[py-operator-add]: https://docs.python.org/3/library/operator.html#operator.add
-[py-operator-mul]: https://docs.python.org/3/library/operator.html#operator.mul
-[py-cond-expr]: https://docs.python.org/3/reference/expressions.html#conditional-expressions
-[py-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
-[py-collections-namedtuple]: https://docs.python.org/3/library/collections.html#collections.namedtuple
-[py-heapq]: https://docs.python.org/3/library/heapq.html
-[py-itertools]: https://docs.python.org/3/library/itertools.html
-[py-itertools-permutations]: https://docs.python.org/3/library/itertools.html#itertools.permutations
-[py-itertools-combinations]: https://docs.python.org/3/library/itertools.html#itertools.combinations
-[py-itertools-count]: https://docs.python.org/3/library/itertools.html#itertools.count
-[py-re]: https://docs.python.org/3/library/re.html
-[py-functools]: https://docs.python.org/3/library/functools.html
-[py-functools-reduce]: https://docs.python.org/3/library/functools.html#functools.reduce
-[py-fractions]: https://docs.python.org/3/library/fractions.html
-[py-fractions-gcd]: https://docs.python.org/3/library/fractions.html#fractions.gcd
+[py-cond-expr]:               https://docs.python.org/3/reference/expressions.html#conditional-expressions
+[py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
+[py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
+[py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
+[py-builtin-any]:             https://docs.python.org/3/library/functions.html#any
+[py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
+[py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
+[py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
+[py-operator]:                https://docs.python.org/3/library/operator.html
+[py-operator-add]:            https://docs.python.org/3/library/operator.html#operator.add
+[py-operator-mul]:            https://docs.python.org/3/library/operator.html#operator.mul
+[py-collections]:             https://docs.python.org/3/library/collections.html
+[py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
+[py-collections-namedtuple]:  https://docs.python.org/3/library/collections.html#collections.namedtuple
+[py-heapq]:                   https://docs.python.org/3/library/heapq.html
+[py-itertools]:               https://docs.python.org/3/library/itertools.html
+[py-itertools-permutations]:  https://docs.python.org/3/library/itertools.html#itertools.permutations
+[py-itertools-combinations]:  https://docs.python.org/3/library/itertools.html#itertools.combinations
+[py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
+[py-re]:                      https://docs.python.org/3/library/re.html
+[py-functools]:               https://docs.python.org/3/library/functools.html
+[py-functools-reduce]:        https://docs.python.org/3/library/functools.html#functools.reduce
+[py-fractions]:               https://docs.python.org/3/library/fractions.html
+[py-fractions-gcd]:           https://docs.python.org/3/library/fractions.html#fractions.gcd
