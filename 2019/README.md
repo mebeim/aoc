@@ -260,15 +260,18 @@ A valid password must:
 - Be composed of non-decreasing digits (from left to right).
 
 An iterator over pairs of adjacent characters of a string can be easily obtained
-using the [`zip()`][py-zip] build-in functon. If we convert our values in string
-form: this will make our life much easier.
+using the [`zip()`][py-zip] build-in function. If we convert our values in
+string form: this will make our life much easier. Since we are only dealing with
+ASCII digits, and the ASCII values for digits are ordered just like the digits,
+we don't even need to care about converting them back to integers to compare
+them.
 
 ```python
 digits = str(value)
 pairs = tuple(zip(digits, digits[1:]))
 ```
 
-To check if there are at least two adjavent matching digits, we can iterate over
+To check if there are at least two adjacent matching digits, we can iterate over
 the pairs of adjacent digits and check if any pair of equal digits exists using
 the [`any()`][py-any] build-in function.
 
@@ -344,19 +347,28 @@ n_valid = 0
 for pwd in range(lo, hi + 1):
     digits = str(pwd)
     pairs = zip(digits, digits[1:])
-    quadruplets = zip(digits, digits[1:], digits[2:], digits[3:])
 
     is_non_decreasing = all(a <= b for a, b in pairs)
-    has_isolated = any(a != b and b == c and c != d for a, b, c, d in quadruplets)
 
-    if is_non_decreasing and has_isolated:
-        n_valid += 1
+    if is_non_decreasing:
+        digits = 'x' + digits + 'x'
+        quadruplets = zip(digits, digits[1:], digits[2:], digits[3:])
+        has_isolated = any(a != b and b == c and c != d for a, b, c, d in quadruplets)
+
+        if has_isolated:
+            n_valid += 1
 
 print('Part 2:', n_valid)
 ```
 
-Notice that wrapping `zip(digits, digits[1:])` into `tuple()` is not needed
-anymore now, since we only use the iterator once.
+Adding one nesting level makes things go a little bit faster since we only check
+the quadruplets if the first check passes. Also, notice that wrapping
+`zip(digits, digits[1:])` into `tuple()` is not needed anymore now, since we
+only use the iterator once (and most importantly, we add the two `'x'` only
+*after* using it.
+
+Both parts could also be condensed in a single loop making it even cleaner,
+which is what I did in the complete solution linked above.
 
 
 Day 5 - Sunny with a Chance of Asteroids
@@ -597,7 +609,7 @@ We now need to find the minimum number of "orbital transfers" needed to get the
 planet `YOU` to orbit the same planet as `SAN`. We start at the planet that
 `YOU` is orbiting, and we want to get to the planet that `SAN` is orbiting.
 
-As an example, in the below situation we wolud need `4` transfers to get to
+As an example, in the below situation we would need `4` transfers to get to
 `SAN`:
 
                *YOU*
