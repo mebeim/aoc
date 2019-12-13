@@ -886,9 +886,9 @@ We are assigned the pretty straightforward task to find the layer with the least
 amount of `0` pixels, and count the number of `1` and `2` pixels in that layer,
 multiplying those two numbers togeter to get a "checksum", which is the answer.
 
-We can do this pretty cleanly using the [`min()`][py-builtin-min] function. With the
-`key=` function parameter, we can say that we want to find a layer `l` such that
-the count of zeroes is the minimum. So here's part one:
+We can do this pretty cleanly using the [`min()`][py-builtin-min] function. With
+the `key=` function parameter, we can say that we want to find a layer `l` such
+that the count of zeroes is the minimum. So here's part one:
 
 ```python
 best = min(layers, key=lambda l: l.count('0'))
@@ -993,11 +993,11 @@ features that need to be added to our VM are:
 - A new opcode, `9`: it adjusts the *relative base* by the value of its only
   parameter. The relative base increases (or decreases, if the value is
   negative) by the value of the parameter.
-- A new parameter mode, `2`: *relative mode*. In this mode parameters are interpreted
-  as an offset from the *relative base*. In this mode, reading/writing memory
-  means computing the address by adding the value of the parameter to the
-  *relative base* first. As an example, a destination parameter of value `3` in
-  relative mode means writing to `mem[rel_base + 3]`.
+- A new parameter mode, `2`: *relative mode*. In this mode parameters are
+  interpreted as an offset from the *relative base*. In this mode,
+  reading/writing memory means computing the address by adding the value of the
+  parameter to the *relative base* first. As an example, a destination parameter
+  of value `3` in relative mode means writing to `mem[rel_base + 3]`.
 - Support for very large numbers (we are using Python so it's already fine).
 - Read/writes to memory beyond the size of the program: this can be easily
   achieved by simply appending to the memory a long list of zeroes.
