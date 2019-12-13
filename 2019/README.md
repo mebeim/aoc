@@ -1031,14 +1031,14 @@ for dim in range(3):
 ```
 
 Let's calculate the least common multiple of all periods to get our answer.
-We'll use [`gcd()`][py-fractions-gcd] (gratest common divisor) from the
-[`fractions`][py-fractions] module to write our own `lcm` function, and
+We'll use [`gcd()`][py-math-gcd] (gratest common divisor) from the
+[`math`][py-math] module to write our own `lcm` function, and
 [`reduce()`][py-functools-reduce] from [`functools`][py-functools] as a cool
 functional way to apply it to the three periods (since our `lcm()` will take two
 arguments).
 
 ```python
-from fractions import gcd
+from math import gcd
 from functools import reduce
 
 def lcm(a, b):
@@ -1119,5 +1119,5 @@ generalize for more than two objects.
 [py-re]:                      https://docs.python.org/3/library/re.html
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-reduce]:        https://docs.python.org/3/library/functools.html#functools.reduce
-[py-fractions]:               https://docs.python.org/3/library/fractions.html
-[py-fractions-gcd]:           https://docs.python.org/3/library/fractions.html#fractions.gcd
+[py-math]:                    https://docs.python.org/3/library/math.html
+[py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd

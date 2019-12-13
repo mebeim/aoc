@@ -2,7 +2,7 @@
 
 import advent
 import re
-from fractions import gcd
+from math import gcd
 from functools import reduce
 from collections import namedtuple
 from itertools import combinations, count
