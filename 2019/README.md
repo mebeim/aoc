@@ -4,17 +4,17 @@ AoC 2019 walkthrough
 Table of Contents
 -----------------
 
-- [Day 1 - The Tyranny of the Rocket Equation](#day-1---the-tyranny-of-the-rocket-equation)
-- [Day 2 - 1202 Program Alarm](#day-2---1202-program-alarm)
-- [Day 3 - Crossed Wires](#day-3---crossed-wires)
-- [Day 4 - Secure Container](#day-4---secure-container)
-- [Day 5 - Sunny with a Chance of Asteroids](#day-5---sunny-with-a-chance-of-asteroids)
-- [Day 6 - Universal Orbit Map](#day-6---universal-orbit-map)
-- [Day 7 - Amplification Circuit](#day-7---amplification-circuit)
-- [Day 8 - Space Image Format](#day-8---space-image-format)
-- [Day 9 - Sensor Boost](#day-9---sensor-boost)
-- [Day 12 - Day 12 - The N-Body Problem](#day-12---the-n-body-problem)
-- [Day 13 - Care Package](#day-13---care-package)
+- [Day 1 - The Tyranny of the Rocket Equation][d01]
+- [Day 2 - 1202 Program Alarm][d02]
+- [Day 3 - Crossed Wires][d03]
+- [Day 4 - Secure Container][d04]
+- [Day 5 - Sunny with a Chance of Asteroids][d05]
+- [Day 6 - Universal Orbit Map][d06]
+- [Day 7 - Amplification Circuit][d07]
+- [Day 8 - Space Image Format][d08]
+- [Day 9 - Sensor Boost][d09]
+- [Day 12 - Day 12 - The N-Body Problem][d12]
+- [Day 13 - Care Package][d13]
 
 
 Day 1 - The Tyranny of the Rocket Equation
@@ -976,9 +976,9 @@ Day 9 - Sensor Boost
 ### Prerequisites
 
 This problem requires a working Intcode virtual machine built following
-instructions in the day 2 and day 5 problem statements! The machine could be as
-simple as a single function, or something more complicated like a class with
-multiple methods. Take a look at previous days to know more.
+instructions in the [day 2][d02] and [day 5][d05] problem statements! The
+machine could be as simple as a single function, or something more complicated
+like a class with multiple methods. Take a look at previous days to know more.
 
 I will use and explain how to extend the simple single-function Intcode VM
 created in day 5 of this walkthrough.
@@ -1052,9 +1052,9 @@ OPCODE_PARAMTYPES = {
 }
 ```
 
-Now we can take the `run()` function we wrote for
-[day 5](#day-5---sunny-with-a-chance-of-asteroids), and work from there. Each
-iteration, we will first decode the opcode, its modes, types, and parameters:
+Now we can take the `run()` function we wrote for [day 5][d05], and work from
+there. Each iteration, we will first decode the opcode, its modes, types, and
+parameters:
 
 ```python
 op = prog[pc]
@@ -1433,9 +1433,10 @@ Day 13 - Care Package
 ### Prerequisites
 
 This problem requires a working Intcode virtual machine built following
-instructions in the day 2, day 5 and day 9 problem statements! The machine could
-be as simple as a single function, or something more complicated like a class
-with multiple methods. Take a look at previous days to know more.
+instructions in the [day 2][d02], [day 5][d05] and [day 9][d09] problem
+statements! The machine could be as simple as a single function, or something
+more complicated like a class with multiple methods. Take a look at previous
+days to know more.
 
 I will be using [my `IntcodeVM` class](lib/intcode.py) to solve this puzzle.
 
@@ -1578,6 +1579,18 @@ print('Part 2:', score)
 The emulation of the whole program until the win takes some seconds, but then we
 get our answer as expected.
 
+
+[d01]: #day-1---the-tyranny-of-the-rocket-equation
+[d02]: #day-2---1202-program-alarm
+[d03]: #day-3---crossed-wires
+[d04]: #day-4---secure-container
+[d05]: #day-5---sunny-with-a-chance-of-asteroids
+[d06]: #day-6---universal-orbit-map
+[d07]: #day-7---amplification-circuit
+[d08]: #day-8---space-image-format
+[d09]: #day-9---sensor-boost
+[d12]: #day-12---the-n-body-problem
+[d13]: #day-13---care-package
 
 [d01-problem]: https://adventofcode.com/2019/day/1
 [d02-problem]: https://adventofcode.com/2019/day/2
