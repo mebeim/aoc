@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import advent
-from utils import *
 from lib.intcode import IntcodeVM
 
 EMPTY, WALL, BLOCK, PADDLE, BALL = range(5)
@@ -18,7 +17,7 @@ blocks = set()
 
 for i in range(0, len(out), 3):
 	x, y, t = out[i:i + 3]
-	if t == 2:
+	if t == BLOCK:
 		blocks.add((x, y))
 
 total_blocks = len(blocks)
