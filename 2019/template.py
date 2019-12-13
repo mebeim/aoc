@@ -14,6 +14,19 @@ timer_start()
 # lines = get_lines(fin)
 # charmat = get_char_matrix(fin)
 
+# from lib.intcode import IntcodeVM
+# prog = get_ints(fin, True)
+# vm = IntcodeVM(prog)
+
+# def vm_read():
+# 	pass
+
+# def vm_write():
+# 	pass
+
+# vm.read = vm_read
+# vm.write = vm_write
+
 
 
 
