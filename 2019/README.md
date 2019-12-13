@@ -382,12 +382,6 @@ Day 5 - Sunny with a Chance of Asteroids
 
 [Problem statement][d05-problem] — [Complete solution][d05-solution]
 
-**Disclaimer**: my complete solution for this problem uses an `IntcodeVM` class
-that I wrote on day 5 after solving the problem, so it's not the same solution
-as described below. The VM will come in handy for future days. It will allow me
-to simply do `from lib.intcode import IntcodeVM` to solve Intcode-related
-problems. Here's [the Intcode library](lib) I wrote and used.
-
 ### Part 1
 
 Second Intcode puzzle of the year. In addition to what we know from day 2, now
@@ -1600,7 +1594,7 @@ get our answer as expected.
 [d02-solution]: day02_clean.py
 [d03-solution]: day03_clean.py
 [d04-solution]: day04_clean.py
-[d05-solution]: day05_clean.py
+[d05-solution]: misc/day05/walkthrough_solution.py
 [d06-solution]: day06_clean.py
 [d07-solution]: day07_clean.py
 [d08-solution]: day08_clean.py
