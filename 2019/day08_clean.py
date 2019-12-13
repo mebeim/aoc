@@ -11,10 +11,8 @@ fin = advent.get_input()
 chars = fin.readline().strip()
 layers = [chars[i:i + SIZE] for i in range(0, len(chars), SIZE)]
 
-best = min(layers, key=lambda l: sum(x == '0' for x in l))
-ones = sum(x == '1' for x in best)
-twos = sum(x == '2' for x in best)
-checksum = ones * twos
+best = min(layers, key=lambda l: l.count('0'))
+checksum = best.count('1') * best.count('2')
 
 assert checksum == 1064
 advent.submit_answer(1, checksum)
