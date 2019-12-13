@@ -12,8 +12,10 @@ Table of Contents
 - [Day 6 - Universal Orbit Map](#day-6---universal-orbit-map)
 - [Day 7 - Amplification Circuit](#day-7---amplification-circuit)
 - [Day 8 - Space Image Format](#day-8---space-image-format)
+- [Day 9 - Sensor Boost](#day-9---sensor-boost)
 - [Day 12 - Day 12 - The N-Body Problem](#day-12---the-n-body-problem)
 - [Day 13 - Care Package](#day-13---care-package)
+
 
 Day 1 - The Tyranny of the Rocket Equation
 ------------------------------------------
@@ -971,6 +973,234 @@ Result:
 Now that's readable, and we succesfully got our part 2 answer!
 
 
+
+Day 9 - Sensor Boost
+--------------------
+
+[Problem statement][d09-problem] — [Complete solution][d09-solution]
+
+### Prerequisites
+
+This problem requires a working Intcode virtual machine built following
+instructions in the day 2 and day 5 problem statements! The machine could be as
+simple as a single function, or something more complicated like a class with
+multiple methods. Take a look at previous days to know more.
+
+I will use and explain how to extend the simple single-function Intcode VM
+created in day 5 of this walkthrough.
+
+### Part 1
+
+Looks like we need to add some functionality to our Intcode VM! The two main
+features that need to be added to our VM are:
+
+- The VM needs to remember a new global value called *relative base*, which
+  starts as `0` and gets modified by the program.
+- A new opcode, `9`: it adjusts the *relative base* by the value of its only
+  parameter. The relative base increases (or decreases, if the value is
+  negative) by the value of the parameter.
+- A new parameter mode, `2`: *relative mode*. In this mode parameters are interpreted
+  as an offset from the *relative base*. In this mode, reading/writing memory
+  means computing the address by adding the value of the parameter to the
+  *relative base* first. As an example, a destination parameter of value `3` in
+  relative mode means writing to `mem[rel_base + 3]`.
+- Support for very large numbers (we are using Python so it's already fine).
+- Read/writes to memory beyond the size of the program: this can be easily
+  achieved by simply appending to the memory a long list of zeroes.
+
+We are given an input Intcode program which uses these new features, and we need
+to simply run it providing `1` as the only input to get the final output, which
+is the answer.
+
+First of all, it's becoming hard to keep track of things, so let's use some
+enum-like variables to represent opcodes and also use a dictionary to keep track
+of the number of parameters for each opcode:
+
+```python
+OPADD, OPMUL, OPIN, OPOUT, OPJNZ, OPJZ, OPLT, OPEQ, OPREL = range(1, 10)
+OPHALT = 99
+
+OPCODE_NPARAMS = {
+    OPADD : 3,
+    OPMUL : 3,
+    OPIN  : 1,
+    OPOUT : 1,
+    OPJNZ : 2,
+    OPJZ  : 2,
+    OPLT  : 3,
+    OPEQ  : 3,
+    OPREL : 1,
+    OPHALT: 0
+}
+```
+
+Relative mode needs to be handled differently for source and destination
+parameters. If a parameter is source, then we should read
+`mem[param + rel_base]`, otherwise we should write to the index
+`param + rel_base`, not to the index `mem[param + rel_base]`. Let's keep track
+of parameter modes and types the same way we just did for opcodes:
+
+```python
+MODE_POSITION, MODE_IMMEDIATE, MODE_RELATIVE = range(3)
+TYPE_SRC, TYPE_DST = range(2)
+
+OPCODE_PARAMTYPES = {
+	OPADD : (TYPE_SRC, TYPE_SRC, TYPE_DST),
+	OPMUL : (TYPE_SRC, TYPE_SRC, TYPE_DST),
+	OPIN  : (TYPE_DST,),
+	OPOUT : (TYPE_SRC,),
+	OPJNZ : (TYPE_SRC, TYPE_SRC),
+	OPJZ  : (TYPE_SRC, TYPE_SRC),
+	OPLT  : (TYPE_SRC, TYPE_SRC, TYPE_DST),
+	OPEQ  : (TYPE_SRC, TYPE_SRC, TYPE_DST),
+	OPREL : (TYPE_SRC,),
+	OPHALT: ()
+}
+```
+
+Now we can take the `run()` function we wrote for
+[day 5](#day-5---sunny-with-a-chance-of-asteroids), and work from there. Each
+iteration, we will first decode the opcode, its modes, types, and parameters:
+
+```python
+op = prog[pc]
+modes = ((op // 100) % 10, (op // 1000) % 10, (op // 10000) % 10)
+op = op % 10
+
+nparams = OPCODE_NPARAMS[op]
+types   = OPCODE_PARAMTYPES[op]
+params  = prog[pc + 1:pc + 1 + nparams]
+```
+
+Then, we will translate the parameters into the correct values according to
+their types and modes:
+
+```python
+for i in range(len(params)):
+    if modes[i] == MODE_POSITION:
+        if types[i] == TYPE_SRC:
+            params[i] = prog[params[i]]
+    elif modes[i] == MODE_RELATIVE:
+        if types[i] == TYPE_SRC:
+            params[i] = prog[relative_base + params[i]]
+        elif types[i] == TYPE_DST:
+            params[i] += relative_base
+```
+
+The big work is done, now it's only matter of implementing the new opcode `9`,
+and use the `params` for each opcode. Here's the final function:
+
+```python
+def run(prog, input_function, output_function):
+	pc = 0
+	relative_base = 0
+
+	# Extend memory filling with zeros.
+	prog = prog + [0] * 10000
+
+	while prog[pc] != OPHALT:
+		op = prog[pc]
+
+		# Calculate parameter modes.
+		modes = ((op // 100) % 10, (op // 1000) % 10, (op // 10000) % 10)
+		op = op % 10
+
+		# Get parameters and parameter types.
+		nparams = OPCODE_NPARAMS[op]
+		types   = OPCODE_PARAMTYPES[op]
+		params  = prog[pc + 1:pc + 1 + nparams]
+
+		# Translate parameters into the needed values based on the mode.
+		for i in range(len(params)):
+			if modes[i] == MODE_POSITION:
+				if types[i] == TYPE_SRC:
+					params[i] = prog[params[i]]
+			elif modes[i] == MODE_RELATIVE:
+				if types[i] == TYPE_SRC:
+					params[i] = prog[relative_base + params[i]]
+				elif types[i] == TYPE_DST:
+					params[i] += relative_base
+
+		if op == OPADD:
+			a, b, c = params
+			prog[c] = a + b
+			pc += 4
+		elif op == OPMUL:
+			a, b, c = params
+			prog[c] = a * b
+			pc += 4
+		elif op == OPIN:
+			a = params[0]
+			prog[a] = input_function()
+			pc += 2
+		elif op == OPOUT:
+			a = params[0]
+			output_function(a)
+			pc += 2
+		elif op == OPJNZ:
+			a, b = params
+			pc = b if a != 0 else pc + 3
+		elif op == OPJZ:
+			a, b = params
+			pc = b if a == 0 else pc + 3
+		elif op == OPLT:
+			a, b, c = params
+			prog[c] = 1 if a < b else 0
+			pc += 4
+		elif op == OPEQ:
+			a, b, c = params
+			prog[c] = 1 if a == b else 0
+			pc += 4
+		elif op == OPREL:
+			a = params[0]
+			relative_base += a
+			pc += 2
+```
+
+The function now takes three parameters: the program, one input function to be
+called when the *input* instruction is executed, and one output function to be
+called when the *output* instruction is executed. This way, it will be easier to
+program dynamic input and output for future days. For part 1, we can define
+these two function pretty simply:
+
+```python
+in_func = lambda: 1
+output_value = None
+
+def out_func(v):
+	global output_value
+	output_value = v
+```
+
+Okay, let's run it on our input program and get the result:
+
+```python
+program = list(map(int, fin.read().split(',')))
+
+run(program[:], in_func, out_func)
+print('Part 1:', output_value)
+```
+
+### Part 2
+
+Part 2 statement says "You now have a complete Intcode computer". Yay! No more
+adding functionality!
+
+This second part is very straightforward. We don't need to do anything, just run
+the program again with `2` as its only input. We'll just redefine the input
+function, and keep the rest the same. It literally takes it more to run it than
+to write it.
+
+```python
+in_func = lambda: 2
+
+run(program[:], in_func, out_func)
+print('Part 1:', output_value)
+```
+
+And there it is, day 9 completed and we now have a complete Intcode VM! Nice.
+
+
 Day 12 - The N-Body Problem
 ---------------------------
 
@@ -1363,6 +1593,7 @@ get our answer as expected.
 [d06-problem]: https://adventofcode.com/2019/day/6
 [d07-problem]: https://adventofcode.com/2019/day/7
 [d08-problem]: https://adventofcode.com/2019/day/8
+[d09-problem]: https://adventofcode.com/2019/day/9
 [d12-problem]: https://adventofcode.com/2019/day/12
 [d13-problem]: https://adventofcode.com/2019/day/13
 [d01-solution]: day01_clean.py
@@ -1373,6 +1604,7 @@ get our answer as expected.
 [d06-solution]: day06_clean.py
 [d07-solution]: day07_clean.py
 [d08-solution]: day08_clean.py
+[d09-solution]: misc/day09/walkthrough_solution.py
 [d12-solution]: day12_clean.py
 [d13-solution]: day13_clean.py
 
