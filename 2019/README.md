@@ -11,6 +11,7 @@ Table of Contents
 - [Day 5 - Sunny with a Chance of Asteroids](#day-5---sunny-with-a-chance-of-asteroids)
 - [Day 6 - Universal Orbit Map](#day-6---universal-orbit-map)
 - [Day 7 - Amplification Circuit](#day-7---amplification-circuit)
+- [Day 8 - Space Image Format](#day-8---space-image-format)
 - [Day 12 - Day 12 - The N-Body Problem](#day-12---the-n-body-problem)
 
 Day 1 - The Tyranny of the Rocket Equation
@@ -859,6 +860,116 @@ ready at hand would have made working towards a solution much slower. Not having
 written easily extensible code for the VM would have been an annoyance too.
 
 
+Day 8 - Space Image Format
+--------------------------
+
+[Problem statement][d08-problem] — [Complete solution][d08-solution]
+
+### Part 1
+
+Pixels! For today's puzzle we have to deal with a strange image format. In
+short, an image is composed by several layers, each 25x6 pixels in size, and our
+input is composed of only one line: a long string which is the concatenation of
+all the layers of the image, where one character represents one pixel.
+
+It's convenient not to think about a layer as a rectangle of pixels for now,
+since we are not asked to do any matrix operation on the pixels. We can just get
+the input and split it into layers. We also don't need to worry about converting
+characters to numbers.
+
+```python
+WIDTH, HEIGHT = 25, 6
+SIZE = WIDTH * HEIGHT
+
+chars = fin.readline().strip()
+layers = [chars[i:i + SIZE] for i in range(0, len(chars), SIZE)]
+```
+
+We are assigned the pretty straightforward task to find the layer with the least
+amount of `0` pixels, and count the number of `1` and `2` pixels in that layer,
+multiplying those two numbers togeter to get a "checksum", which is the answer.
+
+We can do this pretty cleanly using the [`min()`][py-builtin-min] function. With the
+`key=` function parameter, we can say that we want to find a layer `l` such that
+the count of zeroes is the minimum. So here's part one:
+
+```python
+best = min(layers, key=lambda l: l.count('0'))
+checksum = best.count('1') * best.count('2')
+print('Part 1:', checksum)
+```
+
+### Part 2
+
+We are now todl that each pixel can be either black (`0`), white (`1`) or
+transparent (`2`), and to get the "real" image from all the layers, we need to
+stack them up: since we can see through the transparent pixels, the final value
+of a pixel in a given position of the image will be the one of the first pixel
+in that position that is not transparent. The final reconstructed image will
+represent a certain message, which is the answer.
+
+As we just said, we can create the final image as a simple list, and then cycle
+through each pixel of each layer, top to bottom, to find the first value which
+is not transparent, assigning it to the final image.
+
+```python
+image = ['2'] * SIZE
+
+for i in range(SIZE):
+    for l in layers:
+        if l[i] != '2':
+            image[i] = l[i]
+            break
+```
+
+Now we can just split the image in multiple rows (each 25 pixels wide) to see
+the final result.
+
+```python
+decoded = ''
+
+for i in range(0, SIZE, WIDTH):
+    decoded += ''.join(image[i:i + WIDTH]) + '\n'
+
+print('Part 2:', decoded, sep='\n')
+```
+
+Result:
+
+    1110011110011000110010010
+    1001010000100101001010100
+    1001011100100001001011000
+    1110010000100001111010100
+    1000010000100101001010100
+    1000010000011001001010010
+
+Hmmm... it doesn't look that clear, does it? Let's replace black pixels with a
+space and white pixels with an hashtag `#` and print that again. To do this we
+can use a simple dictionary to map each pixel to the character we want, with the
+help of [`map()`][py-builtin-map].
+
+```python
+conv = {'0': ' ', '1': '#'}
+decoded = ''
+
+for i in range(0, SIZE, WIDTH):
+    decoded += ''.join(map(conv.get, image[i:i + WIDTH])) + '\n'
+
+print('Part 2:', decoded, sep='\n')
+```
+
+Result:
+
+    ###  ####  ##   ##  #  #
+    #  # #    #  # #  # # #
+    #  # ###  #    #  # ##
+    ###  #    #    #### # #
+    #    #    #  # #  # # #
+    #    #     ##  #  # #  #
+
+Now that's readable, and we succesfully got our part 2 answer!
+
+
 Day 12 - The N-Body Problem
 ---------------------------
 
@@ -1097,6 +1208,7 @@ tailored to be solvable. Quite interesting!
 [d05-problem]: https://adventofcode.com/2019/day/5
 [d06-problem]: https://adventofcode.com/2019/day/6
 [d07-problem]: https://adventofcode.com/2019/day/7
+[d08-problem]: https://adventofcode.com/2019/day/8
 [d12-problem]: https://adventofcode.com/2019/day/12
 [d01-solution]: day01_clean.py
 [d02-solution]: day02_clean.py
@@ -1105,11 +1217,13 @@ tailored to be solvable. Quite interesting!
 [d05-solution]: day05_clean.py
 [d06-solution]: day06_clean.py
 [d07-solution]: day07_clean.py
+[d08-solution]: day08_clean.py
 [d12-solution]: day12_clean.py
 
 [py-cond-expr]:               https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
+[py-builtin-min]:             https://docs.python.org/3/library/functions.html#min
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
 [py-builtin-any]:             https://docs.python.org/3/library/functions.html#any
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
