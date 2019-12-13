@@ -1,8 +1,10 @@
 Intcode arcade!
 ===============
 
+![Intcode brick breaker](brick-breaker.gif)
+
 What a funny puzzle today. The Intcode program given as input was a fully
-functioning brick-breaker arcade game!This folder contains the disassembled
+functioning brick breaker arcade game! This folder contains the disassembled
 intcode program, its CFG and a python script that emulates and plays the game
 drwing it in ASCII art on the terminal using ncurses.
 
