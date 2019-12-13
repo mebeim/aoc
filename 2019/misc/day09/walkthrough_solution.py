@@ -118,4 +118,4 @@ print('Part 1:', output_value)
 
 in_func = lambda: 2
 run(program[:], in_func, out_func)
-print('Part 1:', output_value)
+print('Part 2:', output_value)

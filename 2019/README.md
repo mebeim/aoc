@@ -1045,16 +1045,16 @@ MODE_POSITION, MODE_IMMEDIATE, MODE_RELATIVE = range(3)
 TYPE_SRC, TYPE_DST = range(2)
 
 OPCODE_PARAMTYPES = {
-	OPADD : (TYPE_SRC, TYPE_SRC, TYPE_DST),
-	OPMUL : (TYPE_SRC, TYPE_SRC, TYPE_DST),
-	OPIN  : (TYPE_DST,),
-	OPOUT : (TYPE_SRC,),
-	OPJNZ : (TYPE_SRC, TYPE_SRC),
-	OPJZ  : (TYPE_SRC, TYPE_SRC),
-	OPLT  : (TYPE_SRC, TYPE_SRC, TYPE_DST),
-	OPEQ  : (TYPE_SRC, TYPE_SRC, TYPE_DST),
-	OPREL : (TYPE_SRC,),
-	OPHALT: ()
+    OPADD : (TYPE_SRC, TYPE_SRC, TYPE_DST),
+    OPMUL : (TYPE_SRC, TYPE_SRC, TYPE_DST),
+    OPIN  : (TYPE_DST,),
+    OPOUT : (TYPE_SRC,),
+    OPJNZ : (TYPE_SRC, TYPE_SRC),
+    OPJZ  : (TYPE_SRC, TYPE_SRC),
+    OPLT  : (TYPE_SRC, TYPE_SRC, TYPE_DST),
+    OPEQ  : (TYPE_SRC, TYPE_SRC, TYPE_DST),
+    OPREL : (TYPE_SRC,),
+    OPHALT: ()
 }
 ```
 
@@ -1092,84 +1092,84 @@ and use the `params` for each opcode. Here's the final function:
 
 ```python
 def run(prog, input_function, output_function):
-	pc = 0
-	relative_base = 0
+    pc = 0
+    relative_base = 0
 
-	# Extend memory filling with zeros.
-	prog = prog + [0] * 10000
+    # Extend memory filling with zeros.
+    prog = prog + [0] * 10000
 
-	while prog[pc] != OPHALT:
-		op = prog[pc]
+    while prog[pc] != OPHALT:
+        op = prog[pc]
 
-		# Calculate parameter modes.
-		modes = ((op // 100) % 10, (op // 1000) % 10, (op // 10000) % 10)
-		op = op % 10
+        # Calculate parameter modes.
+        modes = ((op // 100) % 10, (op // 1000) % 10, (op // 10000) % 10)
+        op = op % 10
 
-		# Get parameters and parameter types.
-		nparams = OPCODE_NPARAMS[op]
-		types   = OPCODE_PARAMTYPES[op]
-		params  = prog[pc + 1:pc + 1 + nparams]
+        # Get parameters and parameter types.
+        nparams = OPCODE_NPARAMS[op]
+        types   = OPCODE_PARAMTYPES[op]
+        params  = prog[pc + 1:pc + 1 + nparams]
 
-		# Translate parameters into the needed values based on the mode.
-		for i in range(len(params)):
-			if modes[i] == MODE_POSITION:
-				if types[i] == TYPE_SRC:
-					params[i] = prog[params[i]]
-			elif modes[i] == MODE_RELATIVE:
-				if types[i] == TYPE_SRC:
-					params[i] = prog[relative_base + params[i]]
-				elif types[i] == TYPE_DST:
-					params[i] += relative_base
+        # Translate parameters into the needed values based on the mode.
+        for i in range(len(params)):
+            if modes[i] == MODE_POSITION:
+                if types[i] == TYPE_SRC:
+                    params[i] = prog[params[i]]
+            elif modes[i] == MODE_RELATIVE:
+                if types[i] == TYPE_SRC:
+                    params[i] = prog[relative_base + params[i]]
+                elif types[i] == TYPE_DST:
+                    params[i] += relative_base
 
-		if op == OPADD:
-			a, b, c = params
-			prog[c] = a + b
-			pc += 4
-		elif op == OPMUL:
-			a, b, c = params
-			prog[c] = a * b
-			pc += 4
-		elif op == OPIN:
-			a = params[0]
-			prog[a] = input_function()
-			pc += 2
-		elif op == OPOUT:
-			a = params[0]
-			output_function(a)
-			pc += 2
-		elif op == OPJNZ:
-			a, b = params
-			pc = b if a != 0 else pc + 3
-		elif op == OPJZ:
-			a, b = params
-			pc = b if a == 0 else pc + 3
-		elif op == OPLT:
-			a, b, c = params
-			prog[c] = 1 if a < b else 0
-			pc += 4
-		elif op == OPEQ:
-			a, b, c = params
-			prog[c] = 1 if a == b else 0
-			pc += 4
-		elif op == OPREL:
-			a = params[0]
-			relative_base += a
-			pc += 2
+        if op == OPADD:
+            a, b, c = params
+            prog[c] = a + b
+            pc += 4
+        elif op == OPMUL:
+            a, b, c = params
+            prog[c] = a * b
+            pc += 4
+        elif op == OPIN:
+            a = params[0]
+            prog[a] = input_function()
+            pc += 2
+        elif op == OPOUT:
+            a = params[0]
+            output_function(a)
+            pc += 2
+        elif op == OPJNZ:
+            a, b = params
+            pc = b if a != 0 else pc + 3
+        elif op == OPJZ:
+            a, b = params
+            pc = b if a == 0 else pc + 3
+        elif op == OPLT:
+            a, b, c = params
+            prog[c] = 1 if a < b else 0
+            pc += 4
+        elif op == OPEQ:
+            a, b, c = params
+            prog[c] = 1 if a == b else 0
+            pc += 4
+        elif op == OPREL:
+            a = params[0]
+            relative_base += a
+            pc += 2
 ```
 
 The function now takes three parameters: the program, one input function to be
 called when the *input* instruction is executed, and one output function to be
 called when the *output* instruction is executed. This way, it will be easier to
 program dynamic input and output for future days. For part 1, we can define
-these two function pretty simply:
+these two functions pretty simply:
 
 ```python
 in_func = lambda: 1
 output_value = None
 
 def out_func(v):
-	global output_value
-	output_value = v
+    global output_value
+    output_value = v
 ```
 
 Okay, let's run it on our input program and get the result:
@@ -1178,7 +1178,7 @@ Okay, let's run it on our input program and get the result:
 program = list(map(int, fin.read().split(',')))
 
 run(program[:], in_func, out_func)
-print('Part 1:', output_value)
+print('Part 2:', output_value)
 ```
 
 ### Part 2
