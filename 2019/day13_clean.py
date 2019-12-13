@@ -54,4 +54,5 @@ while True:
 		elif x < paddle_x:
 			inp[0] = -1
 
+assert score == 14747
 advent.submit_answer(2, score)
