@@ -13,6 +13,7 @@ Table of Contents
 - [Day 7 - Amplification Circuit](#day-7---amplification-circuit)
 - [Day 8 - Space Image Format](#day-8---space-image-format)
 - [Day 12 - Day 12 - The N-Body Problem](#day-12---the-n-body-problem)
+- [Day 13 - Care Package](#day-13---care-package)
 
 Day 1 - The Tyranny of the Rocket Equation
 ------------------------------------------
@@ -1200,6 +1201,159 @@ There most probably are much more starting positions that lead to divergence
 than ones that lead to periodicity! So our puzzle input seems to have been
 tailored to be solvable. Quite interesting!
 
+Day 13 - Care Package
+---------------------
+
+[Problem statement][d13-problem] — [Complete solution][d13-solution]
+
+### Prerequisites
+
+This problem requires a working Intcode virtual machine built following
+instructions in the day 2, day 5 and day 9 problem statements! The machine could
+be as simple as a single function, or something more complicated like a class
+with multiple methods. Take a look at previous days to know more.
+
+I will be using [my `IntcodeVM` class](lib/intcode.py) to solve this puzzle.
+
+### Part 1
+
+Another Intcode challenge! We are given an Intcode program, and we are told that
+it runs on an arcade cabinet. The program will draw on the screen of the cabinet
+by outputing groups of three values: `x`, `y`, and a "tile ID". The tile ID
+represents which tile is to be drawn:
+
+- `0` is an empty tile. No game object appears in this tile.
+- `1` is a wall tile. Walls are indestructible barriers.
+- `2` is a block tile. Blocks can be broken by the ball.
+- `3` is a horizontal paddle tile. The paddle is indestructible.
+- `4` is a ball tile. The ball moves diagonally and bounces off objects.
+
+We are then asked to count the number of block tiles that are drawn when running
+the program.
+
+Having a working Intcode VM, this is a pretty simple task:
+
+```python
+from lib.intcode import IntcodeVM
+
+program = list(map(int, fin.read().split(',')))
+vm = IntcodeVM(program)
+out = vm.run()
+```
+
+We can then parse the output in blocks of size 3 with a simple `for`, and count
+the number of blocks. Since we don't know if a block is going to be drawn
+multiple times in the same position, we'll use a `set` to keep track of all the
+positions where a block was drawn.
+
+```python
+blocks = set()
+
+for i in range(0, len(out), 3):
+    x, y, tile = out[i:i + 3]
+
+    if tile == 2:
+        blocks.add((x, y))
+
+print('Part 1:', len(blocks))
+```
+
+### Part 2
+
+Now things get fun! The program is running a fully functioning brick breaker
+arcade game. We can see from part 1 the description of each tile. The game is
+simplified since the ball always moves in a diagonal direction and does not
+change angle when hit (like in a normal brick breaker game).
+
+We are asked to *play the game* and win by destroying all blocks, and provide
+the final score as the answer. To communicate the score, the program will output
+the two invalid coordinates `-1, 0` and then the score. We need to replace the
+first number in the program with a `2` to play the game first.
+
+To play the game, after each output (group of 3 values), we are supposed to give
+the program an input. We can input `-1` to move the paddle left one position,
+`1` to move it right one position, and `0` to stay still.
+
+If we take a look at the program output from part 1, and arrange the drawn tiles
+in a grid, we get something like this:
+
+    ++++++++++++++++++++++++++++++++++++++++++++
+    +                                          +
+    +     # ### ### #   ## # #   ###### # ## # +
+    +  #         ## #  #  ### ##          ###  +
+    +   #  #    ##   # #     #### #  # #  ## # +
+    + # # ####  #  ####### ##   # #### ##      +
+    +  #  # # ###     ## #  ## ### # #  ####   +
+    +   # # # # #  #   # ## # #  ##  ##### # # +
+    +  #####  ## ####  # # # ## # ##### # #    +
+    + # # ####  #    # #   # #    ##   #### ## +
+    + #  # #   # #  ##     ### # # #  ###### # +
+    + #### #  #  # #   ## # ###  #  #  ## #    +
+    +  #      #  #  #  # ### ## # # ##  #  #   +
+    +  #####  #   # #        ## # #  # # #  #  +
+    +  #       ### ## #   #  #### # # # # # #  +
+    +  ## ####  ####  # #   #      #  #  #  #  +
+    + #######  #      # ##   ####### # # # # # +
+    + ##  ##   # # #  #       ##  ##### ## #   +
+    +                                          +
+    +                   o                      +
+    +                                          +
+    +                                          +
+    +                     =                    +
+
+So, how do we actually play the game? We need to come up with an AI that plays
+for us if we don't want to wait for ages before each block is destroyed.
+
+Well, if we just follow the ball around with our paddle, we will basically
+always be under it and we'll never lose. Eventually, all blocks will get
+destroyed and we'll have our final score. We can just run the program step by
+step in a loop, and check if we need to move based on the ball position in
+respect to the paddle position.
+
+The solution is pretty straightforward:
+
+```python
+# Convenience enum for tiles.
+EMPTY, WALL, BLOCK, PADDLE, BALL = range(5)
+
+vm.orig_code[0] = 2
+vm.reset()
+
+score    = 0
+paddle_x = 0
+inp      = []
+
+while True:
+    out = vm.run(inp, resume=True, n_out=3)
+    if not out:
+        break
+
+    x, y, tile = out
+
+    # Don't move by default.
+    inp = [0]
+
+    if (x, y) == (-1, 0):
+        # Update current score on special coordinates.
+        score = tile
+        continue
+
+    if tile == PADDLE:
+        # When the paddle gets re-drawn, update its position.
+        paddle_x = x
+    elif tile == BALL:
+        # When the ball gets re-drawn, follow it.
+        if x > paddle_x:
+            inp = [1]
+        elif x < paddle_x:
+            inp = [-1]
+
+print('Part 2:', score)
+```
+
+The emulation of the whole program until the win takes some seconds, but then we
+get our answer as expected.
+
 
 [d01-problem]: https://adventofcode.com/2019/day/1
 [d02-problem]: https://adventofcode.com/2019/day/2
@@ -1210,6 +1364,7 @@ tailored to be solvable. Quite interesting!
 [d07-problem]: https://adventofcode.com/2019/day/7
 [d08-problem]: https://adventofcode.com/2019/day/8
 [d12-problem]: https://adventofcode.com/2019/day/12
+[d13-problem]: https://adventofcode.com/2019/day/13
 [d01-solution]: day01_clean.py
 [d02-solution]: day02_clean.py
 [d03-solution]: day03_clean.py
@@ -1219,6 +1374,7 @@ tailored to be solvable. Quite interesting!
 [d07-solution]: day07_clean.py
 [d08-solution]: day08_clean.py
 [d12-solution]: day12_clean.py
+[d13-solution]: day13_clean.py
 
 [py-cond-expr]:               https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
