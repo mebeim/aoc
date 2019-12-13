@@ -1050,11 +1050,13 @@ print('Part 2:', total_steps)
 
 ### Considerations
 
-One more cool thing: by observing the behavior of moons, we can notice that
-their velocity only gets to zero one time before going back to the initnal
-state. This means that we could just check until all moon velocities hit 0 and
-ignore their position. Once they do, in exactly double the number of steps they
-will all converge back to the initial position.
+By observing the behavior of moons, we can notice that their velocity only gets
+to zero one time before going back to the initial state. This means that we
+could just check until all moon velocities hit 0 and ignore their position. Once
+they do, in exactly double the number of steps they will all converge back to
+the initial position. I happened to discover this myself by accident for a
+little bug I encountered why cleaning up my solution and writing about it here.
+I ended up using this assumption in my complete solution.
 
 Our "initial state check" code then becomes just:
 
@@ -1076,8 +1078,16 @@ objects swapped place. It now takes the same amount of time to get back to the
 original position. In particular, those two objects will keep swapping places
 over and over again until the end of time, since that in our magic physics
 system acceleration never decreases with distance. This can be easy extended in
-N dimensions, since dimensions are independent, but is not as simple to
-generalize for more than two objects.
+N dimensions, since dimensions are independent, *but* is not as simple to
+generalize for more than two objects... this could even *not* hold true for more
+than two objects.
+
+As quite the number of people seem to have tested out, for more than two object
+it seems like the periodicity of the system depends on the starting position,
+and only particular starting positions seem to cause the system to be periodic.
+There most probably are much more starting positions that lead to divergence
+than ones that lead to periodicity! So our puzzle input seems to have been
+tailored to be solvable. Quite interesting!
 
 
 [d01-problem]: https://adventofcode.com/2019/day/1
