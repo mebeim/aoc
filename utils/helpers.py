@@ -44,11 +44,11 @@ def dump_char_matrix(mat, transpose=False):
 	sys.stderr.flush()
 
 def timer_start(name=sys.argv[0]):
-	now_wall, now_cpu = time.time(), time.clock()
+	now_wall, now_cpu = time.perf_counter(), time.process_time()
 	TIMERS[name] = (now_wall, now_cpu, now_wall, now_cpu, 1)
 
 def timer_lap(name=sys.argv[0]):
-	now_wall, now_cpu = time.time(), time.clock()
+	now_wall, now_cpu =  time.perf_counter(), time.process_time()
 	*x, prev_wall, prev_cpu, lap = TIMERS[name]
 
 	dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
@@ -56,10 +56,10 @@ def timer_lap(name=sys.argv[0]):
 
 	log('Timer {} lap #{}: {} wall, {} CPU\n'.format(name, lap, dt_wall, dt_cpu))
 
-	TIMERS[name] = (*x, time.time(), time.clock(), lap + 1)
+	TIMERS[name] = (*x,  time.perf_counter(), time.process_time(), lap + 1)
 
 def timer_stop(name=sys.argv[0]):
-	now_wall, now_cpu = time.time(), time.clock()
+	now_wall, now_cpu = time.perf_counter(), time.process_time()
 	prev_wall, prev_cpu, *_ = TIMERS.pop(name)
 
 	dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
@@ -68,7 +68,7 @@ def timer_stop(name=sys.argv[0]):
 	log('Timer {}: {} wall, {} CPU\n'.format(name, dt_wall, dt_cpu))
 
 def timer_stop_all():
-	now_wall, now_cpu = time.time(), time.clock()
+	now_wall, now_cpu =  time.perf_counter(), time.process_time()
 
 	while TIMERS:
 		k, v = TIMERS.popitem()
