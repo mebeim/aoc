@@ -117,7 +117,7 @@ def submit_answer(part, answer):
 			return True
 
 		if 'you have to wait' in t:
-			matches = re.compile(r'you have ([\w ]+) left to wait').matchall(t)
+			matches = re.compile(r'you have ([\w ]+) left to wait').findall(t)
 
 			if matches:
 				log('[advent] Submitting too fast, {} left to wait.\n', matches[0])
