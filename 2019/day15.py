@@ -13,7 +13,7 @@ timer_start()
 # I'm not even bothering to try and clean this mess LOL
 
 NORTH, SOUTH, WEST, EAST = 1, 2, 3, 4
-HITWALL, MOVED, OXYGEN = 0, 1, 2
+HITWALL, MOVED, FOUNDOXYGEN = 0, 1, 2
 
 from lib.intcode import IntcodeVM
 prog = get_ints(fin, True)
@@ -46,7 +46,7 @@ def walk(path, stop_if_oxygen=False):
 
 		if res == HITWALL:
 			return res, dst
-		elif stop_if_oxygen and res == OXYGEN:
+		elif stop_if_oxygen and res == FOUNDOXYGEN:
 			print('OXYGEN', dst)
 			print('OXYGEN', dst)
 			print('OXYGEN', dst)
@@ -205,7 +205,7 @@ try:
 			if res == HITWALL:
 				G.remove_node(lastpos)
 				walls.add(lastpos)
-			elif res == OXYGEN:
+			elif res == FOUNDOXYGEN:
 				done = True
 				ans = len(path) - 1
 				break
