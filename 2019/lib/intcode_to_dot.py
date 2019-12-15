@@ -32,7 +32,7 @@ def disassemble(block):
 	}
 
 	fmts = (
-		'<font color="{cmain}"><font color="{cpc}">{pc:>4d}:</font>  <font color="{cmnemonic}">{mnemonic:<4s}</font></font><br align="left"/>',
+		'<font color="{cmain}"><font color="{cpc}">{pc:>4d}:</font>  <font color="{cmnemonic}">{mnemonic:<4s}</font></font>{raw}<br align="left"/>',
 		'<font color="{cmain}"><font color="{cpc}">{pc:>4d}:</font>  <font color="{cmnemonic}">{mnemonic:<4s}</font> <font color="{carg1}">{arg1:>8s}</font></font><br align="left"/>',
 		'<font color="{cmain}"><font color="{cpc}">{pc:>4d}:</font>  <font color="{cmnemonic}">{mnemonic:<4s}</font> <font color="{carg1}">{arg1:>8s}</font> <font color="{carg2}">{arg2:>8s}</font></font><br align="left"/>',
 		'<font color="{cmain}"><font color="{cpc}">{pc:>4d}:</font>  <font color="{cmnemonic}">{mnemonic:<4s}</font> <font color="{carg1}">{arg1:>8s}</font> <font color="{carg2}">{arg2:>8s}</font> <font color="{carg3}">{arg3:>8s}</font></font><br align="left"/>',
@@ -44,9 +44,11 @@ def disassemble(block):
 
 		fmtargs['pc'] = op.pc
 		fmtargs['mnemonic'] = op.mnemonic
+		fmtargs['raw'] = ''
 
 		if t == OpInvalid:
 			fmtargs['cmnemonic'] = 'crimson'
+			fmtargs['raw'] = ' <font color="gray">{}</font>'.format(op.vm.code[op.pc])
 		else:
 			fmtargs['cmnemonic'] = 'blue3'
 
