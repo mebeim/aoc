@@ -1713,7 +1713,7 @@ rules:
 
 1. Take the first 7 digits of the input as a number `N`.
 2. Repeat the input list of intgers 10000 (ten thousand) times.
-3. After the 100 iteration, skip `N` digits of the result and take the next 8.
+3. After the 100th iteration, skip `N` digits of the result and take the next 8.
 
 As it turns out, repeating the list 10000 times makes things a little bit more
 complicated... our previous silly algorithm would take ages with the new input
@@ -1773,9 +1773,13 @@ length = len(digits)
 ```
 
 We can work our way backwards from the last digit (which is only the sum of
-itself), and then simply keep adding digits as we go back in areverse loop. This
-is also known as *cumulative sum* or
+itself), and then simply keep adding digits as we go back in a reverse loop.
+This is also known as *cumulative sum* or
 [*running total*](https://en.wikipedia.org/wiki/Running_total).
+
+Indexing backwards in Python means using the somehow weird inverse
+[`range()`][py-range] notation: `range(n, -1, -1)`, which means "start from `n`
+and advance in steps of `-1` until the number right before `-1`.
 
 ```python
 for _ in range(100):
@@ -1789,15 +1793,15 @@ too, but since those are only 650, that would really just save us a few
 milliseconds (I nevertheless do this in my complete solution linked above, since
 it's straightforward). We can improve the performance of the above snippet just
 a bit by limiting the number of times the `digits` list is indexed, and
-precalculating the fullsum each loop:
+precalculating the cumulative sum each loop:
 
 ```python
 for _ in range(100):
-    partsum = sum(digits)
+    cusum = sum(digits)
 
     for i, n in enumerate(digits):
-        digits[i] = partsum % 10
-        partsum -= n
+        digits[i] = cusum % 10
+        cusum -= n
 
 answer = ''.join(map(str, digits[:8]))
 print('Part 2:', answer)
@@ -1874,6 +1878,7 @@ all... nonetheless, the very slow CPython solution still bothers me.
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
+[py-range]:                   https://docs.python.org/3/library/stdtypes.html#range
 [py-operator]:                https://docs.python.org/3/library/operator.html
 [py-operator-add]:            https://docs.python.org/3/library/operator.html#operator.add
 [py-operator-mul]:            https://docs.python.org/3/library/operator.html#operator.mul
