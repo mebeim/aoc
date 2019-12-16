@@ -13,7 +13,8 @@ Table of Contents
 - [Day 7 - Amplification Circuit][d07]
 - [Day 8 - Space Image Format][d08]
 - [Day 9 - Sensor Boost][d09]
-- [Day 12 - Day 12 - The N-Body Problem][d12]
+- [Day 10 - Monitoring Station][d10]
+- [Day 12 - The N-Body Problem][d12]
 - [Day 13 - Care Package][d13]
 - [Day 16 - Flawed Frequency Transmission][d16]
 
@@ -1196,6 +1197,206 @@ print('Part 1:', output_value)
 And there it is, day 9 completed and we now have a complete Intcode VM! Nice.
 
 
+Day 10 - Monitoring Station
+---------------------------
+
+[Problem statement][d10-problem] — [Complete solution][d10-solution]
+
+### Part 1
+
+Very interesting puzzle today. We get to deal with some sort of "primitive ray
+tracing" techniques. We are given a 2D ASCII art grid of asteroids in space.
+Each asteroid is positioned at a fixed integer row and column. For the first
+part, we are asked to find where it's best to build a station, by determining
+which asteroid has the best field of view in terms of the number of other
+asteroids that can be seen from it. We want to know how many asteroids can be
+seen from the best asteroid.
+
+Asteroids must be considered as points in space (no width nor height). Given a
+asteroid `A`, another asteroid `B` is can be seen (in sight of) `A` if (and only
+if) it is the closest asteroid on the line of sight connecting the two. A line
+of sight is just a
+[ray](https://en.wikipedia.org/wiki/Line_(geometry)#Ray) starting from `A` and
+passing through `B`.
+
+Let's get input parsing out of the way, we will just build a set of 2D points
+from our input, adding one for each asteroid `#` in the ASCII art grid:
+
+```python
+grid = [l.rstrip() for l in fin]
+asteroids = set()
+
+for y, row in enumerate(grid):
+    for x, cell in enumerate(row):
+        if cell == '#':
+            asteroids.add((x, y))
+```
+
+To tackle this geometrical problem, first of all we should notice that we do not
+actually care about which asteroid is the closest to us on any given line of
+sight, but we just care about how many *different* line of sights we have from
+from each asteroid. Since on each line of sight there is only one asteroid that
+can be seen, the number of different lines of sights is the only information we
+need.
+
+There are different methods to compute and represent the line of sight between
+two asteroids `A` and `B`. What we care about here is that:
+
+1. We want it to be precise, no floating point values involved, to avoid getting
+   into the weirdness of broken floating point math when comparing values.
+2. We want it to be simple and concise.
+
+So how do you uniquely represent a line (or better, a ray) in a 2D plane? We
+should know from any basic geometry class that the equation of a line on the
+cartesian plane is
+[`y = m*x + b`](https://en.wikipedia.org/wiki/Line_(geometry)#On_the_Cartesian_plane)...
+but do we actually care about `b`? We do not, since what defines a line of sight
+is only its slope `m`, and from the same basic geometry class we should also
+know that the slope of the line between two points can be calculated as
+`m = (By - Ay)/(Bx - Ax)`.
+
+For each asteroid `A`, we want to calculate all the slopes of te rays between
+itself and any other asteroid `B`. In order for this measurement to be
+*accurate*, we will not do the division, but we will just represent `m` as an
+[*irreducible fraction*](https://en.wikipedia.org/wiki/Irreducible_fraction),
+storing its numerator and denominator. Since we also care about the direction of
+each ray, along the slope fraction we will also need to keep the sign of the
+numerator and denominator (i.e. do not simplify `-2/-4` as `1/2`, but as
+`-1/-2`).
+
+To reduce any fraction to an irreducible fraction the only thing we need is to
+divide both numerator and denominator by their gratest common divisor. For this,
+the [`gcd()`][py-math-gcd] function from the [`math`][py-math] module comes in
+handy.
+
+```python
+def ray(ax, ay, bx, by):
+    dx, dy = bx - ax, by - ay
+    div = abs(gcd(dx, dy))
+    return dx//div, dy//div
+```
+
+Now for each candidate asteroid, we can just count the number of different
+rays (to all the other asteroids) by creating a [`set()`][py-set]. We will
+keep track of the maximum number of asteroids that can be seen as well as the
+asteroid from which it is possible (this is useful for part 2).
+
+Here's our part 1 solution:
+
+```python
+station = None
+max_in_sight = 0
+
+for src in asteroids:
+    lines_of_sight = set()
+
+    for a in asteroids:
+        if a == src:
+            continue
+
+        lines_of_sight.add(ray(*src, *a))
+
+    in_sight = len(lines_of_sight)
+    if in_sight > max_in_sight:
+        max_in_sight = in_sight
+        station = src
+
+print('Part 1:', max_in_sight)
+```
+
+The syntax `*src` (and `*a`) here uses the Python
+[*unpacking operator*][py-unpacking] to unpack a tuple `(x, y)` into two
+different values (passed as arguments). The above snippet could be optimized by
+memorizing the `ray()` function return value for each pair of asteroids using a
+dictionary, but since the number of asteroids is quite small, in our case the
+overhead of dictionary operations would only outweight the saved computation
+time.
+
+### Part 2
+
+In the second part of the problem, after planting our monitoring station on the
+best asteroid, we now start to blast every asteroid in line of sight with a
+laser beam. We want to know the coordinates of the 200th asteroid which will be
+destroyed.
+
+Starting facing north, we rotate the laser clockwise. Each time the laser beam
+intersects with an asteroid, it destroys it, but it does *not* destroy any other
+asteroid on the same line of sight. In other words, asteroids on the same LoS
+are "shielded" by closer asteroids on the same LoS. The second closest asteroid
+on a given line of sight will be destroied on the second rotation of the
+station, after the laser beam completes a full cycle.
+
+First of all, the answer for part 1 was greater than 200, so we only need to
+sweep for one cycle, since we have > 200 asteroids in direct line of sight. The
+following solution makes this assumption, but it's trivial to generalize the
+code just by adding one more loop to re-scan the asteroids after each full
+rotation.
+
+To know which asteroid will be destroyed as 200th, we need to order their
+positions based on the ray on which they are placed. Contraty to the first part,
+we now do care about one asteroid being the closest on a given ray. We can again
+scan all asteroids to determine which one is the closest on each ray. This is as
+simple as saving the asteroid and its distance in a dictionary
+`{ray: (closest_asteroid, distance)}`. For the distance we can just use plain
+Manhattan distance, nothing fancier needed.
+
+```python
+def manhattan(ax, ay, bx, by):
+    return abs(bx - ax) + abs(by - ay)
+
+closest = {}
+
+for a in asteroids:
+    if a == station:
+        continue
+
+    r = ray(*station, *a)
+    m = manhattan(*station, *a)
+
+    if r not in closest or m < closest[r][1]:
+        closest[r] = (a, m)
+```
+
+Now that we've got all the closest asteroid, we will need to order them. We want
+to sort them by clockwise angle from north. To do this, we can calculate the
+angle for every ray using the [`atan2()`][py-math-atan2] function. This function
+takes `y` and `x` as parameteers (in this exact order) and outputs a value in
+[radians](https://en.wikipedia.org/wiki/Radian) ranging from `-math.pi` to
+`math.pi`, considering the *east* direction as zero. To make the return value of
+this function useful, we first need to move the zero value to north, so that the
+north direction corresponds to `0`, and then convert the range from `[-pi, pi)`
+to `[0, 2*pi)`.
+
+After thinking about it with the help of pen and paper, what we need is the
+following:
+
+```python
+from math import atan2, pi as PI
+
+def angle(ax, ay, bx, by):
+    rad = atan2(by-ay, bx-ax) + PI
+    rad = rad % (2*PI) - PI/2
+    return rad if rad >= 0 else 2*PI + rad
+```
+
+Note that from the way we parsed the input, north corresponds to the negative Y
+axis in our program, this needs to be carefully taken into account when writing
+the above function! The `rad % (2*PI)` trick here is to avoid having a resulting
+angle of `2*PI` for rays that are exactly facing north (in that case, we want
+`0` instead.
+
+We can now finally order the asteroids by angle using the built-in
+[`sorted()`][py-builtin-sorted] function with our `angle()` function used as
+sorting key, then take the 200th asteroid to get our answer:
+
+```python
+ordered = sorted(closest.values(), key=lambda am: angle(*station, *am[0]))
+chosen_x, chosen_y = ordered[200 - 1][0]
+answer = 100 * chosen_x + chosen_y
+print('Part 2:', answer)
+```
+
+
 Day 12 - The N-Body Problem
 ---------------------------
 
@@ -1425,6 +1626,7 @@ and only particular starting positions seem to cause the system to be periodic.
 There most probably are much more starting positions that lead to divergence
 than ones that lead to periodicity! So our puzzle input seems to have been
 tailored to be solvable. Quite interesting!
+
 
 Day 13 - Care Package
 ---------------------
@@ -1854,6 +2056,7 @@ sad :(.
 [d07]: #day-7---amplification-circuit
 [d08]: #day-8---space-image-format
 [d09]: #day-9---sensor-boost
+[d10]: #day-10---monitoring-station
 [d12]: #day-12---the-n-body-problem
 [d13]: #day-13---care-package
 [d16]: #day-16---flawed-frequency-transmission
@@ -1867,6 +2070,7 @@ sad :(.
 [d07-problem]: https://adventofcode.com/2019/day/7
 [d08-problem]: https://adventofcode.com/2019/day/8
 [d09-problem]: https://adventofcode.com/2019/day/9
+[d10-problem]: https://adventofcode.com/2019/day/10
 [d12-problem]: https://adventofcode.com/2019/day/12
 [d13-problem]: https://adventofcode.com/2019/day/13
 [d16-problem]: https://adventofcode.com/2019/day/16
@@ -1879,6 +2083,7 @@ sad :(.
 [d07-solution]: day07_clean.py
 [d08-solution]: day08_clean.py
 [d09-solution]: misc/day09/walkthrough_solution.py
+[d10-solution]: day10_clean.py
 [d12-solution]: day12_clean.py
 [d13-solution]: day13_clean.py
 [d16-solution]: day16_clean.py
@@ -1893,8 +2098,10 @@ sad :(.
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
+[py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
 [py-range]:                   https://docs.python.org/3/library/stdtypes.html#range
+[py-set]:                     https://docs.python.org/3/library/stdtypes.html?highlight=set#set
 [py-operator]:                https://docs.python.org/3/library/operator.html
 [py-operator-add]:            https://docs.python.org/3/library/operator.html#operator.add
 [py-operator-mul]:            https://docs.python.org/3/library/operator.html#operator.mul
@@ -1911,3 +2118,5 @@ sad :(.
 [py-functools-reduce]:        https://docs.python.org/3/library/functools.html#functools.reduce
 [py-math]:                    https://docs.python.org/3/library/math.html
 [py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
+[py-math-atan2]:              https://docs.python.org/3/library/math.html#math.atan2
+[py-unpacking]:               https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
