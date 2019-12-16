@@ -1816,19 +1816,33 @@ implementation). Part 1 plus part 2 take around 17s with CPython 3, while with
 [PyPy3](https://pypy.org) the whole thing takes ~430ms, which is far more
 reasonable.
 
-I am not sure if this is because there still is some significant optimization to
-be made (or any other clever trick) for CPython, but it nonetheless bothers me a
-bit, particualrly because Advent of Code puzzles are supposed to be solvable in
-any programming language (interpreted or not) taking *way less* than that to
-compute if the right algorithm is applied (which is the case here).
+To optimize further, we can use the good old Python trick of moving the
+algorithm inside a function. "Why would this speed up things?" you say? Because
+inside functions the
+[`LOAD_FAST`](https://docs.python.org/3/library/dis.html#opcode-LOAD_FAST)
+Python opcode is used, which is much faster than the
+[`LOAD_GLOBAL`](https://docs.python.org/3/library/dis.html#opcode-LOAD_GLOBAL),
+opcode used for global variables (used all over the place in the main body of
+the script). Simply moving the second part inside a function gives me a speedup
+of about 35% in CPython 3 and 16% in PyPy3, with the new times being ~11s and
+~350ms respectively. Conclusion: running Python code in the global namespace
+sucks!
+
+With this said, CPython still takes too much for my taste. I am not sure if this
+is because there is some other significant optimization to be made (or any other
+clever trick) for CPython, but it nonetheless bothers me a bit, particualrly
+because Advent of Code puzzles are supposed to be solvable in any programming
+language (interpreted or not) taking *way less* than that to compute if the
+right algorithm is applied (which is the case here).
 
 After looking at other solutions on today's
 [Reddit solution megathread](https://www.reddit.com/r/adventofcode/comments/ebai4g),
 I noticed various people using compiled programming languages (C, C++, Rust, Go)
-and reporting times in the ballpark of ~200ms. Usually when the major speedup
-reason is switching to a compiled language, then the speedup is much grater
-(50x, 100x). Therefore it *seems* like we already have the optimal solution,
-and CPython is to blame... this is sad :(.
+and reporting times in the ballpark of ~200ms, very close to my ~350ms on PyPy3.
+Usually when the major speedup reason is switching to a compiled language, then
+the speedup is much grater (50x, 100x). Therefore it *seems* like we already
+have the optimal solution, and CPython is to blame for the poor performance...
+sad :(.
 
 
 [d01]: #day-1---the-tyranny-of-the-rocket-equation
