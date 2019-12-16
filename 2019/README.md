@@ -1594,30 +1594,30 @@ something is uncleaer, I'd recommend reading the original problem statement
 linked above, specially because there are some clear examples that I'm not going
 to replicate here.
 
-Given a list of integers, and the pattern `(0, 1, 0, -1)`. We need to transform
-it applying the following steps 100 times:
+Given a list of digits, and the pattern `p = (0, 1, 0, -1)`. We need to
+transform it *100 times* applying the following steps:
 
-- For each integer at index `i` in the list (`i` starting from `0`), its new
+- For each digit at index `i` in the list (`i` starting from `0`), its new
   value is obtained as follows:
-    - Calculate a new pattern where each number is repeated `i+1` times.
-    - Extend the new pattern repeating it until its length is at least that of
-      the list of integers.
-    - Skip the first number of the pattern.
-    - Multiply each `j`-th integer of the list by the corresponding `j`-th
-      number of the new pattern.
+    - Calculate a new pattern `P` where each number of `p` is repeated `i+1`
+      times.
+    - Extend `P` repeating it until its length is at least that of the list of
+      digits, and then *skip the first number*.
+    - Multiply each `j`-th digit of the list by the corresponding `j`-th number
+      of the new pattern `P`.
     - Sum all the numbers together and take the last digit of the sum (positive
-      regardless of the sign of the sum). This is the value of the integer at
+      regardless of the sign of the sum). This is the value of the new digit at
       position `i` in the new list.
 
-After applying the above, we need to provide the first 8 numbers of the newly
-obtained list concatenated together as the answer to the problem.
+After applying the above, we need to provide the first 8 digits of the newly
+obtained list (concatenated together) as the answer to the problem.
 
 So, after parsing the input (making a copy is useful to reuse the list for part
 2):
 
 ```python
 original = list(map(int, fin.read().strip()))
-nums = original[:]
+digits = original[:]
 ```
 
 The first thing that one might think to generate the repeating pattern each time
@@ -1635,65 +1635,74 @@ def gen_pattern(n):
 ```
 
 While the above snippet works just fine for small values of `n`, it becomes a
-real struggle for larger values, and is very slow anyway. Also, the pattern
-still needs to be exended to be as long as the list of integers, and we then
-need to skip the first.
+real struggle for larger values, and is very slow either way. Also, the pattern
+still needs to be exended, and we then need to skip the first number.
 
-If we take a look at the pattern `(0, 1, 0, -1)`, and read again above:
+If we take a look at the pattern `(0, 1, 0, -1)`, and read above again:
 
-> - Multiply each `j`-th integer of the list by the corresponding `j`-th
->   number of the pattern.
+> - Multiply each `j`-th digit of the list by the corresponding `j`-th number
+>   of the new pattern `P`.
 
 This means that:
 
-1. Applying this literally would mean multiplying a bunch of numbers by `0`
-   every time, which seems like a waste of time.
-2. For the other two values, we can completely ignore the fact that it's a
-   multiplication, since they are `1` and `-1` respectively.
+1. Since we are repeating each number in the pattern a bunch of times, we would
+   end up multiplying a bunch of digits by `0`, therefore we could just "ignore"
+   them.
+2. For the other two pattern values, we can completely ignore the fact that the
+   opretion to perform is a multiplication, since they are `1` and `-1`
+   respectively.
 
-A single iteration of the algorithm we need to apply can then be simplified by
-skipping chunks of numbers that would end up being multiplied by zero, and also
-just summing up all the numbers, adding them (`1`) or subtracting them (`-1`) to
-the partial sum each time.
+A single iteration (for the `i-th` digit) of the algorithm we need to apply can
+then be simplified by skipping chunks of numbers that would end up being
+multiplied by zero, and also just sum up all other chunks, adding (`1`) or
+subtracting (`-1`) the result from the final sum each time.
 
-In other words, we can do this each time:
+In other words, we can do this for each digit:
 
-1. Take `i` as the index of the integer we want to calculate in the new list.
-2. Skip the first `i` integers of the list (first pattern number is `0`).
-3. Sum the next chunk of integers (second pattern number is `1`) and add to the
-   current total.
-4. Skip the next chunk of integers (third pattern number is `0`).
-5. Sum the next chunk of integers and subtract from the current total (second
-   pattern number is `-1`).
-6. Take the total modulo 10.
+1. Take `i` as the index of the digit we want to calculate in the new list.
+2. Skip the first `i` digits of the list (first pattern number is `0`).
+3. Sum the next chunk of digits and add that to the total (second pattern number
+   is `1`).
+4. Skip the next chunk of digits (third pattern number is `0`).
+5. Sum the next chunk of digits and subtract that from the total (fourth pattern
+   number is `-1`).
+6. Take the total modulo 10 as the new `i-th` digit.
 
 Put the above in a loop that repeats 100 times, and we got our part 1 solution:
 
 ```python
-length = len(nums)
+length = len(digits)
 
 for _ in range(100):
-    old = nums[:]
+    old = digits[:]
 
     for i in range(length):
+        # Skip first chunk of digits corresponding to zeroes in the pattern.
         j = i
+
         step = i + 1
-        cursum = 0
+        total = 0
 
         while j < length:
-            cursum += sum(old[j:j + step])
+            # Sum all digits where pattern is 1 and add to total.
+            total += sum(old[j:j + step])
+            # Skip all digits where pattern is 0.
             j += 2 * step
 
-            cursum -= sum(old[j:j + step])
+            # Sum all digits where pattern is -1 and subtract from total.
+            total -= sum(old[j:j + step])
+            # Skip all digits where pattern is 0.
             j += 2 * step
 
-        nums[i] = abs(cursum) % 10
+        digits[i] = abs(total) % 10
 ```
 
-Now just take the first 8 numbers, concatenate them as a string and that's it:
+Now just take the first 8 numbers, concatenate them as a string and that's it.
+We can just convert those to string using [`map()`][py-builtin-map] and
+[`str()`][py-builtin-str] and then [`join()`][py-str-join] the result.
 
 ```python
-answer = ''.join(map(str, nums[:8]))
+answer = ''.join(map(str, digits[:8]))
 print('Part 1:', answer)
 ```
 
@@ -1702,13 +1711,14 @@ print('Part 1:', answer)
 For part 2 we are asked to do the same thing as part 1, but with a couple more
 rules:
 
-1. Take the first 7 digits of the input list as a number `N`.
+1. Take the first 7 digits of the input as a number `N`.
 2. Repeat the input list of intgers 10000 (ten thousand) times.
 3. After the 100 iteration, skip `N` digits of the result and take the next 8.
 
 As it turns out, repeating the list 10000 times makes things a little bit more
-complicated... our previous silly algorithm would take years with 6.5 million
-integers. We need to find a clever optimization.
+complicated... our previous silly algorithm would take ages with the new input
+(which for me is now 6.5 million digits long). We need to find a clever
+optimization.
 
 In order to optimize the code, we need to notice something, which becomes clear
 after looking at some examples:
@@ -1719,71 +1729,100 @@ after looking at some examples:
     1*0  + 2*1  + 3*1  + 4*0  + 5*0  + 6*-1 + 7*-1 + 8*0  = 8
     1*0  + 2*0  + 3*1  + 4*1  + 5*1  + 6*0  + 7*0  + 8*0  = 2
     1*0  + 2*0  + 3*0  + 4*1  + 5*1  + 6*1  + 7*1  + 8*0  = 2
-    1*0  + 2*0  + 3*0  + 4*0  + 5*1  + 6*1  + 7*1  + 8*1  = 6
-    1*0  + 2*0  + 3*0  + 4*0  + 5*0  + 6*1  + 7*1  + 8*1  = 1
-    1*0  + 2*0  + 3*0  + 4*0  + 5*0  + 6*0  + 7*1  + 8*1  = 5
-    1*0  + 2*0  + 3*0  + 4*0  + 5*0  + 6*0  + 7*0  + 8*1  = 8
+    1*0  + 2*0  + 3*0  + 4*0  + 5*1  + 6*1  + 7*1  + 8*1  = 6 <--
+    1*0  + 2*0  + 3*0  + 4*0  + 5*0  + 6*1  + 7*1  + 8*1  = 1 <--
+    1*0  + 2*0  + 3*0  + 4*0  + 5*0  + 6*0  + 7*1  + 8*1  = 5 <--
+    1*0  + 2*0  + 3*0  + 4*0  + 5*0  + 6*0  + 7*0  + 8*1  = 8 <--
 
     After 1 phase: 48226158
+                       ^^^^
 
-In particular, we can notice that since we are extending those zeroes, towards
-the last digits we basically end up with only the sum of last few digits as a
-result. More accurately, for any index `i > n/2` (where `n = len(nums)`), we
-end up just summing up the last `n-i` digits (and then taking the last digit).
-This is clear from the above example, where it can be seen that:
+In particular, we can see that since we are extending those zeroes, towards the
+last part we basically end up with the sum of the last few digits as a result,
+because the first `0` in the pattern was repeated so many times that it
+annihilated the majority of the digits.
 
-                              ...  = 4
-                              ...  = 8
-                              ...  = 2
-                              ...  = 2
-    0 + 0 + 0 + 0 + 5 + 6 + 7 + 8  = 6 (26 % 10)
-    0 + 0 + 0 + 0 + 0 + 6 + 7 + 8  = 1 (21 % 10)
-    0 + 0 + 0 + 0 + 0 + 0 + 7 + 8  = 5 (15 % 10)
-    0 + 0 + 0 + 0 + 0 + 0 + 0 + 8  = 8
+More accurately, for any index `i >= n/2` (where `n = len(digits)`), we end up
+just summing the last `n-i` digits. This is clear from the above example, where
+it can be seen that:
+
+              ...  = 4
+              ...  = 8
+              ...  = 2
+              ...  = 2
+    5 + 6 + 7 + 8  = 6 (abs(26) % 10)
+        6 + 7 + 8  = 1 (abs(21) % 10)
+            7 + 8  = 5 (abs(15) % 10)
+                8  = 8 (abs(8) % 10)
 
 Since the problem tells us to *skip* some digits first, we now don't need to
-calculate *all* the digits. If the number of skipped digits is higher than `n/2`
-we can just apply this much faster simplified approach. As it turns out, the
-number of digits to skip is actually very large (about 90% of the digits we
-have), and therefore this solution can be applied.
+calculate *all* of them. This is clearly related to what we just noticed: if the
+number of skipped digits is higher than `n/2` we can apply this much faster
+simplified approach. As it turns out, for our input the number of digits to skip
+is actually very large (about 90% of the digits we have), and therefore this
+solution can be applied! Clever.
 
-We can work our way backwards from the last digit (which is only the sum of
-itself), and then simply add to each digit its successor in a simple reverse
-loop.
+So let's generate the new longer list of digits and skip the first part:
 
 ```python
 to_skip = int(''.join(map(str, original[:7])))
-
 assert to_skip >= len(original)/2
 
-nums   = (original * 10000)[to_skip:]
-length = len(nums)
+digits = (original * 10000)[to_skip:]
+length = len(digits)
+```
 
-for step in range(100):
+We can work our way backwards from the last digit (which is only the sum of
+itself), and then simply keep adding digits as we go back in areverse loop. This
+is also known as *cumulative sum* or
+[*running total*](https://en.wikipedia.org/wiki/Running_total).
+
+```python
+for _ in range(100):
     for i in range(length - 2, -1, -1):
-        nums[i] += nums[i + 1]
-        nums[i] %= 10
+        digits[i] += digits[i + 1]
+        digits[i] %= 10
+```
 
-answer = ''.join(map(str, nums[:8]))
+We could apply this optimization to the second half of the numbers from part 1
+too, but since those are only 650, that would really just save us a few
+milliseconds (I nevertheless do this in my complete solution linked above, since
+it's straightforward). We can improve the performance of the above snippet just
+a bit by limiting the number of times the `digits` list is indexed, and
+precalculating the fullsum each loop:
+
+```python
+for _ in range(100):
+    partsum = sum(digits)
+
+    for i, n in enumerate(digits):
+        digits[i] = partsum % 10
+        partsum -= n
+
+answer = ''.join(map(str, digits[:8]))
 print('Part 2:', answer)
 ```
 
-We could also apply this optimization to the second half of the numbers from
-part 1, but since those are only 650, that would really just save us some
-tens of milliseconds.
-
 ### Considerations
 
-Although the solution to p2 is clever, this solution (and the original solution
-linked above) still run pretty slowly on CPython 3 (at least on my system). With
-both p1 + p2 taking around 22s, while on PyPy the whole thing takes ~500ms,
-which is reasonable.
+Although the solution to part 2 is clever, it still runs pretty slowly on
+CPython 3 (don't get scared by the name, it's just the standard Python
+implementation). Part 1 plus part 2 take around 22s with CPython 3, while with
+PyPy3 the whole thing takes ~500ms, which is far more reasonable.
 
-I am not sure if this is because there still is significant optimization to be
-made (or another clever trick), but it nonetheless bothers me a bit,
+I am not sure if this is because there still some significant optimization to be
+made (or any other clever trick), but it nonetheless bothers me a bit,
 particualrly because Advent of Code puzzles are supposed to be solvable in any
-programming language (interpreted or not) and should really take less than that
-if the right algorithm is applied (which is the case for the above).
+programming language (interpreted or not) taking *way less* than that to
+compute if the right algorithm is applied (which is the case here).
+
+After looking at other solutions on today's
+[Reddit solution megathread](https://www.reddit.com/r/adventofcode/comments/ebai4g),
+I noticed various people using compiled programming languages (C, C++, Rust, Go)
+and reporting times in the ballpark of ~200ms. Usually when the major speedup
+reason is switching to a compiled language, then the speedup is much grater
+(50x, 100x). Therefore it *seems* like it's not really Python's fault after
+all... nonetheless, the very slow CPython solution still bothers me.
 
 
 [d01]: #day-1---the-tyranny-of-the-rocket-equation
@@ -1825,6 +1864,7 @@ if the right algorithm is applied (which is the case for the above).
 [d16-solution]: day16_clean.py
 
 [py-cond-expr]:               https://docs.python.org/3/reference/expressions.html#conditional-expressions
+[py-builtin-str]:             https://docs.python.org/3/library/functions.html#func-str
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-min]:             https://docs.python.org/3/library/functions.html#min
@@ -1833,6 +1873,7 @@ if the right algorithm is applied (which is the case for the above).
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
+[py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
 [py-operator]:                https://docs.python.org/3/library/operator.html
 [py-operator-add]:            https://docs.python.org/3/library/operator.html#operator.add
 [py-operator-mul]:            https://docs.python.org/3/library/operator.html#operator.mul
