@@ -1788,36 +1788,38 @@ for _ in range(100):
         digits[i] %= 10
 ```
 
-We could apply this optimization to the second half of the numbers from part 1
-too, but since those are only 650, that would really just save us a few
-milliseconds (I nevertheless do this in my complete solution linked above, since
-it's straightforward). We can improve the performance of the above snippet just
-a bit by limiting the number of times the `digits` list is indexed, and
-precalculating the cumulative sum each loop:
+We can improve the performance of the above snippet just a bit by storing the
+cumulative sum into a separate variable, limiting the amount of times the
+`digits` list is indexed:
 
 ```python
 for _ in range(100):
-    cusum = sum(digits)
-
-    for i, n in enumerate(digits):
+    cusum = 0
+    for i in range(length - 1, -1, -1):
+        cusum += digits[i]
         digits[i] = cusum % 10
-        cusum -= n
 
 answer = ''.join(map(str, digits[:8]))
 print('Part 2:', answer)
 ```
 
+We could also apply this optimization to the second half of the numbers from
+part 1 too, but since those are only 650, that would really just save us a few
+milliseconds (I nevertheless do this in my complete solution linked above, since
+it's straightforward).
+
 ### Considerations
 
 Although the solution to part 2 is clever, it still runs pretty slowly on
 CPython 3 (don't get scared by the name, it's just the standard Python
-implementation). Part 1 plus part 2 take around 22s with CPython 3, while with
-PyPy3 the whole thing takes ~500ms, which is far more reasonable.
+implementation). Part 1 plus part 2 take around 17s with CPython 3, while with
+[PyPy3](https://pypy.org) the whole thing takes ~430ms, which is far more
+reasonable.
 
-I am not sure if this is because there still some significant optimization to be
-made (or any other clever trick), but it nonetheless bothers me a bit,
-particualrly because Advent of Code puzzles are supposed to be solvable in any
-programming language (interpreted or not) taking *way less* than that to
+I am not sure if this is because there still is some significant optimization to
+be made (or any other clever trick) for CPython, but it nonetheless bothers me a
+bit, particualrly because Advent of Code puzzles are supposed to be solvable in
+any programming language (interpreted or not) taking *way less* than that to
 compute if the right algorithm is applied (which is the case here).
 
 After looking at other solutions on today's
@@ -1825,8 +1827,8 @@ After looking at other solutions on today's
 I noticed various people using compiled programming languages (C, C++, Rust, Go)
 and reporting times in the ballpark of ~200ms. Usually when the major speedup
 reason is switching to a compiled language, then the speedup is much grater
-(50x, 100x). Therefore it *seems* like it's not really Python's fault after
-all... nonetheless, the very slow CPython solution still bothers me.
+(50x, 100x). Therefore it *seems* like we already have the optimal solution,
+and CPython is to blame... this is sad :(.
 
 
 [d01]: #day-1---the-tyranny-of-the-rocket-equation

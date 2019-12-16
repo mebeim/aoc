@@ -26,12 +26,10 @@ for _ in range(100):
 
 		digits[i] = abs(cur) % 10
 
-	cusum = sum(digits[length//2 + 1:length])
-
-	for i in range(length//2 + 1, length):
-		n = digits[i]
+	cusum = 0
+	for i in range(length - 1, length//2, -1):
+		cusum += digits[i]
 		digits[i] = cusum % 10
-		cusum -= n
 
 answer = ''.join(map(str, digits[:8]))
 
@@ -46,11 +44,10 @@ digits = (original * 10000)[skip:]
 length = len(digits)
 
 for _ in range(100):
-	cusum = sum(digits)
-
-	for i, n in enumerate(digits):
+	cusum = 0
+	for i in range(length - 1, -1, -1):
+		cusum += digits[i]
 		digits[i] = cusum % 10
-		cusum -= n
 
 answer = ''.join(map(str, digits[:8]))
 
