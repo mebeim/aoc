@@ -15,6 +15,7 @@ Table of Contents
 - [Day 9 - Sensor Boost][d09]
 - [Day 12 - Day 12 - The N-Body Problem][d12]
 - [Day 13 - Care Package][d13]
+- [Day 16 - Flawed Frequency Transmission][d16]
 
 
 Day 1 - The Tyranny of the Rocket Equation
@@ -1580,6 +1581,211 @@ The emulation of the whole program until the win takes some seconds, but then we
 get our answer as expected.
 
 
+Day 16 - Flawed Frequency Transmission
+--------------------------------------
+
+[Problem statement][d16-problem] — [Complete solution][d16-solution]
+
+### Part 1
+
+Although the problem statement for today's input is basically a reading
+comprehension challenge, the first part of this problem is pretty simple. If
+something is uncleaer, I'd recommend reading the original problem statement
+linked above, specially because there are some clear examples that I'm not going
+to replicate here.
+
+Given a list of integers, and the pattern `(0, 1, 0, -1)`. We need to transform
+it applying the following steps 100 times:
+
+- For each integer at index `i` in the list (`i` starting from `0`), its new
+  value is obtained as follows:
+    - Calculate a new pattern where each number is repeated `i+1` times.
+    - Extend the new pattern repeating it until its length is at least that of
+      the list of integers.
+    - Skip the first number of the pattern.
+    - Multiply each `j`-th integer of the list by the corresponding `j`-th
+      number of the new pattern.
+    - Sum all the numbers together and take the last digit of the sum (positive
+      regardless of the sign of the sum). This is the value of the integer at
+      position `i` in the new list.
+
+After applying the above, we need to provide the first 8 numbers of the newly
+obtained list concatenated together as the answer to the problem.
+
+So, after parsing the input (making a copy is useful to reuse the list for part
+2):
+
+```python
+original = list(map(int, fin.read().strip()))
+nums = original[:]
+```
+
+The first thing that one might think to generate the repeating pattern each time
+is something like the following:
+
+```python
+def gen_pattern(n):
+    pattern = []
+
+    for p in (0, 1, 0, -1):
+        for _ in range(n):
+            pattern.append(p)
+
+    return pattern
+```
+
+While the above snippet works just fine for small values of `n`, it becomes a
+real struggle for larger values, and is very slow anyway. Also, the pattern
+still needs to be exended to be as long as the list of integers, and we then
+need to skip the first.
+
+If we take a look at the pattern `(0, 1, 0, -1)`, and read again above:
+
+> - Multiply each `j`-th integer of the list by the corresponding `j`-th
+>   number of the pattern.
+
+This means that:
+
+1. Applying this literally would mean multiplying a bunch of numbers by `0`
+   every time, which seems like a waste of time.
+2. For the other two values, we can completely ignore the fact that it's a
+   multiplication, since they are `1` and `-1` respectively.
+
+A single iteration of the algorithm we need to apply can then be simplified by
+skipping chunks of numbers that would end up being multiplied by zero, and also
+just summing up all the numbers, adding them (`1`) or subtracting them (`-1`) to
+the partial sum each time.
+
+In other words, we can do this each time:
+
+1. Take `i` as the index of the integer we want to calculate in the new list.
+2. Skip the first `i` integers of the list (first pattern number is `0`).
+3. Sum the next chunk of integers (second pattern number is `1`) and add to the
+   current total.
+4. Skip the next chunk of integers (third pattern number is `0`).
+5. Sum the next chunk of integers and subtract from the current total (second
+   pattern number is `-1`).
+6. Take the total modulo 10.
+
+Put the above in a loop that repeats 100 times, and we got our part 1 solution:
+
+```python
+length = len(nums)
+
+for _ in range(100):
+    old = nums[:]
+
+    for i in range(length):
+        j = i
+        step = i + 1
+        cursum = 0
+
+        while j < length:
+            cursum += sum(old[j:j + step])
+            j += 2 * step
+
+            cursum -= sum(old[j:j + step])
+            j += 2 * step
+
+        nums[i] = abs(cursum) % 10
+```
+
+Now just take the first 8 numbers, concatenate them as a string and that's it:
+
+```python
+answer = ''.join(map(str, nums[:8]))
+print('Part 1:', answer)
+```
+
+### Part 2
+
+For part 2 we are asked to do the same thing as part 1, but with a couple more
+rules:
+
+1. Take the first 7 digits of the input list as a number `N`.
+2. Repeat the input list of intgers 10000 (ten thousand) times.
+3. After the 100 iteration, skip `N` digits of the result and take the next 8.
+
+As it turns out, repeating the list 10000 times makes things a little bit more
+complicated... our previous silly algorithm would take years with 6.5 million
+integers. We need to find a clever optimization.
+
+In order to optimize the code, we need to notice something, which becomes clear
+after looking at some examples:
+
+    Input signal: 12345678
+
+    1*1  + 2*0  + 3*-1 + 4*0  + 5*1  + 6*0  + 7*-1 + 8*0  = 4
+    1*0  + 2*1  + 3*1  + 4*0  + 5*0  + 6*-1 + 7*-1 + 8*0  = 8
+    1*0  + 2*0  + 3*1  + 4*1  + 5*1  + 6*0  + 7*0  + 8*0  = 2
+    1*0  + 2*0  + 3*0  + 4*1  + 5*1  + 6*1  + 7*1  + 8*0  = 2
+    1*0  + 2*0  + 3*0  + 4*0  + 5*1  + 6*1  + 7*1  + 8*1  = 6
+    1*0  + 2*0  + 3*0  + 4*0  + 5*0  + 6*1  + 7*1  + 8*1  = 1
+    1*0  + 2*0  + 3*0  + 4*0  + 5*0  + 6*0  + 7*1  + 8*1  = 5
+    1*0  + 2*0  + 3*0  + 4*0  + 5*0  + 6*0  + 7*0  + 8*1  = 8
+
+    After 1 phase: 48226158
+
+In particular, we can notice that since we are extending those zeroes, towards
+the last digits we basically end up with only the sum of last few digits as a
+result. More accurately, for any index `i > n/2` (where `n = len(nums)`), we
+end up just summing up the last `n-i` digits (and then taking the last digit).
+This is clear from the above example, where it can be seen that:
+
+                              ...  = 4
+                              ...  = 8
+                              ...  = 2
+                              ...  = 2
+    0 + 0 + 0 + 0 + 5 + 6 + 7 + 8  = 6 (26 % 10)
+    0 + 0 + 0 + 0 + 0 + 6 + 7 + 8  = 1 (21 % 10)
+    0 + 0 + 0 + 0 + 0 + 0 + 7 + 8  = 5 (15 % 10)
+    0 + 0 + 0 + 0 + 0 + 0 + 0 + 8  = 8
+
+Since the problem tells us to *skip* some digits first, we now don't need to
+calculate *all* the digits. If the number of skipped digits is higher than `n/2`
+we can just apply this much faster simplified approach. As it turns out, the
+number of digits to skip is actually very large (about 90% of the digits we
+have), and therefore this solution can be applied.
+
+We can work our way backwards from the last digit (which is only the sum of
+itself), and then simply add to each digit its successor in a simple reverse
+loop.
+
+```python
+to_skip = int(''.join(map(str, original[:7])))
+
+assert to_skip >= len(original)/2
+
+nums   = (original * 10000)[to_skip:]
+length = len(nums)
+
+for step in range(100):
+    for i in range(length - 2, -1, -1):
+        nums[i] += nums[i + 1]
+        nums[i] %= 10
+
+answer = ''.join(map(str, nums[:8]))
+print('Part 2:', answer)
+```
+
+We could also apply this optimization to the second half of the numbers from
+part 1, but since those are only 650, that would really just save us some
+tens of milliseconds.
+
+### Considerations
+
+Although the solution to p2 is clever, this solution (and the original solution
+linked above) still run pretty slowly on CPython 3 (at least on my system). With
+both p1 + p2 taking around 22s, while on PyPy the whole thing takes ~500ms,
+which is reasonable.
+
+I am not sure if this is because there still is significant optimization to be
+made (or another clever trick), but it nonetheless bothers me a bit,
+particualrly because Advent of Code puzzles are supposed to be solvable in any
+programming language (interpreted or not) and should really take less than that
+if the right algorithm is applied (which is the case for the above).
+
+
 [d01]: #day-1---the-tyranny-of-the-rocket-equation
 [d02]: #day-2---1202-program-alarm
 [d03]: #day-3---crossed-wires
@@ -1591,6 +1797,7 @@ get our answer as expected.
 [d09]: #day-9---sensor-boost
 [d12]: #day-12---the-n-body-problem
 [d13]: #day-13---care-package
+[d16]: #day-16---flawed-frequency-transmission
 
 [d01-problem]: https://adventofcode.com/2019/day/1
 [d02-problem]: https://adventofcode.com/2019/day/2
@@ -1603,6 +1810,7 @@ get our answer as expected.
 [d09-problem]: https://adventofcode.com/2019/day/9
 [d12-problem]: https://adventofcode.com/2019/day/12
 [d13-problem]: https://adventofcode.com/2019/day/13
+[d16-problem]: https://adventofcode.com/2019/day/16
 [d01-solution]: day01_clean.py
 [d02-solution]: day02_clean.py
 [d03-solution]: day03_clean.py
@@ -1614,6 +1822,7 @@ get our answer as expected.
 [d09-solution]: misc/day09/walkthrough_solution.py
 [d12-solution]: day12_clean.py
 [d13-solution]: day13_clean.py
+[d16-solution]: day16_clean.py
 
 [py-cond-expr]:               https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
