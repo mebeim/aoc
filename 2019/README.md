@@ -157,7 +157,8 @@ A move is represented as a letter which tells us the direction of the move (`L`,
 such direction.
 
 The two wires will intersect each other, and we are asked to calculate the
-Manhattan distance from the origin to the closest intersection.
+[Manhattan distance][algo-manhattan] from the origin to the closest
+intersection.
 
 First, parse the moves with [`map()`][py-builtin-map] and a simple funciton that
 takes a string and splits it into direction and number of steps.
@@ -646,8 +647,7 @@ for a, b in orbits:
 ```
 
 After building the graph, all we need to do is apply a good shortest path
-finding algorithm, like
-[Dijkstra's algorithm](https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm).
+finding algorithm, like [Dijkstra's algorithm][algo-dijkstra].
 
 For this purpose the [`heapq`][py-heapq] module is very useful: it provides the
 heap data structure, which is capable of maintaining an ordered structure of
@@ -1338,7 +1338,7 @@ we now do care about one asteroid being the closest on a given ray. We can again
 scan all asteroids to determine which one is the closest on each ray. This is as
 simple as saving the asteroid and its distance in a dictionary
 `{ray: (closest_asteroid, distance)}`. For the distance we can just use plain
-Manhattan distance, nothing fancier needed.
+[Manhattan distance][algo-manhattan], nothing fancier needed.
 
 ```python
 def manhattan(ax, ay, bx, by):
@@ -2120,3 +2120,6 @@ sad :(.
 [py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
 [py-math-atan2]:              https://docs.python.org/3/library/math.html#math.atan2
 [py-unpacking]:               https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
+
+[algo-manhattan]: https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
+[algo-dijkstra]:  https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
