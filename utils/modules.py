@@ -19,7 +19,10 @@ if find_loader('sortedcontainers') is not None:
 	import sortedcontainers
 
 if find_loader('numpy') is not None:
-	import numpy as np
+	try:
+		import numpy as np
+	except ImportError:
+		pass
 
 if find_loader('networkx') is not None:
 	import networkx as nx
