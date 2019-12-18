@@ -1357,15 +1357,15 @@ for a in asteroids:
         closest[r] = (a, m)
 ```
 
-Now that we've got all the closest asteroid, we will need to order them. We want
-to sort them by clockwise angle from north. To do this, we can calculate the
-angle for every ray using the [`atan2()`][py-math-atan2] function. This function
-takes `y` and `x` as parameteers (in this exact order) and outputs a value in
-[radians](https://en.wikipedia.org/wiki/Radian) ranging from `-math.pi` to
-`math.pi`, considering the *east* direction as zero. To make the return value of
-this function useful, we first need to move the zero value to north, so that the
-north direction corresponds to `0`, and then convert the range from `[-pi, pi)`
-to `[0, 2*pi)`.
+Now that we've got all the closest asteroids, we will need to order them. We
+want to sort them by clockwise angle from north. To do this, we can calculate
+the angle for every ray using the [`atan2()`][py-math-atan2] function. This
+function takes `y` and `x` as parameteers (in this exact order) and outputs a
+value in [radians](https://en.wikipedia.org/wiki/Radian) ranging from `-math.pi`
+to `math.pi`, considering the *east* direction as zero. To make the return value
+of this function useful, we first need to convert the range from `[-pi, pi)` to
+`[0, 2*pi)` (just add `+pi` to the result of `atan2()`), and then move the zero
+value to north so that the north direction corresponds to `0` radians.
 
 After thinking about it with the help of pen and paper, what we need is the
 following:
@@ -1383,7 +1383,7 @@ Note that from the way we parsed the input, north corresponds to the negative Y
 axis in our program, this needs to be carefully taken into account when writing
 the above function! The `rad % (2*PI)` trick here is to avoid having a resulting
 angle of `2*PI` for rays that are exactly facing north (in that case, we want
-`0` instead.
+`0` instead).
 
 We can now finally order the asteroids by angle using the built-in
 [`sorted()`][py-builtin-sorted] function with our `angle()` function used as
