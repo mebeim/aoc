@@ -4,6 +4,7 @@ import advent
 from utils import *
 from string import ascii_lowercase as lowercase, ascii_uppercase as uppercase
 
+advent.setup(2019, 18, 1)
 fin = advent.get_input()
 # eprint(*fin, sep='')
 timer_start()
@@ -19,6 +20,7 @@ def neigh4(r, c):
 
 @lru_cache(maxsize=2**30)
 def reachable_keys(src, mykeys):
+	# part 1
 	queue = deque([(0, src)])
 	visited = set()
 	foundkeys = {}
@@ -47,23 +49,87 @@ def reachable_keys(src, mykeys):
 
 @lru_cache(maxsize=2**30)
 def search(pos, mykeys=frozenset()):
+	# part 1
 	keyz = reachable_keys(pos, mykeys) # -> {chiave: distanza}
 	if not keyz:
-		return 0, mykeys
+		if len(mykeys) == len(keys)//2:
+			return 0
+		else:
+			return float('inf')
 
 	best = float('inf')
-	bestkeys = {}
 
 	for k, d in keyz.items():
 		keypos = keys[k]
-		subdist, subkeys = search(keypos, mykeys | {k})
-		dist = d + subdist
+		dist = d + search(keypos, mykeys | {k})
 
 		if dist < best:
 			best = dist
-			bestkeys = subkeys
 
-	return best, mykeys | bestkeys
+	return best
+
+@lru_cache(maxsize=2**30)
+def reachable_keys2(srcs, mykeys):
+	# part2
+	queue = deque()
+	visited = set()
+	foundkeys = {}
+
+	for src in srcs:
+		queue.append((0, src, src))
+
+	while queue:
+		dist, node, owner = queue.popleft()
+
+		if node not in visited:
+			visited.add(node)
+
+			if node in keys:
+				k = keys[node]
+
+				if k not in mykeys and (k not in foundkeys or foundkeys[k] > dist):
+					foundkeys[k] = (owner, dist)
+					continue
+
+			if node in doors and not doors[node] in mykeys:
+				continue
+
+			for neighbor in filter(lambda n: n not in visited, G[node]):
+				queue.append((dist + 1, neighbor, owner))
+
+	return foundkeys
+
+@lru_cache(maxsize=2**30)
+def search2(bots, mykeys=frozenset()):
+	# part 2
+	keyz = reachable_keys2(bots, mykeys)
+	if not keyz:
+		if len(mykeys) == len(keys)//2:
+			return 0
+		else:
+			return float('inf')
+
+	best = float('inf')
+
+	for k, (owner, d) in keyz.items():
+		newbots = []
+
+		for b in bots:
+			if b == owner:
+				newbots.append(keys[k])
+			else:
+				newbots.append(b)
+
+		newbots = tuple(newbots)
+		dist = d + search2(newbots, mykeys | {k})
+
+		if dist < best:
+			best = dist
+
+	return best
+
+
+grid = get_char_matrix(fin)
 
 G = {}
 keys = {}
@@ -90,69 +156,9 @@ for r, row in enumerate(grid):
 				mypos = pos
 
 
-grid = get_char_matrix(fin)
-steps, keys = search(mypos)
-# print(steps)
+ans = search(mypos)
+# print(ans)
 advent.submit_answer(1, ans)
-
-
-
-@lru_cache(maxsize=2**30)
-def reachable_keys2(srcs, mykeys):
-	queue = deque()
-	visited = set()
-	foundkeys = {}
-
-	for src in srcs:
-		queue.append((0, src, src))
-
-	while queue:
-		dist, node, owner = queue.popleft()
-
-		if node not in visited:
-			visited.add(node)
-
-			if node in keys:
-				k = keys[node]
-
-				if k not in mykeys and (k not in foundkeys or foundkeys[k] > dist):
-					foundkeys[k] = (owner, dist)
-					continue
-
-			if node in doors and not doors[node] in mykeys:
-				continue
-
-			for neighbor in filter(lambda n: n not in visited, G[node]):
-				new_dist = dist + 1
-				queue.append((new_dist, neighbor, owner))
-
-	return foundkeys
-
-@lru_cache(maxsize=2**30)
-def search2(bots, mykeys=frozenset()):
-	keyz = reachable_keys2(bots, mykeys)
-	if not keyz:
-		return 0
-
-	best = float('inf')
-
-	for k, (owner, d) in keyz.items():
-		newbots = []
-
-		for b in bots:
-			if b == owner:
-				newbots.append(keys[k])
-			else:
-				newbots.append(b)
-
-		newbots = tuple(newbots)
-		dist = d + search2(newbots, mykeys | {k})
-
-		if dist < best:
-			best = dist
-
-	return best
-
 
 
 del G[mypos]
