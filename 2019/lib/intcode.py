@@ -235,9 +235,19 @@ class IntcodeVM:
 	def reset(self):
 		self.code          = self.orig_code[:] + [0] * 10000
 		self.mem           = self.code
-		self.running       = True
 		self.pc            = 0
 		self.relative_base = 0
+		self.running       = True
+		self.need_reset    = False
+
+	def soft_reset(self):
+		if self.code is None:
+			self.code = self.orig_code[:] + [0] * 10000
+			self.mem  = self.code
+
+		self.pc            = 0
+		self.relative_base = 0
+		self.running       = True
 		self.need_reset    = False
 
 	def run(self, inp=None, n_out=-1, resume=False, debug=False):
