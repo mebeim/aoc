@@ -12,9 +12,10 @@
 #
 
 import sys
-from intcode import *
+import argparse
 from operator import attrgetter
 import pygraphviz as pgv
+from intcode import *
 
 def breaks_basic_block(op):
 	return op.mnemonic in ('jnz', 'jz') and op.argmodes[1] == ARGMODE_IMMEDIATE
@@ -68,7 +69,7 @@ def disassemble(block):
 
 	return '<' + ''.join(lines) + '>'
 
-def cfg(program, out_fname):
+def cfg(program, out_fname, simplify_jumps=False):
 	vm         = IntcodeVM(program)
 	vm.code    = vm.orig_code[:]
 	addr_to_op = {}
@@ -116,21 +117,35 @@ def cfg(program, out_fname):
 		blocks.append(cur_block)
 
 	for i, (prev, cur) in enumerate(zip(blocks, blocks[1:])):
-		kind = J_UNCONDITIONAL
 		prev_op = prev[-1]
 
 		if type(prev_op) == OpHlt:
 			continue
 
 		if prev_op.tail:
+			mode = prev_op.argmodes[0]
+			dst = None
+
 			if prev_op.jump_addr in addr_to_op:
 				dst = addr_to_op[prev_op.jump_addr].block_id
-				edges.append((i, dst, J_TRUE))
 
-			if cur[0].head:
-				kind = J_FALSE
+			if simplify_jumps and type(prev_op) == OpJz and mode == ARGMODE_IMMEDIATE:
+				if prev_op.args[0] == 0 and dst is not None:
+					edges.append((i, dst, J_UNCONDITIONAL))
+				else:
+					kind = J_UNCONDITIONAL
+			elif simplify_jumps and type(prev_op) == OpJnz and mode == ARGMODE_IMMEDIATE:
+				if prev_op.args[0] != 0 and dst is not None:
+					edges.append((i, dst, J_UNCONDITIONAL))
+				else:
+					kind = J_UNCONDITIONAL
+			else:
+				if dst is not None:
+					edges.append((i, dst, J_TRUE))
 
-		edges.append((i, i + 1, kind))
+				edges.append((i, i + 1, J_FALSE if cur[0].head else J_UNCONDITIONAL))
+		else:
+			edges.append((i, i + 1, J_UNCONDITIONAL))
 
 	G = pgv.AGraph(directed=True, **GRAPH_ATTRS)
 	G.node_attr.update(NODE_ATTRS)
@@ -143,10 +158,6 @@ def cfg(program, out_fname):
 		G.add_edge(src, dst, color=COLORS[kind]) #**J_ATTRS[kind])
 
 	G.write(out_fname)
-
-def _usage():
-	sys.stderr.write('Usage: %s txt [output.dot]\n' % sys.argv[0])
-	sys.exit(1)
 
 
 J_UNCONDITIONAL, J_TRUE, J_FALSE = range(3)
@@ -164,18 +175,20 @@ NODE_ATTRS = {'shape': 'box', 'fontname': 'monospace'}
 EDGE_ATTRS = {}
 
 if __name__ == '__main__':
-	if len(sys.argv) < 2 or len(sys.argv) > 3:
-		_usage()
+	parser = argparse.ArgumentParser(
+		description='Parse an intcode program and generate a .dot file representing its Control Flow Graph.'
+	)
 
-	in_fname  = sys.argv[1]
+	parser.add_argument('in_fname', metavar='program', help='Intcode program filename')
+	parser.add_argument('out_fname', metavar='output.dot', nargs='?', default=None, help='optional output filaneme')
+	parser.add_argument('-j', dest='simplify_jumps', action='store_true', help='simplify unconditional jumps')
+	args = parser.parse_args()
 
-	if len(sys.argv) > 2:
-		out_fname = sys.argv[2]
-	else:
-		ext = in_fname.rfind('.')
-		out_fname = (in_fname if ext == -1 else in_fname[:ext]) + '.dot'
+	if not args.out_fname:
+		ext = args.in_fname.rfind('.')
+		args.out_fname = (args.in_fname if ext == -1 else args.in_fname[:ext]) + '.dot'
 
-	with open(in_fname) as fin:
+	with open(args.in_fname) as fin:
 		try:
 			program = list(map(int, fin.read().split(',')))
 		except:
@@ -186,4 +199,4 @@ if __name__ == '__main__':
 			)
 			sys.exit(1)
 
-	cfg(program, out_fname)
+	cfg(program, args.out_fname, args.simplify_jumps)
