@@ -91,8 +91,8 @@ def vm_write2(v):
 		# print('----', v, '----')
 		advent.submit_answer(2, v)
 
-vm.orig_code[0] = 2
 vm.reset()
+vm.code[0] = 2
 vm.write = vm_write2
 
 main = 'R,6,L,6,L,10,L,8,L,6,L,10,L,6,R,6,L,6,L,10,L,8,L,6,L,10,L,6,R,6,L,8,L,10,R,6,R,6,L,6,L,10,L,8,L,6,L,10,L,6,R,6,L,8,L,10,R,6,R,6,L,6,L,10,R,6,L,8,L,10,R,6'
@@ -111,7 +111,6 @@ debug = 'n'
 
 robot_prog = list(map(ord, '{}\n{}\n{}\n'.format(main, subs, debug)))
 
-vm.orig_code[0] = 2
 vm.run(robot_prog)
 
 
