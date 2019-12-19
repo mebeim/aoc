@@ -10,6 +10,78 @@
 
 import sys
 
+################## ONESHOT FAST IMPLEMENTATION ##################
+
+OPCODE_NPARAMS = (None, 3, 3, 1, 1, 2, 2, 3, 3, 1)
+OPCODE_PARAMTYPES = (
+	None,
+	(0, 0, 1),
+	(0, 0, 1),
+	(1,),
+	(0,),
+	(0, 0),
+	(0, 0),
+	(0, 0, 1),
+	(0, 0, 1),
+	(0,),
+)
+
+def intcode_oneshot(prog, inp=[]):
+	inptr = 0
+	pc = 0
+	relative_base = 0
+	prog = prog + [0] * 10000
+
+	while prog[pc] != 99:
+		op = prog[pc]
+
+		modes = ((op // 100) % 10, (op // 1000) % 10, (op // 10000) % 10)
+		op %= 10
+
+		nparams = OPCODE_NPARAMS[op]
+		types   = OPCODE_PARAMTYPES[op]
+		params  = prog[pc + 1:pc + 1 + nparams]
+
+		for i in range(len(params)):
+			if modes[i] == 0:
+				if types[i] == 0:
+					params[i] = prog[params[i]]
+			elif modes[i] == 2:
+				if types[i] == 0:
+					params[i] = prog[relative_base + params[i]]
+				elif types[i] == 1:
+					params[i] += relative_base
+
+		if op == 1: # add
+			prog[params[2]] = params[0] + params[1]
+			pc += 4
+		elif op == 2: # mul
+			prog[params[2]] = params[0] * params[1]
+			pc += 4
+		elif op == 3: # in
+			prog[params[0]] = inp[inptr]
+			inptr += 1
+			pc += 2
+		elif op == 4: # out
+			yield params[0]
+			pc += 2
+		elif op == 5: # jnz
+			pc = params[1] if params[0] != 0 else pc + 3
+		elif op == 6: # jz
+			pc = params[1] if params[0] == 0 else pc + 3
+		elif op == 7: # lt
+			prog[params[2]] = 1 if params[0] < params[1] else 0
+			pc += 4
+		elif op == 8: # eq
+			prog[params[2]] = 1 if params[0] == params[1] else 0
+			pc += 4
+		elif op == 9: # rel
+			relative_base += params[0]
+			pc += 2
+
+
+################## COOL CLASS IMPLEMENTATION ##################
+
 class VMRuntimeError(Exception):
 	pass
 
