@@ -35,28 +35,27 @@ width, height = 150, 200
 # foundx = 0
 
 # for x in range(width):
-# 	# log('> {}\r   ', x)
+# 	log('> {}\r   ', x)
 
 # 	n = 0
 # 	for y in range(height):
-# 		x = vm.run([x+startx, y+starty], n_out=1)[0]
-# 		n += x
-# 		grid[y][x] = x
+# 		res = intcode_oneshot(prog, [x+startx, y+starty])[0]
+# 		n += res
+# 		grid[y][x] = res
 
 # 	if n == 134:
 # 		if foundx == 0:
 # 			foundx = x
-		# break
 
 # conv = dict(zip(range(-1, 100), '! #'))
-# x = []
+# vizgrid = []
 
 # for l in grid:
 # 	a = ''.join(map(lambda v: conv.get(v, '?'), l))
 # 	a = ''.join(map(str, l))
-# 	x.append(a)
-#
-# dump_iterable(x)
+# 	vizgrid.append(a)
+
+# dump_iterable(vizgrid)
 
 foundx = 0
 x = foundx + startx
