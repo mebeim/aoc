@@ -2063,7 +2063,8 @@ Day 18 - Many-Worlds Interpretation
 
 I hope you're ready for some path finding and exploration algorithms, because oh
 boy, things are going to get wild today! Hardest puzzle so far, and (hopefully)
-maybe even *the* hardest this year. Preapare a long walkthrough, let's dive in!
+maybe even *the* hardest this year. Prepare for a long walkthrough, let's dive
+in!
 
 We are given an ASCII art maze with empty cells (`.`), walls (`#`), keys
 (lowercase letters) and doors (uppercase letters). We (`@`) are stuck in the
@@ -2071,15 +2072,16 @@ middle of the maze, and need to find a way to collect *all* the keys, in the
 minimum amount of steps possible. That number of steps is the answer to the
 puzzle.
 
-The maze itself it's pretty standard 2D maze where we can only move in four
+The maze itself is a pretty standard 2D maze where we can only move in four
 directions (up, down, left, right) and not in diagonal. There is a twist though:
 we cannot pass through a door unless we collect the corresponding key first.
 Each uppercase letter in the maze is a door which is opened by the corresponding
-key, which is a lowercase letter.
+key, which is a lowercase letter. In other words, a door can be treated like a
+wall `#` if we don't have its key, and like an empty cell `.` otherwise.
 
 It's important to familiarize with the problem before starting to think about a
 solution right away, therefore you should probably read the original problem
-statement (linked above), which also contains exaples. Done? Okay, let's go!
+statement (linked above), which also contains examples. Done? Okay, let's go!
 
 There are a lot of points in the maze which are empty spaces. To make the graph
 simpler, and therefore also speed-up any exploration that we are going to run on
@@ -2087,13 +2089,15 @@ it, we can build a simpler graph which only has keys, doors and the starting
 position as nodes. Every edge of this graph will have a weight representing the
 minimum number of steps needed to move between the two nodes.
 
-Our graph will be a simple dictionary in the form
-`{node: [(neighbor, weight)]}`, that is a dictionary that associates each node
-to a list of neighbors and the minimum steps needed to reach them. To create
-such a list for each node, we will need a function that, given the position of a
-in the maze, can tell us which other nodes are directly reachable (i.e.
-adjacent) and with which weight. For now, we will just pretend that we already
-magically have such a function, and we'll call it `find_adjacent()`.
+Our graph will be a simple dictionary in the form `{node: [(neighbor,
+weight)]}`, that is a dictionary that associates each node to a list of
+neighbors and the minimum steps needed to reach them. To create such a list for
+each node, we will need a function that, given the position of a node in the
+maze, can tell us which other nodes are directly reachable from it (i.e.
+adjacent) and with how many steps (i.e. the weight of the edge). For now, we
+will just pretend that we already magically have a function `find_adjacent()`
+that does this for us: it takes a position as argument and returns a list of
+nodes and distances that are reachable from that position.
 
 Our `build_graph()` function will then iterate over the given maze grid and call
 `find_adjacent()` each time it encounters a node, then store this info in the
@@ -2118,9 +2122,9 @@ def build_graph(grid):
 ```
 
 Nice, now we need to write `find_adjacent()`. Since we are in a 2D grid where we
-are only allowed to move up, down, left and right and the distances between two
-cells are always `1`, we can use the [Breadth First Search][algo-bfs] to explore
-it. Starting from a given position, we will build
+are only allowed to move up, down, left and right and the distance between cells
+is always `1`, we can use the [Breadth First Search][algo-bfs] to explore it.
+Starting from a given position, we will build
 [a queue](https://en.wikipedia.org/wiki/Queue_(abstract_data_type)) of nodes to
 visit with their associated distances. Initially, this queue will only contain
 the neighbor cells around the starting position, with a distance of `1`. We will
@@ -2225,11 +2229,11 @@ The above corresponds to a graph like this:
      / \
     @---A--b
 
-Cool! Now to back to the real problem: this problem of finding all the keys
-looks a lot like the
+Cool! Now back to the real problem: this problem of finding all the keys looks
+like the
 [traveling salesman problem](https://en.wikipedia.org/wiki/Travelling_salesman_problem),
-except we don't care about going back to che start, and we have "obstacle"
-nodes, which are the doors.
+except we don't care about going back to the start, and we have "obstacle"
+nodes in our way (the doors).
 
 The problem of visiting every single node with the minimum total distance is
 [NP-complete](https://en.wikipedia.org/wiki/NP-completeness), meaning that it
@@ -2242,7 +2246,7 @@ an initial source and set of found keys (which will initially be empty), we want
 to do the following:
 
 1. If we found all the keys, the minimum number of steps needed to reach the
-   solution is `0` (we already have it), so we'll return `0`.
+   solution is `0` (we already have the solution), so we'll return `0`.
 2. Otherwise, for every key `k` that can be reached from the start position, we
    will make a recursive call to determine what's the required number of steps
    to get all the remaining keys having moved to the position of `k` and having
@@ -2250,18 +2254,19 @@ to do the following:
 
 What keys can we reach starting from a given node and having a certain set of
 already collected keys? And with how many steps? We still don't know yet, but as
-we did before for `build_graph()`, we can solve this one function at a time. For
-now, we'll again make a "leap of faith" and pretend that we already magically
-have a function `reachable_keys()` that takes care of this.
+we did before, we can solve this one function at a time. For now, let's again
+make a "leap of faith" and pretend that we already magically have a function
+`reachable_keys()` that takes care of this.
 
-It takes more to explain it than to write it, really. Here it is:
+Let's write the exploring function. It takes more to explain it than to write
+it, really. Here it is:
 
 ```python
 from math import inf as INFINITY
 
 def minimum_steps(src, n_find, mykeys=set()):
     # src   : starting node
-    # n_find: number of keys that I want to find
+    # n_find: number of keys that I still need to find
     # mykeys: set of keys that I already found
 
     if n_find == 0:
@@ -2274,23 +2279,24 @@ def minimum_steps(src, n_find, mykeys=set()):
     # possible move recursively.
     for k, d in reachable_keys(src, mykeys):
         # Take k and move there.
-        newsrc = k
+        newsrc  = k
         newkeys = mykeys | {k}
-        dist = d
+        dist    = d
 
         # See what's the solution to find all other keys having taken k.
         dist += minimum_steps(newsrc, n_find - 1, newkeys)
 
+        # Update the current solution if that was better.
         if dist < best:
             best = dist
 
     return best
 ```
 
-It seems pretty clear that we have left do now is writing a good
-`reachable_keys()` function. We have a graph with weighted edges:
-[Dijkstra's algorithm][[algo-dijkstra] is for sure the easiest way to find all
-reachable keys and the smallest amount of steps to reach each of them.
+It seems pretty clear that all we have left do now is writing a good
+`reachable_keys()` function. We have a graph with weighted edges: [Dijkstra's
+algorithm][algo-dijkstra] is for sure the easiest way to find all reachable keys
+and the smallest amount of steps to reach each of them.
 
 We can adapt the function we wrote for [day 6][d06] part 2. There are three main
 differences from day 6 here:
@@ -2304,8 +2310,8 @@ differences from day 6 here:
    we will pass the set of keys as an argument, and check it each time we see
    a door.
 
-Sounds intricate, but it's seempler than it looks. Let's make the code speak for
-mainly speak for itself, with the help of the needed amount of comments.
+Sounds intricate, but it's simpler than it looks. Let's make the code mainly
+speak for itself, with the help of some comments.
 
 ```python
 def reachable_keys(src, mykeys):
@@ -2325,32 +2331,30 @@ def reachable_keys(src, mykeys):
     heapq.heapify(queue)
 
     while queue:
+        # Get the next nearest node to visit and its saved distance.
         dist, node = heapq.heappop(queue)
 
-        if dist < distance[node]:
-            # Get the next nearest node to visit and its saved distance.
-            distance[node] = dist
+        # If it's a key and we don't already have it...
+        if node.islower() and node not in mykeys:
+            # Add it to the reachable keys also saving the distance.
+            reachable.append((node, dist))
+            # Proceed to the next in queue, don't explore neighbors.
+            continue
 
-            # If it's a key and we don't already have it...
-            if node.islower() and node not in mykeys:
-                # Add it to the reachable keys also saving the distance.
-                reachable.append((node, dist))
-                # Proceed to the next in queue, don't explore neighbors.
-                continue
+        # If we do not have key for a door...
+        if node.lower() not in mykeys:
+            # Proceed to the next in queue, don't explore neighbors.
+            continue
 
-            # If we do not have key for a door...
-            if node.lower() not in mykeys:
-                # Proceed to the next in queue, don't explore neighbors.
-                continue
+        # Otherwise (no new key and no locked door) for each neighbor...
+        for neighbor, weight in G[node]:
+            new_dist = dist + weight
 
-            # Otherwise (no new key and no locked door) for each neighbor...
-            for neighbor, weight in G[node]:
-                new_dist = dist + weight
-
-                # If the distance to reach it is better than what we already
-                # have, add it to the queue.
-                if new_dist < distance[neighbor]:
-                    heapq.heappush(queue, (new_dist, neighbor))
+            # If the distance to reach it is better than what we already
+            # have, add it to the queue.
+            if new_dist < distance[neighbor]:
+                distance[neighbor] = new_dist
+                heapq.heappush(queue, (new_dist, neighbor))
 
     return reachable
 ```
@@ -2359,7 +2363,7 @@ We now have everything we need. Computing the answer is only a few function
 calls away:
 
 ```python
-maze = tuple(map(lambda l: list(l.strip()), fin.readlines()))
+maze = tuple(list(l.strip()) for l in fin)
 
 G, startpos = build_graph(maze)
 total_keys  = sum(node.islower() for node in G)
@@ -2369,15 +2373,16 @@ print('Part 1:', min_steps)
 ```
 
 *But wait!* We run the program and it seems to hang indefinitely... what did we
-do wrong? Is it stuck in a loop? Is it too slow? WHat is going on?
+do wrong? Is it stuck in a loop? Is it too slow? Is recursion stabbing us in the
+back? What is going on?
 
 As it turns out, like I said before, since the only way to find the answer is to
 try all different paths, this means trying around `total_keys!` paths in the
-worst case (that exclanation mark there stands for "factorial"). We have 26 keys
-in our input, which means at most 403291461126605635584000000 possible paths.
-Well... that doesn't look like a reasonable number at all, it would probably be
-faster to wait for the heat death of the universe instead of waiting for my poor
-Intel i7-870 desktop to spit out an answer.
+worst case (that exclamation mark there stands for "factorial"). We have 26 keys
+in our input, which means at most 26! = 403291461126605635584000000 possible
+paths. Well... that doesn't look like a reasonable number at all, we would
+probably reach the heat death of the universe before my poor Intel i7-870
+desktop spits out an answer.
 
 To work this out, we need to notice a couple of interesting facts first:
 
@@ -2386,13 +2391,15 @@ To work this out, we need to notice a couple of interesting facts first:
    the exact same distances too). Therefore for the same arguments, the
    `reachable_keys()` function will always return the same result.
 2. If we ever find ourselves at the same node with the same keys, the minimum
-   steps to collect all the remaining keys will always be the same. Therefore
-   for the same arguments, the `minimum_steps()` function will always return the
-   same result.
+   number of steps to collect all the remaining keys will always be the same.
+   Therefore for the same arguments, the `minimum_steps()` function will always
+   return the same result.
 
 As it turns out, the `reachable_keys()` and `minimum_steps()` functions will get
 called a very large amount of times, and due to the nature of our exploration,
 most of the times they will end up being called with the exact same arguments.
+This means that they will do the same heavy computation each time, resulting in
+an enormous amount of unneeded work.
 
 We can associate each unique value of arguments with their respective result,
 for both the functions. To do this, the simplest way is to use a dictionary
@@ -2403,8 +2410,10 @@ dictionary before returning it.
 
 The technique of caching the result of a function based on its arguments to
 avoid to reapeat work is called
-[*memoization*](https://en.wikipedia.org/wiki/Memoization). In terms of Python
-code, it means something like this:
+[*memoization*](https://en.wikipedia.org/wiki/Memoization). The Wikipedia page
+does a good job of explaining why memoization is important in recursive
+functions like this, so I'd suggest to read it in case you are not familiar with
+the concept. In terms of Python code, it means something like this:
 
 ```python
 def expensive_function(a, b, c, cache={}): # The cache={} dictionaty here is only
@@ -2422,8 +2431,8 @@ expensive_function(1, 2, 3) # instantaneous, returns cached value
 
 Python (>= 3.2) also has a very cool way of painlessly handling memoization. All
 we need is the [`@lru_cache`][py-functools-lru_cache] decorator from the
-[`functools`][py-functools] module, which automagically does all of the above fo
-us with a single line of code.
+[`functools`][py-functools] module, which automagically does all of the above
+for us with a single line of code.
 [LRU](https://en.wikipedia.org/wiki/Cache_replacement_policies#Least_recently_used_(LRU))
 is a caching strategy that discards the least recently used value when too many
 values are cached.
@@ -2440,14 +2449,14 @@ used results to keep, and it can be set to `None` for unlimited.
 
 There is still *one little problem* thouhg. Since `@lru_cache` too uses a
 dictionary to cache arguments and resutls, all the arguments need to be
-hashable. In our functions though, the `mykeys` argument is a `set`, and as it
+hashable. However in our functions the `mykeys` argument is a `set`, and as it
 turns out, since a `set` is a mutable collection, it cannot be hashed. For this,
 the [`frozenset`][py-frozenset] comes to the rescue! It's basically the same as
 a `set`, but it does not support removing or adding values: it is immutable, and
 therefore can be hashed. Given the way we have written our functions, we just
 need to change the only occurrence of `set()` in the definition of
 `minimum_steps()` and everything will work out of the box. Let's be generous and
-cache the ~1 million most recent values for each function:
+cache ~1 million most recently used values for each function:
 
 ```python
 @lru_cache(2**20)

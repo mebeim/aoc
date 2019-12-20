@@ -31,21 +31,19 @@ def reachable_keys(src, mykeys):
 	while queue:
 		dist, node = heapq.heappop(queue)
 
-		if dist < distance[node]:
-			distance[node] = dist
+		if node.islower() and node not in mykeys:
+			reachable.append((node, dist))
+			continue
 
-			if node.islower() and node not in mykeys:
-				reachable.append((node, dist))
-				continue
+		if node.lower() not in mykeys:
+			continue
 
-			if node.lower() not in mykeys:
-				continue
+		for neighbor, weight in G[node]:
+			new_dist = dist + weight
 
-			for neighbor, weight in G[node]:
-				new_dist = dist + weight
-
-				if new_dist < distance[neighbor]:
-					heapq.heappush(queue, (new_dist, neighbor))
+			if new_dist < distance[neighbor]:
+				distance[neighbor] = new_dist
+				heapq.heappush(queue, (new_dist, neighbor))
 
 	return reachable
 
@@ -83,7 +81,6 @@ def find_adjacent(grid, src):
 			cell = grid[node[0]][node[1]]
 
 			if 'a' <= cell <= 'z' or 'A' <= cell <= 'Z':
-				if cell not in found:
 					found.append((cell, dist))
 					continue
 
@@ -109,7 +106,7 @@ def build_graph(grid):
 
 advent.setup(2019, 18, dry_run=True)
 fin  = advent.get_input()
-maze = tuple(map(lambda l: list(l.strip()), fin.readlines()))
+maze = tuple(list(l.strip()) for l in fin)
 
 G, startpos = build_graph(maze)
 total_keys  = sum(node.islower() for node in G)
