@@ -52,8 +52,8 @@ def recursive_neighbors(portal):
 	neighbors = []
 
 	if portal.side == 'in':
-		p = Portal(portal.label, 'out', portal.depth + 1)
-		neighbors.append((p, 1))
+		n = Portal(portal.label, 'out', portal.depth + 1)
+		neighbors.append((n, 1))
 
 	if portal.depth == 0:
 		for n, d in depth0_neighbors:
@@ -61,20 +61,23 @@ def recursive_neighbors(portal):
 				neighbors.append((n, d))
 	else:
 		if portal.side == 'out':
-			p = Portal(portal.label, 'in', portal.depth - 1)
-			neighbors.append((p, 1))
+			n = Portal(portal.label, 'in', portal.depth - 1)
+			neighbors.append((n, 1))
 
 		for n, d in depth0_neighbors:
 			if n != ENTRANCE and n != EXIT:
-				p = Portal(n.label, n.side, portal.depth)
-				neighbors.append((p, d))
+				n = Portal(n.label, n.side, portal.depth)
+				neighbors.append((n, d))
 
 	return tuple(neighbors)
 
-def dijkstra(G, src, dst, recursive_portals=False):
-	distance  = defaultdict(lambda: INFINITY)
-	queue     = [(0, src)]
-	visited   = set()
+def dijkstra(G, src, dst, get_neighbors=None):
+	if get_neighbors is None:
+		get_neighbors = G.get
+
+	distance = defaultdict(lambda: INFINITY)
+	queue    = [(0, src)]
+	visited  = set()
 
 	distance[src] = 0
 
@@ -86,11 +89,7 @@ def dijkstra(G, src, dst, recursive_portals=False):
 
 		if node not in visited:
 			visited.add(node)
-
-			if recursive_portals:
-				neighbors = recursive_neighbors(node)
-			else:
-				neighbors = G[node]
+			neighbors = get_neighbors(node)
 
 			for neighbor, weight in filter(lambda n: n[0] not in visited, neighbors):
 				new_dist = dist + weight
@@ -117,7 +116,7 @@ def find_adjacent(grid, src):
 
 			portal = portal_from_grid(grid, *node)
 
-			if portal is not None and portal not in found:
+			if portal is not None:
 				found.append((portal, dist))
 				continue
 
@@ -145,9 +144,8 @@ advent.setup(2019, 20, dry_run=True)
 fin = advent.get_input()
 grid = tuple(l.strip('\n') for l in fin)
 
-ROWS = len(grid)
-COLUMNS = len(grid[0])
-MAXROW, MAXCOLUMN = ROWS - 1, COLUMNS - 1
+MAXROW    = len(grid) - 1
+MAXCOLUMN = len(grid[0]) - 1
 
 G = build_graph(grid)
 
@@ -169,7 +167,7 @@ advent.submit_answer(1, min_steps)
 
 
 G = build_graph(grid)
-min_steps = dijkstra(G, ENTRANCE, EXIT, recursive_portals=True)
+min_steps = dijkstra(G, ENTRANCE, EXIT, get_neighbors=recursive_neighbors)
 
 assert min_steps == 7758
 advent.submit_answer(2, min_steps)

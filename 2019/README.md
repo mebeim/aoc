@@ -2501,12 +2501,12 @@ Day 20 - Donut Maze
 Okay, we're getting pretty insane with graphs. Today was a very interesting
 puzzle, a recursive maze with portals!
 
-We are given yet another an 2D ASCII art maze. Same as other days, dots `.` are
+We are given yet another 2D ASCII art maze. Same as other days, dots `.` are
 empty space and hashes `#` are walls. As usual, moving from an empty cell to
-another only costs 1 step, and we can only move in fou directions (up, down,
+another only costs 1 step, and we can only move in four directions (up, down,
 left, right).
 
-What changes now is that there are portals. The maze is shaped like a donut
+What changes now is that there are *portals*. The maze is shaped like a donut
 (well, a rectangular donut), and on each of the two sides (internal and
 external) we have two-letter labels. Each dot `.` near a label is a portal
 (there is only one dot near each label). Each portal appears two times: one on
@@ -2562,12 +2562,13 @@ would be very useful. To do this we can just check if:
 In order to reconstruct the label we can then look at which of the two letters
 comes first (either is above or to the left), and also at the position of the
 outermost letter: if it's on the edge of the grid, then the label is an outside
-label. This is where the two global variables that we defined earler are useful.
+label. This is where the two global variables `MAXROW` and `MAXCOLUMN` that we
+defined earlier are useful.
 
-Since we have to keep track of the side of the portals, let's create a
-[`namedtuple`][py-collections-namedtuple] to represent them. We don't really
-care about the position of a portal in the final graph that we are going to
-build, so we can just omit it.
+Since we have to keep track of the side of the portals (inside or outside),
+let's create a [`namedtuple`][py-collections-namedtuple] to represent them. We
+don't really care about the position of a portal in the final graph that we are
+going to build, so we can just omit it.
 
 ```python
 Portal = namedtuple('Portal', ['label', 'side'])
@@ -2636,9 +2637,8 @@ def find_adjacent(grid, src):
             # Check if this cell is a portal...
             portal = portal_from_grid(grid, *node)
 
-            # If so, and if it wasn't already found...
-            if portal is not None and portal not in found:
-                # Add it to the found list along with its distance.
+            # If so add it to the found list along with its distance.
+            if portal is not None:
                 found.append((portal, dist))
                 continue
 
@@ -2649,8 +2649,8 @@ def find_adjacent(grid, src):
     return found
 ```
 
-Now our `builf_graph()` function can just call `find_adjacent()` for each portal
-if finds in the maze grid, and save everything in our grap dictionary. Pretty
+Now our `build_graph()` function can just call `find_adjacent()` for each portal
+if finds in the maze grid, and save everything in our graph dictionary. Pretty
 straightforward:
 
 ```python
@@ -2676,7 +2676,7 @@ G = build_graph(grid)
 Let's find the entrance and exit portals, and also link each pair of portals
 with the same label together, with a cost of `1`. We can use
 [`combinations()`][py-itertools-combinations] to efficiently iterate over all
-the unique pair of portals, like we did in [day 12][d12].
+the *unique* pairs of portals, like we did in [day 12][d12].
 
 ```python
 from itertools import combinations
@@ -2696,7 +2696,9 @@ for p1, p2 in combinations(G, 2):
 Now we can write the real algorithm, and of course, [Dijkstra][algo-dijkstra]
 comes to the rescue once again! Just like in [day 18][d18] and [day 6][d06]
 (this time more similar to day6 though, we do have both source and destination).
-I find it quite awesome how it resembles the Wikipedia page pseudocode.
+I find it quite awesome how it resembles the Wikipedia page pseudocode. I'm not
+going to add comments here since we already used this algorithm multiple times
+and it's pretty standard anyway.
 
 ```python
 import heapq
@@ -2704,9 +2706,9 @@ from collections import defaultdict
 from math import inf as INFINITY
 
 def dijkstra(G, src, dst):
-    distance  = defaultdict(lambda: INFINITY)
-    queue     = [(0, src)]
-    visited   = set()
+    distance = defaultdict(lambda: INFINITY)
+    queue    = [(0, src)]
+    visited  = set()
 
     distance[src] = 0
 
@@ -2728,12 +2730,15 @@ def dijkstra(G, src, dst):
     return INFINITY
 ```
 
-And well, there we have it! Part 1 is done:
+Now we can just ask `dijkstra()` to find the shortest path from the entrance to
+the exit for us:
 
 ```python
 min_steps = dijkstra(G, ENTRANCE, EXIT)
 print('Part 1:', min_steps)
 ```
+
+And there we have it! Part 1 completed.
 
 ### Part 2
 
@@ -2815,8 +2820,8 @@ def recursive_neighbors(portal):
     neighbors = []
 
     if portal.side == 'in':
-        p = Portal(portal.label, 'out', portal.depth + 1)
-        neighbors.append((p, 1))
+        n = Portal(portal.label, 'out', portal.depth + 1)
+        neighbors.append((n, 1))
 
     if portal.depth == 0:
         for n, d in depth0_neighbors:
@@ -2824,41 +2829,42 @@ def recursive_neighbors(portal):
                 neighbors.append((n, d))
     else:
         if portal.side == 'out':
-            p = Portal(portal.label, 'in', portal.depth - 1)
-            neighbors.append((p, 1))
+            n = Portal(portal.label, 'in', portal.depth - 1)
+            neighbors.append((n, 1))
 
         for n, d in depth0_neighbors:
             if n != ENTRANCE and n != EXIT:
-                p = Portal(n.label, n.side, portal.depth)
-                neighbors.append((p, d))
+                n = Portal(n.label, n.side, portal.depth)
+                neighbors.append((n, d))
 
     return tuple(neighbors)
 ```
 
 Now we only need to tell our `dijkstra()` function to use
-`recursive_neighbors()` instead of directly looking at the graph. We can do so
-while still maintaining the compatibility with part 1 by simply adding a boolean
-argument.
+`recursive_neighbors()` instead of directly looking at the graph. To do this
+very cleanly, we can pass the function that we want to use to get neighbors as
+an argument, falling back to the `.get()` method of the graph dictionary if
+nothing is passed. This also makes it so we don't need to change the code for
+part 2.
 
 ```python
-def dijkstra(G, src, dst, recursive_portals=False):
+def dijkstra(G, src, dst, get_neighbors=None):
+    if get_neighbors is None:
+        get_neighbors = G.get
 
     # ... unchanged ...
 
         if node not in visited:
             visited.add(node)
 
-            if recursive_portals:
-                neighbors = recursive_neighbors(node)
-            else:
-                neighbors = G[node]
+            neighbors = get_neighbors(node)
 
             for neighbor, weight in filter(lambda n: n[0] not in visited, neighbors):
 
-    # ... unchanged ...
+                # ... unchanged ...
 ```
 
-And there we have it. Let's re-build our graph with the now-updated portals.
+And there we have it. Let's re-build our graph with the now updated portals.
 This time we do *not* need to link together portals with the same label,
 everything will be handled by our `recursive_neighbors()` function.
 
@@ -2866,7 +2872,7 @@ everything will be handled by our `recursive_neighbors()` function.
 G = build_graph(grid)
 
 # Recalculate entrance and exit as well
-# since we added 'depth' to our Portal named tuple.
+# since we added 'depth' to our Portal namedtuple.
 for p in G:
     if p.label.startswith('AA'):
         ENTRANCE = p
@@ -2877,15 +2883,16 @@ for p in G:
 And finally, find the minimum number of steps to solve part 2:
 
 ```python
-min_steps = dijkstra(G, ENTRANCE, EXIT, recursive_portals=True)
+min_steps = dijkstra(G, ENTRANCE, EXIT, get_neighbors=recursive_neighbors)
 print('Part 2:', min_steps)
 ```
 
 As a final sidenote, we could also decorate the `portal_from_grid()` and
 `recursive_neighbor()` functions with [`@lru_cache`][py-functools-lru_cache] to
 not waste time re-computing already calculated values, just like we did in [day
-18][d18]. This time it doesn't have much of an impact though, so it's fine
-either way.
+18][d18]. This time it doesn't have much of an impact though, because the
+algorithm is much more lightweight, and we rarely pass through the same portal
+twice, so the code runs nice and fast either way.
 
 
 [d01]: #day-1---the-tyranny-of-the-rocket-equation
