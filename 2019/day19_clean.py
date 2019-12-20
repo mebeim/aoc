@@ -17,13 +17,13 @@ def bin_search(lo, hi, target):
 			if run((x, top)) == 1:
 				break
 
-		for bottom in count(top + 1):
-			if run((x, bottom)) == 0:
-				break
-
-		if bottom - top < target:
+		if run((x, top + target)) == 0:
 			lo = x
 			continue
+
+		for bottom in count(top + target + 1):
+			if run((x, bottom)) == 0:
+				break
 
 		y = bottom - target
 
