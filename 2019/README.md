@@ -14,9 +14,14 @@ Table of Contents
 - [Day 8 - Space Image Format][d08]
 - [Day 9 - Sensor Boost][d09]
 - [Day 10 - Monitoring Station][d10]
+-  Day 11 - Space Police: *TODO*
 - [Day 12 - The N-Body Problem][d12]
 - [Day 13 - Care Package][d13]
+-  Day 14 - Oxygen System: *TODO*
+-  Day 15 - Set and Forget: *TODO*
 - [Day 16 - Flawed Frequency Transmission][d16]
+-  Day 17 - Set and Forget: *TODO*
+- [Day 18 - Many-Worlds Interpretation][d18]
 
 
 Day 1 - The Tyranny of the Rocket Equation
@@ -2047,6 +2052,443 @@ have the optimal solution, and CPython is to blame for the poor performance...
 sad :(.
 
 
+Day 18 - Many-Worlds Interpretation
+-----------------------------------
+
+[Problem statement][d18-problem] — [Complete solution][d18-solution]
+
+### Part 1
+
+I hope you're ready for some path finding and exploration algorithms, because oh
+boy, things are going to get wild today! Hardest puzzle so far, and (hopefully)
+maybe even *the* hardest this year. Preapare a long walkthrough, let's dive in!
+
+We are given an ASCII art maze with empty cells (`.`), walls (`#`), keys
+(lowercase letters) and doors (uppercase letters). We (`@`) are stuck in the
+middle of the maze, and need to find a way to collect *all* the keys, in the
+minimum amount of steps possible. That number of steps is the answer to the
+puzzle.
+
+The maze itself it's pretty standard 2D maze where we can only move in four
+directions (up, down, left, right) and not in diagonal. There is a twist though:
+we cannot pass through a door unless we collect the corresponding key first.
+Each uppercase letter in the maze is a door which is opened by the corresponding
+key, which is a lowercase letter.
+
+It's important to familiarize with the problem before starting to think about a
+solution right away, therefore you should probably read the original problem
+statement (linked above), which also contains exaples. Done? Okay, let's go!
+
+There are a lot of points in the maze which are empty spaces. To make the graph
+simpler, and therefore also speed-up any exploration that we are going to run on
+it, we can build a simpler graph which only has keys, doors and the starting
+position as nodes. Every edge of this graph will have a weight representing the
+minimum number of steps needed to move between the two nodes.
+
+Our graph will be a simple dictionary in the form
+`{node: [(neighbor, weight)]}`, that is a dictionary that associates each node
+to a list of neighbors and the minimum steps needed to reach them. To create
+such a list for each node, we will need a function that, given the position of a
+in the maze, can tell us which other nodes are directly reachable (i.e.
+adjacent) and with which weight. For now, we will just pretend that we already
+magically have such a function, and we'll call it `find_adjacent()`.
+
+Our `build_graph()` function will then iterate over the given maze grid and call
+`find_adjacent()` each time it encounters a node, then store this info in the
+graph dictionary. Very straightforward really. Other than this, we will also
+extract the coordinates of the starting position (which becomes useful for part
+2).
+
+```python
+def build_graph(grid):
+    graph = {}
+    startpos = None
+
+    for r, row in enumerate(grid):
+        for c, cell in enumerate(row):
+            if cell not in '#.':
+                graph[cell] = find_adjacent(grid, (r, c))
+
+                if cell == '@':
+                    startpos = (r, c)
+
+    return graph, startpos
+```
+
+Nice, now we need to write `find_adjacent()`. Since we are in a 2D grid where we
+are only allowed to move up, down, left and right and the distances between two
+cells are always `1`, we can use the [Breadth First Search][algo-bfs] to explore
+it. Starting from a given position, we will build
+[a queue](https://en.wikipedia.org/wiki/Queue_(abstract_data_type)) of nodes to
+visit with their associated distances. Initially, this queue will only contain
+the neighbor cells around the starting position, with a distance of `1`. We will
+use a [`deque`][py-collections-deque] from the [`collections`][py-collections]
+module as our queue. A `deque` (double-ended queue) is nothing more than a list
+that supports very fast append and remove operations from each of its ends.
+
+To determine which neighbors of a cell can be visited (excluding walls), we can
+write a simple helper function (we'll make it a generator, since it's usually
+faster, more pythonic and also 100% cooler):
+
+```python
+def neighbors4(grid, r, c):
+    for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        rr, cc = (r + dr, c + dc)
+
+        if 0 <= rr < len(grid) and 0 <= cc < len(grid[rr]):
+            if grid[rr][cc] != '#':
+                yield (rr, cc)
+```
+
+Now, back to BFS. We will pop one cell at a time from the queue. Each time we
+do, we'll mark that cell as visited by adding it to a `visited` set. Then, if it
+is a door or a key, we'll add its identifying letter to a list of found nodes,
+otherwise we'll add all its neighbors (that we have not visited) to the queue as
+well. When the queue becomes empty, we will have visited all immediately
+reachable objects from the source position.
+
+Here it is:
+
+```python
+def find_adjacent(grid, src):
+    queue = deque()
+    visited = {src}
+    found = []
+
+    # Start by adding all neighbors of the source to the queue, with a distance of 1 step.
+    for n in neighbors4(grid, *src):
+        queue.append((1, n))
+
+    while queue:
+        # Get the next node to visit and its saved distance.
+        dist, node = queue.popleft()
+
+        if node not in visited:
+            visited.add(node)
+
+            cell = grid[node[0]][node[1]]
+
+            # Check if this cell is a key or door...
+            if 'a' <= cell <= 'z' or 'A' <= cell <= 'Z':
+                # ... and if it wasn't already found.
+                if cell not in found:
+                    # If so, add it to the found list along with its distance.
+                    found.append((cell, dist))
+                    continue
+
+            # Otherwise, add all unvisited neighbors to the queue with a distance increased of 1 step.
+            for neighbor in filter(lambda n: n not in visited, neighbors4(grid, *node)):
+                queue.append((dist + 1, neighbor))
+
+    return found
+```
+
+Done, now our `find_adjacent()` function returns a list of adjacent nodes and
+minimum steps to reach them. Moreover, given the way we are exploring, the list
+will be sorted by increasing distance. It is also important to note that the
+list of adjacent nodes will never include the start (`@`), as we only are
+interested in starting from there, not going back to it. Here's an example:
+
+```python
+>>> grid = [
+        '#############',
+        '#...@.......#',
+        '#.#########.#',
+        '#..a.B.c#b.A#',
+        '#############',
+    ]
+
+>>> find_adjacent(grid, (1, 4))
+[('a', 7), ('A', 9)]
+```
+
+Now we can parse our maze into a graph. Let's test it out on the above example:
+
+```python
+>>> G, startpos = build_graph(grid)
+>>> G
+{'@': [('a', 7), ('A', 9)],
+ 'A': [('b', 2), ('a', 16)],
+ 'B': [('c', 2), ('a', 2)],
+ 'a': [('B', 2), ('A', 16)],
+ 'b': [('A', 2)],
+ 'c': [('B', 2)]}
+>>> startpos
+(1, 4)
+```
+
+The above corresponds to a graph like this:
+
+      a--B--c
+     / \
+    @---A--b
+
+Cool! Now to back to the real problem: this problem of finding all the keys
+looks a lot like the
+[traveling salesman problem](https://en.wikipedia.org/wiki/Travelling_salesman_problem),
+except we don't care about going back to che start, and we have "obstacle"
+nodes, which are the doors.
+
+The problem of visiting every single node with the minimum total distance is
+[NP-complete](https://en.wikipedia.org/wiki/NP-completeness), meaning that it
+can only be solved by trying all possible different paths. Our problem is also
+NP-complete.
+
+A naive recursive bruteforce solution is therefore not only correct, but also
+the best possible way to solve the problem (in terms of time complexity). Given
+an initial source and set of found keys (which will initially be empty), we want
+to do the following:
+
+1. If we found all the keys, the minimum number of steps needed to reach the
+   solution is `0` (we already have it), so we'll return `0`.
+2. Otherwise, for every key `k` that can be reached from the start position, we
+   will make a recursive call to determine what's the required number of steps
+   to get all the remaining keys having moved to the position of `k` and having
+   taken `k`. We will then take the smallest of those and return it.
+
+What keys can we reach starting from a given node and having a certain set of
+already collected keys? And with how many steps? We still don't know yet, but as
+we did before for `build_graph()`, we can solve this one function at a time. For
+now, we'll again make a "leap of faith" and pretend that we already magically
+have a function `reachable_keys()` that takes care of this.
+
+It takes more to explain it than to write it, really. Here it is:
+
+```python
+from math import inf as INFINITY
+
+def minimum_steps(src, n_find, mykeys=set()):
+    # src   : starting node
+    # n_find: number of keys that I want to find
+    # mykeys: set of keys that I already found
+
+    if n_find == 0:
+        # I know the solution, it's 0 since I already found all the keys.
+        return 0
+
+    best = INFINITY
+
+    # I don't know the solution, but I can find it by checking every
+    # possible move recursively.
+    for k, d in reachable_keys(src, mykeys):
+        # Take k and move there.
+        newsrc = k
+        newkeys = mykeys | {k}
+        dist = d
+
+        # See what's the solution to find all other keys having taken k.
+        dist += minimum_steps(newsrc, n_find - 1, newkeys)
+
+        if dist < best:
+            best = dist
+
+    return best
+```
+
+It seems pretty clear that we have left do now is writing a good
+`reachable_keys()` function. We have a graph with weighted edges:
+[Dijkstra's algorithm][[algo-dijkstra] is for sure the easiest way to find all
+reachable keys and the smallest amount of steps to reach each of them.
+
+We can adapt the function we wrote for [day 6][d06] part 2. There are three main
+differences from day 6 here:
+
+1. We have different weighs on each edge: for this we can just add the right
+   weight instead of just `1` each time we add a neighbor to the queue.
+2. We do not want to reach a specific node, but we want to explore all reachable
+   nodes: for this we can just keep going until the queue is empty, effectively
+   removing the `break`, and add each key we find to a list.
+3. We can pass through a door only if we have the corresponding key: for this,
+   we will pass the set of keys as an argument, and check it each time we see
+   a door.
+
+Sounds intricate, but it's seempler than it looks. Let's make the code speak for
+mainly speak for itself, with the help of the needed amount of comments.
+
+```python
+def reachable_keys(src, mykeys):
+    # src   : starting node
+    # mykeys: set of keys that I already found
+
+    queue = []
+    distance = defaultdict(lambda: INFINITY)
+    reachable = []
+
+    # Start by adding all neighbors of the source to the queue,
+    # with the weight of the edge as distance.
+    for neighbor, weight in G[src]:
+        queue.append((weight, neighbor))
+
+    # Initialize the heap structure to keep it sorted.
+    heapq.heapify(queue)
+
+    while queue:
+        dist, node = heapq.heappop(queue)
+
+        if dist < distance[node]:
+            # Get the next nearest node to visit and its saved distance.
+            distance[node] = dist
+
+            # If it's a key and we don't already have it...
+            if node.islower() and node not in mykeys:
+                # Add it to the reachable keys also saving the distance.
+                reachable.append((node, dist))
+                # Proceed to the next in queue, don't explore neighbors.
+                continue
+
+            # If we do not have key for a door...
+            if node.lower() not in mykeys:
+                # Proceed to the next in queue, don't explore neighbors.
+                continue
+
+            # Otherwise (no new key and no locked door) for each neighbor...
+            for neighbor, weight in G[node]:
+                new_dist = dist + weight
+
+                # If the distance to reach it is better than what we already
+                # have, add it to the queue.
+                if new_dist < distance[neighbor]:
+                    heapq.heappush(queue, (new_dist, neighbor))
+
+    return reachable
+```
+
+We now have everything we need. Computing the answer is only a few function
+calls away:
+
+```python
+maze = tuple(map(lambda l: list(l.strip()), fin.readlines()))
+
+G, startpos = build_graph(maze)
+total_keys  = sum(node.islower() for node in G)
+min_steps   = minimum_steps('@', total_keys)
+
+print('Part 1:', min_steps)
+```
+
+*But wait!* We run the program and it seems to hang indefinitely... what did we
+do wrong? Is it stuck in a loop? Is it too slow? WHat is going on?
+
+As it turns out, like I said before, since the only way to find the answer is to
+try all different paths, this means trying around `total_keys!` paths in the
+worst case (that exclanation mark there stands for "factorial"). We have 26 keys
+in our input, which means at most 403291461126605635584000000 possible paths.
+Well... that doesn't look like a reasonable number at all, it would probably be
+faster to wait for the heat death of the universe instead of waiting for my poor
+Intel i7-870 desktop to spit out an answer.
+
+To work this out, we need to notice a couple of interesting facts first:
+
+1. If we ever find ourselves at the same node with the same set of already
+   collected keys, the set of reachable keys will always be the same (and with
+   the exact same distances too). Therefore for the same arguments, the
+   `reachable_keys()` function will always return the same result.
+2. If we ever find ourselves at the same node with the same keys, the minimum
+   steps to collect all the remaining keys will always be the same. Therefore
+   for the same arguments, the `minimum_steps()` function will always return the
+   same result.
+
+As it turns out, the `reachable_keys()` and `minimum_steps()` functions will get
+called a very large amount of times, and due to the nature of our exploration,
+most of the times they will end up being called with the exact same arguments.
+
+We can associate each unique value of arguments with their respective result,
+for both the functions. To do this, the simplest way is to use a dictionary
+`{arguments: result}`, with a tuple of the arguments as key. Each time the
+function is called we can look up the dictionary: if we already have a solution,
+then we'll return it, otherwise we'll do the computation and add it to the
+dictionary before returning it.
+
+The technique of caching the result of a function based on its arguments to
+avoid to reapeat work is called
+[*memoization*](https://en.wikipedia.org/wiki/Memoization). In terms of Python
+code, it means something like this:
+
+```python
+def expensive_function(a, b, c, cache={}): # The cache={} dictionaty here is only
+    if (a, b, c) in cache:                 # created once at the time of definition
+        return cache[a, b, c]              # of the function! If we do not pass
+                                           # any value to overwrite it, it keeps
+    # compute result...                    # being the same dictionaty.
+
+    cache[a, b, c] = result
+    return result
+
+expensive_function(1, 2, 3) # first call, takes a while
+expensive_function(1, 2, 3) # instantaneous, returns cached value
+```
+
+Python (>= 3.2) also has a very cool way of painlessly handling memoization. All
+we need is the [`@lru_cache`][py-functools-lru_cache] decorator from the
+[`functools`][py-functools] module, which automagically does all of the above fo
+us with a single line of code.
+[LRU](https://en.wikipedia.org/wiki/Cache_replacement_policies#Least_recently_used_(LRU))
+is a caching strategy that discards the least recently used value when too many
+values are cached.
+
+```python
+@lru_cache(maxsize=1000)
+def expensive_function(a, b, c):
+    # compute result...
+    return result
+```
+
+The `maxsize` argument of `@lru_cache` is the maximum number of most recently
+used results to keep, and it can be set to `None` for unlimited.
+
+There is still *one little problem* thouhg. Since `@lru_cache` too uses a
+dictionary to cache arguments and resutls, all the arguments need to be
+hashable. In our functions though, the `mykeys` argument is a `set`, and as it
+turns out, since a `set` is a mutable collection, it cannot be hashed. For this,
+the [`frozenset`][py-frozenset] comes to the rescue! It's basically the same as
+a `set`, but it does not support removing or adding values: it is immutable, and
+therefore can be hashed. Given the way we have written our functions, we just
+need to change the only occurrence of `set()` in the definition of
+`minimum_steps()` and everything will work out of the box. Let's be generous and
+cache the ~1 million most recent values for each function:
+
+```python
+@lru_cache(2**20)
+def minimum_steps(src, n_find, mykeys=frozenset()):
+    # ... unchanged ...
+
+@lru_cache(2**20)
+def reachable_keys(src, mykeys):
+    # ... unchanged ...
+```
+
+Let's try it again:
+
+```python
+min_steps = minimum_steps('@', total_keys)
+print('Part 1:', min_steps)
+```
+
+And it's instantaneous! We now have a very clean part 1 solution. One last thing
+that we can do to make things even faster, is to also cache the `distance`
+dictionary used for Dijkstra in `reachable_keys()`, since for a given set of
+keys it will always be the same. We can do this by creating a dummy function
+that defaults to returning a `defaultdict(lambda: INFINITY)`, and just decorate
+it with `@lru_cache`:
+
+```python
+@lru_cache(2**20)
+def distance_for_keys(keys):
+    return defaultdict(lambda: INFINITY)
+
+@lru_cache(2**20)
+def reachable_keys(src, mykeys):
+    queue = []
+    distance = distance_for_keys(mykeys)
+    reachable = []
+
+    # ... unchanged ...
+```
+
+This cuts down execution time by another 30% on my machine, not bad. Let's move
+on to part 2 and see what comes next.
+
+
 [d01]: #day-1---the-tyranny-of-the-rocket-equation
 [d02]: #day-2---1202-program-alarm
 [d03]: #day-3---crossed-wires
@@ -2060,6 +2502,7 @@ sad :(.
 [d12]: #day-12---the-n-body-problem
 [d13]: #day-13---care-package
 [d16]: #day-16---flawed-frequency-transmission
+[d18]: #day-18---many-worlds-interpretation
 
 [d01-problem]: https://adventofcode.com/2019/day/1
 [d02-problem]: https://adventofcode.com/2019/day/2
@@ -2074,6 +2517,7 @@ sad :(.
 [d12-problem]: https://adventofcode.com/2019/day/12
 [d13-problem]: https://adventofcode.com/2019/day/13
 [d16-problem]: https://adventofcode.com/2019/day/16
+[d18-problem]: https://adventofcode.com/2019/day/18
 [d01-solution]: day01_clean.py
 [d02-solution]: day02_clean.py
 [d03-solution]: day03_clean.py
@@ -2087,6 +2531,7 @@ sad :(.
 [d12-solution]: day12_clean.py
 [d13-solution]: day13_clean.py
 [d16-solution]: day16_clean.py
+[d18-solution]: day18_clean.py
 
 [py-cond-expr]:               https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-builtin-str]:             https://docs.python.org/3/library/functions.html#func-str
@@ -2101,13 +2546,15 @@ sad :(.
 [py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
 [py-range]:                   https://docs.python.org/3/library/stdtypes.html#range
-[py-set]:                     https://docs.python.org/3/library/stdtypes.html?highlight=set#set
+[py-set]:                     https://docs.python.org/3/library/stdtypes.html?#set
+[py-frozenset]:               https://docs.python.org/3/library/stdtypes.html?#frozenset
 [py-operator]:                https://docs.python.org/3/library/operator.html
 [py-operator-add]:            https://docs.python.org/3/library/operator.html#operator.add
 [py-operator-mul]:            https://docs.python.org/3/library/operator.html#operator.mul
 [py-collections]:             https://docs.python.org/3/library/collections.html
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-collections-namedtuple]:  https://docs.python.org/3/library/collections.html#collections.namedtuple
+[py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
 [py-heapq]:                   https://docs.python.org/3/library/heapq.html
 [py-itertools]:               https://docs.python.org/3/library/itertools.html
 [py-itertools-permutations]:  https://docs.python.org/3/library/itertools.html#itertools.permutations
@@ -2116,6 +2563,7 @@ sad :(.
 [py-re]:                      https://docs.python.org/3/library/re.html
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-reduce]:        https://docs.python.org/3/library/functools.html#functools.reduce
+[py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
 [py-math]:                    https://docs.python.org/3/library/math.html
 [py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
 [py-math-atan2]:              https://docs.python.org/3/library/math.html#math.atan2
@@ -2123,3 +2571,4 @@ sad :(.
 
 [algo-manhattan]: https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
 [algo-dijkstra]:  https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
+[algo-bfs]:       https://en.wikipedia.org/wiki/Breadth-first_search
