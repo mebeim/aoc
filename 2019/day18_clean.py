@@ -83,7 +83,7 @@ def find_adjacent(grid, src):
 			cell = grid[node[0]][node[1]]
 
 			if 'a' <= cell <= 'z' or 'A' <= cell <= 'Z':
-				if cell not in found or found[cell] > dist:
+				if cell not in found:
 					found.append((cell, dist))
 					continue
 
