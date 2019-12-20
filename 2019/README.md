@@ -22,6 +22,8 @@ Table of Contents
 - [Day 16 - Flawed Frequency Transmission][d16]
 -  Day 17 - Set and Forget: *TODO*
 - [Day 18 - Many-Worlds Interpretation][d18]
+-  Day 19 - Tractor Beam: *TODO*
+- [Day 20 - Donut Maze][d20]
 
 
 Day 1 - The Tyranny of the Rocket Equation
@@ -2489,6 +2491,403 @@ This cuts down execution time by another 30% on my machine, not bad. Let's move
 on to part 2 and see what comes next.
 
 
+Day 20 - Donut Maze
+-------------------
+
+[Problem statement][d20-problem] — [Complete solution][d20-solution]
+
+### Part 1
+
+Okay, we're getting pretty insane with graphs. Today was a very interesting
+puzzle, a recursive maze with portals!
+
+We are given yet another an 2D ASCII art maze. Same as other days, dots `.` are
+empty space and hashes `#` are walls. As usual, moving from an empty cell to
+another only costs 1 step, and we can only move in fou directions (up, down,
+left, right).
+
+What changes now is that there are portals. The maze is shaped like a donut
+(well, a rectangular donut), and on each of the two sides (internal and
+external) we have two-letter labels. Each dot `.` near a label is a portal
+(there is only one dot near each label). Each portal appears two times: one on
+the inside and one on the outside of the donut maze. The only two portals that
+do not appear twice are `AA` and `ZZ`, which are, respectively, our source and
+destination.
+
+Portals work pretty simply: when standing on the empty cell corresponding to a
+portal, you can decide to take it, and teleport to its sibling (with the same
+label) on the other side of the donut. Doing this only takes 1 step. You can see
+where this is going... we are asked to find the minimum number of steps to go
+from `AA` to `ZZ`, considering that we can pass through portals as well as just
+walk through the corridors like a classical maze.
+
+Okay, let's parse the input right away. We'll just build a big `tuple` of
+strings, only stripping newlines. Keeping track of the highest row and column is
+also useful, we'll see why in a moment.
+
+```python
+grid = tuple(l.strip('\n') for l in fin)
+MAXROW, MAXCOLUMN = len(grid) - 1, len(grid[0]) - 1
+```
+
+Well, first of all, we can transform the maze in a simple undirected weighted
+graph, just like we did for [day 18][d18] part 1. The code is basically the
+same, with the exception that we now have two-letter labels, and not single
+letter ones. Labels are also just *next* to portals, they are not the portals
+themselves. Our graph will be in the form
+`{portal_label: [(neighbor, distance), (...)]}`.
+
+First, let's just copy paste our generator function (also from day 18) to find
+all neighbors of a cell in the grid. In addition to walls `#`, we also need to
+avoid the spaces without considering them neighbors, since the grid we are given
+is full of them (of course, being a donut).
+
+```python
+def neighbors4(grid, r, c):
+    for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        rr, cc = (r + dr, c + dc)
+
+        if 0 <= rr < len(grid) and 0 <= cc < len(grid[rr]):
+            if grid[rr][cc] not in '# ':
+                yield (rr, cc)
+```
+
+A function that is able to detect if a cell is a portal, and parse its label,
+would be very useful. To do this we can just check if:
+
+1. The cell is a dot `.`.
+2. There is a neighbor cell that is an uppercase letter.
+3. That cell also has another neighbor cell that is an uppercas letter.
+
+In order to reconstruct the label we can then look at which of the two letters
+comes first (either is above or to the left), and also at the position of the
+outermost letter: if it's on the edge of the grid, then the label is an outside
+label. This is where the two global variables that we defined earler are useful.
+
+Since we have to keep track of the side of the portals, let's create a
+[`namedtuple`][py-collections-namedtuple] to represent them. We don't really
+care about the position of a portal in the final graph that we are going to
+build, so we can just omit it.
+
+```python
+Portal = namedtuple('Portal', ['label', 'side'])
+
+def portal_from_grid(grid, r, c):
+    if grid[r][c] != '.':
+        return None
+
+    # Get first letter.
+    valid = False
+    for n1r, n1c in neighbors4(grid, r, c):
+        letter1 = grid[n1r][n1c]
+        if 'A' <= letter1 <= 'Z':
+            valid = True
+            break
+
+    # If no letters nearby, the position (r, c) is not a portal.
+    if not valid:
+        return None
+
+    # Get the second letter.
+    for n2r, n2c in neighbors4(grid, n1r, n1c):
+        letter2 = grid[n2r][n2c]
+        if 'A' <= letter2 <= 'Z':
+            break
+
+    # Order the letters in the right way (top to bottom and left to right).
+    if n2r > n1r or n2c > n1c:
+        key = letter1 + letter2
+    else:
+        key = letter2 + letter1
+
+    # Check if the outermost letter is on the edge. If so, the label is external.
+    if n2r == 0 or n2c == 0 or n2r == MAXROW or n2c == MAXCOLUMN:
+        return Portal(key, 'out')
+
+    return Portal(key, 'in')
+```
+
+Nice, now we can identify if a given cell in the donut maze is a portal. To
+build a decent graph we can adapt the two functions `build_graph()` and
+`find_adjacent()` from [day 18][d18] to work with labels. We will still use
+[BFS][algo-bfs], but instead of checking for single letters in the grid (which
+was needed for day 18), we will just call the `portal_from_grid()` function we
+just defined.
+
+```python
+from collections import deque
+
+def find_adjacent(grid, src):
+    visited = {src}
+    queue   = deque()
+    found   = []
+
+    # Start by adding all neighbors of the source to the queue, with a distance of 1 step.
+    for n in neighbors4(grid, *src):
+        queue.append((1, n))
+
+    while queue:
+        # Get the next node to visit and its saved distance.
+        dist, node = queue.popleft()
+
+        if node not in visited:
+            visited.add(node)
+
+            # Check if this cell is a portal...
+            portal = portal_from_grid(grid, *node)
+
+            # If so, and if it wasn't already found...
+            if portal is not None and portal not in found:
+                # Add it to the found list along with its distance.
+                found.append((portal, dist))
+                continue
+
+            # Otherwise, add all unvisited neighbors to the queue with a distance increased of 1 step.
+            for neighbor in filter(lambda n: n not in visited, neighbors4(grid, *node)):
+                queue.append((dist + 1, neighbor))
+
+    return found
+```
+
+Now our `builf_graph()` function can just call `find_adjacent()` for each portal
+if finds in the maze grid, and save everything in our grap dictionary. Pretty
+straightforward:
+
+```python
+def build_graph(grid):
+    graph = {}
+
+    for r, row in enumerate(grid):
+        for c in range(len(row)):
+            portal = portal_from_grid(grid, r, c)
+
+            if portal is not None:
+                graph[portal] = find_adjacent(grid, (r, c))
+
+    return graph
+```
+
+We can now build a very nice weighted graph to start working with:
+
+```python
+G = build_graph(grid)
+```
+
+Let's find the entrance and exit portals, and also link each pair of portals
+with the same label together, with a cost of `1`. We can use
+[`combinations()`][py-itertools-combinations] to efficiently iterate over all
+the unique pair of portals, like we did in [day 12][d12].
+
+```python
+from itertools import combinations
+
+for portal in G:
+    if portal.label.startswith('AA'):
+        ENTRANCE = portal
+    if portal.label.startswith('ZZ'):
+        EXIT = portal
+
+for p1, p2 in combinations(G, 2):
+    if p1.label == p2.label:
+        G[p1].append((p2, 1))
+        G[p2].append((p1, 1))
+```
+
+Now we can write the real algorithm, and of course, [Dijkstra][algo-dijkstra]
+comes to the rescue once again! Just like in [day 18][d18] and [day 6][d06]
+(this time more similar to day6 though, we do have both source and destination).
+I find it quite awesome how it resembles the Wikipedia page pseudocode.
+
+```python
+import heapq
+from collections import defaultdict
+from math import inf as INFINITY
+
+def dijkstra(G, src, dst):
+    distance  = defaultdict(lambda: INFINITY)
+    queue     = [(0, src)]
+    visited   = set()
+
+    distance[src] = 0
+
+    while queue:
+        dist, node = heapq.heappop(queue)
+        if node == dst:
+            return dist
+
+        if node not in visited:
+            visited.add(node)
+
+            for neighbor, weight in filter(lambda n: n[0] not in visited, G[node]):
+                new_dist = dist + weight
+
+                if new_dist < distance[neighbor]:
+                    distance[neighbor] = new_dist
+                    heapq.heappush(queue, (new_dist, neighbor))
+
+    return INFINITY
+```
+
+And well, there we have it! Part 1 is done:
+
+```python
+min_steps = dijkstra(G, ENTRANCE, EXIT)
+print('Part 1:', min_steps)
+```
+
+### Part 2
+
+For the second part, the problem becomes quite funny. I would suggest reading
+the original problem statement linked above since it's not that simple to
+understand at the first read.
+
+Our donut maze now became recursive!
+
+- Each of the *inner* portals brings us to the outer portal of an *identical*
+  maze, at a different depth level. This means, that we can now travel from
+  portal `XX_out_depth0` to portal `XX_in_depth0`, and then to `XX_out_depth1`.
+- Each of the *outer* portals brings us to the inner portal of the previous
+  depth level, except for depth 0 portals.
+- The entrance and exit can only be used from depth 0.
+- No otuer portal at depth 0 can be used.
+
+We still have to find a way to travel from `AA` to `ZZ`, but this time we'll
+have to go in and out of different levels of the same maze to find the shortest
+path.
+
+So... this became pretty complicated. Didn't it? Well, not really. If we think
+about it, the only thing that changed is that we have a lot more edges. We could
+generate a new bigger graph of course, but that sounds like a waste. What we can
+do to efficiently solve this is to just write a neighbor finder function, that
+automatically handles depths for us. The graph can then stay the same, and only
+the `dijkstra()` function will ever see different nodes.
+
+First of all, let's add depth to our portals, re-defining the `namedtuple` that
+we created before:
+
+```python
+Portal = namedtuple('Portal', ['label', 'side', 'depth'])
+```
+
+In the `portal_from_grid()` function, we will now return all depth `0` portals:
+
+```python
+def portal_from_grid(grid, r, c):
+
+    # ... unchanged ...
+
+    if n2r == 0 or n2c == 0 or n2r == MAXROW or n2c == MAXCOLUMN:
+        return Portal(key, 'out', 0)
+
+    return Portal(key, 'in', 0)
+```
+
+Now we need a function to get the "recursive" neighbors of a portal, at
+different depths. We now know that for a given `portal`:
+
+- If it's a `depth == 0` portal:
+    - If it's an *inner* portal: it's connected to its *outer* sibling at depth
+      1, plus any if its original *inner* neighbors at the same depth 0. The
+      only outer portals it can be connected to (if they are neighbors) are the
+      entrance and exit portals.
+    - If it's an *outer* portal: it's only connected to its original *inner*
+      neighbors at the same depth 0.
+
+- If it's a `depth == d > 0` portal:
+    - If it's an *inner* portal: it's connected to its *outer* sibling at depth
+      `d + 1`, plus any other original neighbor at the same depth (excluding
+      entrance and exit that do not exist at depths > 0).
+    - If it's an *outer* portal: it's connected to its *inner* sibling at depth
+      `d - 1`, plus any other original neighbor at the same depth (excluding
+      entrance and exit that do not exist at depths > 0).
+
+So let's build a function that given a portal, follows exactly these rules to
+find its neighbors. In our graph dictionary `G`, we only have depth `0` portals,
+so when we check for neighbors we first create the exact same portal but with
+`depth = 0`, and then look in the graph. We can then do all the calculations we
+want. All of the above, can be written into this cool "recursive portal"
+neighbor resolver function:
+
+```python
+def recursive_neighbors(portal):
+    depth0_portal    = Portal(portal.label, portal.side, 0)
+    depth0_neighbors = G[depth0_portal]
+    neighbors = []
+
+    if portal.side == 'in':
+        p = Portal(portal.label, 'out', portal.depth + 1)
+        neighbors.append((p, 1))
+
+    if portal.depth == 0:
+        for n, d in depth0_neighbors:
+            if n.side == 'in' or n == ENTRANCE or n == EXIT:
+                neighbors.append((n, d))
+    else:
+        if portal.side == 'out':
+            p = Portal(portal.label, 'in', portal.depth - 1)
+            neighbors.append((p, 1))
+
+        for n, d in depth0_neighbors:
+            if n != ENTRANCE and n != EXIT:
+                p = Portal(n.label, n.side, portal.depth)
+                neighbors.append((p, d))
+
+    return tuple(neighbors)
+```
+
+Now we only need to tell our `dijkstra()` function to use
+`recursive_neighbors()` instead of directly looking at the graph. We can do so
+while still maintaining the compatibility with part 1 by simply adding a boolean
+argument.
+
+```python
+def dijkstra(G, src, dst, recursive_portals=False):
+
+    # ... unchanged ...
+
+        if node not in visited:
+            visited.add(node)
+
+            if recursive_portals:
+                neighbors = recursive_neighbors(node)
+            else:
+                neighbors = G[node]
+
+            for neighbor, weight in filter(lambda n: n[0] not in visited, neighbors):
+
+    # ... unchanged ...
+```
+
+And there we have it. Let's re-build our graph with the now-updated portals.
+This time we do *not* need to link together portals with the same label,
+everything will be handled by our `recursive_neighbors()` function.
+
+```python
+G = build_graph(grid)
+
+# Recalculate entrance and exit as well
+# since we added 'depth' to our Portal named tuple.
+for p in G:
+    if p.label.startswith('AA'):
+        ENTRANCE = p
+    if p.label.startswith('ZZ'):
+        EXIT = p
+```
+
+And finally, find the minimum number of steps to solve part 2:
+
+```python
+min_steps = dijkstra(G, ENTRANCE, EXIT, recursive_portals=True)
+print('Part 2:', min_steps)
+```
+
+As a final sidenote, we could also decorate the `portal_from_grid()` and
+`recursive_neighbor()` functions with [`@lru_cache`][py-functools-lru_cache] to
+not waste time re-computing already calculated values, just like we did in [day
+18][d18]. This time it doesn't have much of an impact though, so it's fine
+either way.
+
+
 [d01]: #day-1---the-tyranny-of-the-rocket-equation
 [d02]: #day-2---1202-program-alarm
 [d03]: #day-3---crossed-wires
@@ -2503,6 +2902,7 @@ on to part 2 and see what comes next.
 [d13]: #day-13---care-package
 [d16]: #day-16---flawed-frequency-transmission
 [d18]: #day-18---many-worlds-interpretation
+[d20]: #day-20---donut-maze
 
 [d01-problem]: https://adventofcode.com/2019/day/1
 [d02-problem]: https://adventofcode.com/2019/day/2
@@ -2518,6 +2918,7 @@ on to part 2 and see what comes next.
 [d13-problem]: https://adventofcode.com/2019/day/13
 [d16-problem]: https://adventofcode.com/2019/day/16
 [d18-problem]: https://adventofcode.com/2019/day/18
+[d20-problem]: https://adventofcode.com/2019/day/20
 [d01-solution]: day01_clean.py
 [d02-solution]: day02_clean.py
 [d03-solution]: day03_clean.py
@@ -2532,6 +2933,7 @@ on to part 2 and see what comes next.
 [d13-solution]: day13_clean.py
 [d16-solution]: day16_clean.py
 [d18-solution]: day18_clean.py
+[d20-solution]: day20_clean.py
 
 [py-cond-expr]:               https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-builtin-str]:             https://docs.python.org/3/library/functions.html#func-str
