@@ -2499,6 +2499,128 @@ def reachable_keys(src, mykeys):
 This cuts down execution time by another 30% on my machine, not bad. Let's move
 on to part 2 and see what comes next.
 
+### Part 2
+
+The maze splits into four different sub-mazes. Each of the four neighbor cells
+of the starting position becomes a wall, and we now have four different bots,
+placed on the four *diagonal* neighbor cells of the original starting position.
+
+Here's an example to make it clearer:
+
+    #############       #############
+    #.....#b....#       #.....#b....#
+    #B###.#####A#       #B###.#####A#
+    #..c#.......#       #..c#@#@....#
+    #####.@.#####  ==>  #############
+    #.......#...#       #....@#@#...#
+    #####.#.#.#C#       #####.#.#.#C#
+    #a....#...#d#       #a....#...#d#
+    #############       #############
+
+Only one robot can be moved at once, but when a robot collects a key, the key is
+shared: it opens the relative door instantly even if it's in another quadrant.
+We need to find the minimum number of steps for the four robots to collect all
+the keys in the maze.
+
+Okay, very interesting. Let's think about what these new rules mean in terms of
+modifications to our functions and data structures used for part 1:
+
+1. The fact that new maze is now split into four smaller isolated mazes is
+   really not a problem given the way we generate the graph. We can still use
+   the same function to build our graph, editing the grid first to reflect the
+   new situation. The resulting graph dictionary will include information for
+   all the four isolated graphs.
+2. The path finding algorithm implemented in `reachable_keys()` does not change,
+   we will only need to call it four times now (one for each bot).
+3. The recursive solution function `minimum_steps()` need to be changed. In
+   addition to not knowing which key is best to pick at any given time, we now
+   also don't know which bot is best to move. *However* we can easily test all
+   of them just like we did for different keys!
+
+Point number 3 is the culprit here: the only *real* difference from part 1 is
+that now our search space is multiplied by the number of robots. In other words,
+we have to do what we already do for the keys once for each robot. In terms of
+code, this means adding another `for` loop in the function, and taking a
+collection of starting positions instead of just a single one.
+
+Here's the updated function:
+
+```python
+@lru_cache(2**20)
+def minimum_steps(sources, n_find, mykeys=frozenset()):
+    if n_find == 0:
+        return 0
+
+    best = INFINITY
+
+    # For every robot...
+    for src in sources:
+        # For every key reachable by that robot...
+        for k, d in reachable_keys(src, mykeys):
+            # Take the key and move the robot there.
+            new_keys     = mykeys | {k}
+            new_sources  = (k,)
+            new_sources += tuple(filter(lambda s: s != src, sources))
+            dist = d
+
+            # See what's the solution to find all other keys having
+            # taken k from this particular source (bot).
+            dist += explore(new_sources, n_find - 1, new_keys)
+
+            # Update the current solution if that was better.
+            if dist < best:
+                best = dist
+
+    return best
+```
+
+You know what's the cool part? Given the way we call the above function for part
+1 (`minimum_steps('@', total_keys)`), the part 1 code doesn't even need to be
+edited: a string of length 1 can already be iterated over!
+
+We now need to edit the grid removing the starting position and adding the new
+starting positions and walls. This is where the `startpos` that was previously
+returned by `build_graph()` becomes useful.
+
+```python
+# Make left, right, top, bottom cells walls.
+for r, c in neighbors4(maze, *startpos):
+    maze[r][c] = '#'
+
+# Remove original position (make it a wall) and add four new starting positions.
+startr, startc = startpos
+maze[startr][startc] = '#'
+maze[startr - 1][startc - 1] = '1'
+maze[startr + 1][startc - 1] = '2'
+maze[startr + 1][startc + 1] = '3'
+maze[startr - 1][startc + 1] = '4'
+```
+
+We use the characters `'1'` through `'4'` here just because the nodes in our
+graph are identified by thir corresponding character on the grid, and we want
+to have four different identifiers of course.
+
+Since we are going to re-start the search using the a new graph, first we'll
+need to clear all the data previously cached by `@lru_cache`. This can be easily
+done by calling `.cache_clear()` on every decorated function that we used.
+
+```python
+minimum_steps.cache_clear()
+reachable_keys.cache_clear()
+distance_for_keys.cache_clear()
+```
+
+We can now re-build the graph using the updated maze and run the solution
+starting from all the characters in the string `'1234'`.
+
+```python
+G, _      = build_graph(maze)
+min_steps = explore('1234', total_keys)
+print('Part 2:', min_steps)
+```
+
+Beautiful! Another two stars to add to our collection.
+
 
 Day 20 - Donut Maze
 -------------------
