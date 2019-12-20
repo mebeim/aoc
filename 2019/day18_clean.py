@@ -56,8 +56,7 @@ def explore(sources, n_find, mykeys=frozenset()):
 
 	for src in sources:
 		for k, d in reachable_keys(src, mykeys):
-			new_sources = (k,) + tuple(filter(lambda s: s != src, sources))
-			dist = d + explore(new_sources, n_find - 1, mykeys | {k})
+			dist = d + explore(sources.replace(src, k), n_find - 1, mykeys | {k})
 
 			if dist < best:
 				best = dist

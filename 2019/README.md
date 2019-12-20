@@ -2286,7 +2286,7 @@ def minimum_steps(src, n_find, mykeys=set()):
         # See what's the solution to find all other keys having taken k.
         dist += minimum_steps(newsrc, n_find - 1, newkeys)
 
-        # Update the current solution if that was better.
+        # Update the current solution if this one is better.
         if dist < best:
             best = dist
 
@@ -2531,8 +2531,8 @@ modifications to our functions and data structures used for part 1:
    new situation. The resulting graph dictionary will include information for
    all the four isolated graphs.
 2. The path finding algorithm implemented in `reachable_keys()` does not change,
-   we will only need to call it four times now (one for each bot).
-3. The recursive solution function `minimum_steps()` need to be changed. In
+   we will only need to call it multiple times now (one for each bot).
+3. The recursive solution function `minimum_steps()` needs to be changed. In
    addition to not knowing which key is best to pick at any given time, we now
    also don't know which bot is best to move. *However* we can easily test all
    of them just like we did for different keys!
@@ -2542,6 +2542,11 @@ that now our search space is multiplied by the number of robots. In other words,
 we have to do what we already do for the keys once for each robot. In terms of
 code, this means adding another `for` loop in the function, and taking a
 collection of starting positions instead of just a single one.
+
+Since a source in our graph is identified by a single character, if we pass a
+string to our updated `minimum_steps()` function, we can treat each characer as
+a source iterating over the string without a problem, and a simple string
+`.replace()` is all we'll need to move one of the bots.
 
 Here's the updated function:
 
@@ -2558,16 +2563,15 @@ def minimum_steps(sources, n_find, mykeys=frozenset()):
         # For every key reachable by that robot...
         for k, d in reachable_keys(src, mykeys):
             # Take the key and move the robot there.
-            new_keys     = mykeys | {k}
-            new_sources  = (k,)
-            new_sources += tuple(filter(lambda s: s != src, sources))
-            dist = d
+            newkeys    = mykeys | {k}
+            newsources = sources.replace(src, k)
+            dist       = d
 
             # See what's the solution to find all other keys having
-            # taken k from this particular source (bot).
+            # taken k with this particular robot.
             dist += explore(new_sources, n_find - 1, new_keys)
 
-            # Update the current solution if that was better.
+            # Update the current solution if this one is better.
             if dist < best:
                 best = dist
 
@@ -2611,7 +2615,8 @@ distance_for_keys.cache_clear()
 ```
 
 We can now re-build the graph using the updated maze and run the solution
-starting from all the characters in the string `'1234'`.
+starting from all the sources identified by the characters in the string
+`'1234'`.
 
 ```python
 G, _      = build_graph(maze)
