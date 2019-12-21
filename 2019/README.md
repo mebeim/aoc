@@ -1,5 +1,5 @@
-AoC 2019 walkthrough
-====================
+Advent of Code 2019 walkthrough
+===============================
 
 Table of Contents
 -----------------
@@ -17,8 +17,8 @@ Table of Contents
 -  Day 11 - Space Police: *TODO*
 - [Day 12 - The N-Body Problem][d12]
 - [Day 13 - Care Package][d13]
--  Day 14 - Oxygen System: *TODO*
--  Day 15 - Set and Forget: *TODO*
+-  Day 14 - Space Stoichiometry: *TODO*
+-  Day 15 - Oxygen System: *TODO*
 - [Day 16 - Flawed Frequency Transmission][d16]
 -  Day 17 - Set and Forget: *TODO*
 - [Day 18 - Many-Worlds Interpretation][d18]
@@ -63,7 +63,7 @@ function.
 total = 0
 for n in numbers:
     while n > 0:
-        n = max(n // 3 - 2)
+        n = max(n // 3 - 2, 0)
         total += n
 
 print('Part 2:', total)
@@ -102,7 +102,7 @@ are three [opcodes](https://en.wikipedia.org/wiki/Opcode):
 We are asked to set `program[0] = 1` and `program[1] = 12` before starting, and
 then run the Intcode program until it halts: the output will be at position `0`.
 
-Quite simple, we can just emuate it with a loop. To make it fancier, we can
+Quite simple, we can just emulate it with a loop. To make it fancier, we can
 import [`add`][py-operator-add] and [`mul`][py-operator-mul] from the
 [`operator`][py-operator] module and use them instead of a chain of `if/elif`:
 `add()` is a function that takes two arguments and performs the same operation
@@ -137,13 +137,20 @@ list itself, which would modify it irrevocably.
 
 For the second part, we are asked to determine which pair of inputs produces the
 output `19690720`. Both the input values are between `0` and `99` (included), so
-we can just run a brute-force search trying all of them:
+we can just run a brute-force search trying all of them. To avoid writing two
+loops using a temporary boolean value to `break` out of both, we can use the
+[`product()`][py-itertools-product] generator from the
+[`itertools`][py-itertools] module, which generates all possible tuples of
+values from the
+[cartesian product](https://en.wikipedia.org/wiki/Cartesian_product) of its
+arguments.
 
 ```python
-for a in range(100):
-    for b in range(100):
-        if run(program[:], a, b) == 19690720:
-            break
+from itertools import product
+
+for a, b in product(range(100), range(100)):
+    if run(program[:], a, b) == 19690720:
+        break
 
 print('Part 2:', a * 100 + b)
 ```
@@ -168,7 +175,7 @@ The two wires will intersect each other, and we are asked to calculate the
 [Manhattan distance][algo-manhattan] from the origin to the closest
 intersection.
 
-First, parse the moves with [`map()`][py-builtin-map] and a simple funciton that
+First, parse the moves with [`map()`][py-builtin-map] and a simple function that
 takes a string and splits it into direction and number of steps.
 
 ```python
@@ -206,7 +213,7 @@ visited2 = get_visited(moves2)
 
 The two dictionaries `MOVE_DX` and `MOVE_DY` are just a common trick to make it
 easier to apply a delta given a direction, instead of writing a long chain of
-`if/ifelse` statements with a bunch of different assignments.
+`if/elif` statements with a bunch of different assignments.
 
 We then get the intersection of the two sets, and calculate the Manhattan
 distance from each point to the origin, keeping the lowest value. Since the
@@ -224,7 +231,7 @@ print('Part 1:', min_distance)
 
 ### Part 2
 
-We are now asked to calculate the shortest cumualative distance (in steps) that
+We are now asked to calculate the shortest cumulative distance (in steps) that
 wires must travel to reach an intersection point. If a wire visits the same
 position multiple times, we need to use the lowest number of steps it took to
 get there.
@@ -277,8 +284,8 @@ A valid password must:
 - Be composed of non-decreasing digits (from left to right).
 
 An iterator over pairs of adjacent characters of a string can be easily obtained
-using the [`zip()`][py-builtin-zip] build-in function. If we convert our values
-in string form: this will make our life much easier. Since we are only dealing
+using the [`zip()`][py-builtin-zip] built-in function. If we convert our values
+in string form, this will make our life much easier. Since we are only dealing
 with ASCII digits, and the ASCII values for digits are ordered just like the
 digits, we don't even need to care about converting them back to integers to
 compare them.
@@ -290,7 +297,7 @@ pairs = tuple(zip(digits, digits[1:]))
 
 To check if there are at least two adjacent matching digits, we can iterate over
 the pairs of adjacent digits and check if any pair of equal digits exists using
-the [`any()`][py-builtin-any] build-in function.
+the [`any()`][py-builtin-any] built-in function.
 
 ```python
 has_matching_pair = any(a == b for a, b in pairs)
@@ -298,7 +305,7 @@ has_matching_pair = any(a == b for a, b in pairs)
 
 As per the second requirement, to check if a number is only composed of
 non-decreasing digits, we can iterate over the pairs of adjacent digits and use
-the [`all()`][py-builtin-all] build-in function to check if the condition is met
+the [`all()`][py-builtin-all] built-in function to check if the condition is met
 for each pair.
 
 ```python
@@ -569,7 +576,7 @@ Day 6 - Universal Orbit Map
 ### Part 1
 
 We are given a list of "orbits". Each orbit is represented as the name of two
-planets divided by a closed parens `)` symbol. `A)B` means that planet `B`
+planets divided by a closed parenthesis `)` symbol. `A)B` means that planet `B`
 orbits planet `A`. We are asked to count the total number of orbits, direct or
 indirect.
 
@@ -642,7 +649,7 @@ a dictionary of sets `{planet: set_of_connected_planets}`. We can use the very
 cool [`defaultdict`][py-collections-defaultdict] from the
 [`collections`][py-collections] module, which is just like a normal `dict`, but
 automatically creates entries when we try to access them. The source and
-destination can just be taken by the old `T` tree.
+destination can just be taken from the `orbits` tuple we generated earlier.
 
 ```python
 from collections import defaultdict
@@ -809,7 +816,7 @@ And we have our part one solution!
 ### Part 2
 
 Things get a little bit more complicated. Machines are now connected in a
-feedback loop, meaning that after stargint each one with a different phase
+feedback loop, meaning that after starting each one with a different phase
 setting and connecting them, we will also need to connect the last one to the
 first one. The computation will be over after the fifth machine halts. Its last
 output value will be the signal to maximize this time.
@@ -894,7 +901,7 @@ layers = [chars[i:i + SIZE] for i in range(0, len(chars), SIZE)]
 
 We are assigned the pretty straightforward task to find the layer with the least
 amount of `0` pixels, and count the number of `1` and `2` pixels in that layer,
-multiplying those two numbers togeter to get a "checksum", which is the answer.
+multiplying those two numbers together to get a "checksum", which is the answer.
 
 We can do this pretty cleanly using the [`min()`][py-builtin-min] function. With
 the `key=` function parameter, we can say that we want to find a layer `l` such
@@ -908,7 +915,7 @@ print('Part 1:', checksum)
 
 ### Part 2
 
-We are now todl that each pixel can be either black (`0`), white (`1`) or
+We are now told that each pixel can be either black (`0`), white (`1`) or
 transparent (`2`), and to get the "real" image from all the layers, we need to
 stack them up: since we can see through the transparent pixels, the final value
 of a pixel in a given position of the image will be the one of the first pixel
@@ -974,7 +981,7 @@ Result:
     #    #    #  # #  # # #
     #    #     ##  #  # #  #
 
-Now that's readable, and we succesfully got our part 2 answer!
+Now that's readable, and we successfully got our part 2 answer!
 
 
 
@@ -1273,7 +1280,7 @@ numerator and denominator (i.e. do not simplify `-2/-4` as `1/2`, but as
 `-1/-2`).
 
 To reduce any fraction to an irreducible fraction the only thing we need is to
-divide both numerator and denominator by their gratest common divisor. For this,
+divide both numerator and denominator by their greatest common divisor. For this,
 the [`gcd()`][py-math-gcd] function from the [`math`][py-math] module comes in
 handy.
 
@@ -1317,7 +1324,7 @@ The syntax `*src` (and `*a`) here uses the Python
 different values (passed as arguments). The above snippet could be optimized by
 memorizing the `ray()` function return value for each pair of asteroids using a
 dictionary, but since the number of asteroids is quite small, in our case the
-overhead of dictionary operations would only outweight the saved computation
+overhead of dictionary operations would only outweigh the saved computation
 time.
 
 ### Part 2
@@ -1331,7 +1338,7 @@ Starting facing north, we rotate the laser clockwise. Each time the laser beam
 intersects with an asteroid, it destroys it, but it does *not* destroy any other
 asteroid on the same line of sight. In other words, asteroids on the same LoS
 are "shielded" by closer asteroids on the same LoS. The second closest asteroid
-on a given line of sight will be destroied on the second rotation of the
+on a given line of sight will be destroyed on the second rotation of the
 station, after the laser beam completes a full cycle.
 
 First of all, the answer for part 1 was greater than 200, so we only need to
@@ -1341,7 +1348,7 @@ code just by adding one more loop to re-scan the asteroids after each full
 rotation.
 
 To know which asteroid will be destroyed as 200th, we need to order their
-positions based on the ray on which they are placed. Contraty to the first part,
+positions based on the ray on which they are placed. Contrary to the first part,
 we now do care about one asteroid being the closest on a given ray. We can again
 scan all asteroids to determine which one is the closest on each ray. This is as
 simple as saving the asteroid and its distance in a dictionary
@@ -1368,7 +1375,7 @@ for a in asteroids:
 Now that we've got all the closest asteroids, we will need to order them. We
 want to sort them by clockwise angle from north. To do this, we can calculate
 the angle for every ray using the [`atan2()`][py-math-atan2] function. This
-function takes `y` and `x` as parameteers (in this exact order) and outputs a
+function takes `y` and `x` as parameters (in this exact order) and outputs a
 value in [radians](https://en.wikipedia.org/wiki/Radian) ranging from `-math.pi`
 to `math.pi`, considering the *east* direction as zero. To make the return value
 of this function useful, we first need to convert the range from `[-pi, pi)` to
@@ -1475,8 +1482,8 @@ can easily simulate 1000 steps.
 
 We can take advantage of the [`combinations()`][py-itertools-combinations]
 function from the [`itertools`][py-itertools] module instead of two `for` loops
-to efficently get all the unique couples of moons. This means that we'll need to
-modify the velocity of both inside the loop, but that's no problem! Now let's
+to efficiently get all the unique couples of moons. This means that we'll need
+to modify the velocity of both inside the loop, but that's no problem! Now let's
 dive into it and simulate the first 1000 steps.
 
 ```python
@@ -1499,7 +1506,7 @@ for step in range(1000):
 
 We could optimize this a little bit further by pre-calculating `range(3)` and
 turing it into a tuple to use each time, but we are not going for this level of
-optimization here, just a reasonably good and cool loking solution.
+optimization here, just a reasonably good and cool looking solution.
 
 Anyway, now we only need to calculate the total energy as described in the
 problem statement, and we get the answer. The classic [`map()`][py-builtin-map]
@@ -1577,7 +1584,7 @@ for dim in range(3):
 ```
 
 Let's calculate the least common multiple of all periods to get our answer.
-We'll use [`gcd()`][py-math-gcd] (gratest common divisor) from the
+We'll use [`gcd()`][py-math-gcd] (greatest common divisor) from the
 [`math`][py-math] module to write our own `lcm` function, and
 [`reduce()`][py-functools-reduce] from [`functools`][py-functools] as a cool
 functional way to apply it to the three periods (since our `lcm()` will take two
@@ -1611,7 +1618,7 @@ if all(m.vel[dim] == 0 for m in moons):
     break
 ```
 
-This property is pretty cool, but I am not enough of a matematician to write a
+This property is pretty cool, but I am not enough of a mathematician to write a
 proof for it for N objects (in our case 4). It's easy to see that it holds true
 for two objects and one dimension, as Reddit user
 [u/encse](https://www.reddit.com/user/encse) points out in
@@ -1655,7 +1662,7 @@ I will be using [my `IntcodeVM` class](lib/intcode.py) to solve this puzzle.
 
 Another Intcode challenge! We are given an Intcode program, and we are told that
 it runs on an arcade cabinet. The program will draw on the screen of the cabinet
-by outputing groups of three values: `x`, `y`, and a "tile ID". The tile ID
+by outputting groups of three values: `x`, `y`, and a "tile ID". The tile ID
 represents which tile is to be drawn:
 
 - `0` is an empty tile. No game object appears in this tile.
@@ -1800,7 +1807,7 @@ Day 16 - Flawed Frequency Transmission
 
 Although the problem statement for today's input is basically a reading
 comprehension challenge, the first part of this problem is pretty simple. If
-something is uncleaer, I'd recommend reading the original problem statement
+something is unclear, I'd recommend reading the original problem statement
 linked above, specially because there are some clear examples that I'm not going
 to replicate here.
 
@@ -1846,7 +1853,7 @@ def gen_pattern(n):
 
 While the above snippet works just fine for small values of `n`, it becomes a
 real struggle for larger values, and is very slow either way. Also, the pattern
-still needs to be exended, and we then need to skip the first number.
+still needs to be extended, and we then need to skip the first number.
 
 If we take a look at the pattern `(0, 1, 0, -1)`, and read above again:
 
@@ -1859,7 +1866,7 @@ This means that:
    end up multiplying a bunch of digits by `0`, therefore we could just "ignore"
    them.
 2. For the other two pattern values, we can completely ignore the fact that the
-   opretion to perform is a multiplication, since they are `1` and `-1`
+   operation to perform is a multiplication, since they are `1` and `-1`
    respectively.
 
 A single iteration (for the `i-th` digit) of the algorithm we need to apply can
@@ -1922,7 +1929,7 @@ For part 2 we are asked to do the same thing as part 1, but with a couple more
 rules:
 
 1. Take the first 7 digits of the input as a number `N`.
-2. Repeat the input list of intgers 10000 (ten thousand) times.
+2. Repeat the input list of integers 10000 (ten thousand) times.
 3. After the 100th iteration, skip `N` digits of the result and take the next 8.
 
 As it turns out, repeating the list 10000 times makes things a little bit more
@@ -2040,7 +2047,7 @@ sucks!
 
 With this said, CPython still takes too much for my taste. I am not sure if this
 is because there is some other significant optimization to be made (or any other
-clever trick) for CPython, but it nonetheless bothers me a bit, particualrly
+clever trick) for CPython, but it nonetheless bothers me a bit, particularly
 because Advent of Code puzzles are supposed to be solvable in any programming
 language (interpreted or not) taking *way less* than that to compute if the
 right algorithm is applied (which is the case here).
@@ -2417,11 +2424,11 @@ functions like this, so I'd suggest to read it in case you are not familiar with
 the concept. In terms of Python code, it means something like this:
 
 ```python
-def expensive_function(a, b, c, cache={}): # The cache={} dictionaty here is only
+def expensive_function(a, b, c, cache={}): # The cache={} dictionary here is only
     if (a, b, c) in cache:                 # created once at the time of definition
         return cache[a, b, c]              # of the function! If we do not pass
                                            # any value to overwrite it, it keeps
-    # compute result...                    # being the same dictionaty.
+    # compute result...                    # being the same dictionary.
 
     cache[a, b, c] = result
     return result
@@ -2448,8 +2455,8 @@ def expensive_function(a, b, c):
 The `maxsize` argument of `@lru_cache` is the maximum number of most recently
 used results to keep, and it can be set to `None` for unlimited.
 
-There is still *one little problem* thouhg. Since `@lru_cache` too uses a
-dictionary to cache arguments and resutls, all the arguments need to be
+There is still *one little problem* though. Since `@lru_cache` too uses a
+dictionary to cache arguments and results, all the arguments need to be
 hashable. However in our functions the `mykeys` argument is a `set`, and as it
 turns out, since a `set` is a mutable collection, it cannot be hashed. For this,
 the [`frozenset`][py-frozenset] comes to the rescue! It's basically the same as
@@ -2545,7 +2552,7 @@ code, this means adding another `for` loop in the function, and taking a
 collection of starting positions instead of just a single one.
 
 Since a source in our graph is identified by a single character, if we pass a
-string to our updated `minimum_steps()` function, we can treat each characer as
+string to our updated `minimum_steps()` function, we can treat each character as
 a source iterating over the string without a problem, and a simple string
 `.replace()` is all we'll need to move one of the bots.
 
@@ -2602,7 +2609,7 @@ maze[startr - 1][startc + 1] = '4'
 ```
 
 We use the characters `'1'` through `'4'` here just because the nodes in our
-graph are identified by thir corresponding character on the grid, and we want
+graph are identified by their corresponding character on the grid, and we want
 to have four different identifiers of course.
 
 Since we are going to re-start the search using the a new graph, first we'll
@@ -2891,7 +2898,7 @@ Our donut maze now became recursive!
 - Each of the *outer* portals brings us to the inner portal of the previous
   depth level, except for depth 0 portals.
 - The entrance and exit can only be used from depth 0.
-- No otuer portal at depth 0 can be used.
+- No outer portal at depth 0 can be used.
 
 We still have to find a way to travel from `AA` to `ZZ`, but this time we'll
 have to go in and out of different levels of the same maze to find the shortest
@@ -3127,7 +3134,9 @@ The above strategy fails for a situation like the following:
 
 but with the limited amount of knowledge that we have (only the next 4 cells),
 it is impossible to predict such a situation. Therefore it makes sense to make
-the assumption that this will never happen.
+the assumption that this will never happen. I know, figuring out constraints
+based on the expected solution is more meta-puzzling than it should, but bear
+with me.
 
 The solution we just thought of can be seen as a simple boolean equation:
 
@@ -3186,20 +3195,16 @@ asked to do the same thing as in part 1, this time using the `RUN` command at
 the end instead of `WALK`.
 
 This is trickier. While first we could just make sure that there was ground on
-the fourth cell and then blindlessly jump if there was any hole ahead, we now
-cannot do the same. We were assuming that a situation like this was not
-possible:
+the fourth cell and then blindly jump if there was any hole ahead, we now cannot
+do the same, because a situation like the following is now possible:
 
     @
     ##  ##   #
      ABCDEFGHI
 
-... but it sure is possible now, since we have the knowledge to be able to solve
-it. I know, this is more meta-puzzling than it should, figuring out constraints
-based on the expected solution, but bear with me.
-
-To fix our solution (adapting it from part 1), we need to consider what happens
-exactly in the edge-case scenario above.
+This time though, we have the knowledge to be able to solve this: the new 5
+values will help us. To fix our solution (adapting it from part 1), we need to
+consider what happens exactly in the edge-case scenario above.
 
 We can jump if `A` is empty and `D` is ground, and we can also jump if `B` is
 empty and `D` is ground... what we *cannot* do though, is to jump if `C` is
@@ -3332,6 +3337,7 @@ And the springdroid safely makes it to the other side!
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
 [py-heapq]:                   https://docs.python.org/3/library/heapq.html
 [py-itertools]:               https://docs.python.org/3/library/itertools.html
+[py-itertools-product]:       https://docs.python.org/3/library/itertools.html#itertools.product
 [py-itertools-permutations]:  https://docs.python.org/3/library/itertools.html#itertools.permutations
 [py-itertools-combinations]:  https://docs.python.org/3/library/itertools.html#itertools.combinations
 [py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
