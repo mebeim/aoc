@@ -679,11 +679,11 @@ def dijkstra(G, src, dst):
     while queue:
         dist, planet = heapq.heappop(queue)
 
+        if planet == dst:
+            return dist
+
         if planet not in visited:
             visited.add(planet)
-
-            if planet == dst:
-                return dist
 
             for neighbor in filter(lambda p: p not in visited, G[planet]):
                 new_dist = dist + 1
