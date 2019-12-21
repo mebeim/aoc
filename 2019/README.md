@@ -3129,7 +3129,7 @@ Here's a few visual examples:
 The above strategy fails for a situation like the following:
 
     @
-    ##  ##   #  => Should not jump right away, but wait one more step first.
+    ### # ##  ##### => Should not jump right away, but wait one more step first.
      ABCD
 
 but with the limited amount of knowledge that we have (only the next 4 cells),
@@ -3199,21 +3199,92 @@ the fourth cell and then blindly jump if there was any hole ahead, we now cannot
 do the same, because a situation like the following is now possible:
 
     @
-    ##  ##   #
+    ### # ##  #####
      ABCDEFGHI
 
 This time though, we have the knowledge to be able to solve this: the new 5
 values will help us. To fix our solution (adapting it from part 1), we need to
 consider what happens exactly in the edge-case scenario above.
 
-We can jump if `A` is empty and `D` is ground, and we can also jump if `B` is
-empty and `D` is ground... what we *cannot* do though, is to jump if `C` is
-empty and `D` is ground *but* `H` is empty.
+If we run our part 1 code with the new `RUN` command, our poor springbot will
+fall into space and the Intcode program will print a snapshot of its death. We
+can print it to the terminal to analyze it and understand what is going on:
 
-As it turns out, this means considering jumping if `!C` only when `H` is also
-`true`:
+```python
+out = vm.run(springscript)
+sys.stdout.write(''.join(map(chr, out)))
+```
+
+It produces the following output (letters and comments added by me):
+
+    .................
+    .................
+    @................
+    #####.#.##..#####
+
+    .................
+    .................
+    .@...............
+    #####.#.##..#####
+
+    .................
+    .................
+    ..@..............  Here we decide to jump prematurely,
+    #####.#.##..#####  because C is wmpty and D is ground.
+       ABCDEFGHI
+    .................
+    ...@.............
+    .................
+    #####.#.##..#####
+
+    ....@............
+    .................
+    .................
+    #####.#.##..#####
+
+    .................
+    .....@...........
+    .................
+    #####.#.##..#####
+
+    .................
+    .................
+    ......@..........  We then end up on a single isolated block.
+    #####.#.##..#####  Now D is not ground, and we do not jump!
+           ABCDEFGHI
+    .................
+    .................
+    .................
+    #####.#@##..#####  Therefore we fall right into the hole.
+
+If we better analyze the situation in which we prematurely decide to jump:
+
+      @
+    ##### # ##  #####
+       ABCDEFGHI
+
+We notice that we could actually wait two more steps until jumping. We cannot
+jump now, because even if we land on `D`, we wouldn't have the chance to make
+another jump landing on `H`, because it's empty. If we instead wait, two steps
+later `D` is going to be ground, and `H` is going to be ground as well:
+
+        @
+    ##### # ##  #####
+         ABCDEFGHI
+
+Therefore:
+
+- We can jump if `A` is empty and `D` is ground.
+- We can also jump if `B` is empty and `D` is ground.
+- We *cannot* jump if `C` is empty and `D` is ground, in this case we also need
+  `H` to be ground, to assure that an eventual next jump would be performed in
+  a situation like the one above.
+
+So this means jumping if `!C & H`, plus the other two conditions of our initial
+solution:
 
     J = (!A & D) | (!B & D) | (!C & D & H)
+                                      ^^^ added
 
 Which can be simplified grouping by `D` into:
 
@@ -3222,22 +3293,24 @@ Which can be simplified grouping by `D` into:
 In terms of Springscript:
 
 ```python
-NOT C J # J = !C
-AND H J # J = !C & H
+NOT C J  # J = !C
+AND H J  # J = !C & H
 
 NOT B T
-OR T J  # J = !B | (!C & H)
+OR T J   # J = !B | (!C & H)
 
 NOT A T
-OR T J  # J = !A | !B | (!C & H)
+OR T J   # J = !A | !B | (!C & H)
 
-AND D J # J = (!A | !B | (!C & H)) & D
+AND D J  # J = (!A | !B | (!C & H)) & D
 RUN
 ```
 
-Let's run it and get the answer. We can separate parts of the script with
-newlines to better understand it, then replace double newlines before feeding
-it into the Intcode interpreter.
+We don't know right off the bat if there could be other edge cases that we did
+not consider, but we can for sure try running the code to see if it works. Since
+we are still programming our Springscript, we can separate parts of the script
+with newlines to make it clearer, and replace double newlines before feeding it
+into the Intcode interpreter.
 
 ```python
 springscript = """\
@@ -3259,7 +3332,9 @@ out = vm.run(inp)[-1]
 print('Part 2:', out)
 ```
 
-And the springdroid safely makes it to the other side!
+As it turns out, the code runs fine and we get a really big number as the last
+output value. This means we got it right! The springdroid safely makes it to the
+other side, and we get our part 2 solution.
 
 
 [d01]: #day-1---the-tyranny-of-the-rocket-equation
