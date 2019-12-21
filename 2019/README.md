@@ -24,6 +24,7 @@ Table of Contents
 - [Day 18 - Many-Worlds Interpretation][d18]
 -  Day 19 - Tractor Beam: *TODO*
 - [Day 20 - Donut Maze][d20]
+- [Day 21 - Springdroid Adventure][d21]
 
 
 Day 1 - The Tyranny of the Rocket Equation
@@ -3031,6 +3032,231 @@ algorithm is much more lightweight, and we rarely pass through the same portal
 twice, so the code runs nice and fast either way.
 
 
+Day 21 - Springdroid Adventure
+------------------------------
+
+[Problem statement][d21-problem] — [Complete solution][d21-solution]
+
+### Prerequisites
+
+This problem requires a working Intcode virtual machine built following
+instructions in the [day 2][d02], [day 5][d05] and [day 9][d09] problem
+statements! The machine could be as simple as a single function, or something
+more complicated like a class with multiple methods. Take a look at previous
+days to know more.
+
+I will be using [my `IntcodeVM` class](lib/intcode.py) to solve this puzzle.
+
+### Part 1
+
+Okay, I was expecting some more Intcode... but NOT another assembly language
+built on top of Intcode! This is insane, I love it (I just hope to not see it
+again).
+
+For today's puzzle we are given an Intcode program which is an interpreter for
+another assembly language called *"Springscript"*. Springscript is very, very
+simple: it only works with boolean values, it only has three instructions, and
+only has two read/write registers. The two registers are `T` (temporary) and `J`
+(jump).
+
+The instructions are:
+
+- `AND X Y`: sets `Y` to `X & Y` (logical AND).
+- `OR X Y`: sets `Y` to `X | Y` (logical OR).
+- `NOT X Y`: sets `Y` to `!X` (negation).
+
+We need to write a Springscript program to control a *springdroid*. A
+springdroid is a simple robot that walks in a straight line one cell at a time,
+and can also jump. A jump makes the springdroid land on the fourth cell from its
+initial position.
+
+Our springdroid is walking on our spaceship's hull, which is full of holes. It
+needs to get to the other side of the hull, and we need to write a program to
+help it make it through without falling into any hole. For this purpose, we are
+given access to *four* read only values: `A`, `B`, `C`, and `D`. `A` is `true`
+if there is ground on the next cell from the current position, `B` is `true` if
+there is ground on the second cell, and so on until `D` (4th cell).
+
+We need to feed our Intcode interpreter with ASCII values representing a valid
+Springscript program, which controls the springdroid. The Springscript program
+that we are going to feed to the robot will be run every single time the robot
+moves forward into a new cell, to decide whether to jump or not: the robot will
+perform a jump if the `J` register is `true` at the end of our Springscript.
+
+After providing a valid Springscript program we start the robot with the special
+command `WALK` followed by a newline. If the springdroid makes it through, the
+Intcode program outputs the value of "hull damage" reported by the springdroid,
+which is the answer to the puzzle. If however the springdroid falls into a hole,
+the intcode program reports on its output an ASCII art visualization of the last
+few steps before the death of the springbot, so that we are able to debug the
+code and figure out what we did wrong.
+
+Okay, pretty long explanation, but the solution is pretty simple. We can only
+look forward up to 4 cells, and if we decide to jump, we land on the fourth.
+This means that there cannot be a hole which is larger than 3 cells, otherwise
+there is no solution.
+
+If we need to account for a hole, whether it is of 1, 2 or 3 cells, we actually
+only care if we have a fourth cell available to land on after jumping. We can
+check if *any* of the next 3 cells is a hole, and then jump if there is ground
+on the fourth one.
+
+Here's a few visual examples:
+
+    @
+    #####  => No need to jump.
+     ABCD
+
+    @
+    # ###  => Need to jump, or we'll fall.
+     ABCD
+
+    @
+    ##  #  => Don't really need to jump, but doing so does not hurt.
+     ABCD
+
+    @
+    ## #   => Jumping would make us fall, don't jump.
+     ABCD
+
+The above strategy fails for a situation like the following:
+
+    @
+    ##  ##   #  => Should not jump right away, but wait one more step first.
+     ABCD
+
+but with the limited amount of knowledge that we have (only the next 4 cells),
+it is impossible to predict such a situation. Therefore it makes sense to make
+the assumption that this will never happen.
+
+The solution we just thought of can be seen as a simple boolean equation:
+
+    J = (!A | !B | !C) & D
+
+Which can be simplified as:
+
+    J = !(A & B & C) & D
+
+In order to translate this into Springcode, we need to first compute the
+expression in the parentheses, and then `AND` the result with `D`. Pretty
+simple, we don't even need to use the temporary register for this. Here's the
+Springscript program:
+
+```python
+NOT A J  # J = !A
+NOT J J  # J = A
+AND B J  # J = A & B
+AND C J  # J = A & B & C
+NOT J J  # J = !(A & B & C)
+AND D J  # J = !(A & B & C) & D
+```
+
+We should already have confidence when interacting with our Intcode VM. We only
+need to feed it with the ASCII values of our springscript. Also, let's not
+forget the `WALK` command at the end. To convert all characters of the
+Springscript to their ASCII values we can use [`ord()`][py-builtin-ord] along
+with [`map()`][py-builtin-map] to apply it to every character. To easily write
+multiple lines of Springscript we can use a triple-quoted docstring.
+
+```python
+program = list(map(int, fin.read().split(',')))
+vm = IntcodeVM(program)
+
+springscript = """\
+NOT A J
+NOT J J
+AND B J
+AND C J
+NOT J J
+AND D J
+WALK
+"""
+
+inp = list(map(ord, springscript))
+out = vm.run(inp)[-1]
+print('Part 1:', out)
+```
+
+### Part 2
+
+Things get more difficult. We are now given access to *five more* cells ahead of
+us. We can now look at values `E` through `I`, representing cells from 5th to
+9th after the current position. The jump still lands us on the 4th cell. We are
+asked to do the same thing as in part 1, this time using the `RUN` command at
+the end instead of `WALK`.
+
+This is trickier. While first we could just make sure that there was ground on
+the fourth cell and then blindlessly jump if there was any hole ahead, we now
+cannot do the same. We were assuming that a situation like this was not
+possible:
+
+    @
+    ##  ##   #
+     ABCDEFGHI
+
+... but it sure is possible now, since we have the knowledge to be able to solve
+it. I know, this is more meta-puzzling than it should, figuring out constraints
+based on the expected solution, but bear with me.
+
+To fix our solution (adapting it from part 1), we need to consider what happens
+exactly in the edge-case scenario above.
+
+We can jump if `A` is empty and `D` is ground, and we can also jump if `B` is
+empty and `D` is ground... what we *cannot* do though, is to jump if `C` is
+empty and `D` is ground *but* `H` is empty.
+
+As it turns out, this means considering jumping if `!C` only when `H` is also
+`true`:
+
+    J = (!A & D) | (!B & D) | (!C & D & H)
+
+Which can be simplified grouping by `D` into:
+
+    J = (!A | !B | (!C & H)) & D
+
+In terms of Springscript:
+
+```python
+NOT C J # J = !C
+AND H J # J = !C & H
+
+NOT B T
+OR T J  # J = !B | (!C & H)
+
+NOT A T
+OR T J  # J = !A | !B | (!C & H)
+
+AND D J # J = (!A | !B | (!C & H)) & D
+RUN
+```
+
+Let's run it and get the answer. We can separate parts of the script with
+newlines to better understand it, then replace double newlines before feeding
+it into the Intcode interpreter.
+
+```python
+springscript = """\
+NOT C J
+AND H J
+
+NOT B T
+OR T J
+
+NOT A T
+OR T J
+
+AND D J
+RUN
+"""
+
+inp = list(map(ord, springscript.replace('\n\n', '\n')))
+out = vm.run(inp)[-1]
+print('Part 2:', out)
+```
+
+And the springdroid safely makes it to the other side!
+
+
 [d01]: #day-1---the-tyranny-of-the-rocket-equation
 [d02]: #day-2---1202-program-alarm
 [d03]: #day-3---crossed-wires
@@ -3046,6 +3272,7 @@ twice, so the code runs nice and fast either way.
 [d16]: #day-16---flawed-frequency-transmission
 [d18]: #day-18---many-worlds-interpretation
 [d20]: #day-20---donut-maze
+[d21]: #day-21---springdroid-adventure
 
 [d01-problem]: https://adventofcode.com/2019/day/1
 [d02-problem]: https://adventofcode.com/2019/day/2
@@ -3062,6 +3289,7 @@ twice, so the code runs nice and fast either way.
 [d16-problem]: https://adventofcode.com/2019/day/16
 [d18-problem]: https://adventofcode.com/2019/day/18
 [d20-problem]: https://adventofcode.com/2019/day/20
+[d21-problem]: https://adventofcode.com/2019/day/21
 [d01-solution]: day01_clean.py
 [d02-solution]: day02_clean.py
 [d03-solution]: day03_clean.py
@@ -3077,6 +3305,7 @@ twice, so the code runs nice and fast either way.
 [d16-solution]: day16_clean.py
 [d18-solution]: day18_clean.py
 [d20-solution]: day20_clean.py
+[d21-solution]: day21_clean.py
 
 [py-cond-expr]:               https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-builtin-str]:             https://docs.python.org/3/library/functions.html#func-str
@@ -3086,6 +3315,7 @@ twice, so the code runs nice and fast either way.
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
 [py-builtin-any]:             https://docs.python.org/3/library/functions.html#any
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
+[py-builtin-ord]:             https://docs.python.org/3/library/functions.html#ord
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
