@@ -288,6 +288,7 @@ class IntcodeVM:
 		self.mem            = None
 		self.input          = None
 		self.output         = None
+		self.first_run      = True
 		self.need_reset     = True
 		self.running        = True
 		self.pc             = 0
@@ -322,8 +323,9 @@ class IntcodeVM:
 		self.running       = True
 		self.need_reset    = False
 
-	def run(self, inp=None, n_out=-1, resume=False, debug=False):
-		if not resume and self.need_reset:
+	def run(self, inp=None, n_out=-1, n_in=-1, resume=False, debug=False):
+		if self.first_run or (not resume and self.need_reset):
+			self.first_run = False
 			self.reset()
 
 		self.need_reset = True
@@ -355,8 +357,15 @@ class IntcodeVM:
 
 				op.exec()
 
-				if type(op) == OpOut and len(self.output) == n_out:
-					break
+				if n_in > 0 and type(op) == OpIn:
+					n_in -= 1
+					if n_in == 0:
+						break
+
+				if n_out > 0 and type(op) == OpOut:
+					n_out -= 1
+					if n_out == 0:
+						break
 
 			return self.output
 
