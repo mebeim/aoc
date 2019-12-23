@@ -25,6 +25,8 @@ Table of Contents
 -  Day 19 - Tractor Beam: *TODO*
 - [Day 20 - Donut Maze][d20]
 - [Day 21 - Springdroid Adventure][d21]
+-  Day 22 - Slam Shuffle: *TODO*
+- [Day 23 - Category Six][d23]
 
 
 Day 1 - The Tyranny of the Rocket Equation
@@ -3337,6 +3339,266 @@ output value. This means we got it right! The springdroid safely makes it to the
 other side, and we get our part 2 solution.
 
 
+Day 23 - Category Six
+---------------------
+
+[Problem statement][d23-problem] — [Complete solution][d23-solution]
+
+### Prerequisites
+
+This problem requires a working Intcode virtual machine built following
+instructions in the [day 2][d02], [day 5][d05] and [day 9][d09] problem
+statements! The machine could be as simple as a single function, or something
+more complicated like a class with multiple methods. Take a look at previous
+days to know more.
+
+I will be using [my `IntcodeVM` class](lib/intcode.py) to solve this puzzle.
+
+### Part 1
+
+Another Intcode puzzle! This time though, it is no ordinary task: we are asked
+to build a network of Intcode computers. Each computer is running the program
+that we are given as input, and can communicate with the rest of the network
+through input and output instructions that simulate a
+[Network Interface Card](https://en.wikipedia.org/wiki/Network_interface_controller).
+
+We need to simulate a network of 50 Intcode computers, with addresses from `0`
+to `49`. Each computer of the network starts reading it's *network address* as
+input, and then starts doing... whatever it is supposed to do. To talk to other
+computers on the network, a computer first outputs an address, and then two
+integers `x` and `y`, which represent the network packet to be sent over the
+network to the specified address.
+
+Computers can send packets at any time, and they should remember which packets
+they receive. When a computer requests input, the first available packet in the
+queue should be provided (first `x`, then `y`), and if no packet is available,
+the integer `-1` should be provided.
+
+We are asked to simulate this network until some computer tries to send a packet
+to the address `255`: the `y` value of such special packet is the answer to the
+puzzle.
+
+First of all, let's create our network:
+
+```python
+from lib.intcode import IntcodeVM
+
+program = list(map(int, fin.read().split(',')))
+network = [IntcodeVM(program) for _ in range(50)]
+```
+
+Since a single VM can output as many packets as it wants before requesting to
+read again, we will synchronize the VMs on the `in` instruction. In particular,
+my `IntcodeVM` class has a method `.run()` which supports a positive integer
+parameter `n_in=`, to pause the execution and return after exactly the specified
+number of `in` instructions are executed.
+
+For each VM in the network, it's useful to keep track of two different things:
+
+1. A queue of packets that the VM received and needs to read. We need to enqueue
+   packets received from other VMs, since we don't want to lose any.
+2. The current outgoing packet. We do not know if a packet is always sent all at
+   once with 3 consecutive `out` instructions, or if there can be any `in`
+   instructions in between.
+
+With this said, we can initialize two new properties exactly for this purpose on
+each of our `IntcodeVM` instances. This could also be done using global
+variables (like lists of 50 elements), but doing so with real properties seems
+way easier. To create the packet queue of each VM, a
+[`deque`][py-collections-deque] comes in handy.
+
+```python
+from collections import deque
+
+for i, vm in enumerate(network):
+    vm.packet_queue = deque([i])
+    vm.out_packet = []
+```
+
+The `packet_queue` of each `vm` is initialized as containing the VM's address,
+since it's the first thing it will read.
+
+Now we will need to implement the sending and receiving logic. To do this, I
+will overwrite the `.read()` and `.write()` methods of my class with new
+functions to handle packets correctly. To get a reference to the `vm` when
+executing the new functions, we can use a wrapper function and call it with the
+`vm` as first argument. The wrapper function will define a new function to be
+used which will remember the value of the local argument of the wrapper. This
+pattern is also known as a
+[*closure*](https://en.wikipedia.org/wiki/Closure_(computer_programming)).
+
+Each time a VM writes, we will add the new value to its incomplete `out_packet`,
+and once that packet is complete (i.e. reaches a length of 3), we will add it
+to the queue of the corresponding destination VM, resetting it to empty. To keep
+track of whichever value will be sent to the special address `255` we will use a
+global variable `special_packet`.
+
+```python
+def vm_write_for(self):
+    def vm_write(v):
+        global special_packet
+
+        self.out_packet.append(v)
+
+        if len(self.out_packet) == 3:
+            destination, *packet = self.out_packet
+            self.out_packet = []
+
+            if destination == 255:
+                special_packet = packet
+            else:
+                network[destination].packet_queue.extend(packet)
+
+    return vm_write
+```
+
+Each time a VM reads, we will check if its packet queue contains anything: if
+so, we'll pop the first value (on the left) and return it, otherwise, we'll
+return `-1`.
+
+```python
+def vm_read_for(self):
+    def vm_read():
+        if self.packet_queue:
+            return self.packet_queue.popleft()
+        return -1
+
+    return vm_read
+```
+
+Pretty simple really. Now we can override the `.read()` and `.write()` methods
+of my `IntcodeVM` class with the new ones:
+
+```python
+for vm in network:
+    vm.read = vm_read_for(vm)
+    vm.write = vm_write_for(vm)
+```
+
+After this, all that's left to do is to start with a `special_packet` set to
+`None`, and run each VM until the `special_packet` gets written by someone.
+
+```python
+special_packet = None
+
+while special_packet is None:
+    for vm in network:
+        vm.run(n_in=1, resume=True)
+
+special_y = special_packet[1]
+print('Part 1:', special_y)
+```
+
+Nice! We have a functioning Intcode VM network, and we solved the first part of
+the puzzle. LEt's move to the next one.
+
+### Part 2
+
+We know that Intcode computers in the networks can receive `-1` as input when no
+packets to be read are in the queue. Now, if every single VM is continuously
+trying to read while no packet is available, we have to consider the network
+*idle*. Every time the network becomes idle, the *last* special packet that was
+sent to address 255, is sent to the VM with address `0`, and this will make the
+network continue exchanging data until becoming idle again.
+
+We are asked to find the first special packet `y` value that is sent twice in a
+row to the VM with address `0`.
+
+Okay, so now we need to account for idle network too. The simplest way to do
+this is to add some other properties to our VMs, in particular a `idle` boolean
+value, and a `unserviced_reads` integer value which counts the number of reads
+that did not get any packet data (but `-1` instead).
+
+```python
+for vm in network:
+    vm.idle = False
+    vm.unserviced_reads = 0
+```
+
+Each time a VM reads `-1`, we will increase its number of `unserviced_reads`,
+and set the VM as `idle` if the number gets above or equal to 2. When a VM reads
+something that is not `-1`, or when it writes something out, we will reset
+`idle` to `False`, and `unserviced_reads` to `0`. This will make the network
+become idle when all the VMs read nothing for two times in a row. We also do not
+need a queue for special packets since we are told to only keep the last one.
+
+Let's modify our read and write functions to account fo the above:
+
+```python
+def vm_read_for(self):
+    def vm_read():
+        if self.packet_queue:
+            self.idle = False
+            self.unserviced_reads = 0
+            return self.packet_queue.popleft()
+
+        self.unserviced_reads += 1
+        if self.unserviced_reads > 1:
+            self.idle = True
+
+        return -1
+
+    return vm_read
+
+def vm_write_for(self):
+    def vm_write(v):
+        global special_packet
+
+        self.idle = False
+        self.unserviced_reads = 0
+        self.out_packet.append(v)
+
+        if len(self.out_packet) == 3:
+            destination, *packet = self.out_packet
+            self.out_packet = []
+
+            if destination == 255:
+                special_packet = packet
+            else:
+                network[destination].packet_queue.extend(packet)
+
+    return vm_write
+
+
+for vm in network:
+    vm.read = vm_read_for(vm)
+    vm.write = vm_write_for(vm)
+```
+
+We can now run the same loop as above, but this time we will check if the
+network is idle each iteration. To check this we can use the built-in
+[`all()`][py-builtin-all] function. Each time the network is idle, we can then
+"wake up" VM number `0` and send it the last special packet. When we do, we will
+also check the last special `y` value sent to VM number `0`, and break out of
+the loop whe the same value is sent two times in a row.
+
+```python
+last_special_y = None
+done = False
+
+while not done:
+    for vm in network:
+        vm.run(n_in=1, resume=True)
+
+        if all(vm.idle for vm in network):
+            # Stop if the same special y is received two times.
+            if special_packet[1] == last_special_y:
+                done = True
+                break
+
+            # Wake up VM #0 and send it the last special packet.
+            network[0].idle = False
+            network[0].packet_queue.extend(special_packet)
+
+            last_special_y = special_packet[1]
+            special_packet = []
+
+print('Part 2:', last_special_y)
+```
+
+Welcome to *IntcodeNET* I guess!
+
+
 [d01]: #day-1---the-tyranny-of-the-rocket-equation
 [d02]: #day-2---1202-program-alarm
 [d03]: #day-3---crossed-wires
@@ -3353,6 +3615,7 @@ other side, and we get our part 2 solution.
 [d18]: #day-18---many-worlds-interpretation
 [d20]: #day-20---donut-maze
 [d21]: #day-21---springdroid-adventure
+[d23]: #day-23---category-six
 
 [d01-problem]: https://adventofcode.com/2019/day/1
 [d02-problem]: https://adventofcode.com/2019/day/2
@@ -3370,6 +3633,7 @@ other side, and we get our part 2 solution.
 [d18-problem]: https://adventofcode.com/2019/day/18
 [d20-problem]: https://adventofcode.com/2019/day/20
 [d21-problem]: https://adventofcode.com/2019/day/21
+[d23-problem]: https://adventofcode.com/2019/day/23
 [d01-solution]: day01_clean.py
 [d02-solution]: day02_clean.py
 [d03-solution]: day03_clean.py
@@ -3386,6 +3650,7 @@ other side, and we get our part 2 solution.
 [d18-solution]: day18_clean.py
 [d20-solution]: day20_clean.py
 [d21-solution]: day21_clean.py
+[d23-solution]: day23_clean.py
 
 [py-cond-expr]:               https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-builtin-str]:             https://docs.python.org/3/library/functions.html#func-str
