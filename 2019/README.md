@@ -3369,10 +3369,11 @@ computers on the network, a computer first outputs an address, and then two
 integers `x` and `y`, which represent the network packet to be sent over the
 network to the specified address.
 
-Computers can send packets at any time, and they should remember which packets
-they receive. When a computer requests input, the first available packet in the
-queue should be provided (first `x`, then `y`), and if no packet is available,
-the integer `-1` should be provided.
+Computers can send packets at any time, and they should keep each packet they
+receive until it's consumed by the needed amount of `in` instructions. When a
+computer requests input, the first available packet in the queue should be
+provided (first `x`, then `y`), and if no packet is available, the integer `-1`
+should be provided.
 
 We are asked to simulate this network until some computer tries to send a packet
 to the address `255`: the `y` value of such special packet is the answer to the
@@ -3421,11 +3422,13 @@ since it's the first thing it will read.
 Now we will need to implement the sending and receiving logic. To do this, I
 will overwrite the `.read()` and `.write()` methods of my class with new
 functions to handle packets correctly. To get a reference to the `vm` when
-executing the new functions, we can use a wrapper function and call it with the
-`vm` as first argument. The wrapper function will define a new function to be
-used which will remember the value of the local argument of the wrapper. This
-pattern is also known as a
-[*closure*](https://en.wikipedia.org/wiki/Closure_(computer_programming)).
+executing the new functions, we can use a wrapper function and call it passing
+the `vm` as first argument. The wrapper function will define and return a new
+function to be used which will remember the value of the `vm` instance passed to
+the wrapper.
+[*closure*](https://en.wikipedia.org/wiki/Closure_(computer_programming)). Doing
+so, we can emulate the behavior of the `self` parameter used in classes even in
+our externally defined function.
 
 Each time a VM writes, we will add the new value to its incomplete `out_packet`,
 and once that packet is complete (i.e. reaches a length of 3), we will add it
@@ -3490,16 +3493,16 @@ print('Part 1:', special_y)
 ```
 
 Nice! We have a functioning Intcode VM network, and we solved the first part of
-the puzzle. LEt's move to the next one.
+the puzzle. Let's move to the next one.
 
 ### Part 2
 
-We know that Intcode computers in the networks can receive `-1` as input when no
+We know that Intcode computers in the network can receive `-1` as input when no
 packets to be read are in the queue. Now, if every single VM is continuously
 trying to read while no packet is available, we have to consider the network
 *idle*. Every time the network becomes idle, the *last* special packet that was
-sent to address 255, is sent to the VM with address `0`, and this will make the
-network continue exchanging data until becoming idle again.
+sent to address '255`, is sent to the VM with address `0`, and this will make the
+network continue exchanging data until it becomes idle again.
 
 We are asked to find the first special packet `y` value that is sent twice in a
 row to the VM with address `0`.
@@ -3507,7 +3510,7 @@ row to the VM with address `0`.
 Okay, so now we need to account for idle network too. The simplest way to do
 this is to add some other properties to our VMs, in particular a `idle` boolean
 value, and a `unserviced_reads` integer value which counts the number of reads
-that did not get any packet data (but `-1` instead).
+that did not get any packet data (i.e. `-1`).
 
 ```python
 for vm in network:
@@ -3519,10 +3522,10 @@ Each time a VM reads `-1`, we will increase its number of `unserviced_reads`,
 and set the VM as `idle` if the number gets above or equal to 2. When a VM reads
 something that is not `-1`, or when it writes something out, we will reset
 `idle` to `False`, and `unserviced_reads` to `0`. This will make the network
-become idle when all the VMs read nothing for two times in a row. We also do not
-need a queue for special packets since we are told to only keep the last one.
+become idle when all the VMs read nothing for two times in a row. We do not need
+a queue for special packets since we are told to only keep the last one.
 
-Let's modify our read and write functions to account fo the above:
+Let's modify our read and write functions to account for the above:
 
 ```python
 def vm_read_for(self):
@@ -3570,7 +3573,7 @@ network is idle each iteration. To check this we can use the built-in
 [`all()`][py-builtin-all] function. Each time the network is idle, we can then
 "wake up" VM number `0` and send it the last special packet. When we do, we will
 also check the last special `y` value sent to VM number `0`, and break out of
-the loop whe the same value is sent two times in a row.
+the loop when the same value is sent two times in a row.
 
 ```python
 last_special_y = None
