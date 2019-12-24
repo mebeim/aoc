@@ -3425,7 +3425,7 @@ functions to handle packets correctly. To get a reference to the `vm` when
 executing the new functions, we can use a wrapper function and call it passing
 the `vm` as first argument. The wrapper function will define and return a new
 function to be used which will remember the value of the `vm` instance passed to
-the wrapper.
+the wrapper. This is also known as a
 [*closure*](https://en.wikipedia.org/wiki/Closure_(computer_programming)). Doing
 so, we can emulate the behavior of the `self` parameter used in classes even in
 our externally defined function.
@@ -3501,7 +3501,7 @@ We know that Intcode computers in the network can receive `-1` as input when no
 packets to be read are in the queue. Now, if every single VM is continuously
 trying to read while no packet is available, we have to consider the network
 *idle*. Every time the network becomes idle, the *last* special packet that was
-sent to address '255`, is sent to the VM with address `0`, and this will make the
+sent to address `255`, is sent to the VM with address `0`, and this will make the
 network continue exchanging data until it becomes idle again.
 
 We are asked to find the first special packet `y` value that is sent twice in a
