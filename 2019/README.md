@@ -3131,14 +3131,14 @@ Here's a few visual examples:
 The above strategy fails for a situation like the following:
 
     @
-    ### # ##  ##### => Should not jump right away, but wait one more step first.
+    ### # ##  #####  => Should not jump right away, but wait two more steps first.
      ABCD
 
-but with the limited amount of knowledge that we have (only the next 4 cells),
-it is impossible to predict such a situation. Therefore it makes sense to make
-the assumption that this will never happen. I know, figuring out constraints
-based on the expected solution is more meta-puzzling than it should, but bear
-with me.
+...but with the limited amount of knowledge that we have (only the next 4
+cells), it is impossible to predict such a situation. Therefore it makes sense
+to make the assumption that this will never happen. I know, figuring out
+constraints based on the expected solution is more meta-puzzling than it should,
+but bear with me.
 
 The solution we just thought of can be seen as a simple boolean equation:
 
@@ -3204,9 +3204,9 @@ do the same, because a situation like the following is now possible:
     ### # ##  #####
      ABCDEFGHI
 
-This time though, we have the knowledge to be able to solve this: the new 5
-values will help us. To fix our solution (adapting it from part 1), we need to
-consider what happens exactly in the edge-case scenario above.
+This time though, we have the knowledge to be able to solve this: the 5 new
+values from `E` to `I` will help us. To fix our solution (adapting it from part
+1), we need to consider what happens exactly in the edge-case scenario above.
 
 If we run our part 1 code with the new `RUN` command, our poor springbot will
 fall into space and the Intcode program will print a snapshot of its death. We
@@ -3232,7 +3232,7 @@ It produces the following output (letters and comments added by me):
     .................
     .................
     ..@..............  Here we decide to jump prematurely,
-    #####.#.##..#####  because C is wmpty and D is ground.
+    #####.#.##..#####  because C is empty and D is ground.
        ABCDEFGHI
     .................
     ...@.............
