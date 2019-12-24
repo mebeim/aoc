@@ -25,7 +25,7 @@ Table of Contents
 -  Day 19 - Tractor Beam: *TODO*
 - [Day 20 - Donut Maze][d20]
 - [Day 21 - Springdroid Adventure][d21]
--  Day 22 - Slam Shuffle: *TODO*
+- [Day 22 - Slam Shuffle][d22]
 - [Day 23 - Category Six][d23]
 
 
@@ -3339,6 +3339,515 @@ output value. This means we got it right! The springdroid safely makes it to the
 other side, and we get our part 2 solution.
 
 
+Day 22 - Slam Shuffle
+---------------------
+
+[Problem statement][d22-problem] — [Complete solution][d22-solution]
+
+### Part 1
+
+Very tough mathematical puzzle today, but the hard stuff comes in part 2, for
+now we can relax.
+
+We have a deck of cards, precisely 10007 cards numbered from `0` to `10006`. We
+need to apply a certain list of moves to shuffle the deck, and determine the
+position of the card numbered `2019` after the deck has been shuffled.
+
+There are three possible kind of moves:
+
+1. **Deal into new deck**: we take cards out from the top of the deck, one at a
+   time to build a new deck. This effectively inverts the order of cards in the
+   deck. Example:
+
+        Deck:     0 1 2 3 4
+        *deal into new deck*
+        New deck: 4 3 2 1 0
+
+2. **Deal with step `n`**: we start with an empty table with as many "slots" as
+   the number of cards, then start taking cards from the top of the stack.
+   Starting from the leftmost slot on the table, each card we draw, we put it
+   down in the current slot and then we move forward `n` slots (cycling back
+   from the beginning after the last slot). After dealing all the cards in the
+   deck, the table will be full of shuffled cards, and we create the new deck
+   collecting all the cards from left (top of new deck) to right (bottom of new
+   deck). Example:
+
+        Deck:  0 1 2 3 4
+
+        *deal with step 3*
+
+        Deck:   0  1  2  3  4
+        Table: [0][ ][ ][ ][ ]
+
+        Deck:         2  3  4
+        Table: [0][ ][ ][1][ ]
+
+        Deck:            3  4
+        Table: [0][2][ ][1][ ]
+
+        Deck:               4
+        Table: [0][2][ ][1][3]
+
+        Deck:
+        Table: [0][2][4][1][3]
+
+        New deck: 0 2 4 1 3
+
+3. **Cut `n` cards**: we take the first `n` cards from the top of the deck, and
+   move them to the bottom. If `n` is negative, then we take the bottom `abs(n)`
+   cards and move them to the top instead. Example:
+
+        Deck:     0 1 2 3 4
+        *cut 3 cards*
+        New deck: 3 4 0 1 2
+
+        Deck:     0 1 2 3 4
+        *cut -4 cards*
+        New deck: 1 2 3 4 0
+
+Our input is a list of moves in the above form, and as we said, we want to
+determine the position of the card numbered `2019` after the deck has been
+shuffled.
+
+Okay, so, first of all, let's parse the input. We can just iterate over the
+lines of input and since integers are always the last word of a line we don't
+even need RegExps. We can use three enum-like variables to easily represent the
+different moves and build a list of moves.
+
+```python
+DEAL_NEW, DEAL_INC, CUT = 1, 2, 3
+
+moves = []
+for l in fin:
+    if 'deal into' in l:
+        moves.append((DEAL_NEW, 0))
+    elif 'deal with' in l:
+        n = int(l[l.rfind(' '):])
+        moves.append((DEAL_INC, n))
+    elif 'cut' in l:
+        n = int(l[l.rfind(' '):])
+        moves.append((CUT, n))
+```
+
+Now we can start solving the problem: the first thing that comes to mind is to
+just build a list of `10007` numbers from `0` to `10006` and apply the moves
+literally to the list. It's very simple, and would get the job done for sure,
+but we don't really need to. We want to build a cleaner solution.
+
+If we take a closer look at each of the different kind of moves, possibly with
+the help of pen and paper, we quickly realize that it's pretty easy to calculate
+the new index of a given card knowing its previous index. Specifically, we can
+observe that:
+
+1. The "deal into new deck" move is equivalent to reversing the deck, therefore
+   a card with index `i` moves to index `size - i - 1` (where `size` is the
+   size of the deck, i.e. the number of cards in the deck).
+
+2. If we try to apply the move "deal with increment `n`" literally:
+
+   ```python
+   deck     = list(range(10007))
+   new_deck = [-1] * 10007 # -1 just as a placeholder
+   n = 5 # some random increment
+
+   for i in range(len(deck)):
+       new_deck[(i * n) % len(deck)] = deck[i]
+   ```
+
+   We realize that a card with index `i` moves to index `(i*n) % size`. That
+   `% size` is needed since we want to cycle back, so for example index `8`
+   ends up back to index `8 % 7 == 1`.
+
+3. As per the "cut `n` cards" move, if `n` is negative, the move is equivalent
+   to "cut `size - abs(n)`" (or just `size + n` since `n` is negative).
+   Therefore all these moves can be first converted to positive values for
+   simplicity. After doing that, if we try applying the move literally:
+
+   ```python
+   deck = list(range(10007))
+   n = 5 # some random cut size
+
+   if n < 0:
+       n = len(deck) + n
+
+   new_deck = deck[n:] + deck[:n]
+   ```
+
+   We realize that all cards with index lower than `n` end up being shifted
+   right by the number of remaining cards, so the new index becomes
+   `i + (size - n)`, and all cards with index greater or equal to `n` end up
+   being shifted left of `n` places, so their new index becomes `i - n`.
+
+If we apply all the above, we can quickly calculate the new index of the card
+`2019` after the moves, without the need of any list. We can create a function
+to apply the shuffling and give us the new index of a given card.
+
+```python
+def shuffle(index, n_cards, moves):
+    for move, n in moves:
+        if move == DEAL_NEW:
+            index = n_cards - index - 1
+        elif move == DEAL_INC:
+            index = (index * n) % n_cards
+        elif move == CUT:
+            if n < 0:
+                n += n_cards
+
+            if index < n:
+                index += n_cards - n
+            else:
+                index -= n
+
+    return index
+```
+
+Now we can just apply our function to get the new position of the card `2019`,
+which is the answer to the puzzle.
+
+```python
+final_index = shuffle(2019, 10007, moves)
+print('Part 1', final_index)
+```
+
+### Part 2
+
+Now comes the brain smashing part. Brace yourself, this is not going to be
+simple at all. This second part is what easily makes this problem the most
+complicated of the year so far, and it's basically 90% math and 10% programming.
+Also, some knowledge of
+[modular arithmetic](https://en.wikipedia.org/wiki/Modular_arithmetic) is
+probably required, but I'll try to make it as simple and painless as I can.
+
+So, as usual with problems that require to apply some simple sequentaial
+operations a given number of times, we are now obviously asked to do the same
+for an *insane* amount of times. The second part of this problem asks us to
+apply the same moves as part 1, but with 119315717514047 cards, and repeating
+the shuffling process exactly 101741582076661 times. This time we are interested
+in *which card* will be at position `2020` after all the shuffling.
+
+Okay, don't even try to think about blindly applying the same algorithm as
+before. It would basically be impossible to get an answer in less than a century
+of computation time. And even then, now we are asked for the *value* of the card
+at final position 2020, not the position of a card with a known value, so the
+approach would need to be modified. Given the huge numbers, we need to simplify
+the problem even more... much, much more. Let's dive in the math.
+
+The first thing we notice is that all the involved numbers (10007,
+119315717514047 and 101741582076661) are primes. This is a quite interesting
+fact that will help us a lot later.
+
+If we take a look at the starting deck of cards, we notice that cards in the
+deck start with the value `0`, and successive values increase at a fixed rate of
+`1`. We could therefore write a function `f(i)` to get the value of a card from
+its index, and in the case of the starting deck it would be: `f(i) = i`.
+
+Consider the following starting deck of 7 cards:
+
+    0 1 2 3 4 5 6 7
+
+We can see that it *starts* with card `0`, and each following card value
+increases by a fixed *step* of `1`. The function `f(i)` can be in general
+expressed as `f(i) = step * i + start`. A starting deck has `step = 1` and
+`start = 0`.
+
+If we also take into account the fact that all indexes need to be modulus
+`size`, then the formula becomes `(step * i + start) % size`. In the case of the
+starting deck, it doesn't matter whether we apply the modulo or not, but we'll
+see that in other decks it does. From now on, we will be using the keyword `mod`
+instead of the symol `%`, since it's clearer and it's also the standard
+mathematical way of writing it.
+
+If we try applying some moves to the deck above to see if this property keeps
+holding, we notice the following:
+
+1. The property still holds after applying a "deal new" move (vertical for
+   easier understanding). For example:
+
+        0  ->  6  =  (-1 * 0  + 6) mod 7
+        1  ->  5  =  (-1 * 1  + 6) mod 7
+        2  ->  4  =  (-1 * 2  + 6) mod 7
+        3  ->  3  =  (-1 * 3  + 6) mod 7
+        4  ->  2  =  (-1 * 4  + 6) mod 7
+        5  ->  1  =  (-1 * 5  + 6) mod 7
+        6  ->  0  =  (-1 * 6  + 6) mod 7
+
+        => Start = 6, Step = -1
+
+2. It still holds after applying a "deal with increment" move. For example, with
+   increment 3:
+
+        0  ->  0  =  (5 * 0 + 0) mod 7
+        1  ->  5  =  (5 * 1 + 0) mod 7
+        2  ->  3  =  (5 * 2 + 0) mod 7
+        3  ->  1  =  (5 * 3 + 0) mod 7
+        4  ->  6  =  (5 * 4 + 0) mod 7
+        5  ->  4  =  (5 * 5 + 0) mod 7
+        6  ->  2  =  (5 * 6 + 0) mod 7
+
+        ==> Start = 0, Step = 5
+
+3. It still holds after applying a "cut" move. For example, cutting 4 cards:
+
+        0  ->  4  =  (1 * 0 + 4) mod 7
+        1  ->  5  =  (1 * 1 + 4) mod 7
+        2  ->  6  =  (1 * 2 + 4) mod 7
+        3  ->  0  =  (1 * 3 + 4) mod 7
+        4  ->  1  =  (1 * 4 + 4) mod 7
+        5  ->  2  =  (1 * 5 + 4) mod 7
+        6  ->  3  =  (1 * 6 + 4) mod 7
+
+        ==> Start = 4, Step = 1
+
+4. And most importantly the property still holds after applying any combination
+   of different moves! For example, applying "deal with increment 3", then
+   "cut 4" and then "deal new":
+
+        0  ->  1  = (2 * 0 + 1) mod 7
+        1  ->  3  = (2 * 1 + 1) mod 7
+        2  ->  5  = (2 * 2 + 1) mod 7
+        3  ->  0  = (2 * 3 + 1) mod 7
+        4  ->  2  = (2 * 4 + 1) mod 7
+        5  ->  4  = (2 * 5 + 1) mod 7
+        6  ->  6  = (2 * 6 + 1) mod 7
+
+        ==> Start = 1, Step = 2
+
+In addition to the above, since all math is done modulo `size`. This means that
+a `step = -1` in a deck of `size = 7` is the exact same as a step of `6` (as you
+can see from point 1 in the above list).
+
+The implication of all this, is that we can *uniquely identify* a deck of cards
+just by knowing two numbers (other than the size): `start`, `step`. The `size`
+of the decks always stays the same after applying any move. We now need to
+understand how each different move transforms `start` and `step`. If we do so,
+we will have a very good and concise way to tell what happens to a deck after
+applying any list of moves.
+
+Let's see if we can figure this out:
+
+1. The "deal new" move: as we said before, this move "inverts" the cards. This
+   means that the `step` will just flip sign (from positive to negative or
+   vice-versa), while the new `start` will be exactly the last card value of the
+   previus deck, which means just going back one step (since we are always
+   moving in a cycle modulo `size`).
+
+        new_start = (start - step) mod size
+        new_step  = -step mod size
+
+2. The "deal with increment `n`" move: this is the most complicated move. The
+   starting value is not changed, since we always pick the first card of the
+   deck to start. The `step` changes, but *how* does it change? It doesn't seem
+   that obvious this time.
+
+   We can however find the new `step` value in respect to the previous one as
+   the difference between the new indexes of the first two cards in the previous
+   deck. For example, here:
+
+        1 3 5 0 2 4 6   (start = 1, step = 2, size = 7)
+
+        *deal with increment 5*
+
+        1 0 6 5 4 3 2   (start = 1, step = 6, size = 7)
+
+   We can see that the first card is still `1`, and has index `0` in both decks.
+   The second card was `3`: it had index `1` in the previous deck, and it has
+   index `5` in the new deck (which is the same as the increment, since we move
+   forward 5 positions from the start). The new increment
+   *in respect to the previous deck* can be found by solving the modular
+   equation `5*x == 1 (mod 7)`, which in general becomes:
+
+        n*x == 1 (mod size)
+
+   Note that here `==` means
+   [*"congruent"*](https://en.wikipedia.org/wiki/Congruence_relation) under
+   modulo `size`.
+
+   If we want to find `x`, we are tempted to write `x == 1/n (mod size)`.
+   However there is no such thing as division in modular arithmetic!
+   The expression needs to be rewritten as:
+
+        x == 1 * n^-1 == n^-1 (mod size)
+
+   Here `^` means "to the power of". Finding `n^-1` means finding the
+   [*modular multiplicative inverese*](https://en.wikipedia.org/wiki/Modular_multiplicative_inverse)
+   of `n` modulo `size`. This can be easily found applying
+   [Euler's theorem](https://en.wikipedia.org/wiki/Modular_multiplicative_inverse#Using_Euler's_theorem).
+   For Euler's theorem, the value of `n^-1` modulo `size`,
+   **when `size` is a prime number**, is congruent to `n^(size-2)` (always
+   modulo `size`). Remember the first thing we noticed before about those big
+   numbers? Yes, they are all prime numbers. Therefore this formula can be
+   applied.
+
+   The value of `x` is then congruent to `n^(size-2)`, and it represents the
+   step relative to the previous deck. The new step of the new deck is then:
+
+        new_step = (step * x) mod size = (step * n^(size-2)) mod size
+
+3. The "cut `n`" move: the new `start` is "shifted" and becomes the `n`-th value
+   of the previous deck, while the step stays the same since the cards are only
+   cyclically shifted. Remember that we work with positive `n` here, since as
+   we already saw a negative cut move can be easily transformed into an
+   equivalent positive cut move.
+
+        new_start = (start + step * n) mod size
+
+Now we know how to transform `start` and `step` when applying any move. Based on
+the above, we can write a simple Python function that does this for us. Starting
+from 3.8, Python supports direct calculation of the modular multiplicative
+inverse of a number with the built-in [`pow()`][py-builtin-pow] function
+specifying `-1` as second argument and the modulus as third. I do not have such
+a recent Python version installed, but as explained above in point 2, we can use
+Euler's theorem and just compute `pow(n, size - 2, size)`.
+
+Usually, it would be impossible to calculate such a huge power (in our case
+`n^(101741582076661 - 2)`), as the result grows exponentially, and the number of
+digits becomes too large to even be stored in memory. Modular powers are much
+easier to calculate though, and there are
+[several methods](https://en.wikipedia.org/wiki/Modular_exponentiation) to do it
+very efficently. In particular, Python uses
+[binary exponentiation](https://en.wikipedia.org/wiki/Exponentiation_by_squaring)
+to compute modular powers.
+
+Another even faster approach to calculate the modular inverse without even
+dealing with powers would be to use the
+[extended Euclidean algorithm](https://en.wikipedia.org/wiki/Modular_multiplicative_inverse#Extended_Euclidean_algorithm),
+but that's more comlpicated.
+
+Here's the new function:
+
+```python
+def transform(start, step, size, moves):
+    for move, n in moves:
+        if move == DEAL_NEW:
+            start = (start - step) % size
+            step = -step % size
+        elif move == DEAL_INC:
+            step = (step * pow(n, size - 2, size)) % size
+        elif move == CUT:
+            if n < 0:
+                n += size
+
+            start = (start + step * n) % size
+
+    return start, step
+```
+
+We now have the `start` and `step` of the new deck after applying all the moves
+in our input. There is still a problem though: we need to apply those
+101741582076661 times in a row.
+
+The initial deck has `step = 1, start = 0`, with a formula of:
+
+    f(i) = 1i + 0
+
+The new deck, after applying all moves, will have some arbitrary values for
+those. Let's rename `step = a` and `start = b` to be concise. In general, we
+will have:
+
+    f(i) = ai + b
+
+If we apply the same moves again, we will have:
+
+    f(f(i)) = a(ai + b) + b = (a^2)i + ab + b
+
+And if we continue applying the same moves over and over:
+
+    f(f(f(i)))       = a(a(ai + b) + b) + b               = (a^3)i + (a^2)b + ab + b
+    f(f(f(f(i))))    = a(a(a(ai + b) + b) + b) + b        = (a^4)i + (a^3)b + (a^2)b + ab + b
+    f(f(f(f(f(i))))) = a(a(a(a(ai + b) + b) + b) + b) + b = (a^5)i + (a^4)b + (a^3)b + (a^2)b + ab + b
+    ... and so on ...
+
+You can clearly see where this is going. In general, after `N` repetitions of
+the same moves, we will have:
+
+    (a^N)i + b + ab + (a^2)b + (a^3)b + ... + (a^(N-1))b
+
+The value of `a^N` modulo `size` is easy to calculate, but what about all those
+`b` terms? Well, if we look closer, we recognize that it is the
+[sum of the first `N` terms a geometric series](https://en.wikipedia.org/wiki/Geometric_series#Formula):
+specifically, the geometric series with first term `b` and ratio `a`. As we all
+know from our math classes (of course right?) the sum of the first `N` terms of
+a geometric series starting with `b` and with ratio `a` is:
+
+    S = b((1 - a^N)/(1 - a))
+
+We are still working modulo `size`, so the above can be rewritten as:
+
+    S = (b * (1 - a^N) * (1 - a)^-1) mod size
+
+And as we just learned:
+
+    (1 - a)^-1 == (1 - a)^(size - 2) (mod size)
+
+In Python, we can calculate the whole thing as:
+
+```python
+S = b * (1 - pow(a, N, size)) * pow(1 - a, size - 2, size)
+```
+
+So there we go, we can now calculate the new `start` and `step` values after
+applying the same set of moves multiple times.
+
+```python
+def repeat(start, step, size, repetitions):
+	final_step = pow(step, repetitions, size)
+	final_start = (start * (1 - final_step) * pow(1 - step, size - 2, size)) % size
+
+	return final_start, final_step
+```
+
+We can finally calculate our final `start` and `step` values:
+
+```python
+start, step, size = 0, 1, 119315717514047
+repetitions = 101741582076661
+
+start, step = transform(start, step, size, moves)
+start, step = repeat(start, step, size, repetitions)
+```
+
+And if we want to know the value of the card at position `2020`, it's now just a
+simple calculation:
+
+```python
+value = (start + step * 2020) % size
+print('Part 2:', value)
+```
+
+### Considerations
+
+We can use the logic of the second part to solve part 1 too. Since part 1 asks
+for the position of the value 2019 (and not the value at position 2019), we can
+just invert the formula after using `transform` to calculate `start` and `step`:
+
+```python
+start, step = transform(0, 1, 10007, moves)
+
+# value == (start + step * i)    (mod size)
+# value - start == step * i      (mod size)
+# i == (value - start)/step      (mod size)
+# i == (value - start) * step^-1 (mod size)
+
+i = ((2019 - start) * pow(step, size - 2, size)) % size
+```
+
+Today's problem is a lot more about math than programming. One could in fact
+argue that this isn't even a programming problem, but a modular arithmetic one.
+
+Even though I know some modular arithmetic, I did *not* figure out part 2 by
+myself, and I would like to thank [mcpower](https://twitter.com/mcpowr) for
+providing a very helpful short explanation of the problem
+[in a reddit comment](https://www.reddit.com/r/adventofcode/comments/ee0rqi/2019_day_22_solutions/fbnkaju/)
+in the solution megathread.
+
+Personally, I don't see this problem as a good fit for AoC, because it's not
+really about programming, but more about math, and I would not expect a
+programmer to be familiar with all the concepts and theorems needed to solve
+this problem. With this said, this might be more fun for other people than
+implementing path finding algorithms, and the whole thing is of course
+subjective.
+
+
 Day 23 - Category Six
 ---------------------
 
@@ -3618,6 +4127,7 @@ Welcome to *IntcodeNET* I guess!
 [d18]: #day-18---many-worlds-interpretation
 [d20]: #day-20---donut-maze
 [d21]: #day-21---springdroid-adventure
+[d22]: #day-22---slam-shuffle
 [d23]: #day-23---category-six
 
 [d01-problem]: https://adventofcode.com/2019/day/1
@@ -3636,6 +4146,7 @@ Welcome to *IntcodeNET* I guess!
 [d18-problem]: https://adventofcode.com/2019/day/18
 [d20-problem]: https://adventofcode.com/2019/day/20
 [d21-problem]: https://adventofcode.com/2019/day/21
+[d22-problem]: https://adventofcode.com/2019/day/22
 [d23-problem]: https://adventofcode.com/2019/day/23
 [d01-solution]: day01_clean.py
 [d02-solution]: day02_clean.py
@@ -3653,6 +4164,7 @@ Welcome to *IntcodeNET* I guess!
 [d18-solution]: day18_clean.py
 [d20-solution]: day20_clean.py
 [d21-solution]: day21_clean.py
+[d22-solution]: day22_clean.py
 [d23-solution]: day23_clean.py
 
 [py-cond-expr]:               https://docs.python.org/3/reference/expressions.html#conditional-expressions
@@ -3667,6 +4179,7 @@ Welcome to *IntcodeNET* I guess!
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
+[py-builtin-pow]:             https://docs.python.org/3/library/functions.html#pow
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
 [py-range]:                   https://docs.python.org/3/library/stdtypes.html#range
 [py-set]:                     https://docs.python.org/3/library/stdtypes.html?#set
