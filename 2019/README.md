@@ -17,7 +17,7 @@ Table of Contents
 - [Day 11 - Space Police][d11]
 - [Day 12 - The N-Body Problem][d12]
 - [Day 13 - Care Package][d13]
--  Day 14 - Space Stoichiometry: *TODO*
+- [Day 14 - Space Stoichiometry][d14]
 -  Day 15 - Oxygen System: *TODO*
 - [Day 16 - Flawed Frequency Transmission][d16]
 -  Day 17 - Set and Forget: *TODO*
@@ -1971,6 +1971,183 @@ print('Part 2:', score)
 
 The emulation of the whole program until the win takes some seconds, but then we
 get our answer as expected.
+
+
+Day 14 - Space Stoichiometry
+----------------------------
+
+[Problem statement][d14-problem] — [Complete solution][d14-solution]
+
+### Part 1
+
+Alright! I was wondering when we would have encountered some good old
+[topological sorting](https://en.wikipedia.org/wiki/Topological_sorting)!
+
+For today's puzzle, we are given a list of chemical recipes, in the form:
+
+    3 A, 4 B, 1 C => 2 X
+
+Each chemical appears on the right side only once, except for `ORE`, which is a
+primitive element and does not need to be produced by chemical reaction. Each
+reaction gives specific quantities for its inputs and output. Reactions cannot
+be *partially* run, so only whole integer multiples of these quantities can be
+used. However, we can have leftover elements when we are done, meaning that, for
+example, in the above recipe, useing `100 A`, `100 B` and `100 C`, we would end
+up consuming `75 A`, `100 B` and `25 C`, producing `50 X`, with `25 A` and
+`75 C` left unconsumed. Leftover elements can of course still be used in other
+reactions.
+
+We want to know the *minimum* amount of `ORE` needed to produce `1 FUEL`.
+
+Alright, let's get to it. The reason I immediately mentioned topological sorting
+at the very beginning is because when you have a situation like this, with a set
+of dependencies that you want to resolve, the solution will inevitably require
+some sort of topological sorting. The important part to notice here, which is
+also what differentiates this situation from a plain and simple topological
+sort, is that we can keep leftover chemicals from a recipe in order to re-use
+them and save resources.
+
+Each line of input identifies a "recipe": some quantity of different ingredients
+is needed to produce some quantity of product chemical. If we want to produce a
+chemical, we will need to have already produced all of its ingredients, which
+means having already produced all the ingredients of each of them, and so on.
+
+We will organize recipes in a dictionary
+`{product_name: (product_qty, ingredients)}`, `product_qty` will be the amount
+of product produced by the recipe, and `ingredients` will be a list of tuples
+`(qty, ingredient_name)`. This will allow to easily keep track of each recipe
+and its requirements.
+
+```python
+recipes = {}
+
+for line in map(str.rstrip, fin):
+    left, right = line.split(' => ')
+    product_qty, product_name = right.split()
+
+    ingredients = []
+    for el in left.split(', '):
+        qty, name = el.split()
+        ingredients.append((int(qty), name))
+
+    recipes[product_name] = (int(product_qty), ingredients)
+```
+
+So for example, parsing `3 A, 4 B, 1 C => 2 X` would yield:
+
+```python
+{'X': (2, [(3, 'A'), (4, 'B'), (1, 'C')])}
+```
+
+The following solution is kind-of inspired by the [Kahn's algorithm][algo-kahn]
+(I'm saying kind-of since we have a different scenario and differently shaped
+graph here).
+
+We can solve the problem using a queue of chemicals that we need to produce
+(along with their quantities), also keeping track of leftover quantities in a
+another dictionary. We start with only `1 FUEL` in our queue, and while it is
+not empty we'll pop one chemical at a time and produce it.
+
+When producing a chemical, we'll first check if we already have some (if not all
+the needed quantity) in our leftovers, taking as much as possible from there
+first. After that, if there still is some amount to produce, we will calculate
+how many times the recipe for the chemical needs to be applied to get at least
+the needed quantity. We will then add each of the ingredients needed to produce
+that quantity in the queue, ensuring that they'll be produced later at some
+point. In all of this, each time we need to produce some `ORE`, we'll instead
+just increase a counter variable keeping track of the total amount of ore
+needed.
+
+The code almost speaks for itself, here it is:
+
+```python
+def needed_ore(recipes, fuel_qty):
+    # Star with only FUEL in the queue of chemicals to produce.
+    queue = deque([(fuel_qty, 'FUEL')])
+    leftover = defaultdict(int)
+    total_ore = 0
+
+    # While there's something to produce.
+    while queue:
+        needed_qty, chemical = queue.popleft()
+
+        # If it's ORE, just increase the total.
+        if chemical == 'ORE':
+            total_ore += needed_qty
+            continue
+
+        # If there's already the needed quantity left over, just use that.
+        if leftover[chemical] >= needed_qty:
+            leftover[chemical] -= needed_qty
+            continue
+
+        # Otherwise take all that's left.
+        needed_qty -= leftover[chemical]
+        leftover[chemical] = 0
+
+        # Get the recipe for the chemical and see how many times it needs to be applied.
+        recipe_qty, ingredients = recipes[chemical]
+        multiplier = ceil(needed_qty / recipe_qty)
+
+        # Add to the queue the right quantity of each ingredient.
+        for qty, el in ingredients:
+            queue.append((qty * multiplier, el))
+
+        # Add any excess produced chemical to the leftovers.
+        leftover[chemical] += multiplier * recipe_qty - needed_qty
+
+    return total_ore
+```
+
+And there we have it, we now only need to call the function and part 1 will be
+solved:
+
+```python
+ore = needed_ore(recipes, 1)
+print('Part 1:', ore)
+```
+
+### Part 2
+
+For the second part, we now have the opposite task as before. We need to
+calculate the maximum amount of fuel that can we produce with *1 trillion* units
+of `ORE`.
+
+Since we already have a function ready to calculate the needed amount of ore
+given some required fuel quantity, we can just use [binary search][algo-binsrc]
+to find the right value. We'll just need to get a good upper bound first,
+applying the function to increasing values of `FUEL` until too much `ORE` is
+needed.
+
+Well, there's not much to say. Let's do some good old binary search and get our
+answer:
+
+```python
+AVAILABLE_ORE = 10**12
+
+hi = 2
+while needed_ore(recipes, hi) < AVAILABLE_ORE:
+	hi *= 2
+
+lo = hi//2
+
+while hi - lo > 1:
+	x = (lo + hi) // 2
+	ore = needed_ore(recipes, x)
+
+	if ore > AVAILABLE_ORE:
+		hi = x
+	else:
+		lo = x
+
+fuel = lo
+print('Part 2:', fuel)
+
+```
+
+Just for fun,
+[here's the dependency graph for my puzzle input](misc/day14/chemicals.png).
+Quite messy, right?
 
 
 Day 16 - Flawed Frequency Transmission
@@ -4297,6 +4474,7 @@ Welcome to *IntcodeNET* I guess!
 [d11]: #day-11---space-police
 [d12]: #day-12---the-n-body-problem
 [d13]: #day-13---care-package
+[d14]: #day-14---space-stoichiometry
 [d16]: #day-16---flawed-frequency-transmission
 [d18]: #day-18---many-worlds-interpretation
 [d20]: #day-20---donut-maze
@@ -4317,6 +4495,7 @@ Welcome to *IntcodeNET* I guess!
 [d11-problem]: https://adventofcode.com/2019/day/11
 [d12-problem]: https://adventofcode.com/2019/day/12
 [d13-problem]: https://adventofcode.com/2019/day/13
+[d14-problem]: https://adventofcode.com/2019/day/14
 [d16-problem]: https://adventofcode.com/2019/day/16
 [d18-problem]: https://adventofcode.com/2019/day/18
 [d20-problem]: https://adventofcode.com/2019/day/20
@@ -4336,6 +4515,7 @@ Welcome to *IntcodeNET* I guess!
 [d11-solution]: day11_clean.py
 [d12-solution]: day12_clean.py
 [d13-solution]: day13_clean.py
+[d14-solution]: day14_clean.py
 [d16-solution]: day16_clean.py
 [d18-solution]: day18_clean.py
 [d20-solution]: day20_clean.py
@@ -4385,3 +4565,5 @@ Welcome to *IntcodeNET* I guess!
 [algo-manhattan]: https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
 [algo-dijkstra]:  https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
 [algo-bfs]:       https://en.wikipedia.org/wiki/Breadth-first_search
+[algo-kahn]:      https://en.wikipedia.org/wiki/Topological_sorting#Kahn's_algorithm
+[algo-binsrc]:    https://en.wikipedia.org/wiki/Binary_search_algorithm
