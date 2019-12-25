@@ -3,9 +3,11 @@ Advent of Code
 
 Personal repository of Advent of Code solutions.
 
-- Advent of Code 2018 walkthrough: TODO
-- [**Advent of Code 2019 walkthrough**](2019/README.md)
+[**Advent of Code 2019 walkthrough**](2019/README.md)
 
+2019 calendear | 2018 calendar
+-|-
+![2019 calendear](2019/misc/calendar.gif) | ![2018 calendear](2018/misc/calendar.gif)
 
 About Advent of Code
 --------------------
