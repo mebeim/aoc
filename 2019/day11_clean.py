@@ -44,6 +44,22 @@ def run_robot(robot, starting_color):
 
 	return grid
 
+def sparse_to_matrix(grid):
+	minx = min(x for x, _ in grid)
+	maxx = max(x for x, _ in grid)
+	miny = min(y for _, y in grid)
+	maxy = max(y for _, y in grid)
+
+	height = maxx - minx + 1
+	width  = maxy - miny + 1
+	matrix = [([' '] * width) for _ in range(height)]
+
+	for x in range(height):
+		for y in range(width):
+			if grid[minx + x, miny + y] == WHITE:
+				matrix[x][y] = '#'
+
+	return matrix
 
 advent.setup(2019, 11, dry_run=True)
 fin = advent.get_input()
@@ -57,26 +73,16 @@ assert n_painted == 2056
 advent.submit_answer(1, n_painted)
 
 grid = run_robot(robot, WHITE)
-mini, minj = min(grid)
-maxi, maxj = max(grid)
-height = maxi - mini + 1
-width  = maxj - minj + 1
-pic    = [([' '] * width) for _ in range(height)]
-
-for i in range(height):
-	for j in range(width):
-		if grid[mini + i, minj + j] == WHITE:
-			pic[i][j] = '#'
-
-pic = ''.join(''.join(x) for x in pic)
+pic = sparse_to_matrix(grid)
+pic = ''.join(''.join(x) + '\n' for x in pic)
 
 assert (pic ==
-	'  ##  #    ###  #### ###    ## #### ###  '
-	' #  # #    #  # #    #  #    #    # #  # '
-	' #    #    ###  ###  #  #    #   #  #  # '
-	' # ## #    #  # #    ###     #  #   ###  '
-	' #  # #    #  # #    #    #  # #    #    '
-	'  ### #### ###  #### #     ##  #### #    '
+	'  ##  #    ###  #### ###    ## #### ###    \n'
+	' #  # #    #  # #    #  #    #    # #  #   \n'
+	' #    #    ###  ###  #  #    #   #  #  #   \n'
+	' # ## #    #  # #    ###     #  #   ###    \n'
+	' #  # #    #  # #    #    #  # #    #      \n'
+	'  ### #### ###  #### #     ##  #### #      \n'
 )
 
 # Can't submit this as is, LOL
