@@ -14,7 +14,7 @@ Table of Contents
 - [Day 8 - Space Image Format][d08]
 - [Day 9 - Sensor Boost][d09]
 - [Day 10 - Monitoring Station][d10]
--  Day 11 - Space Police: *TODO*
+- [Day 11 - Space Police][d11]
 - [Day 12 - The N-Body Problem][d12]
 - [Day 13 - Care Package][d13]
 -  Day 14 - Space Stoichiometry: *TODO*
@@ -27,7 +27,8 @@ Table of Contents
 - [Day 21 - Springdroid Adventure][d21]
 - [Day 22 - Slam Shuffle][d22]
 - [Day 23 - Category Six][d23]
-
+-  Day 24 - Planet of Discord: *TODO*
+-  Day 25 - Cryostasis: *TODO*
 
 Day 1 - The Tyranny of the Rocket Equation
 ------------------------------------------
@@ -1412,6 +1413,178 @@ chosen_x, chosen_y = ordered[200 - 1][0]
 answer = 100 * chosen_x + chosen_y
 print('Part 2:', answer)
 ```
+
+
+Day 11 - Space Police
+---------------------
+
+[Problem statement][d11-problem] — [Complete solution][d11-solution]
+
+### Prerequisites
+
+This problem requires a working Intcode virtual machine built following
+instructions in the [day 2][d02], [day 5][d05] and [day 9][d09] problem
+statements! The machine could be as simple as a single function, or something
+more complicated like a class with multiple methods. Take a look at previous
+days to know more.
+
+I will be using [my `IntcodeVM` class](lib/intcode.py) to solve this puzzle.
+
+### Part 1
+
+Today's task is pretty simple. We are given an intcode program to run, which
+should simulate a "painting robot". This robot moves on a grid to paint each
+cell either black (`0`) or white (`1`). The grid is initially all black.
+
+The robot starts facing up, and takes the color of the current cell he is on as
+input, then outputs the color that should be painted on the cell, and a turn
+instruction, which is either 90 degrees left (`0`) or 90 degrees right (`1`).
+After that, it moves forward one cell, and the process continues until the robot
+halts.
+
+We are asked to determine how many panels are painted at least once.
+
+This is a pretty simple task if we have a working Intcode VM. Let's parse the
+input and instantiate the VM as usual:
+
+```python
+from lib.intcode import IntcodeVM
+
+program = list(map(int, fin.read().split(',')))
+robot = IntcodeVM(program)
+```
+
+As usual when dealing with movements on a grid, some support constants will make
+our life easier to keep track of the position of the robot, its direction, etc:
+
+```python
+BLACK, WHITE = 0, 1
+LEFT, RIGHT = 0, 1
+NORTH, SOUTH, EAST, WEST = 'NSEW'
+
+# New direction turning LEFT or RIGHT based on current direction.
+DIRMAP = {
+    NORTH: (WEST, EAST),
+    SOUTH: (EAST, WEST),
+    EAST: (NORTH, SOUTH),
+    WEST: (SOUTH, NORTH)
+}
+
+# Delta to move when facing a secific direction.
+MOVEMAP = {
+    NORTH: (-1, 0),
+    SOUTH: (+1, 0),
+    EAST: (0, +1),
+    WEST: (0, -1)
+}
+```
+
+After defining those, we can create a function to build the grid of painted
+cells for us. We can assign an arbitrary position as starting point (let's say
+`(0, 0)`), and then update it according to the robot movement. Each time we
+update the position, we also add it to a dictionary `{position: color}`, which
+will represent a
+[*sparse matrix*](https://en.wikipedia.org/wiki/Sparse_matrix#Dictionary_of_keys_(DOK)).
+A [`defaultdict`][py-collections-defaultdict] will also make our life easier
+when dealing with unvisited positions (which are all initially black).
+
+We will run the robot in a loop and pause its execution every two `out`
+instructions to collect the new color and turn direction. We will then update
+the grid and the current position, and we'll keep going until the robot halts.
+
+```python
+def run_robot(robot, starting_color):
+    pos       = (0, 0)
+    curdir    = NORTH
+    grid      = defaultdict(lambda: BLACK)
+    grid[pos] = starting_color
+
+    robot.reset()
+
+    while True:
+        out = robot.run([grid[pos]], n_out=2, resume=True)
+
+        if not out:
+            break
+
+        color, turn = out
+        grid[pos] = color
+        curdir = DIRMAP[curdir][turn]
+        dx, dy = MOVEMAP[curdir]
+        pos = (pos[0] + dx, pos[1] + dy)
+
+    return grid
+```
+
+We can see how `DIRMAP` and `MOVEMAP` are useful here: they save us the trouble
+of creating countless `if/elif` statements for each direction and turn.
+
+Now that we have a function which runs the robot and builds a grid, since we
+want to know the total number of cells that have been painted by the robot, the
+answer is just the length of the `grid`.
+
+```python
+grid = run_robot(robot, BLACK)
+n_painted = len(grid)
+print('Part 1:', n_painted)
+```
+
+### Part 2
+
+The initial cell where the robot starts is now white (any other cell is still
+black). We need to run the robot in the same way as before, and then read what
+was painted on the grid: we should see some ASCII-art letters.
+
+Okay, so the function we just wrote stays the same, we just need to call it with
+`starting_color` set to `WHITE`. After getting the new grid, we can determine
+the bounds by looking at the minimum and maximum `x` and `y` values in the keys
+of the dictionary. We can then iterate with two `for` loops on the full range of
+possible coordinates, and check the color of each cell. Since we are using a
+`defaultdict`, we don't even need to worry about non-existing keys, as their
+value will always be initialized to `BLACK`. We will build our matrix filling it
+with spaces if a cell is black, and hashes (`#`) if a cell is white.
+
+```python
+def sparse_to_matrix(grid):
+    minx = min(x for x, _ in grid)
+    maxx = max(x for x, _ in grid)
+    miny = min(y for _, y in grid)
+    maxy = max(y for _, y in grid)
+
+    height = maxx - minx + 1
+    width  = maxy - miny + 1
+    matrix = [([' '] * width) for _ in range(height)]
+
+    for x in range(height):
+        for y in range(width):
+            if grid[minx + x, miny + y] == WHITE:
+                matrix[x][y] = '#'
+
+    return matrix
+```
+
+Now we only need to run the robot again, build the matrix and print it out line
+by line, joining the characters in each row.
+
+```python
+grid = run_robot(robot, WHITE)
+pic = sparse_to_matrix(grid)
+
+print('Part 2:')
+for row in pic:
+    print(''.join(row))
+```
+
+The result should be something like this:
+
+     ##  #    ###  #### ###    ## #### ###
+    #  # #    #  # #    #  #    #    # #  #
+    #    #    ###  ###  #  #    #   #  #  #
+    # ## #    #  # #    ###     #  #   ###
+    #  # #    #  # #    #    #  # #    #
+     ### #### ###  #### #     ##  #### #
+
+And today's puzzle is completed!
 
 
 Day 12 - The N-Body Problem
@@ -3790,10 +3963,10 @@ applying the same set of moves multiple times.
 
 ```python
 def repeat(start, step, size, repetitions):
-	final_step = pow(step, repetitions, size)
-	final_start = (start * (1 - final_step) * pow(1 - step, size - 2, size)) % size
+    final_step = pow(step, repetitions, size)
+    final_start = (start * (1 - final_step) * pow(1 - step, size - 2, size)) % size
 
-	return final_start, final_step
+    return final_start, final_step
 ```
 
 We can finally calculate our final `start` and `step` values:
@@ -4121,6 +4294,7 @@ Welcome to *IntcodeNET* I guess!
 [d08]: #day-8---space-image-format
 [d09]: #day-9---sensor-boost
 [d10]: #day-10---monitoring-station
+[d11]: #day-11---space-police
 [d12]: #day-12---the-n-body-problem
 [d13]: #day-13---care-package
 [d16]: #day-16---flawed-frequency-transmission
@@ -4140,6 +4314,7 @@ Welcome to *IntcodeNET* I guess!
 [d08-problem]: https://adventofcode.com/2019/day/8
 [d09-problem]: https://adventofcode.com/2019/day/9
 [d10-problem]: https://adventofcode.com/2019/day/10
+[d11-problem]: https://adventofcode.com/2019/day/11
 [d12-problem]: https://adventofcode.com/2019/day/12
 [d13-problem]: https://adventofcode.com/2019/day/13
 [d16-problem]: https://adventofcode.com/2019/day/16
@@ -4158,6 +4333,7 @@ Welcome to *IntcodeNET* I guess!
 [d08-solution]: day08_clean.py
 [d09-solution]: misc/day09/walkthrough_solution.py
 [d10-solution]: day10_clean.py
+[d11-solution]: day11_clean.py
 [d12-solution]: day12_clean.py
 [d13-solution]: day13_clean.py
 [d16-solution]: day16_clean.py
