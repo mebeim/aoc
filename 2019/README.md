@@ -18,7 +18,7 @@ Table of Contents
 - [Day 12 - The N-Body Problem][d12]
 - [Day 13 - Care Package][d13]
 - [Day 14 - Space Stoichiometry][d14]
--  Day 15 - Oxygen System: *TODO*
+- [Day 15 - Oxygen System][d15]
 - [Day 16 - Flawed Frequency Transmission][d16]
 -  Day 17 - Set and Forget: *TODO*
 - [Day 18 - Many-Worlds Interpretation][d18]
@@ -2127,27 +2127,310 @@ AVAILABLE_ORE = 10**12
 
 hi = 2
 while needed_ore(recipes, hi) < AVAILABLE_ORE:
-	hi *= 2
+    hi *= 2
 
 lo = hi//2
 
 while hi - lo > 1:
-	x = (lo + hi) // 2
-	ore = needed_ore(recipes, x)
+    x = (lo + hi) // 2
+    ore = needed_ore(recipes, x)
 
-	if ore > AVAILABLE_ORE:
-		hi = x
-	else:
-		lo = x
+    if ore > AVAILABLE_ORE:
+        hi = x
+    else:
+        lo = x
 
 fuel = lo
 print('Part 2:', fuel)
-
 ```
 
 Just for fun,
 [here's the dependency graph for my puzzle input](misc/day14/chemicals.png).
 Quite messy, right?
+
+Day 15 - Oxygen System
+----------------------
+
+[Problem statement][d15-problem] — [Complete solution][d15-solution]
+
+### Prerequisites
+
+This problem requires a working Intcode virtual machine built following
+instructions in the [day 2][d02], [day 5][d05] and [day 9][d09] problem
+statements! The machine could be as simple as a single function, or something
+more complicated like a class with multiple methods. Take a look at previous
+days to know more.
+
+I will be using [my `IntcodeVM` class](lib/intcode.py) to solve this puzzle.
+
+### Part 1
+
+Intcode *and* maze exploration! Today's problem is pretty fun.
+
+We are given an Intcode program to interact with. The program is capable of
+remotely controlling a droid, which is situated somewhere in an unknown area. We
+don't know anything about the area surrounding the droid, but we know that there
+can be walls in our way, and that our goal is to reach an *oxygen system*. The
+area in which the droid can move is in fact a 2D maze, and the droid moves from
+one cell to another in four possible directions.
+
+The droid starts on an empty cell, and we can tell it to move in a specific
+direction (north, south, east, west), getting back one of three possible
+answers:
+
+- `0`: the droid hit a wall and its position has not changed.
+- `1`: the droid has moved one step in the requested direction.
+- `2`: the droid has moved one step in the requested direction, and its new
+  position is the location of the oxygen system.
+
+With this in mind, we need to find the length of shortest possible path (in
+steps) from the initial position of the droid to the oxygen system.
+
+Well, if this was just a path finding problem where we are given the maze, that
+would have been pretty simple: we could have just ran a simple
+[Breadth-first search][algo-bfs] and we would have gotten the answer (in a graph
+where all weights are equal BFS finds the shortest path, and there's no need to
+use something smarter like Dijkstra's algorithm). In this case though, we have
+no clue about how the maze is shaped, and we don't know where the destination
+could be.
+
+One pretty silly way of finding the oxygen system would be to just move randomly
+throwing random directions to the robot and recording the output until the
+oxygen system is found. This however would be very slow and most importantly
+wouldn't give us a complete picture of the maze (which is needed if we want to
+find the best path, and not just one random path).
+
+Testing out random moves can however give us a rough estimation of what the maze
+looks like locally to the starting point, which can be useful to then choose the
+appropriate exploration technique. If we check around the starting position, we
+notice that the maze is composed of 1-cell wide corridors, and it seems
+simply-connected. Here's what it looked like for me:
+
+     ###
+    #  @#
+    # ##
+    #   #
+     ## #
+      # #
+      # #
+
+This is very good to know, since it makes it possible to use the simplest known
+maze solving algorithm to explore the maze: the
+[wall follower][algo-wall-follower]. From Wikipedia:
+
+> If the maze is simply connected, that is, all its walls are connected together
+> or to the maze's outer boundary, then by keeping one hand in contact with one
+> wall of the maze the solver is guaranteed not to get lost and will reach a
+> different exit if there is one; otherwise, the algorithm will return to the
+> entrance having traversed every corridor next to that connected section of
+> walls at least once.
+
+We can apply the wall-follower algorithm to explore the whole maze (which means
+finding the location of every single wall, and also to find the oxygen system.
+
+Let's parse the input and instantiate our Intcode VM first:
+
+```python
+from lib.intcode import IntcodeVM
+
+program = list(map(int, fin.read().split(',')))
+vm = IntcodeVM(program)
+```
+
+Let's also define some useful constants to make our life easier when dealing
+with directions, turns, et cetera:
+
+```python
+# Possible droid answers:
+WALL, EMPTY, OXYGEN = 0, 1, 2
+# Possible directions:
+NORTH, SOUTH, WEST, EAST = 1, 2, 3, 4
+# Directions after turning clockwise from a known direction:
+CLOCKWISE = (None, EAST, WEST, NORTH, SOUTH)
+# Directions after turning counter-clockwise from a known direction:
+COUNTER_CLOCKWISE = (None, WEST, EAST, SOUTH, NORTH)
+
+# Delta to apply to row and column indexes
+# when moving in a certain direction:
+MOVE_DELTA = {
+    NORTH: (-1, 0),
+    SOUTH: (+1, 0),
+    EAST: (0, +1),
+    WEST: (0, -1)
+}
+```
+
+To apply the wall follower algorithm (more precisely, the right-hand rule),
+we'll do the following:
+
+1. Start facing any direction (we'll use `NORTH`).
+2. Try turning clockwise and making one step to see if there's a wall.
+3. If there is a wall, try going straight instead (in the currently facing
+   direction).
+4. If there's no wall, change the current direction to the new one and memorize
+   the position as free.
+5. After moving, update the current position and the current facing direction.
+6. If at any time the current position and direction are the same as the
+   starting position and direction, stop: we got back to the beginning and
+   therefore explored the whole maze.
+
+The above rules are a little simplified, but the code is clear enough. We will
+keep track of which cells are empty (and therefore valid to step on) simply
+using a `set`: this is easier than building a matrix (since we don't even know
+the size of the maze) or keeping track of *all* kind of cells in a sparse
+matrix. When we don't hit a wall, we also check if we found the oxygen system
+and return it along with the generated maze when done.
+
+To move the robot in a given direction and check its output we just run one VM
+resuming from where we left off and stopping after the first `out` instruction:
+
+```python
+def check_move(vm, move):
+    return vm.run([move], n_out=1, resume=True)[0]
+```
+
+Here's the code for what I just explained:
+
+```python
+def wall_follower(vm, startpos, startdir=NORTH):
+    curpos, curdir = startpos, startdir
+    maze = set()
+    oxygen = None
+
+    while True:
+        # Try turning right.
+        newdir = CLOCKWISE[curdir]
+        dr, dc = MOVE_DELTA[newdir]
+        newpos = (curpos[0] + dr, curpos[1] + dc)
+        cell = check_move(vm, newdir)
+
+        if cell == WALL:
+            # If we hit a wall, try going straight instead.
+            dr, dc = MOVE_DELTA[curdir]
+            newpos = (curpos[0] + dr, curpos[1] + dc)
+            cell = check_move(vm, curdir)
+
+            if cell == WALL:
+                # If we hit a wall again, rotate 90 degrees counter-clockwise
+                # and repeat the whole thing again.
+                curdir = COUNTER_CLOCKWISE[curdir]
+            else:
+                # If we don't hit a wall, save the current position as valid in
+                # the maze while also checking if we found the oxygen system.
+                if cell == OXYGEN:
+                    oxygen = newpos
+                maze.add(newpos)
+
+                # Then update the current position.
+                curpos = newpos
+        else:
+            # If we don't hit a wall, save the current position as valid in
+            # the maze while also checking if we found the oxygen system.
+            if cell == OXYGEN:
+                oxygen = newpos
+            maze.add(newpos)s
+
+            # Then update current position and direction.
+            curpos = newpos
+            curdir = newdir
+
+        # Stop if we ever get back to the initial state.
+        if curpos == startpos and curdir == startdir:
+            break
+
+    return maze, oxygen
+```
+
+We can now build our maze and get the position of the oxygen system with a
+single function call. It doesn't really matter which position we choose as
+starting point, we just need to remember it for later.
+
+```python
+startpos = (0, 0)
+maze, oxygen = wall_follower(vm, startpos)
+```
+
+Now that we have a maze to work with, and we know the position of our goal, we
+can simply apply BFS to find the shortest path to the oxygen system. Let's just
+first define a simple neighbor function to make our life easier:
+
+```python
+def neighbors4(maze, r, c):
+    for pos in ((r+1, c), (r-1, c), (r, c+1), (r, c-1)):
+        if pos in maze:
+            yield pos
+```
+
+The BFS implementation is pretty simple and basically identical to the Wikipedia
+pseudocode, so I'm not going to spend much time commenting on it. The
+[`filter()`][py-builtin-filter] built-in function is used as a convenient way to
+avoid already visited neighbors.
+
+```python
+def bfs_shortest(maze, src, dst):
+    visited = set()
+    queue = deque([(0, src)])
+
+    while queue:
+        dist, node = queue.popleft()
+
+        if node == dst:
+            return dist
+
+        if node not in visited:
+            visited.add(node)
+
+            for n in filter(lambda n: n not in visited, neighbors4(maze, *node)):
+                queue.append((dist + 1, n))
+
+    return -1
+```
+
+The answer is now just one function call away:
+
+```python
+min_dist = bfs_shortest(maze, startpos, oxygen)
+print('Part 1:', min_dist)
+```
+
+### Part 2
+
+For the second part, we are told that once the oxygen system is found, the droid
+will activate it to restore the oxygen, which will fill up the maze. We need to
+find the amount of minutes that the oxygen takes to reach every cell of the
+maze, knowing that the oxygen spreads in all available directions at a speed of
+one step per minute.
+
+Well, since we have the full maze, the solution is pretty simple. We can just
+apply BFS again, but this time without stopping at any given destination, and
+continuing until we reach the farthest cell of the maze. Given the way BFS
+works, the last cell we'll check will also be the farthest possible, so we can
+just remove the `break` statement from within our loop, and return the ltest
+value of `dist` after the `queue` is emptied.
+
+```python
+def bfs_farthest(maze, src):
+    visited = set()
+    queue = deque([(0, src)])
+
+    while queue:
+        dist, node = queue.popleft()
+
+        if node not in visited:
+            visited.add(node)
+
+            for n in filter(lambda n: n not in visited, neighbors4(maze, *node)):
+                queue.append((dist + 1, n))
+
+    return dist
+```
+
+Pretty simple, huh? We just solved part 2:
+
+```python
+time = bfs_farthest(maze, oxygen)
+print('Part 2:', time)
+```
 
 
 Day 16 - Flawed Frequency Transmission
@@ -4475,6 +4758,7 @@ Welcome to *IntcodeNET* I guess!
 [d12]: #day-12---the-n-body-problem
 [d13]: #day-13---care-package
 [d14]: #day-14---space-stoichiometry
+[d15]: #day-15---oxygen-system
 [d16]: #day-16---flawed-frequency-transmission
 [d18]: #day-18---many-worlds-interpretation
 [d20]: #day-20---donut-maze
@@ -4496,6 +4780,7 @@ Welcome to *IntcodeNET* I guess!
 [d12-problem]: https://adventofcode.com/2019/day/12
 [d13-problem]: https://adventofcode.com/2019/day/13
 [d14-problem]: https://adventofcode.com/2019/day/14
+[d15-problem]: https://adventofcode.com/2019/day/15
 [d16-problem]: https://adventofcode.com/2019/day/16
 [d18-problem]: https://adventofcode.com/2019/day/18
 [d20-problem]: https://adventofcode.com/2019/day/20
@@ -4516,6 +4801,7 @@ Welcome to *IntcodeNET* I guess!
 [d12-solution]: day12_clean.py
 [d13-solution]: day13_clean.py
 [d14-solution]: day14_clean.py
+[d15-solution]: day15_clean.py
 [d16-solution]: day16_clean.py
 [d18-solution]: day18_clean.py
 [d20-solution]: day20_clean.py
@@ -4562,8 +4848,9 @@ Welcome to *IntcodeNET* I guess!
 [py-math-atan2]:              https://docs.python.org/3/library/math.html#math.atan2
 [py-unpacking]:               https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 
-[algo-manhattan]: https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
-[algo-dijkstra]:  https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
-[algo-bfs]:       https://en.wikipedia.org/wiki/Breadth-first_search
-[algo-kahn]:      https://en.wikipedia.org/wiki/Topological_sorting#Kahn's_algorithm
-[algo-binsrc]:    https://en.wikipedia.org/wiki/Binary_search_algorithm
+[algo-manhattan]:     https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
+[algo-dijkstra]:      https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
+[algo-bfs]:           https://en.wikipedia.org/wiki/Breadth-first_search
+[algo-kahn]:          https://en.wikipedia.org/wiki/Topological_sorting#Kahn's_algorithm
+[algo-binsrc]:        https://en.wikipedia.org/wiki/Binary_search_algorithm
+[algo-wall-follower]: https://en.wikipedia.org/wiki/Maze_solving_algorithm#Wall_follower
