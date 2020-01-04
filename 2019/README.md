@@ -20,7 +20,7 @@ Table of Contents
 - [Day 14 - Space Stoichiometry][d14]
 - [Day 15 - Oxygen System][d15]
 - [Day 16 - Flawed Frequency Transmission][d16]
--  Day 17 - Set and Forget: *TODO*
+- [Day 17 - Set and Forget][d17]
 - [Day 18 - Many-Worlds Interpretation][d18]
 -  Day 19 - Tractor Beam: *TODO*
 - [Day 20 - Donut Maze][d20]
@@ -2697,6 +2697,338 @@ have the optimal solution, and CPython is to blame for the poor performance...
 sad :(.
 
 
+Day 17 - Set and Forget
+-----------------------
+
+[Problem statement][d17-problem] — [Complete solution][d17-solution]
+
+### Prerequisites
+
+This problem requires a working Intcode virtual machine built following
+instructions in the [day 2][d02], [day 5][d05] and [day 9][d09] problem
+statements! The machine could be as simple as a single function, or something
+more complicated like a class with multiple methods. Take a look at previous
+days to know more.
+
+I will be using [my `IntcodeVM` class](lib/intcode.py) to solve this puzzle.
+
+### Part 1
+
+Intcode robots... with a twist! Today we are given an intcode program which we
+need to use to interface with a robot which is stuck on an articulated path of
+scaffolds. The program works with ASCII values, and it prints a 2D ASCII-art
+grid representating the field where the robot operates. Scaffolds are marked
+with hashes (`#`) and space with dots (`.`). Our robot is marked with an
+arrow-like character depending on the direction it is looking (`^`, `v`, `<`,
+`>`).
+
+For the first part, we are asked to localize all scaffold intersections on the
+grid, and provide the sum of the product of their coordinates as the answer.
+
+As we can see from the examples, scaffold lines are always one cell apart from
+each other, and intersections look like this:
+
+    ..#..........
+    ..#..........
+    #######...###
+    #.#...#...#.#
+    #############
+    ..#...#...#..
+    ..#####...^..
+
+We can start by collecting all values of the grid simply by running the program.
+Since the program outputs ASCII values, we can translate the output list into a
+string by mapping it with the built-in [`chr()`][py-builtin-chr] function, which
+transforms an integer value into an ASCII character, and then use
+[`.splitliens()`][py-str-splitlines] to split it into a list of strings (one per
+line). Since the program also prints a double newline at the end, let's also
+[`.strip()`][py-str-strip] those away.
+
+```python
+from lib.intcode import IntcodeVM
+
+program = list(map(int, fin.read().split(',')))
+vm = IntcodeVM(program)
+out = vm.run()
+grid = ''.join(map(chr, out)).strip().splitlines()
+```
+
+To check for intersections, we can now just look at each cell that is a
+scaffold, and see if all the four adjacent cells are scaffolds. To do this, we
+can take advantage of the [`sum()`][py-builtin-sum] function, which treats
+boolean values as `0` or `1`, iterating over neighbors cells just by adding or
+subtracting `1` to the row and column. We know that intersections cannot be on
+the edge of the grid, so no bound checking is needed. Each time we encounter an
+intersection, we add the product of its coordinates to the total. While we are
+at it, let's also remember the starting position and direction of the robot,
+which will be useful for part 2.
+
+```python
+NORTH, SOUTH, WEST, EAST = range(4)
+EMPTY, SCAFFOLD = '.#'
+rows, columns = len(grid), len(grid[0])
+answer = 0
+
+for r in range(1, rows - 1):
+    for c in range(1, columns - 1):
+        if grid[r][c]  == SCAFFOLD:
+            n = sum((grid[rr][cc] == SCAFFOLD for rr, cc in ((r+1, c), (r-1, c), (r, c+1), (r, c-1))))
+
+            if n == 4:
+                answer += r * c
+        elif grid[r][c] in '^v<>':
+            startpos = (r, c)
+            startdir = '^v<>'.index(grid[r][c])
+
+print('Part 1:', answer)
+```
+
+### Part 2
+
+Things get tricky now. We need to help the robot traverse the whole path of
+scaffolds without falling (stepping on an empty cell). To do this, we need to
+provide a program for the robot to execute.
+
+We need to define three functions, `A`, `B` and `C`. Each function is a list of
+basic commands separated by commas:
+
+- `L` means "turn left".
+- `R` means "turn right".
+- A positive integer number means "go forward" for the specified number of
+  steps.
+
+We then need to define a main program as a list of functions to execute (`A`,
+`B`, or `C`) separated by commas. Both the main program and the functions need
+to be at most 20 characters long (commas included).
+
+After defining the three functions and the main program, we can feed them to the
+robot as input, changing the first number in the Intcode program to `2` before
+running it. The robot will execute the main program and then output a large
+value (not in the ASCII range) as a result, which will be our answer.
+
+This task looks a lot like a very naive compression algorithm. The first thing
+we need to do is to translate the entire scaffold path into a list of basic
+commands (or moves) accepted by the robot. Once we have the full list, we can
+then reduce it by grouping repeating sublists of moves into functions.
+
+After that, let's define the usual bunch of useful enums to simplify changing
+direction and position (similar to what we did for part 1 of [day 15][d15]):
+
+```python
+# Directions after turning left from a known direction:
+LEFT = (WEST, EAST, SOUTH, NORTH)
+# Directions after turning right from a known direction:
+RIGHT = (EAST, WEST, NORTH, SOUTH)
+# Delta to apply to row and column indexes when moving in a certain direction:
+MOVE_DELTA = ((-1, 0), (+1, 0), (0, -1), (0, +1))
+```
+
+Now we can start traversing te scaffold path. We'll apply the simplest possible
+strategy: completely ignore intersections and keep moving straight as long as we
+can, incrementing a step counter each time. If we encounter an empty cell ahead
+of us, we'll check if we can turn left or right: if we can, we'll take the turn
+and reset the counter, otherwise we'll stop because it means we have reached the
+end of the path.
+
+To avoid having to deal with any kind of bound checking while traversing the
+scaffold path, we'll just pad the entire grid with two additional rows and
+columns of empty cells (one at the beginning and one at the end). Then, since we
+padded the grid, before we begin we need to add `1` to the previously saved
+starting coordinates. We will also convert each move to string (even numbers)
+when adding it to the final list of moves, to make it easier to work with
+afterwards.
+
+```python
+def get_moves(grid, startpos, startdir):
+    columns = len(grid[0])
+
+    # Pad the grid with two more empty lines and columns.
+    grid = [EMPTY * columns] + grid + [EMPTY * columns]
+    for i in range(len(grid)):
+        grid[i] = EMPTY + grid[i] + EMPTY
+
+    r, c = startpos
+    curdir = startdir
+    moves = []
+    steps = 0
+    r += 1
+    c += 1
+
+    while 1:
+        # Try moving straight in the current direction.
+        dr, dc = MOVE_DELTA[curdir]
+        newr, newc = r + dr, c + dc
+
+        # If possible, update the counter and skip to the next iteration.
+        if grid[newr][newc] == SCAFFOLD:
+            steps += 1
+            r, c = newr, newc
+            continue
+
+        # Otherwise, try turning left.
+        newdir = LEFT[curdir]
+        dr, dc = MOVE_DELTA[newdir]
+        newr, newc = r + dr, c + dc
+
+        # If possible, remember the turn.
+        if grid[newr][newc] == SCAFFOLD:
+            turn = 'L'
+        else:
+            # Otherwise, try turning right.
+            newdir = RIGHT[curdir]
+            dr, dc = MOVE_DELTA[newdir]
+            newr, newc = r + dr, c + dc
+
+            # If possible, remember the turn.
+            if grid[newr][newc] == SCAFFOLD:
+                turn = 'R'
+            else:
+                # Otherwise give up, we reached the end.
+                # Add the last step counter and stop.
+                moves.append(str(steps))
+                break
+
+        # Save the number of steps we made and the turn we took after them.
+        if steps > 0:
+            moves.append(str(steps))
+        moves.append(turn)
+
+        # Update position and direction and reset the counter.
+        r, c = newr, newc
+        curdir = newdir
+        steps = 1
+
+    return moves
+```
+
+The result of the above function will be a long list of moves, like for example
+`['R', '6', 'L', '6', 'L', '10', ...]`.
+
+We now need to "compress" recurring sequences of moves into three functions. We
+know that functions need to be at most 20 characters long (including commas) and
+that we can only use functions in the main program, so we cannot leave any move
+out.
+
+Since all moves need to belong to a function, this means that the first function
+we want to find will inevitably correspond with the first few moves of our list.
+In other words, it means that `func_a = moves[:la]` for some length `la` that we
+still need to find. After that, we could then have other occurrences of
+`func_a`, followed by the second function. In other words:
+`func_b = moves[sb:sb + lb]` for some starting position `sb` (after `la`) and
+some length `lb`. The same goes for the last function: after any additional
+occurrence of `func_a` and `func_b`, we'll have `func_c = moves[sc:sc + lc]` for
+some starting position `sc` (after `sb + lb`) and some length `lc`.
+
+Here's an example:
+
+    0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20 21
+    R  5  R  3  L  8  R  4  L  8  R  4  R  5  R  3  R  6  L  8  L  6  ...
+    ----------  ----------  ----------  ----------  ----------------
+    func_a      func_b      func_b      func_a      func_c
+
+In this example we have `la = 4`, `sb = 4`, `lb = 4`, `sc = 16` and `lc = 6`.
+The important thing to notice is that in order to find `func_c` we skipped one
+more occurrence of `func_a` and one more of `func_b`. This is the key point to
+consider when searching for the three functions.
+
+Trying to solve this with pen and paper really helps understanding the
+algorithm, so if the following doesn't seem clear at first, just try writing it
+down solving it by hand a couple of times.
+
+In order to find the functions, we can use three nested `for` loops to find the
+correct `la`, `lb` and `lc`. In between the three loops, we will skip already
+found functions advancing the starting positions `sb` and `sc`. In the innermost
+loop, we'll try to match the whole list of moves one function at a time, and if
+we get to the end without any mismatch, we will have found our three functions.
+
+The length in characters of each function needs to be at most `20`, so this
+means a maximum of `10` moves (assuming 1 character long moves and 9 commas to
+separate them). A function of only one move also doesn't seem to make sense. We
+will therefore search for `la`, `lb` and `lc` in a `range(2, 11)`. To also make
+sure not to cross the 20 chars limit, we will check the character length of the
+the functions too.
+
+Let's get into the code, we'll again define a function to make it cleaner:
+
+```python
+def find_functions(moves):
+    for la in range(2, 11):
+        # Pick a func_a.
+        func_a = moves[:la]
+
+        # Skip all successive occurrences of func_a.
+        sb = la
+        while moves[sb:][:la] == func_a:
+            sb += la
+
+        for lb in range(2, 11):
+            # Pick a func_b.
+            func_b = moves[sb:sb + lb]
+
+            # Skip any additional occurrences of func_a or func_b.
+            sc = sb + lb
+            while 1:
+                if moves[sc:][:la] == func_a:
+                    sc += la
+                elif moves[sc:][:lb] == func_b:
+                    sc += lb
+                else:
+                    break
+
+            for lc in range(2, 11):
+                # Pick a func_c.
+                func_c = moves[sc:sc + lc]
+
+                # Try to get to the end only matching these three functions.
+                ok = True
+                i = sc
+                while i < len(moves):
+                    if moves[i:][:la] == func_a:
+                        i += la
+                    elif moves[i:][:lb] == func_b:
+                        i += lb
+                    elif moves[i:][:lc] == func_c:
+                        i += lc
+                    else:
+                        ok = False
+                        break
+
+                if ok:
+                    A = ','.join(func_a)
+                    B = ','.join(func_b)
+                    C = ','.join(func_c)
+
+                    # Perform a final check on the real lengths of the functions.
+                    if len(A) <= 20 and len(B) <= 20 and len(C) <= 20:
+                        return A, B, C
+```
+
+We now have all we need to solve the problem. After getting the moves and
+finding the three functions, we can just convert the original "uncompressed"
+list of moves into a string of comma separated commands, and just
+[`.replace()`][py-str-replace] every occurrence of the functions we just found
+with their corresponding letter.
+
+```python
+moves = get_moves(grid, startpos, startdir)
+A, B, C = find_functions(moves)
+main = ','.join(moves).replace(A, 'A').replace(B, 'B').replace(C, 'C')
+```
+
+We can now feed the main program and the functions to our Intcode-powered robot,
+along with a `n` to signal that we do not want debug information, and then
+collect the last output value as the answer (let's also not forget to change the
+first value of the program to `2`).
+
+```python
+vm.reset()
+vm.code[0] = 2
+robot_prog = list(map(ord, '{}\n{}\n{}\n{}\nn\n'.format(main, A, B, C)))
+answer = vm.run(robot_prog)[-1]
+print('Part 2:', answer)
+```
+
+
 Day 18 - Many-Worlds Interpretation
 -----------------------------------
 
@@ -4760,6 +5092,7 @@ Welcome to *IntcodeNET* I guess!
 [d14]: #day-14---space-stoichiometry
 [d15]: #day-15---oxygen-system
 [d16]: #day-16---flawed-frequency-transmission
+[d17]: #day-17---set-and-forget
 [d18]: #day-18---many-worlds-interpretation
 [d20]: #day-20---donut-maze
 [d21]: #day-21---springdroid-adventure
@@ -4782,6 +5115,7 @@ Welcome to *IntcodeNET* I guess!
 [d14-problem]: https://adventofcode.com/2019/day/14
 [d15-problem]: https://adventofcode.com/2019/day/15
 [d16-problem]: https://adventofcode.com/2019/day/16
+[d17-problem]: https://adventofcode.com/2019/day/17
 [d18-problem]: https://adventofcode.com/2019/day/18
 [d20-problem]: https://adventofcode.com/2019/day/20
 [d21-problem]: https://adventofcode.com/2019/day/21
@@ -4803,6 +5137,7 @@ Welcome to *IntcodeNET* I guess!
 [d14-solution]: day14_clean.py
 [d15-solution]: day15_clean.py
 [d16-solution]: day16_clean.py
+[d17-solution]: day17_clean.py
 [d18-solution]: day18_clean.py
 [d20-solution]: day20_clean.py
 [d21-solution]: day21_clean.py
@@ -4818,11 +5153,15 @@ Welcome to *IntcodeNET* I guess!
 [py-builtin-any]:             https://docs.python.org/3/library/functions.html#any
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-ord]:             https://docs.python.org/3/library/functions.html#ord
+[py-builtin-chr]:             https://docs.python.org/3/library/functions.html#chr
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
 [py-builtin-pow]:             https://docs.python.org/3/library/functions.html#pow
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
+[py-str-strip]:               https://docs.python.org/3/library/stdtypes.html#str.strip
+[py-str-replace]:             https://docs.python.org/3/library/stdtypes.html#str.replace
+[py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 [py-range]:                   https://docs.python.org/3/library/stdtypes.html#range
 [py-set]:                     https://docs.python.org/3/library/stdtypes.html?#set
 [py-frozenset]:               https://docs.python.org/3/library/stdtypes.html?#frozenset
