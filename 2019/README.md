@@ -22,7 +22,7 @@ Table of Contents
 - [Day 16 - Flawed Frequency Transmission][d16]
 - [Day 17 - Set and Forget][d17]
 - [Day 18 - Many-Worlds Interpretation][d18]
--  Day 19 - Tractor Beam: *TODO*
+- [Day 19 - Tractor Beam][d19]
 - [Day 20 - Donut Maze][d20]
 - [Day 21 - Springdroid Adventure][d21]
 - [Day 22 - Slam Shuffle][d22]
@@ -3602,6 +3602,279 @@ print('Part 2:', min_steps)
 Beautiful! Another two stars to add to our collection.
 
 
+Day 19 - Tractor Beam
+---------------------
+
+[Problem statement][d19-problem] — [Complete solution][d19-solution]
+
+### Prerequisites
+
+This problem requires a working Intcode virtual machine built following
+instructions in the [day 2][d02], [day 5][d05] and [day 9][d09] problem
+statements! The machine could be as simple as a single function, or something
+more complicated like a class with multiple methods. Take a look at previous
+days to know more.
+
+I will be using [my `intcode_oneshot()` function](lib/intcode.py) to solve this
+puzzle, which is a very simple and fast Intcode VM implementation, useful if I
+need to restart the same program over and over.
+
+### Part 1
+
+We are once again in a 2-dimensional space, and we are projecting a beam (let's
+see it as a beam of light).
+
+The beam starts at the top left (coordinates `(0, 0)`) and "lights up" cells in
+a cone, like this:
+
+         X
+       0-->     9
+      0#.........
+    Y |.#........
+      v..##......
+       ...###....
+       ....###...
+       .....####.
+       ......####
+       ......####
+       .......###
+      9........##
+
+The problem is that we cannot see the beam. The only thing we can do to
+determine if a cell is hit by the beam or not is to deploy a drone to go check
+that cell's coordinates and report back to us.
+
+We are given an Intcode program to run: this program takes two inputs (the two
+coordinates `x` and `y` to check) and outputs a single value: `0` or `1` whether
+the cell at the specified coordinates is hit by the beam or not.
+
+Our task for the first part of the problem is to determine how many cells are
+hit by the beam in the 50 by 50 square from `(0, 0)` to `(49, 49)`.
+
+Let's get the Intcode program as always:
+
+```python
+program = list(map(int, fin.read().split(',')))
+```
+
+
+We now just need to write two for loops from `0` to `49`:
+
+```python
+total = 0
+for x in range(50):
+    for y in range(50):
+        total += next(intcode_oneshot(program, (x, y)))
+
+print('Part 1:', total)
+```
+
+My `intcode_oneshot()` function is actually a generator, hence the need for
+[`next()`][py-builtin-next] to get the first (and only) output value.
+
+If we want to play it cool we can wrap the program execution in a little helper
+function and write a one-liner solution using [`map()`][py-builtin-map] and
+[`sum()`][py-builtin-sum], generating all the possible coordinates with the
+[`product()`][py-itertools-product] from the [`itertools`][py-itertools] module.
+
+```python
+from itertools import product
+
+def run(inp):
+    return next(intcode_oneshot(program, inp))
+
+total = sum(map(run, product(range(50), range(50))))
+print('Part 1:', total)
+```
+
+The `run()` function above will come in handy very soon for part 2.
+
+### Part 2
+
+We are now asked to find a spot *inside* the beam where a square of 100 by 100
+cells can fit. This means something like this (using a 5 by 5 square for
+simplicity):
+
+    #.........................
+    .#........................
+    ..##......................
+    ...###....................
+    ....###...................
+    .....####.................
+    ......#####...............
+    ......######..............
+    .......#######............
+    ........###OOOOO..........
+    .........##OOOOO##........
+    ..........#OOOOO###.......
+    ...........OOOOO#####.....
+    ...........OOOOO#######...
+    ............############..
+
+It's quite obvious that the square could fit inside the beam even farther away
+from the origin (since the beam always expands), but we need to fit the square
+as close as possible to the origin `(0, 0)`. Our answer will be `x * 10000 + y`,
+where `x` and `y` are the coordinates of the top left corner of the square.
+
+To solve this, we can search for a vertical line of at least 100 cells that are
+hit by the beam, and then, starting from the 100th cell from the bottom, check
+if a line of at least 100 horizontal cells is hit by the beam.
+
+Something like this:
+
+              1111111111222222
+    01234567890123456789012345
+    #.........................
+    .#........................
+    ..##......................
+    ...###....................
+    ....###...................
+    .....####.................
+    ......###AA...............
+    ......###ABB..............
+    .......##AB###............
+    ........#ABCCCCC..........
+    .........ABC######........
+    ..........BC#######.......
+    ...........C#########.....
+    ...........C###########...
+    ............############..
+
+We can see in the simplified example above that the first column containing 5
+cells hit by the beam (marked with `A`) does not however have enough space on
+the right side, and the same goes for the second column (marked with `B`). The
+third one (marked with `C`) is the first column to also have enough space on its
+right, and therefore fits the square nicely. In the case of the columns marked
+with `A` and `B` we have a width of 2 on the right, while in the case of the
+column marked with `C` we have a width of 5.
+
+The simplest strategy to find the right column is to start from the top, then
+proceed down until we find the first cell hit by the beam, and keep going until
+we find the last cell. From there, go up 100 cells to the position of the
+potential top-left corner, and then start looking right one cell at a time: if
+at least 100 cells are available on the right, we have a good spot for the
+square to fit.
+
+Let's write a function that given an `x` coordinate checks the maximum width
+that is available on the right side of the column. We'll start from the top
+(`(x, 0)`), going down until we find the beam, then keep going down until we
+find the end, and get 100 cells back up. After that, if we're still inside the
+beam, we'll save the `y` coordinate (as it is the `y` value of the potential top
+left corner of the square) and start moving to the right, until we get out of
+the beam. For all these iterations we can make good use of
+[`count()`][py-itertools-count] from the [`itertools`][py-itertools] module,
+which is just like a `range()`, but counts to infinity. We'll also make the
+function return the `y` value of the top left corner.
+
+```python
+from itertools import count
+
+def get_width(x):
+    # Start from the top and continue until we hit the beam.
+    for top in count(0):
+        if run((x, top)) == 1:
+            break
+
+    # If there's no beam 100 cells down, the column is too short.
+    if run((x, top + 100)) == 0:
+        return 0, 0
+
+    # Advance until the end of the beam.
+    for bottom in count(top + 100 + 1):
+        if run((x, bottom)) == 0:
+            break
+
+    # Save the y coordinate of the potential top left corner.
+    y = bottom - 100
+
+    # Advance to the right until we get out of the beam.
+    for width in count(1):
+        if run((x + width, y)) == 0:
+            break
+
+    # Return the width wd just found and the saved coordinate.
+    return width, y
+```
+
+A naive solution to the problem would be to just scan every single column with a
+`for`, starting from a small number (e.g.`10`) and calling `get_width()` until
+we get a width greater or equal to 100:
+
+```python
+for x in count(0):
+	width, y = get_width(x)
+	if width >= 100:
+		break
+
+answer = x * 10000 + y
+```
+
+This solution however is not optimal at all. Since the beam always increases in
+height and width, we can apply [binary search][algo-binsrc] to find the column
+we want way faster.
+
+```python
+def bin_search(lo, hi):
+	best = None
+
+	while hi - lo > 1:
+		x = (lo + hi) // 2
+
+		width, y = get_width(x)
+
+		if width > 100:
+			hi = x
+			best = (x, y)
+		elif width < 100:
+			lo = x
+
+	return best
+```
+
+We can run the above with `lo = 0, hi = 10000` since the solution asks for
+`x * 10000 + y`, which is a clear indicator of the fact that `x` must be
+below 10000. There's a little problem though: our `get_width()` function is not
+really monotonically increasing. Instead, some times we encounter weird local
+maximums, like the following:
+
+    x     width
+    1070  97
+    1071  99  <-- local max
+    1072  98
+    1073  100 <-- local max
+    1074  99
+    1075  101 <-- local max
+    1076  100
+    1077  102 <-- local max
+    1078  101
+
+This means that our `bin_search()` function could end up finding, for example,
+`x = 1075, width = 101`, since it is right after `x = 1064, width = 99`. This is
+no problem though: we can use the binary search to look for a good enough
+solution, and then just check if there's a better solution in the neighborhood
+(a few steps earlier).
+
+```python
+# Find a good enough solution.
+approx_x, approx_y = bin_search(10, 9999)
+best_x, best_y = approx_x, approx_y
+
+# Refine looking back a few steps.
+for x in range(approx_x, approx_x - 10, -1):
+	width, y = get_width(x)
+
+	if width >= 100:
+		best_x, best_y = x, y
+
+answer = best_x * 10000 + best_y
+print('Part 2:', answer)
+```
+
+And there it is, *almost* just binary search. This runs an order of magnitude
+faster than a linear search from the start, and we have out part 2 solution in
+a fraction of a second!
+
+
 Day 20 - Donut Maze
 -------------------
 
@@ -5094,6 +5367,7 @@ Welcome to *IntcodeNET* I guess!
 [d16]: #day-16---flawed-frequency-transmission
 [d17]: #day-17---set-and-forget
 [d18]: #day-18---many-worlds-interpretation
+[d19]: #day-19---tractor-beam
 [d20]: #day-20---donut-maze
 [d21]: #day-21---springdroid-adventure
 [d22]: #day-22---slam-shuffle
@@ -5117,6 +5391,7 @@ Welcome to *IntcodeNET* I guess!
 [d16-problem]: https://adventofcode.com/2019/day/16
 [d17-problem]: https://adventofcode.com/2019/day/17
 [d18-problem]: https://adventofcode.com/2019/day/18
+[d19-problem]: https://adventofcode.com/2019/day/19
 [d20-problem]: https://adventofcode.com/2019/day/20
 [d21-problem]: https://adventofcode.com/2019/day/21
 [d22-problem]: https://adventofcode.com/2019/day/22
@@ -5139,6 +5414,7 @@ Welcome to *IntcodeNET* I guess!
 [d16-solution]: day16_clean.py
 [d17-solution]: day17_clean.py
 [d18-solution]: day18_clean.py
+[d19-solution]: day19_clean.py
 [d20-solution]: day20_clean.py
 [d21-solution]: day21_clean.py
 [d22-solution]: day22_clean.py
@@ -5154,6 +5430,7 @@ Welcome to *IntcodeNET* I guess!
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-ord]:             https://docs.python.org/3/library/functions.html#ord
 [py-builtin-chr]:             https://docs.python.org/3/library/functions.html#chr
+[py-builtin-next]:            https://docs.python.org/3/library/functions.html#next
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
@@ -5174,6 +5451,7 @@ Welcome to *IntcodeNET* I guess!
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
 [py-heapq]:                   https://docs.python.org/3/library/heapq.html
 [py-itertools]:               https://docs.python.org/3/library/itertools.html
+[py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
 [py-itertools-product]:       https://docs.python.org/3/library/itertools.html#itertools.product
 [py-itertools-permutations]:  https://docs.python.org/3/library/itertools.html#itertools.permutations
 [py-itertools-combinations]:  https://docs.python.org/3/library/itertools.html#itertools.combinations
