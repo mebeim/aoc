@@ -27,7 +27,7 @@ Table of Contents
 - [Day 21 - Springdroid Adventure][d21]
 - [Day 22 - Slam Shuffle][d22]
 - [Day 23 - Category Six][d23]
--  Day 24 - Planet of Discord: *TODO*
+- [Day 24 - Planet of Discord][d24]
 -  Day 25 - Cryostasis: *TODO*
 
 Day 1 - The Tyranny of the Rocket Equation
@@ -5354,6 +5354,152 @@ print('Part 2:', last_special_y)
 Welcome to *IntcodeNET* I guess!
 
 
+Day 24 - Planet of Discord
+--------------------------
+
+[Problem statement][d24-problem] — [Complete solution][d24-solution]
+
+### Part 1
+
+Ah, don't you love
+[Conway's Game of Life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life)?
+I sure do.
+
+Today's puzzle consists of a simplified version of Conway's Game of Life:
+instead of "alive" and "dead" cells we have cells with bugs (`#`) or empty cells
+(`.`). We start with a given 5-by-5 grid of cells with some bugs in it, and we
+know that each minute the situation evolves following two very simple rules:
+
+1. A bug dies (leaving the cell empty) *unless* there is exactly one bug
+   adjacent to it.
+2. An empty cell becomes infested with a bug if exactly one or two bugs are
+   adjacent to it.
+3. If neither of the two happens, the cell keeps its state.
+
+Here "adjacent" means (as usual) immediately up, down, left or right. It's
+important to remember that this process happens in every location
+*simultaneously*; that is, within the same minute, the number of adjacent bugs
+is counted for every cell first, and only then the cells are updated.
+
+We need to simulate the evolution of the given grid until a certain
+configuration appears twice. For that configuration, we'll need to calculate the
+"biodiversity rating" as the answer. To calculate the biodiversity rating, we
+assign each cell from left to right and from top to bottom a power of two: `2^0
+= 1` to the first one, `2^1 = 2` to the second, and so on. The total
+biodiversity rating will be the sum of all these powers for cells that contain
+bugs.
+
+Okay, looks simple enough. Let's parse the input first: we'll transform bugs and
+empty cells into `1` and `0` respectively, to make it easier to count the number
+of bugs near a cell. Some other global variables like number of rows and columns
+will also be useful later.
+
+```python
+orig_grid = list(list(l.strip()) for l in fin)
+
+ROWS = len(orig_grid)
+COLS = len(orig_grid[0])
+MAXROW = ROWS - 1
+MAXCOL = COLS - 1
+EMPTY, BUG = 0, 1
+
+for r, c in product(range(ROWS), range(COLS)):
+    orig_grid[r][c] = BUG if orig_grid[r][c] == '#' else EMPTY
+```
+
+We'll use our usual `neighbors4` function to get the neighbors of a cell in the
+grid (we should have memorized this by now given the amount of times we used it)
+and then another helper function that just sums the values in the grid for the
+cells returned by `neighbors4` to count how many bugs are adjacent to a given
+cell. We can do this pretty seamlessly using [`sum()`][py-builtin-sum].
+
+```python
+def neighbors4(grid, r, c):
+    for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        nr, nc = r + dr, c + dc
+
+        if 0 <= nr < ROWS and 0 <= nc < COLS:
+            yield nr, nc
+
+def neighbors4_alive(grid, r, c):
+    return sum(grid[nr][nc] for nr, nc in neighbors4(grid, r, c))
+```
+
+Let's write a function to compute the new state of a cell (bug or empty) after
+one generation given the previous grid. We already have a function to count
+alive neighbors, so it's just a matter of applying the three rules listed above.
+
+```python
+def evolve(grid, r, c):
+    alive = neighbors4_alive(grid, r, c)
+
+    if grid[r][c] == BUG:
+        if alive == 1:
+            return BUG
+        return EMPTY
+
+    if alive == 1 or alive == 2:
+        return BUG
+    return EMPTY
+```
+
+Now, to evolve the whole grid and get the new grid after one generation, we can
+apply this function to every single cell of the grid. Let's write another
+function to do just that: it'll create a new empty 5-by-5 grid and then fill
+each cell with the result of evolving the previous one. We will be using the
+very handy [`product()`][py-itertools-product] generator function from the
+[`itertools`][py-itertools] module a few times in the rest of the program as a
+more compact way of writing two nested `for` loops.
+
+```python
+def nextgen(grid):
+    new_grid = [[EMPTY] * COLS for _ in range(ROWS)]
+
+    for r, c in product(range(ROWS), range(COLS)):
+        new_grid[r][c] = evolve(grid, r, c)
+
+    return new_grid
+```
+
+Now we only need to keep simulating the evolution of the grid until we get the
+same grid twice. In order to keep track of alredy seen grids we can use a simple
+set, converting the grid from `list` of `list` to `tuple` of `tuple` before
+adding it to the set (since lists are mutable and therefore not hashable). We'll
+make a copy of the original starting grid using [`deepcopy()`][py-copy-deepcopy]
+from the [`copy`][py-copy] module in order to preserve the original one for part
+2.
+
+```python
+grid = deepcopy(orig_grid)
+seen = set()
+
+while True:
+    state = tuple(map(tuple, grid))
+    if state in seen:
+        break
+
+    seen.add(state)
+    grid = nextgen(grid)
+```
+
+Once the above loop exits, `grid` will hold the first grid that appeared two
+times. We can then calculate the total biodiversity rating with a simple loop:
+
+```python
+total, biodiv = 0, 1
+for r, c in product(range(ROWS), range(COLS)):
+    if grid[r][c] == BUG:
+        total += biodiv
+    biodiv *= 2
+
+print('Part 1:', total)
+```
+
+### Part 2
+
+*TODO...*
+
+
 [d01]: #day-1---the-tyranny-of-the-rocket-equation
 [d02]: #day-2---1202-program-alarm
 [d03]: #day-3---crossed-wires
@@ -5377,6 +5523,7 @@ Welcome to *IntcodeNET* I guess!
 [d21]: #day-21---springdroid-adventure
 [d22]: #day-22---slam-shuffle
 [d23]: #day-23---category-six
+[d24]: #day-24---planet-of-discord
 
 [d01-problem]: https://adventofcode.com/2019/day/1
 [d02-problem]: https://adventofcode.com/2019/day/2
@@ -5401,6 +5548,7 @@ Welcome to *IntcodeNET* I guess!
 [d21-problem]: https://adventofcode.com/2019/day/21
 [d22-problem]: https://adventofcode.com/2019/day/22
 [d23-problem]: https://adventofcode.com/2019/day/23
+[d24-problem]: https://adventofcode.com/2019/day/24
 [d01-solution]: day01_clean.py
 [d02-solution]: day02_clean.py
 [d03-solution]: day03_clean.py
@@ -5424,6 +5572,7 @@ Welcome to *IntcodeNET* I guess!
 [d21-solution]: day21_clean.py
 [d22-solution]: day22_clean.py
 [d23-solution]: day23_clean.py
+[d24-solution]: day24_clean.py
 
 [py-cond-expr]:               https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-builtin-str]:             https://docs.python.org/3/library/functions.html#func-str
@@ -5469,6 +5618,8 @@ Welcome to *IntcodeNET* I guess!
 [py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
 [py-math-ceil]:               https://docs.python.org/3/library/math.html#math.ceil
 [py-math-atan2]:              https://docs.python.org/3/library/math.html#math.atan2
+[py-copy]:                    https://docs.python.org/3/library/copy.html
+[py-copy-deepcopy]:           https://docs.python.org/3/library/copy.html#copy.deepcopy
 [py-unpacking]:               https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 
 [algo-manhattan]:     https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
