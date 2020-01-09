@@ -1992,7 +1992,7 @@ primitive element and does not need to be produced by chemical reaction. Each
 reaction gives specific quantities for its inputs and output. Reactions cannot
 be *partially* run, so only whole integer multiples of these quantities can be
 used. However, we can have leftover elements when we are done, meaning that, for
-example, in the above recipe, useing `100 A`, `100 B` and `100 C`, we would end
+example, in the above recipe, using `100 A`, `100 B` and `100 C`, we would end
 up consuming `75 A`, `100 B` and `25 C`, producing `50 X`, with `25 A` and
 `75 C` left unconsumed. Leftover elements can of course still be used in other
 reactions.
@@ -2052,15 +2052,17 @@ When producing a chemical, we'll first check if we already have some (if not all
 the needed quantity) in our leftovers, taking as much as possible from there
 first. After that, if there still is some amount to produce, we will calculate
 how many times the recipe for the chemical needs to be applied to get at least
-the needed quantity. We will then add each of the ingredients needed to produce
-that quantity in the queue, ensuring that they'll be produced later at some
-point. In all of this, each time we need to produce some `ORE`, we'll instead
-just increase a counter variable keeping track of the total amount of ore
-needed.
+the needed quantity (using [`ceil()`][py-math-ceil] to round up). We will then
+add each of the ingredients needed to produce that quantity in the queue,
+ensuring that they'll be produced later at some point. In all of this, each time
+we need to produce some `ORE`, we'll instead just increase a counter variable
+keeping track of the total amount of ore needed.
 
 The code almost speaks for itself, here it is:
 
 ```python
+from math import ceil
+
 def needed_ore(recipes, fuel_qty):
     # Star with only FUEL in the queue of chemicals to produce.
     queue = deque([(fuel_qty, 'FUEL')])
@@ -2110,7 +2112,7 @@ print('Part 1:', ore)
 ### Part 2
 
 For the second part, we now have the opposite task as before. We need to
-calculate the maximum amount of fuel that can we produce with *1 trillion* units
+calculate the maximum amount of fuel that we can produce with *1 trillion* units
 of `ORE`.
 
 Since we already have a function ready to calculate the needed amount of ore
@@ -3098,7 +3100,7 @@ def build_graph(grid):
 
 Nice, now we need to write `find_adjacent()`. Since we are in a 2D grid where we
 are only allowed to move up, down, left and right and the distance between cells
-is always `1`, we can use the [Breadth First Search][algo-bfs] to explore it.
+is always `1`, we can use [Breadth First Search][algo-bfs] to explore it.
 Starting from a given position, we will build
 [a queue](https://en.wikipedia.org/wiki/Queue_(abstract_data_type)) of nodes to
 visit with their associated distances. Initially, this queue will only contain
@@ -3167,7 +3169,7 @@ def find_adjacent(grid, src):
 Done, now our `find_adjacent()` function returns a list of adjacent nodes and
 minimum steps to reach them. Moreover, given the way we are exploring, the list
 will be sorted by increasing distance. It is also important to note that the
-list of adjacent nodes will never include the start (`@`), as we only are
+list of adjacent nodes will never include the start (`@`), as we are only
 interested in starting from there, not going back to it. Here's an example:
 
 ```python
@@ -3289,6 +3291,8 @@ Sounds intricate, but it's simpler than it looks. Let's make the code mainly
 speak for itself, with the help of some comments.
 
 ```python
+import heapq
+
 def reachable_keys(src, mykeys):
     # src   : starting node
     # mykeys: set of keys that I already found
@@ -3579,9 +3583,9 @@ We use the characters `'1'` through `'4'` here just because the nodes in our
 graph are identified by their corresponding character on the grid, and we want
 to have four different identifiers of course.
 
-Since we are going to re-start the search using the a new graph, first we'll
-need to clear all the data previously cached by `@lru_cache`. This can be easily
-done by calling `.cache_clear()` on every decorated function that we used.
+Since we are going to re-start the search using the new graph, first we'll need
+to clear all the data previously cached by `@lru_cache`. This can be easily done
+by calling `.cache_clear()` on every decorated function that we used.
 
 ```python
 minimum_steps.cache_clear()
@@ -3792,19 +3796,20 @@ def get_width(x):
         if run((x + width, y)) == 0:
             break
 
-    # Return the width wd just found and the saved coordinate.
+    # Return the width we just found and the saved coordinate.
     return width, y
 ```
 
 A naive solution to the problem would be to just scan every single column with a
-`for`, starting from a small number (e.g.`10`) and calling `get_width()` until
-we get a width greater or equal to 100:
+`for`, starting from a small number (the first few columns don't seem to have
+cells hit by the beam for some reason) and calling `get_width()` until we get a
+width greater or equal to 100:
 
 ```python
-for x in count(0):
-	width, y = get_width(x)
-	if width >= 100:
-		break
+for x in count(50):
+    width, y = get_width(x)
+    if width >= 100:
+        break
 
 answer = x * 10000 + y
 ```
@@ -3815,20 +3820,20 @@ we want way faster.
 
 ```python
 def bin_search(lo, hi):
-	best = None
+    best = None
 
-	while hi - lo > 1:
-		x = (lo + hi) // 2
+    while hi - lo > 1:
+        x = (lo + hi) // 2
 
-		width, y = get_width(x)
+        width, y = get_width(x)
 
-		if width > 100:
-			hi = x
-			best = (x, y)
-		elif width < 100:
-			lo = x
+        if width > 100:
+            hi = x
+            best = (x, y)
+        elif width < 100:
+            lo = x
 
-	return best
+    return best
 ```
 
 We can run the above with `lo = 0, hi = 10000` since the solution asks for
@@ -3861,17 +3866,17 @@ best_x, best_y = approx_x, approx_y
 
 # Refine looking back a few steps.
 for x in range(approx_x, approx_x - 10, -1):
-	width, y = get_width(x)
+    width, y = get_width(x)
 
-	if width >= 100:
-		best_x, best_y = x, y
+    if width >= 100:
+        best_x, best_y = x, y
 
 answer = best_x * 10000 + best_y
 print('Part 2:', answer)
 ```
 
 And there it is, *almost* just binary search. This runs an order of magnitude
-faster than a linear search from the start, and we have out part 2 solution in
+faster than a linear search from the start, and we have our part 2 solution in
 a fraction of a second!
 
 
@@ -5462,6 +5467,7 @@ Welcome to *IntcodeNET* I guess!
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
 [py-math]:                    https://docs.python.org/3/library/math.html
 [py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
+[py-math-ceil]:               https://docs.python.org/3/library/math.html#math.ceil
 [py-math-atan2]:              https://docs.python.org/3/library/math.html#math.atan2
 [py-unpacking]:               https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 
