@@ -5497,7 +5497,180 @@ print('Part 1:', total)
 
 ### Part 2
 
-*TODO...*
+Oh no, recursive madness again! Similarly to what happened for [day 20][d20]
+part 2, the problem now becomes recursive.
+
+The central cell of our grid (that is `(2, 2)`) now becomes special: it becomes
+a smaller 5-by-5 grid itself. Every side of this smaller grid is adjacent to the
+grid above. In addition to this, this property repeats infinitely recursively,
+meaning that our base grid is too in the middle of a bigger grid, and so on.
+
+To better understand this, here's an example right from the problem statement:
+
+      1 |  2 |    3    | 4  | 5
+    ----+----+---------+----+----
+      6 |  7 |    8    | 9  | 10
+    ----+----+---------+----+----
+        |    |A|B|C|D|E|    |
+        |    |-+-+-+-+-|    |
+        |    |F|G|H|I|J|    |
+        |    |-+-+-+-+-|    |
+     11 | 12 |K|L|?|N|O| 14 | 15
+        |    |-+-+-+-+-|    |
+        |    |P|Q|R|S|T|    |
+        |    |-+-+-+-+-|    |
+        |    |U|V|W|X|Y|    |
+    ----+----+---------+----+----
+     16 | 17 |    18   | 19 | 20
+    ----+----+---------+----+----
+     21 | 22 |    23   | 24 | 25
+
+Here, the internal grid has cells labeled with letters, while the external grid
+has cells labeled with numbers. The `?` in the center of the smaller grid
+represents another grid. In this example cell `12` is adjacent to `7`, `11`,
+`17`, as well as `A`, `F`, `K`, `P`, `U`. On the other hand, cell `C` is
+adjacent to `B`, `H`, `D`, and `8`. Cell `U` is adjacent wih both `12` and `18`.
+
+In short, every external cell is now also adjacent to a single cell of an higher
+level grid, and each cell adjacent to the center is now adjacent to the 5 cells
+of the side of a deeper level grid.
+
+Starting from the same initial grid, we now also need to take the above into
+account when evolving each cell, keeping in mind that every other grid at
+different depth levels starts without bugs. We need to count the total number of
+bugs present in the whole recursive grid after 200 minutes (that is, 200
+generations).
+
+The simplest way to represent this recursive grid madness is to use a
+dictionary. We know that all grids except the one at level `0` are empty at
+first, so we can sart with a dictionary containing only the starting grid. We
+will also consider the center of a grid to always be empty.
+
+```python
+CENTER_ROW, CENTER_COL = ROWS // 2 + 1, COLS // 2 + 1
+
+grid = deepcopy(orig_grid)
+grid[CENTER_ROW][CENTER_COL] = EMPTY
+grids = {0: grid}
+```
+
+Clearly our `evolve()` function which calculates the new state of a cell given a
+grid and two coordinates is no longer useful. Let's write a new function which
+does the same for our recursive grid. In order to evolve a single cell, in
+addition to the grid containing the cell, we now also need to look at the inner
+and outer grids.
+
+We'll need to apply the following rules:
+
+- When looking at a cell that is on a side of the grid, we will also check if
+  the corresponding outer grid has a bug in the cell that is adjacent to the
+  side containing the given cell.
+- When looking at a cell that is adjacent to the center, we will also count the
+  bugs on all the cells on the side of the inner grid that is adjacent to the
+  given cell.
+
+In addition to the above, for each cell we will still check neighbors on its
+grid regardless of the position of the cell.
+
+Transleted into code, the above becomes something like this:
+
+```python
+def recursive_evolve(grid, grid_outer, grid_inner, r, c):
+    alive = 0
+
+    if grid_outer is not None:
+        if c == 0 and grid_outer[CENTER_ROW][CENTER_COL - 1]: # left
+            alive += 1
+        if r == 0 and grid_outer[CENTER_ROW - 1][CENTER_COL]: # up
+            alive += 1
+        if c == MAXCOL and grid_outer[CENTER_ROW][CENTER_COL + 1]: # right
+            alive += 1
+        if r == MAXROW and grid_outer[CENTER_ROW + 1][CENTER_COL]: # down
+            alive += 1
+
+    if grid_inner is not None:
+        if (r, c) == (CENTER_ROW, CENTER_COL - 1): # left
+            alive += sum(grid_inner[i][0] for i in range(ROWS))
+        elif (r, c) == (CENTER_ROW - 1, CENTER_COL): # up
+            alive += sum(grid_inner[0][i] for i in range(COLS))
+        elif (r, c) == (CENTER_ROW, CENTER_COL + 1): # right
+            alive += sum(grid_inner[i][MAXCOL] for i in range(ROWS))
+        elif (r, c) == (CENTER_ROW + 1, CENTER_COL): # down
+            alive += sum(grid_inner[MAXROW][i] for i in range(COLS))
+
+    alive += neighbors4_alive(grid, r, c)
+
+    if grid[r][c] == BUG:
+        if alive == 1:
+            return BUG
+        return EMPTY
+
+    if alive == 1 or alive == 2:
+        return BUG
+    return EMPTY
+```
+
+The check for `is not None` is needed since we are going to use `None` when a
+grid has an empty inner or outer grid (instead of wasting time counting on an
+empty grid).
+
+We now need a recursive version of the `nextgen()` function, to get the next
+generation of a grid given its depth. This function will just apply
+`recursive_evolve()` to every cell of a given grid, also taking into account the
+relative inner and outer grids. We will also call this function to generate
+newer grids. we know that each minute new bugs can potentially evolve in the two
+innermost and outermost grids, so we'll create a new innermost and outermost
+grid each time using the same function.
+
+```python
+def recursive_nextgen(grids, depth):
+    if depth in grids:
+        grid = grids[depth]
+    else:
+        # Creaete an empty grid if there's no grid at the current depth.
+        grid = [[EMPTY] * COLS for _ in range(ROWS)]
+
+    new_grid = [[EMPTY] * COLS for _ in range(ROWS)]
+    grid_outer = grids.get(depth + 1)
+    grid_inner = grids.get(depth - 1)
+
+    for r, c in product(range(ROWS), range(COLS)):
+        # Skip the center cell.
+        if (r, c) == (CENTER_ROW, CENTER_COL):
+            continue
+
+        new_grid[r][c] = recursive_evolve(grid, grid_outer, grid_inner, r, c)
+
+    return new_grid
+```
+
+Every generation, we will evolve every single grid in the dictionary and then
+add two new innermost and outermost grids. Pretty straightforward.
+
+```python
+min_depth = 0
+max_depth = 0
+
+for _ in range(200):
+    new_grids = {}
+
+    for depth in grids:
+        new_grids[depth] = recursive_nextgen(grids, depth)
+
+    min_depth -= 1
+    new_grids[min_depth] = recursive_nextgen(grids, min_depth)
+
+    max_depth += 1
+    new_grids[max_depth] = recursive_nextgen(grids, max_depth)
+
+    grids = new_grids
+
+bugs = sum(sum(sum(c == BUG for c in row) for row in grid) for grid in grids.values())
+print('Part 2:', bugs)
+```
+
+Yeah, that triple nested [`sum()`][py-builtin-sum] is pretty funny, isn't it?
+Day 24 completed, only one left!
 
 
 [d01]: #day-1---the-tyranny-of-the-rocket-equation
