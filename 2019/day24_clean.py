@@ -38,27 +38,26 @@ def recursive_evolve(grid, grid_outer, grid_inner, r, c):
 	alive = 0
 
 	if grid_outer is not None:
-		if c == 0 and grid_outer[2][1]: # left
+		if c == 0 and grid_outer[CENTER_ROW][CENTER_COL - 1]: # left
 			alive += 1
-		if r == 0 and grid_outer[1][2]: # up
+		if r == 0 and grid_outer[CENTER_ROW - 1][CENTER_COL]: # up
 			alive += 1
-		if c == MAXCOL and grid_outer[2][3]: # right
+		if c == MAXCOL and grid_outer[CENTER_ROW][CENTER_COL + 1]: # right
 			alive += 1
-		if r == MAXROW and grid_outer[3][2]: # down
+		if r == MAXROW and grid_outer[CENTER_ROW + 1][CENTER_COL]: # down
 			alive += 1
 
 	if grid_inner is not None:
-		if (r, c) == (2, 1): # left
+		if (r, c) == (CENTER_ROW, CENTER_COL - 1): # left
 			alive += sum(grid_inner[i][0] for i in range(ROWS))
-		elif (r, c) == (1, 2): # up
+		elif (r, c) == (CENTER_ROW - 1, CENTER_COL): # up
 			alive += sum(grid_inner[0][i] for i in range(COLS))
-		elif (r, c) == (2, 3): # right
+		elif (r, c) == (CENTER_ROW, CENTER_COL + 1): # right
 			alive += sum(grid_inner[i][MAXCOL] for i in range(ROWS))
-		elif (r, c) == (3, 2): # down
+		elif (r, c) == (CENTER_ROW + 1, CENTER_COL): # down
 			alive += sum(grid_inner[MAXROW][i] for i in range(COLS))
 
-	if (r, c) != (2, 2):
-		alive += neighbors4_alive(grid, r, c)
+	alive += neighbors4_alive(grid, r, c)
 
 	if grid[r][c] == BUG:
 		if alive == 1:
@@ -80,7 +79,7 @@ def recursive_nextgen(grids, depth):
 	grid_inner = grids.get(depth - 1)
 
 	for r, c in product(range(ROWS), range(COLS)):
-		if (r, c) == (2, 2):
+		if (r, c) == (CENTER_ROW, CENTER_COL):
 			continue
 
 		new_grid[r][c] = recursive_evolve(grid, grid_outer, grid_inner, r, c)
@@ -122,9 +121,11 @@ assert total == 32511025
 advent.submit_answer(1, total)
 
 
-grid = deepcopy(orig_grid)
-grid[2][2] = EMPTY
+assert ROWS % 2 == 1 and COLS % 2 == 1
+CENTER_ROW, CENTER_COL = ROWS // 2 + 1, COLS // 2 + 1
 
+grid = deepcopy(orig_grid)
+grid[CENTER_ROW][CENTER_COL] = EMPTY
 grids = {0: grid}
 min_depth = 0
 max_depth = 0
