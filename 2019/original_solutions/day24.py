@@ -4,6 +4,7 @@ from utils import advent
 from utils.modules import *
 from utils.helpers import *
 from utils.decorators import *
+from utils.timer import *
 from copy import deepcopy
 
 fin = advent.get_input()

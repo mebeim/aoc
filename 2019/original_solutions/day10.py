@@ -5,6 +5,7 @@ from utils.modules import *
 from utils.helpers import *
 from utils.decorators import *
 from fractions import Fraction
+from utils.timer import *
 
 fin = advent.get_input()
 # eprint(*fin, sep='')

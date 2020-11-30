@@ -4,6 +4,7 @@ from utils import advent
 from utils.modules import *
 from utils.helpers import *
 from utils.decorators import *
+from utils.timer import *
 from functools import lru_cache
 
 advent.setup(2018, 22)

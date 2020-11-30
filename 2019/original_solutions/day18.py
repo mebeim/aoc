@@ -4,6 +4,7 @@ from utils import advent
 from utils.modules import *
 from utils.helpers import *
 from utils.decorators import *
+from utils.timer import *
 from string import ascii_lowercase as lowercase, ascii_uppercase as uppercase
 
 advent.setup(2019, 18, 1)

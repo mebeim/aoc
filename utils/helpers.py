@@ -1,11 +1,7 @@
 import sys
-import time
-import atexit
 import re
 
 from functools import wraps
-
-from .meta_helpers import *
 
 def log(s, *a):
 	sys.stderr.write(s.format(*a))
@@ -42,41 +38,6 @@ def dump_char_matrix(mat, transpose=False):
 			sys.stderr.write('\n')
 
 	sys.stderr.flush()
-
-def timer_start(name=sys.argv[0]):
-	now_wall, now_cpu = time.perf_counter(), time.process_time()
-	TIMERS[name] = (now_wall, now_cpu, now_wall, now_cpu, 1)
-
-def timer_lap(name=sys.argv[0]):
-	now_wall, now_cpu =  time.perf_counter(), time.process_time()
-	*x, prev_wall, prev_cpu, lap = TIMERS[name]
-
-	dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
-	dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
-
-	log('Timer {} lap #{}: {} wall, {} CPU\n'.format(name, lap, dt_wall, dt_cpu))
-
-	TIMERS[name] = (*x,  time.perf_counter(), time.process_time(), lap + 1)
-
-def timer_stop(name=sys.argv[0]):
-	now_wall, now_cpu = time.perf_counter(), time.process_time()
-	prev_wall, prev_cpu, *_ = TIMERS.pop(name)
-
-	dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
-	dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
-
-	log('Timer {}: {} wall, {} CPU\n'.format(name, dt_wall, dt_cpu))
-
-def timer_stop_all():
-	now_wall, now_cpu =  time.perf_counter(), time.process_time()
-
-	while TIMERS:
-		k, v = TIMERS.popitem()
-		prev_wall, prev_cpu, *_ = v
-		dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
-		dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
-
-		log('Timer {}: {} wall, {} CPU\n'.format(k, dt_wall, dt_cpu))
 
 def get_ints(file, use_regexp=False, regexp=r'-?\d+', as_tuple=False):
 	kind = tuple if as_tuple else list
@@ -118,14 +79,10 @@ def get_char_matrix(file, rstrip=True, lstrip=True, as_tuples=False):
 		return kind(kind(l.lstrip()) for l in lines)
 	return kind(map(kind, lines))
 
-#################################################
-
-TIMERS = {}
-atexit.register(timer_stop_all)
+################################################################################
 
 __all__ = [
 	'log', 'rlog', 'eprint',
-	'timer_start', 'timer_lap', 'timer_stop', 'timer_stop_all',
 	'dump_iterable', 'dump_dict', 'dump_char_matrix',
 	'get_ints', 'get_int_matrix', 'get_lines', 'get_char_matrix'
 ]

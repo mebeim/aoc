@@ -4,6 +4,7 @@ from utils import advent
 from utils.modules import *
 from utils.helpers import *
 from utils.decorators import *
+from utils.timer import *
 import z3
 
 advent.setup(2018, 23)
