@@ -18,6 +18,4 @@ def log_calls(log_return=True):
 
 	return decorating_func
 
-__all__ = [
-	'log_calls'
-]
+__all__ = ['log_calls']

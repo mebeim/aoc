@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 
 from utils import advent
-from utils.modules import *
-from utils.helpers import *
-from utils.decorators import *
-from utils.timer import *
+from utils.all import *
 
 fin = advent.get_input()
 timer_start()

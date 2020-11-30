@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 
 from utils import advent
-from utils.modules import *
-from utils.helpers import *
-from utils.decorators import *
+from utils.all import *
 from fractions import Fraction
-from utils.timer import *
 
 fin = advent.get_input()
 # eprint(*fin, sep='')
