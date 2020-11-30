@@ -2,8 +2,7 @@
 
 from utils import advent
 from math import ceil
-from collections import deque
-from utils import *
+from collections import deque, defaultdict
 
 def needed_ore(recipes, fuel_qty):
 	queue = deque([(fuel_qty, 'FUEL')])
