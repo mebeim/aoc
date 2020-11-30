@@ -8,13 +8,12 @@ from datetime import datetime, timedelta
 from .helpers import log
 
 def check_or_die(resp):
-	pls_identify = 'please identify yourself' in resp.text.lower()
-
 	if resp.status_code != 200:
 		log('\n[advent] ERROR: response {}, url: {}\n', resp.status_code, resp.url)
 		log('[advent] Did you log in and update your session cookie?\n')
 		sys.exit(1)
-	elif pls_identify:
+
+	if 'please identify yourself' in resp.text.lower():
 		log('\n[advent] ERROR: Server returned 200, but is asking for identification.\n')
 		log('[advent] Did you log in and update your session cookie?\n')
 		sys.exit(1)
@@ -36,8 +35,9 @@ def setup(year, day):
 	global DAY
 	global SESSION
 
-	assert year >= 2015
-	assert 1 <= day <= 25
+	if not (year >= 2015 and 1 <= day <= 25):
+		log('[advent] ERROR: invalid year and/or day set!\n')
+		sys.exit(1)
 
 	YEAR = year
 	DAY  = day
@@ -45,7 +45,7 @@ def setup(year, day):
 	if REQUESTS and os.path.isfile('secret_session_cookie'):
 		with open('secret_session_cookie') as f:
 			SESSION = f.read().rstrip()
-			s.cookies.set('session', SESSION)
+			S.cookies.set('session', SESSION)
 
 def get_input(fname=None, mode='r'):
 	check_setup_once()
@@ -76,7 +76,7 @@ def get_input(fname=None, mode='r'):
 
 		log('downloading... ')
 
-		r = s.get(URL.format(YEAR, DAY, 'input'))
+		r = S.get(URL.format(YEAR, DAY, 'input'))
 		check_or_die(r)
 
 		with open(fname, 'wb') as f:
@@ -102,7 +102,7 @@ def submit_answer(part, answer):
 
 	log('[advent] Submitting day {} part {} answer: {}\n', DAY, part, answer)
 
-	r = s.post(URL.format(YEAR, DAY, 'answer'), data={'level': part, 'answer': answer})
+	r = S.post(URL.format(YEAR, DAY, 'answer'), data={'level': part, 'answer': answer})
 	check_or_die(r)
 	t = r.text.lower()
 
@@ -136,4 +136,4 @@ REQUESTS  = find_loader('requests')
 
 if REQUESTS:
 	import requests
-	s = requests.Session()
+	S = requests.Session()
