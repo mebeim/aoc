@@ -13,7 +13,10 @@ if find_loader('z3') is not None:
 	import z3
 
 if find_loader('blist') is not None:
-	import blist
+	try:
+		import blist
+	except ImportError:
+		pass
 
 if find_loader('sortedcontainers') is not None:
 	import sortedcontainers
