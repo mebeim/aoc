@@ -131,7 +131,7 @@ def submit_answer(part, answer):
 
 URL       = 'https://adventofcode.com/{:d}/day/{:d}/{:s}'
 SESSION   = ''
-CACHE_DIR = './inputs'
+CACHE_DIR = '../inputs'
 YEAR      = -1
 DAY       = -1
 DRY_RUN   = False
