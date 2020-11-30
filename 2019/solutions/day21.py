@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 from lib.intcode import intcode_oneshot
 
 advent.setup(2019, 21, dry_run=True)

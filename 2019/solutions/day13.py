@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 from lib.intcode import IntcodeVM
 
 EMPTY, WALL, BLOCK, PADDLE, BALL = range(5)

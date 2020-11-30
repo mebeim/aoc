@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 from utils import *
 
 advent.setup(2018, 25, dry_run=True)

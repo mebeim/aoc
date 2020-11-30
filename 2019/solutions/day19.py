@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 from itertools import product, count
 from lib.intcode import intcode_oneshot
 

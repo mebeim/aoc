@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 
 WIDTH, HEIGHT = 25, 6
 SIZE = WIDTH * HEIGHT

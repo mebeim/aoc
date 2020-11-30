@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 from utils import *
 from string import ascii_lowercase as lowercase, ascii_uppercase as uppercase
 

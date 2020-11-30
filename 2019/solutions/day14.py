@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 from math import ceil
 from collections import deque
 from utils import *

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 import copy
 import heapq
 from collections import defaultdict

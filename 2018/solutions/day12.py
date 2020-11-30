@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 
 def simulate(first_gen, rules, days):
 	cur_gen      = first_gen

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 
 DEAL_NEW, DEAL_INC, CUT = 0, 1, 2
 

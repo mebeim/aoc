@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 from utils import *
 
 advent.setup(2019, 1)

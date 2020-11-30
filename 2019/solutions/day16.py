@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 
 advent.setup(2019, 16, dry_run=True)
 fin = advent.get_input()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 from fractions import gcd
 from math import atan2, pi as PI
 

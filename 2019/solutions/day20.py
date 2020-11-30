@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 import heapq
 from functools import lru_cache
 from collections import deque, defaultdict, namedtuple

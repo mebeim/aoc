@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 
 MOVE_DX = {'U': 0, 'D':  0, 'R': 1, 'L': -1}
 MOVE_DY = {'U': 1, 'D': -1, 'R': 0, 'L':  0}

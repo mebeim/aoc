@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 from collections import defaultdict
 
 advent.setup(2018, 3, dry_run=True)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 from itertools import islice
 
 advent.setup(2019, 4, dry_run=True)

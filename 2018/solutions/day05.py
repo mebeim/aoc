@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 from string import ascii_lowercase, ascii_uppercase
 from collections import deque
 

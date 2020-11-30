@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import advent
+from utils import advent
 import heapq
 
 advent.setup(2018, 12, dry_run=True)
