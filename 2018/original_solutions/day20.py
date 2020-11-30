@@ -16,7 +16,7 @@ def reclog(depth):
 		log(' |'*depth + ' ' + s, *a)
 	return fn
 
-advent.setup(2018, 20, dry_run=True)
+advent.setup(2018, 20)
 fin = advent.get_input()
 # print(*fin)
 

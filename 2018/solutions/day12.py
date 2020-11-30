@@ -38,7 +38,7 @@ def simulate(first_gen, rules, days):
 	return idx_sum + alive * days_left
 
 
-advent.setup(2018, 12, dry_run=True)
+advent.setup(2018, 12)
 fin = advent.get_input()
 
 plants = fin.readline().replace('initial state:', '').strip()
@@ -55,9 +55,9 @@ for line in fin:
 ans = simulate(plants, rules, 20)
 
 assert ans == 1447
-advent.submit_answer(1, ans)
+advent.print_answer(1, ans)
 
 ans2 = simulate(plants, rules, 50*10**9)
 
 assert ans2 == 1050000000480
-advent.submit_answer(2, ans2)
+advent.print_answer(2, ans2)

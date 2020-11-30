@@ -3,7 +3,7 @@
 from utils import advent
 from collections import defaultdict
 
-advent.setup(2018, 3, dry_run=True)
+advent.setup(2018, 3)
 fin = advent.get_input()
 
 canvas = defaultdict(set)
@@ -26,7 +26,7 @@ for line in fin:
 overlapping = sum(map(lambda x: len(x) > 1, canvas.values()))
 
 assert overlapping == 118322
-advent.submit_answer(1, overlapping)
+advent.print_answer(1, overlapping)
 
 for c in filter(lambda x: len(x) > 1, canvas.values()):
 	claim_ids -= c
@@ -36,4 +36,4 @@ assert len(claim_ids) == 1
 good = claim_ids.pop()
 
 assert good == 1178
-advent.submit_answer(2, good)
+advent.print_answer(2, good)

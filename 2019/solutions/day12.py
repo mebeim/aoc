@@ -11,7 +11,7 @@ def lcm(a, b):
 	return abs(a * b) // gcd(a, b)
 
 
-advent.setup(2019, 12, dry_run=True)
+advent.setup(2019, 12)
 fin = advent.get_input()
 
 exp = re.compile(r'-?\d+')
@@ -39,7 +39,7 @@ kinetic   = (sum(map(abs, m.vel)) for m in moons)
 total     = sum(p * k for p, k in zip(potential, kinetic))
 
 assert total == 7013
-advent.submit_answer(1, total)
+advent.print_answer(1, total)
 
 
 periods = []
@@ -66,4 +66,4 @@ for dim in range(3):
 total_steps = 2 * reduce(lcm, periods, 1)
 
 assert total_steps == 324618307124784
-advent.submit_answer(2, total_steps)
+advent.print_answer(2, total_steps)

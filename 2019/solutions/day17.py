@@ -104,7 +104,7 @@ def find_functions(moves):
 						return A, B, C
 
 
-advent.setup(2019, 17, dry_run=True)
+advent.setup(2019, 17)
 fin = advent.get_input()
 
 program = list(map(int, fin.read().split(',')))
@@ -127,7 +127,7 @@ for r in range(1, rows - 1):
 			startdir = '^v<>'.index(grid[r][c])
 
 assert answer == 1544
-advent.submit_answer(1, answer)
+advent.print_answer(1, answer)
 
 
 moves = get_moves(grid, startpos, startdir)
@@ -140,4 +140,4 @@ vm.code[0] = 2
 answer = vm.run(robot_prog)[-1]
 
 assert answer == 696373
-advent.submit_answer(2, answer)
+advent.print_answer(2, answer)

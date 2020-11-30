@@ -29,7 +29,7 @@ def manhattan(p):
 	return abs(p[0]) + abs(p[1])
 
 
-advent.setup(2019, 3, dry_run=True)
+advent.setup(2019, 3)
 lines = advent.get_input().readlines()
 
 all_visited = []
@@ -44,9 +44,9 @@ intersections = set.intersection(*all_visited)
 min_distance = min(map(manhattan, intersections))
 
 assert min_distance == 3247
-advent.submit_answer(1, min_distance)
+advent.print_answer(1, min_distance)
 
 shortest_path = min(sum(l[p] for l in all_steps) for p in intersections)
 
 assert shortest_path == 48054
-advent.submit_answer(2, shortest_path)
+advent.print_answer(2, shortest_path)

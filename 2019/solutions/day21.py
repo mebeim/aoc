@@ -3,7 +3,7 @@
 from utils import advent
 from lib.intcode import intcode_oneshot
 
-advent.setup(2019, 21, dry_run=True)
+advent.setup(2019, 21)
 fin = advent.get_input()
 program = list(map(int, fin.read().split(',')))
 
@@ -24,7 +24,7 @@ for value in intcode_oneshot(program, inp):
 	continue
 
 assert value == 19359752
-advent.submit_answer(2, value)
+advent.print_answer(2, value)
 
 # (!A & D) | (!B & D) | (!C & D & H)
 # == (!A | !B | (!C & H)) & D
@@ -44,4 +44,4 @@ for value in intcode_oneshot(program, inp):
 	continue
 
 assert value == 1141869516
-advent.submit_answer(2, value)
+advent.print_answer(2, value)

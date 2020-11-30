@@ -16,7 +16,7 @@ def times_slept(guard_id, minute):
 	return sum(a <= minute < b for a, b in guards[guard_id])
 
 
-advent.setup(2018, 4, dry_run=True)
+advent.setup(2018, 4)
 fin = advent.get_input()
 
 events = list(map(str.split, sorted(fin.readlines())))
@@ -40,7 +40,7 @@ worst_guard_min = max(range(60), key=lambda m: times_slept(worst_guard, m))
 ans = worst_guard * worst_guard_min
 
 assert ans == 106710
-advent.submit_answer(1, ans)
+advent.print_answer(1, ans)
 
 worst_guard = max(guards, key=lambda g: max(times_slept(g, m) for m in range(60)))
 worst_guard_min = max(range(60), key=lambda m: times_slept(worst_guard, m))
@@ -48,4 +48,4 @@ worst_guard_min = max(range(60), key=lambda m: times_slept(worst_guard, m))
 ans2 = worst_guard * worst_guard_min
 
 assert ans2 == 10491
-advent.submit_answer(2, ans2)
+advent.print_answer(2, ans2)

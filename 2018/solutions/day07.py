@@ -51,7 +51,7 @@ def work(graph, queue, duration, max_workers):
 	return total_time
 
 
-advent.setup(2018, 7, dry_run=True)
+advent.setup(2018, 7)
 fin = advent.get_input()
 
 graph = defaultdict(lambda: [0, set()])
@@ -70,7 +70,7 @@ for letter, node in graph.items():
 order = lex_toposort(copy.deepcopy(graph), roots[:])
 
 assert order == 'JMQZELVYXTIGPHFNSOADKWBRUC'
-advent.submit_answer(1, order)
+advent.print_answer(1, order)
 
 durations = {}
 for c in graph:
@@ -79,4 +79,4 @@ for c in graph:
 total = work(graph, roots, durations, 5)
 
 assert total == 1133
-advent.submit_answer(2, total)
+advent.print_answer(2, total)

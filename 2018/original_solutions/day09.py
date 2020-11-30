@@ -5,7 +5,7 @@ import sys
 
 from blist import blist
 
-advent.setup(2018, 9, dry_run=True)
+advent.setup(2018, 9)
 fin = advent.get_input()
 
 ##################################################

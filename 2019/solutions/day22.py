@@ -53,7 +53,7 @@ start, step = transform(start, step, size, moves)
 position = ((target_card - start) * pow(step, size - 2, size)) % size
 
 assert position == 5169
-advent.submit_answer(1, position)
+advent.print_answer(1, position)
 
 
 start, step, size = 0, 1, 119315717514047
@@ -65,4 +65,4 @@ start, step = repeat(start, step, size, repetitions)
 card = (start + step * target_position) % size
 
 assert card == 74258074061935
-advent.submit_answer(2, card)
+advent.print_answer(2, card)

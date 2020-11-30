@@ -87,7 +87,7 @@ def recursive_nextgen(grids, depth):
 	return new_grid
 
 
-advent.setup(2019, 24, dry_run=True)
+advent.setup(2019, 24)
 fin = advent.get_input()
 orig_grid = list(list(l.strip()) for l in fin)
 
@@ -118,7 +118,7 @@ for r, c in product(range(ROWS), range(COLS)):
 	biodiv <<= 1
 
 assert total == 32511025
-advent.submit_answer(1, total)
+advent.print_answer(1, total)
 
 
 assert ROWS % 2 == 1 and COLS % 2 == 1
@@ -147,4 +147,4 @@ for _ in range(200):
 bugs = sum(sum(sum(c == BUG for c in row) for row in grid) for grid in grids.values())
 
 assert bugs == 1932
-advent.submit_answer(2, bugs)
+advent.print_answer(2, bugs)

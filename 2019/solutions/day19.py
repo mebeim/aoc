@@ -44,14 +44,14 @@ def bin_search(lo, hi, target):
 	return best
 
 
-advent.setup(2019, 19, dry_run=True)
+advent.setup(2019, 19)
 fin = advent.get_input()
 
 program = list(map(int, fin.read().split(',')))
 total = sum(map(run, product(range(50), range(50))))
 
 assert total == 152
-advent.submit_answer(1, total)
+advent.print_answer(1, total)
 
 
 TARGET = 100
@@ -66,4 +66,4 @@ for x in range(bestx, bestx - 10, -1):
 answer = bestx * 10000 + besty
 
 assert answer == 10730411
-advent.submit_answer(2, answer)
+advent.print_answer(2, answer)

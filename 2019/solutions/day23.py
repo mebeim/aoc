@@ -39,7 +39,7 @@ def vm_write_for(self):
 	return vm_write
 
 
-advent.setup(2019, 23, dry_run=True)
+advent.setup(2019, 23)
 fin = advent.get_input()
 
 program = list(map(int, fin.read().split(',')))
@@ -61,7 +61,7 @@ while nat_packet is None:
 last_nat_y = nat_packet[1]
 
 assert last_nat_y == 17541
-advent.submit_answer(1, last_nat_y)
+advent.print_answer(1, last_nat_y)
 
 
 last_nat_y = None
@@ -83,4 +83,4 @@ while not done:
 			nat_packet = []
 
 assert last_nat_y == 12415
-advent.submit_answer(2, last_nat_y)
+advent.print_answer(2, last_nat_y)

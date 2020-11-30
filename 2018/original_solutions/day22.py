@@ -6,7 +6,7 @@ from utils.helpers import *
 from utils.decorators import *
 from functools import lru_cache
 
-advent.setup(2018, 22, dry_run=True)
+advent.setup(2018, 22)
 fin = advent.get_input()
 # print(*fin)
 timer_start()

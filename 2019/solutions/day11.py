@@ -61,7 +61,7 @@ def sparse_to_matrix(grid):
 
 	return matrix
 
-advent.setup(2019, 11, dry_run=True)
+advent.setup(2019, 11)
 fin = advent.get_input()
 
 program = list(map(int, fin.read().split(',')))
@@ -70,7 +70,7 @@ grid = run_robot(robot, BLACK)
 n_painted = len(grid)
 
 assert n_painted == 2056
-advent.submit_answer(1, n_painted)
+advent.print_answer(1, n_painted)
 
 grid = run_robot(robot, WHITE)
 pic = sparse_to_matrix(grid)
@@ -86,4 +86,4 @@ assert (pic ==
 )
 
 # Can't submit this as is, LOL
-advent.submit_answer(2, 'GLBEPJZP')
+advent.print_answer(2, 'GLBEPJZP')

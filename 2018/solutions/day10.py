@@ -33,7 +33,7 @@ def search(pts):
 
 	return t1
 
-advent.setup(2018, 10, dry_run=True)
+advent.setup(2018, 10)
 fin = advent.get_input()
 
 points = []
@@ -64,7 +64,7 @@ assert (word ==
 '#    #  #       #    #  #    #  #    #  #       ######  #    #\n')
 
 # Can't submit this as is, LOL
-advent.submit_answer(1, 'RPNNXFZR')
+advent.print_answer(1, 'RPNNXFZR')
 
 assert t == 10946
-advent.submit_answer(2, t)
+advent.print_answer(2, t)

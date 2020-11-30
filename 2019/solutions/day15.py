@@ -93,7 +93,7 @@ def bfs_farthest(maze, src):
 	return dist
 
 
-advent.setup(2019, 15, dry_run=True)
+advent.setup(2019, 15)
 fin = advent.get_input()
 
 program = list(map(int, fin.read().split(',')))
@@ -104,9 +104,9 @@ maze, oxygen = wall_follower(vm, startpos)
 min_dist = bfs_shortest(maze, startpos, oxygen)
 
 assert min_dist == 354
-advent.submit_answer(1, min_dist)
+advent.print_answer(1, min_dist)
 
 time = bfs_farthest(maze, oxygen)
 
 assert time == 370
-advent.submit_answer(2, time)
+advent.print_answer(2, time)

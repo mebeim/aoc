@@ -1,12 +1,11 @@
 import os
 import sys
 import re
+
 from importlib import find_loader
 from datetime import datetime, timedelta
 
-def log(s, *a):
-	sys.stderr.write(s.format(*a))
-	sys.stderr.flush()
+from .helpers import log
 
 def check_or_die(resp):
 	pls_identify = 'please identify yourself' in resp.text.lower()
@@ -32,18 +31,16 @@ def check_setup_once():
 		log('[advent] Year and day not set, assuming today: Dec {}, {}.\n', d, y)
 		setup(y, d)
 
-def setup(year, day, dry_run=False):
+def setup(year, day):
 	global YEAR
 	global DAY
-	global DRY_RUN
 	global SESSION
 
 	assert year >= 2015
 	assert 1 <= day <= 25
 
-	YEAR    = year
-	DAY     = day
-	DRY_RUN = dry_run
+	YEAR = year
+	DAY  = day
 
 	if REQUESTS and os.path.isfile('secret_session_cookie'):
 		with open('secret_session_cookie') as f:
@@ -92,49 +89,49 @@ def get_input(fname=None, mode='r'):
 
 	return open(fname, mode)
 
+def print_answer(part, answer):
+	print('Part {}:'.format(part), answer)
+
 def submit_answer(part, answer):
 	check_setup_once()
 
-	if DRY_RUN:
-		print('Part {}: {}'.format(part, answer))
-	elif not REQUESTS:
+	if not REQUESTS:
 		log('[advent] Cannot upload answer, no requests module installed!\n')
-		print('Part {}: {}'.format(part, answer))
-	else:
-		log('[advent] Submitting day {} part {} answer: {}\n', DAY, part, answer)
+		print_answer(part, answer)
+		return True
 
-		r = s.post(URL.format(YEAR, DAY, 'answer'), data={'level': part, 'answer': answer})
-		check_or_die(r)
+	log('[advent] Submitting day {} part {} answer: {}\n', DAY, part, answer)
 
-		t = r.text.lower()
+	r = s.post(URL.format(YEAR, DAY, 'answer'), data={'level': part, 'answer': answer})
+	check_or_die(r)
+	t = r.text.lower()
 
-		if 'did you already complete it' in t:
-			log('[advent] Already completed!\n')
-			return True
+	if 'did you already complete it' in t:
+		log('[advent] Already completed!\n')
+		return True
 
-		if "that's the right answer" in t:
-			log('[advent] Right answer!\n')
-			return True
+	if "that's the right answer" in t:
+		log('[advent] Right answer!\n')
+		return True
 
-		if 'you have to wait' in t:
-			matches = re.compile(r'you have ([\w ]+) left to wait').findall(t)
+	if 'you have to wait' in t:
+		matches = re.compile(r'you have ([\w ]+) left to wait').findall(t)
 
-			if matches:
-				log('[advent] Submitting too fast, {} left to wait.\n', matches[0])
-			else:
-				log('[advent] Submitting too fast, slow down!\n')
+		if matches:
+			log('[advent] Submitting too fast, {} left to wait.\n', matches[0])
+		else:
+			log('[advent] Submitting too fast, slow down!\n')
 
-			return False
-
-		log('[advent] Wrong answer :(\n')
 		return False
+
+	log('[advent] Wrong answer :(\n')
+	return False
 
 URL       = 'https://adventofcode.com/{:d}/day/{:d}/{:s}'
 SESSION   = ''
 CACHE_DIR = '../inputs'
 YEAR      = -1
 DAY       = -1
-DRY_RUN   = False
 REQUESTS  = find_loader('requests')
 
 if REQUESTS:

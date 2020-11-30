@@ -5,7 +5,7 @@ from utils import advent
 import re
 import sys
 
-advent.setup(2018, 19, dry_run=True)
+advent.setup(2018, 19)
 fin = advent.get_input()
 # print(*fin)
 

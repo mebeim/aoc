@@ -87,7 +87,7 @@ def fill(sx, sy):
 
 SAND, WATER, MOVING_WATER, CLAY = range(4)
 
-advent.setup(2018, 17, dry_run=True)
+advent.setup(2018, 17)
 fin = advent.get_input()
 
 numexp     = re.compile(r'-?\d+')
@@ -148,7 +148,7 @@ grid = [[SAND] * gridw] + grid
 filled = fill(500 - minx + padw, 0) - 1
 
 assert filled == 31013
-advent.submit_answer(1, filled)
+advent.print_answer(1, filled)
 
 retained = filled
 
@@ -164,4 +164,4 @@ for y in range(1, gridh):
 			retained -= 1
 
 assert retained == 25448
-advent.submit_answer(2, retained)
+advent.print_answer(2, retained)

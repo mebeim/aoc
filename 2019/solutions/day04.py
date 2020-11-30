@@ -3,7 +3,7 @@
 from utils import advent
 from itertools import islice
 
-advent.setup(2019, 4, dry_run=True)
+advent.setup(2019, 4)
 fin = advent.get_input()
 
 lo, hi = map(int, fin.read().split('-'))
@@ -24,7 +24,7 @@ for pwd in range(lo, hi + 1):
 			n_valid2 += 1
 
 assert n_valid1 == 1767
-advent.submit_answer(1, n_valid1)
+advent.print_answer(1, n_valid1)
 
 assert n_valid2 == 1192
-advent.submit_answer(2, n_valid2)
+advent.print_answer(2, n_valid2)

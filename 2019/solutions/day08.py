@@ -5,7 +5,7 @@ from utils import advent
 WIDTH, HEIGHT = 25, 6
 SIZE = WIDTH * HEIGHT
 
-advent.setup(2019, 8, dry_run=True)
+advent.setup(2019, 8)
 fin = advent.get_input()
 
 chars = fin.readline().strip()
@@ -15,7 +15,7 @@ best = min(layers, key=lambda l: l.count('0'))
 checksum = best.count('1') * best.count('2')
 
 assert checksum == 1064
-advent.submit_answer(1, checksum)
+advent.print_answer(1, checksum)
 
 image = ['2'] * SIZE
 
@@ -41,4 +41,4 @@ assert (decoded ==
 )
 
 # Can't submit this as is, LOL
-advent.submit_answer(2, 'PFCAK')
+advent.print_answer(2, 'PFCAK')

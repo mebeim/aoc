@@ -3,7 +3,7 @@
 from utils import advent
 import heapq
 
-advent.setup(2018, 12, dry_run=True)
+advent.setup(2018, 12)
 fin = advent.get_input()
 
 ##################################################

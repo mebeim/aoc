@@ -6,7 +6,7 @@ from utils.helpers import *
 from utils.decorators import *
 import z3
 
-advent.setup(2018, 23, dry_run=True)
+advent.setup(2018, 23)
 fin = advent.get_input()
 # print(*fin)
 timer_start()

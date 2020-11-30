@@ -5,7 +5,7 @@ from utils.modules import *
 from utils.helpers import *
 from utils.decorators import *
 
-advent.setup(2018, 24, dry_run=True)
+advent.setup(2018, 24)
 # fin = advent.get_input()
 # eprint(*fin, sep='')
 timer_start()

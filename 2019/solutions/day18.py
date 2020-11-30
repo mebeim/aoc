@@ -103,7 +103,7 @@ def build_graph(grid):
 	return graph, startpos
 
 
-advent.setup(2019, 18, dry_run=True)
+advent.setup(2019, 18)
 fin  = advent.get_input()
 maze = tuple(list(l.strip()) for l in fin)
 
@@ -112,7 +112,7 @@ total_keys  = sum(node.islower() for node in G)
 min_steps   = explore('@', total_keys)
 
 assert min_steps == 2796
-advent.submit_answer(1, min_steps)
+advent.print_answer(1, min_steps)
 
 
 for r, c in neighbors4(maze, *startpos):
@@ -133,4 +133,4 @@ G, _      = build_graph(maze)
 min_steps = explore('1234', total_keys)
 
 assert min_steps == 1642
-advent.submit_answer(2, min_steps)
+advent.print_answer(2, min_steps)

@@ -3,7 +3,7 @@
 from utils import advent
 import sys
 
-advent.setup(2018, 10, dry_run=True)
+advent.setup(2018, 10)
 fin = advent.get_input()
 
 ##################################################

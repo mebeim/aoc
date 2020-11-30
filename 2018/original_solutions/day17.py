@@ -3,7 +3,7 @@
 from utils import advent
 import re
 
-advent.setup(2018, 17, dry_run=True)
+advent.setup(2018, 17)
 fin = advent.get_input()
 # print(*fin)
 

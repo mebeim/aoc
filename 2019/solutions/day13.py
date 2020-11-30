@@ -6,7 +6,7 @@ from lib.intcode import IntcodeVM
 EMPTY, WALL, BLOCK, PADDLE, BALL = range(5)
 
 
-advent.setup(2019, 13, dry_run=True)
+advent.setup(2019, 13)
 fin = advent.get_input()
 
 program = list(map(int, fin.read().split(',')))
@@ -23,7 +23,7 @@ for i in range(0, len(out), 3):
 total_blocks = len(blocks)
 
 assert total_blocks == 304
-advent.submit_answer(1, total_blocks)
+advent.print_answer(1, total_blocks)
 
 
 vm.orig_code[0] = 2
@@ -54,4 +54,4 @@ while True:
 			inp[0] = -1
 
 assert score == 14747
-advent.submit_answer(2, score)
+advent.print_answer(2, score)

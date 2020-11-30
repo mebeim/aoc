@@ -2,7 +2,7 @@
 
 from utils import advent
 
-advent.setup(2018, 1, dry_run=True)
+advent.setup(2018, 1)
 fin = advent.get_input()
 
 deltas = list(map(int, fin.readlines()))
@@ -20,7 +20,7 @@ for d in deltas:
 	seen.add(freq)
 
 assert freq == 435
-advent.submit_answer(1, freq)
+advent.print_answer(1, freq)
 
 while not done:
 	for d in deltas:
@@ -33,4 +33,4 @@ while not done:
 		seen.add(freq)
 
 assert freq == 245
-advent.submit_answer(2, freq)
+advent.print_answer(2, freq)

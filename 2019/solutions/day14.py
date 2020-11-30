@@ -34,7 +34,7 @@ def needed_ore(recipes, fuel_qty):
 	return total_ore
 
 
-advent.setup(2019, 14, dry_run=True)
+advent.setup(2019, 14)
 fin = advent.get_input()
 
 recipes = {}
@@ -53,7 +53,7 @@ for line in map(str.rstrip, fin):
 ore = needed_ore(recipes, 1)
 
 assert ore == 2556890
-advent.submit_answer(1, ore)
+advent.print_answer(1, ore)
 
 
 AVAILABLE_ORE = 10**12
@@ -76,4 +76,4 @@ while hi - lo > 1:
 fuel = lo
 
 assert fuel == 1120408
-advent.submit_answer(2, fuel)
+advent.print_answer(2, fuel)

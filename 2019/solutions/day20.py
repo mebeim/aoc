@@ -140,7 +140,7 @@ def build_graph(grid):
 Portal = namedtuple('Portal', ['label', 'side', 'depth'])
 
 
-advent.setup(2019, 20, dry_run=True)
+advent.setup(2019, 20)
 fin = advent.get_input()
 grid = tuple(l.strip('\n') for l in fin)
 
@@ -163,11 +163,11 @@ for p1, p2 in combinations(G, 2):
 min_steps = dijkstra(G, ENTRANCE, EXIT)
 
 assert min_steps == 684
-advent.submit_answer(1, min_steps)
+advent.print_answer(1, min_steps)
 
 
 G = build_graph(grid)
 min_steps = dijkstra(G, ENTRANCE, EXIT, get_neighbors=recursive_neighbors)
 
 assert min_steps == 7758
-advent.submit_answer(2, min_steps)
+advent.print_answer(2, min_steps)

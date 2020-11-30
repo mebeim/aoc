@@ -18,7 +18,7 @@ def angle(ax, ay, bx, by):
 	return rad if rad >= 0 else 2*PI + rad
 
 
-advent.setup(2019, 10, dry_run=True)
+advent.setup(2019, 10)
 fin = advent.get_input()
 
 grid = [l.rstrip() for l in fin]
@@ -47,7 +47,7 @@ for src in asteroids:
 		station = src
 
 assert max_in_sight == 292
-advent.submit_answer(1, max_in_sight)
+advent.print_answer(1, max_in_sight)
 
 
 closest = {}
@@ -72,4 +72,4 @@ chosen_x, chosen_y = ordered[target - 1][0]
 ans = 100 * chosen_x + chosen_y
 
 assert ans == 317
-advent.submit_answer(2, ans)
+advent.print_answer(2, ans)

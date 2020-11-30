@@ -17,7 +17,7 @@ def run(prog, *inputs):
 	return prog[0]
 
 
-advent.setup(2019, 2, dry_run=True)
+advent.setup(2019, 2)
 fin = advent.get_input()
 
 program = list(map(int, fin.read().split(',')))
@@ -25,7 +25,7 @@ program = list(map(int, fin.read().split(',')))
 result = run(program[:], 12, 2)
 
 assert result == 12490719
-advent.submit_answer(1, result)
+advent.print_answer(1, result)
 
 for noun, verb in product(range(100), range(100)):
 	if run(program[:], noun, verb) == 19690720:
@@ -34,4 +34,4 @@ for noun, verb in product(range(100), range(100)):
 answer = 100 * noun + verb
 
 assert answer == 2003
-advent.submit_answer(2, answer)
+advent.print_answer(2, answer)

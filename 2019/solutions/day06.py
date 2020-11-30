@@ -37,7 +37,7 @@ def dijkstra(G, src, dst):
 	return float('inf')
 
 
-advent.setup(2019, 6, dry_run=True)
+advent.setup(2019, 6)
 fin = advent.get_input()
 
 orbits = tuple(map(lambda l: l.strip().split(')'), fin.readlines()))
@@ -46,7 +46,7 @@ T = {child: parent for parent, child in orbits}
 n_orbits = sum(map(count_orbits, T))
 
 assert n_orbits == 253104
-advent.submit_answer(1, n_orbits)
+advent.print_answer(1, n_orbits)
 
 
 G = defaultdict(set)
@@ -58,7 +58,7 @@ for a, b in orbits:
 min_transfers = dijkstra(G, T['YOU'], T['SAN'])
 
 assert min_transfers == 499
-advent.submit_answer(2, min_transfers)
+advent.print_answer(2, min_transfers)
 
 # Using networkx:
 # G = nx.DiGraph(orbits)

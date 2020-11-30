@@ -7,7 +7,7 @@ import heapq
 from string import *
 from collections import defaultdict, deque, namedtuple, Counter
 
-advent.setup(2018, 14, dry_run=True)
+advent.setup(2018, 14)
 fin = advent.get_input()
 # print(*fin)
 

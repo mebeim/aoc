@@ -4,7 +4,7 @@ from utils import advent
 from itertools import permutations
 from lib.intcode import IntcodeVM
 
-advent.setup(2019, 7, dry_run=True)
+advent.setup(2019, 7)
 fin = advent.get_input()
 
 program = list(map(int, fin.read().split(',')))
@@ -21,7 +21,7 @@ for inputs in permutations(range(5), 5):
 		max_signal = out[0]
 
 assert max_signal == 212460
-advent.submit_answer(1, max_signal)
+advent.print_answer(1, max_signal)
 
 max_signal = float('-inf')
 
@@ -47,4 +47,4 @@ for inputs in permutations(range(5, 10), 5):
 		max_signal = last_signal
 
 assert max_signal == 21844737
-advent.submit_answer(2, max_signal)
+advent.print_answer(2, max_signal)

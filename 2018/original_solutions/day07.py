@@ -4,7 +4,7 @@ from utils import advent
 from collections import defaultdict, namedtuple
 from string import *
 
-advent.setup(2018, 7, dry_run=True)
+advent.setup(2018, 7)
 fin = advent.get_input()
 
 ##################################################

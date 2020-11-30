@@ -33,7 +33,7 @@ def node_value(node):
 	return value
 
 
-advent.setup(2018, 8, dry_run=True)
+advent.setup(2018, 8)
 fin = advent.get_input()
 
 nums = list(map(int, fin.read().split()))
@@ -42,9 +42,9 @@ root = build_tree(nums)
 meta_sum = sum_meta(root)
 
 assert meta_sum == 46962
-advent.submit_answer(1, meta_sum)
+advent.print_answer(1, meta_sum)
 
 value = node_value(root)
 
 assert value == 22633
-advent.submit_answer(2, value)
+advent.print_answer(2, value)

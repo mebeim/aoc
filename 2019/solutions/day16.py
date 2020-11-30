@@ -2,7 +2,7 @@
 
 from utils import advent
 
-advent.setup(2019, 16, dry_run=True)
+advent.setup(2019, 16)
 fin = advent.get_input()
 
 original_str = fin.read().strip()
@@ -35,7 +35,7 @@ for _ in range(100):
 answer = ''.join(map(str, digits[:8]))
 
 assert answer == '84487724'
-advent.submit_answer(1, answer)
+advent.print_answer(1, answer)
 
 
 # Enclosing part 2 inside a function works faster since the LOAD_FAST opcode
@@ -60,4 +60,4 @@ skip = int(''.join(original_str[:7]))
 answer = part2(original, skip)
 
 assert answer == '84692524'
-advent.submit_answer(2, answer)
+advent.print_answer(2, answer)
