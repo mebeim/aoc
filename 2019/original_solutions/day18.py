@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 from utils import advent
-from utils import *
+from utils.modules import *
+from utils.helpers import *
+from utils.decorators import *
 from string import ascii_lowercase as lowercase, ascii_uppercase as uppercase
 
 advent.setup(2019, 18, 1)

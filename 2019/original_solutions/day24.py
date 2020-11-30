@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 from utils import advent
-from utils import *
+from utils.modules import *
+from utils.helpers import *
+from utils.decorators import *
 from copy import deepcopy
 
 fin = advent.get_input()
