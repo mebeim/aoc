@@ -38,13 +38,10 @@ fin = advent.get_input()
 
 nums = list(map(int, fin.read().split()))
 root = build_tree(nums)
-
 meta_sum = sum_meta(root)
 
-assert meta_sum == 46962
 advent.print_answer(1, meta_sum)
 
-value = node_value(root)
 
-assert value == 22633
+value = node_value(root)
 advent.print_answer(2, value)

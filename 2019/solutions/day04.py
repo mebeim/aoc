@@ -23,8 +23,5 @@ for pwd in range(lo, hi + 1):
 		if any(a != b and b == c and c != d for a, b, c, d in quadruplets):
 			n_valid2 += 1
 
-assert n_valid1 == 1767
 advent.print_answer(1, n_valid1)
-
-assert n_valid2 == 1192
 advent.print_answer(2, n_valid2)

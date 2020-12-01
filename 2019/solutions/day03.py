@@ -42,11 +42,7 @@ for l in lines:
 
 intersections = set.intersection(*all_visited)
 min_distance = min(map(manhattan, intersections))
-
-assert min_distance == 3247
 advent.print_answer(1, min_distance)
 
 shortest_path = min(sum(l[p] for l in all_steps) for p in intersections)
-
-assert shortest_path == 48054
 advent.print_answer(2, shortest_path)

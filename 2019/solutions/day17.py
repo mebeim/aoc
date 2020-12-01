@@ -126,7 +126,6 @@ for r in range(1, rows - 1):
 			startpos = (r, c)
 			startdir = '^v<>'.index(grid[r][c])
 
-assert answer == 1544
 advent.print_answer(1, answer)
 
 
@@ -139,5 +138,4 @@ vm.reset()
 vm.code[0] = 2
 answer = vm.run(robot_prog)[-1]
 
-assert answer == 696373
 advent.print_answer(2, answer)

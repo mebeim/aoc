@@ -24,9 +24,8 @@ for line in fin:
 	claim_ids.add(cid)
 
 overlapping = sum(map(lambda x: len(x) > 1, canvas.values()))
-
-assert overlapping == 118322
 advent.print_answer(1, overlapping)
+
 
 for c in filter(lambda x: len(x) > 1, canvas.values()):
 	claim_ids -= c
@@ -34,6 +33,4 @@ for c in filter(lambda x: len(x) > 1, canvas.values()):
 assert len(claim_ids) == 1
 
 good = claim_ids.pop()
-
-assert good == 1178
 advent.print_answer(2, good)

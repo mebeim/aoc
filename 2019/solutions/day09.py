@@ -9,11 +9,7 @@ fin = advent.get_input()
 program = list(map(int, fin.read().split(',')))
 vm = IntcodeVM(program)
 out = vm.run([1])[-1]
-
-assert out == 4234906522
 advent.print_answer(1, out)
 
 out = vm.run([2])[-1]
-
-assert out == 60962
 advent.print_answer(2, out)

@@ -20,8 +20,8 @@ for inputs in permutations(range(5), 5):
 	if out[0] > max_signal:
 		max_signal = out[0]
 
-assert max_signal == 212460
 advent.print_answer(1, max_signal)
+
 
 max_signal = float('-inf')
 
@@ -46,5 +46,4 @@ for inputs in permutations(range(5, 10), 5):
 	if last_signal > max_signal:
 		max_signal = last_signal
 
-assert max_signal == 21844737
 advent.print_answer(2, max_signal)

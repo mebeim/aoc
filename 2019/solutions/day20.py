@@ -161,13 +161,9 @@ for p1, p2 in combinations(G, 2):
 		G[p2].append((p1, 1))
 
 min_steps = dijkstra(G, ENTRANCE, EXIT)
-
-assert min_steps == 684
 advent.print_answer(1, min_steps)
 
 
 G = build_graph(grid)
 min_steps = dijkstra(G, ENTRANCE, EXIT, get_neighbors=recursive_neighbors)
-
-assert min_steps == 7758
 advent.print_answer(2, min_steps)

@@ -23,7 +23,6 @@ inp = list(map(ord, springscript))
 for value in intcode_oneshot(program, inp):
 	continue
 
-assert value == 19359752
 advent.print_answer(2, value)
 
 # (!A & D) | (!B & D) | (!C & D & H)
@@ -43,5 +42,4 @@ inp = list(map(ord, springscript))
 for value in intcode_oneshot(program, inp):
 	continue
 
-assert value == 1141869516
 advent.print_answer(2, value)

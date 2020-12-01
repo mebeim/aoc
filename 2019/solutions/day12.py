@@ -38,7 +38,6 @@ potential = (sum(map(abs, m.pos)) for m in moons)
 kinetic   = (sum(map(abs, m.vel)) for m in moons)
 total     = sum(p * k for p, k in zip(potential, kinetic))
 
-assert total == 7013
 advent.print_answer(1, total)
 
 
@@ -64,6 +63,4 @@ for dim in range(3):
 	periods.append(period)
 
 total_steps = 2 * reduce(lcm, periods, 1)
-
-assert total_steps == 324618307124784
 advent.print_answer(2, total_steps)

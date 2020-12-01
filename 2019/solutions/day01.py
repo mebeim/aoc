@@ -9,7 +9,6 @@ nums = map(int, fin.readlines())
 nums = tuple(map(lambda n: n // 3 - 2, nums))
 total = sum(nums)
 
-assert total == 3576689
 advent.print_answer(1, total)
 
 for n in nums:
@@ -17,5 +16,4 @@ for n in nums:
 		n = max(n // 3 - 2, 0)
 		total += n
 
-assert total == 5362136
 advent.print_answer(2, total)

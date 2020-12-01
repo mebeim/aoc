@@ -50,7 +50,6 @@ fin = advent.get_input()
 program = list(map(int, fin.read().split(',')))
 total = sum(map(run, product(range(50), range(50))))
 
-assert total == 152
 advent.print_answer(1, total)
 
 
@@ -64,6 +63,4 @@ for x in range(bestx, bestx - 10, -1):
 		bestx, besty = x, y
 
 answer = bestx * 10000 + besty
-
-assert answer == 10730411
 advent.print_answer(2, answer)

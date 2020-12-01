@@ -14,9 +14,8 @@ two_letters = sum(2 in c.values() for c in counts)
 three_letters = sum(3 in c.values() for c in counts)
 
 ans = two_letters * three_letters
-
-assert ans == 5166
 advent.print_answer(1, ans)
+
 
 l = len(ids[0])
 assert all(len(x) == l for x in ids)
@@ -38,5 +37,4 @@ for i in range(l):
 	if done:
 		break
 
-assert s == 'cypueihajytordkgzxfqplbwn'
 advent.print_answer(2, s)

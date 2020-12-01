@@ -59,8 +59,6 @@ while nat_packet is None:
 		vm.run(n_in=1, resume=True)
 
 last_nat_y = nat_packet[1]
-
-assert last_nat_y == 17541
 advent.print_answer(1, last_nat_y)
 
 
@@ -82,5 +80,4 @@ while not done:
 			last_nat_y = nat_packet[1]
 			nat_packet = []
 
-assert last_nat_y == 12415
 advent.print_answer(2, last_nat_y)

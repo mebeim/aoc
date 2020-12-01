@@ -21,8 +21,6 @@ for i in range(0, len(out), 3):
 		blocks.add((x, y))
 
 total_blocks = len(blocks)
-
-assert total_blocks == 304
 advent.print_answer(1, total_blocks)
 
 
@@ -53,5 +51,4 @@ while True:
 		elif x < paddle_x:
 			inp[0] = -1
 
-assert score == 14747
 advent.print_answer(2, score)

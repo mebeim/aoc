@@ -33,8 +33,6 @@ for _ in range(100):
 		digits[i] = cusum % 10
 
 answer = ''.join(map(str, digits[:8]))
-
-assert answer == '84487724'
 advent.print_answer(1, answer)
 
 
@@ -58,6 +56,4 @@ def part2(digits, skip):
 
 skip = int(''.join(original_str[:7]))
 answer = part2(original, skip)
-
-assert answer == '84692524'
 advent.print_answer(2, answer)

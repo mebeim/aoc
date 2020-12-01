@@ -102,11 +102,7 @@ vm = IntcodeVM(program)
 startpos = (0, 0)
 maze, oxygen = wall_follower(vm, startpos)
 min_dist = bfs_shortest(maze, startpos, oxygen)
-
-assert min_dist == 354
 advent.print_answer(1, min_dist)
 
 time = bfs_farthest(maze, oxygen)
-
-assert time == 370
 advent.print_answer(2, time)

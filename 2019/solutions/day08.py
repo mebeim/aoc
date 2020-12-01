@@ -14,7 +14,6 @@ layers = [chars[i:i + SIZE] for i in range(0, len(chars), SIZE)]
 best = min(layers, key=lambda l: l.count('0'))
 checksum = best.count('1') * best.count('2')
 
-assert checksum == 1064
 advent.print_answer(1, checksum)
 
 image = ['2'] * SIZE
@@ -31,14 +30,5 @@ decoded = ''
 for i in range(0, SIZE, WIDTH):
 	decoded += ''.join(map(conv.get, image[i:i + WIDTH])) + '\n'
 
-assert (decoded ==
-	'###  ####  ##   ##  #  # \n'
-	'#  # #    #  # #  # # #  \n'
-	'#  # ###  #    #  # ##   \n'
-	'###  #    #    #### # #  \n'
-	'#    #    #  # #  # # #  \n'
-	'#    #     ##  #  # #  # \n'
-)
-
-# Can't submit this as is, LOL
-advent.print_answer(2, 'PFCAK')
+# Can't really print this nicely, but whatever
+advent.print_answer(2, '\n' + decoded)

@@ -44,8 +44,6 @@ orbits = tuple(map(lambda l: l.strip().split(')'), fin.readlines()))
 
 T = {child: parent for parent, child in orbits}
 n_orbits = sum(map(count_orbits, T))
-
-assert n_orbits == 253104
 advent.print_answer(1, n_orbits)
 
 
@@ -56,8 +54,6 @@ for a, b in orbits:
 	G[b].add(a)
 
 min_transfers = dijkstra(G, T['YOU'], T['SAN'])
-
-assert min_transfers == 499
 advent.print_answer(2, min_transfers)
 
 # Using networkx:

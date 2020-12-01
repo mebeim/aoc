@@ -19,7 +19,6 @@ for d in deltas:
 
 	seen.add(freq)
 
-assert freq == 435
 advent.print_answer(1, freq)
 
 while not done:
@@ -32,5 +31,4 @@ while not done:
 
 		seen.add(freq)
 
-assert freq == 245
 advent.print_answer(2, freq)

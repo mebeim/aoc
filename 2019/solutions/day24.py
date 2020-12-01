@@ -117,7 +117,6 @@ for r, c in product(range(ROWS), range(COLS)):
 		total += biodiv
 	biodiv <<= 1
 
-assert total == 32511025
 advent.print_answer(1, total)
 
 
@@ -145,6 +144,4 @@ for _ in range(200):
 	grids = new_grids
 
 bugs = sum(sum(sum(c == BUG for c in row) for row in grid) for grid in grids.values())
-
-assert bugs == 1932
 advent.print_answer(2, bugs)

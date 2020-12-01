@@ -51,8 +51,6 @@ for line in map(str.rstrip, fin):
 	recipes[product_name] = (int(product_qty), ingredients)
 
 ore = needed_ore(recipes, 1)
-
-assert ore == 2556890
 advent.print_answer(1, ore)
 
 
@@ -73,7 +71,4 @@ while hi - lo > 1:
 	else:
 		lo = x
 
-fuel = lo
-
-assert fuel == 1120408
-advent.print_answer(2, fuel)
+advent.print_answer(2, lo)

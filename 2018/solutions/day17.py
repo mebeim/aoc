@@ -144,11 +144,9 @@ for i in range(len(grid)):
 	grid[i] = [SAND] * padw + grid[i] + [SAND] * padw
 grid = [[SAND] * gridw] + grid
 
-
 filled = fill(500 - minx + padw, 0) - 1
-
-assert filled == 31013
 advent.print_answer(1, filled)
+
 
 retained = filled
 
@@ -163,5 +161,4 @@ for y in range(1, gridh):
 			grid[y][x] = MOVING_WATER
 			retained -= 1
 
-assert retained == 25448
 advent.print_answer(2, retained)

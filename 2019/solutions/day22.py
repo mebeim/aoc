@@ -52,7 +52,6 @@ target_card = 2019
 start, step = transform(start, step, size, moves)
 position = ((target_card - start) * pow(step, size - 2, size)) % size
 
-assert position == 5169
 advent.print_answer(1, position)
 
 
@@ -64,5 +63,4 @@ start, step = transform(start, step, size, moves)
 start, step = repeat(start, step, size, repetitions)
 card = (start + step * target_position) % size
 
-assert card == 74258074061935
 advent.print_answer(2, card)

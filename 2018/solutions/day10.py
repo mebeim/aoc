@@ -51,20 +51,6 @@ for j in range(y, y + h + 1):
 		word += '#' if (i, j) in final_points else ' '
 	word += '\n'
 
-assert (word ==
-'#####   #####   #    #  #    #  #    #  ######  ######  ##### \n'
-'#    #  #    #  ##   #  ##   #  #    #  #            #  #    #\n'
-'#    #  #    #  ##   #  ##   #   #  #   #            #  #    #\n'
-'#    #  #    #  # #  #  # #  #   #  #   #           #   #    #\n'
-'#####   #####   # #  #  # #  #    ##    #####      #    ##### \n'
-'#  #    #       #  # #  #  # #    ##    #         #     #  #  \n'
-'#   #   #       #  # #  #  # #   #  #   #        #      #   # \n'
-'#   #   #       #   ##  #   ##   #  #   #       #       #   # \n'
-'#    #  #       #   ##  #   ##  #    #  #       #       #    #\n'
-'#    #  #       #    #  #    #  #    #  #       ######  #    #\n')
-
-# Can't submit this as is, LOL
-advent.print_answer(1, 'RPNNXFZR')
-
-assert t == 10946
+# Can't really print this nicely, but whatever
+advent.print_answer(1, '\n' + word)
 advent.print_answer(2, t)

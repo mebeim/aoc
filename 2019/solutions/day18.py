@@ -111,7 +111,6 @@ G, startpos = build_graph(maze)
 total_keys  = sum(node.islower() for node in G)
 min_steps   = explore('@', total_keys)
 
-assert min_steps == 2796
 advent.print_answer(1, min_steps)
 
 
@@ -132,5 +131,4 @@ reachable_keys.cache_clear()
 G, _      = build_graph(maze)
 min_steps = explore('1234', total_keys)
 
-assert min_steps == 1642
 advent.print_answer(2, min_steps)

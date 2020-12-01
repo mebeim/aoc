@@ -69,21 +69,11 @@ robot = IntcodeVM(program)
 grid = run_robot(robot, BLACK)
 n_painted = len(grid)
 
-assert n_painted == 2056
 advent.print_answer(1, n_painted)
 
 grid = run_robot(robot, WHITE)
 pic = sparse_to_matrix(grid)
 pic = ''.join(''.join(x) + '\n' for x in pic)
 
-assert (pic ==
-	'  ##  #    ###  #### ###    ## #### ###    \n'
-	' #  # #    #  # #    #  #    #    # #  #   \n'
-	' #    #    ###  ###  #  #    #   #  #  #   \n'
-	' # ## #    #  # #    ###     #  #   ###    \n'
-	' #  # #    #  # #    #    #  # #    #      \n'
-	'  ### #### ###  #### #     ##  #### #      \n'
-)
-
-# Can't submit this as is, LOL
-advent.print_answer(2, 'GLBEPJZP')
+# Can't really print this nicely, but whatever
+advent.print_answer(2, '\n' + pic)

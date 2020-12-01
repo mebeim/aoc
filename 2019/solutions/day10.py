@@ -46,7 +46,6 @@ for src in asteroids:
 		max_in_sight = in_sight
 		station = src
 
-assert max_in_sight == 292
 advent.print_answer(1, max_in_sight)
 
 
@@ -71,5 +70,4 @@ ordered = sorted(closest.values(), key=lambda am: angle(*station, *am[0]))
 chosen_x, chosen_y = ordered[target - 1][0]
 ans = 100 * chosen_x + chosen_y
 
-assert ans == 317
 advent.print_answer(2, ans)
