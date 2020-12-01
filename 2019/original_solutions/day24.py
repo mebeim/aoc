@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from utils import advent
 from utils.all import *
 from copy import deepcopy
 
