@@ -262,10 +262,11 @@ def get_visited_and_steps(moves):
 
     return visited, steps
 
-visited1, steps1 = get_visited(moves1)
-visited2, steps2 = get_visited(moves2)
+visited1, steps1 = get_visited_and_steps(moves1)
+visited2, steps2 = get_visited_and_steps(moves2)
 intersections = visited1 & visited2
 best = min(steps1[p] + steps2[p] for p in intersections)
+
 print('Part 2:', best)
 ```
 
@@ -3854,7 +3855,7 @@ maximums, like the following:
     1078  101
 
 This means that our `bin_search()` function could end up finding, for example,
-`x = 1075, width = 101`, since it is right after `x = 1064, width = 99`. This is
+`x = 1075, width = 101`, since it is right after `x = 1074, width = 99`. This is
 no problem though: we can use the binary search to look for a good enough
 solution, and then just check if there's a better solution in the neighborhood
 (a few steps earlier).
