@@ -102,29 +102,28 @@ number of valid passwords.
 
 Let's use the [`re`][py-re] module to make our life easier and parse the
 policies using a [regular expression][wiki-regexp]. In order to match a single
-policy, we can use the following regexp:
-
-```
-\d+-\d+ \w: \w+
-```
-
-Which means: *match one or more digits, followed by an hyphen, followed by or
-more digits, followed by a space, followed by a character, followed by a colon
-and a space, followed by one or more characters.*
+policy, we can use the regexp `\d+-\d+ \w: \w+`, which means: *match one or more
+digits, followed by an hyphen, followed by one or more digits, followed by a
+space, followed by a character, followed by a colon and a space, followed by one
+or more characters.*
 
 Since we want to *extract* and separate those fields though, we can use capture
 groups (`(...)`). When using capture groups, the result of a match is split into
 a tuple, one element per capture group. This makes it very easy to parse complex
-text formats.
-
-We can add parentheses around every field we are interested in to turn it into a
-capture group, and then use [`re.findall()`][py-re-findall] to parse the entire
-input content and return a list of tuples, one tuple per policy:
+text formats. We can therefore add parentheses around every field we are
+interested in to turn it into a capture group, then use
+[`re.findall()`][py-re-findall] to parse the entire input content and get a list
+of tuples, one tuple per policy:
 
 ```python
 data     = fin.read()
 policies = rexp.findall(r'(\d+)-(\d+) (\w): (\w+)', data)
 ```
+
+The syntax `r'string'` denotes a [raw string][py-raw-string]: it means to
+interpret the content of the string *literally*, without processing escape
+sequences, like for example `\n`, which in a normal string would be turned into
+a single character (a line feed).
 
 Now just check each tuple, transforming the first two elements into integers,
 and count valid passwords. We can just use [`str.count()`][py-str-count] for
@@ -189,6 +188,7 @@ print('Part 2:', valid2)
 [py-str-count]:         https://docs.python.org/3/library/stdtypes.html#str.count
 [py-re]:                https://docs.python.org/3/library/re.html
 [py-re-findall]:        https://docs.python.org/3/library/re.html#re.findall
+[py-raw-string]:        https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
 
 [algo-manhattan]:     https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
 [algo-dijkstra]:      https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
