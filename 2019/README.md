@@ -2675,7 +2675,7 @@ algorithm inside a function. "Why would this speed up things?" you say? Because
 inside functions the
 [`LOAD_FAST`](https://docs.python.org/3/library/dis.html#opcode-LOAD_FAST)
 Python opcode is used, which is much faster than the
-[`LOAD_GLOBAL`](https://docs.python.org/3/library/dis.html#opcode-LOAD_GLOBAL),
+[`LOAD_GLOBAL`](https://docs.python.org/3/library/dis.html#opcode-LOAD_GLOBAL)
 opcode used for global variables (used all over the place in the main body of
 the script). Simply moving the second part inside a function gives me a speedup
 of about 35% in CPython 3 and 16% in PyPy3, with the new times being ~11s and

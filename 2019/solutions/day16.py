@@ -38,7 +38,7 @@ advent.print_answer(1, answer)
 
 # Enclosing part 2 inside a function works faster since the LOAD_FAST opcode
 # used for function local variables is way faster than the LOAD_GLOBAL opcode
-# used ford global variables (and therefore in the main body of the script.
+# used ford global variables (and therefore in the main body of the script).
 
 def part2(digits, skip):
 	digits = (original*10000)[skip:]
