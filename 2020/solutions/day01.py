@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from utils import advent
-from itertools import islice
 
 advent.setup(2020, 1)
 fin = advent.get_input()
