@@ -135,10 +135,10 @@ override any of those.
 valid = 0
 
 for mmin, mmax, letter, password in policies:
-	mmin, mmax = int(mmin), int(mmax)
+    mmin, mmax = int(mmin), int(mmax)
 
-	if mmin <= password.count(letter) <= mmax:
-		valid += 1
+    if mmin <= password.count(letter) <= mmax:
+        valid += 1
 
 print('Part 1:', valid)
 ```
@@ -157,25 +157,30 @@ equal to the given letter. Note: these indexes start at `1`.
 
 Since we are already transforming `mmin` and `mmax` into integers in the
 previous loop, let's just modify it to calculate both answers instead of doing
-the whole thing again.
+the whole thing again. In order to check if *only one* of the two indexes in the
+password contains the letter we want, we can use the XOR operator (`^`), which
+in Python it can also be used on boolean values, and returns `True` if only one
+of the two operands is `True`.
 
 ```python
 valid1, valid2 = 0, 0
 
 for mmin, mmax, letter, password in policies:
-	mmin, mmax = int(mmin), int(mmax)
+    mmin, mmax = int(mmin), int(mmax)
 
-	if mmin <= password.count(letter) <= mmax:
-		valid1 += 1
+    if mmin <= password.count(letter) <= mmax:
+        valid1 += 1
 
-	if password[mmin - 1] == letter and password[mmax - 1] != letter:
-		valid2 += 1
-	elif password[mmin - 1] != letter and password[mmax - 1] == letter:
-		valid2 += 1
+    if (password[mmin - 1] == letter) ^ (password[mmax - 1] != letter):
+        valid2 += 1
 
 print('Part 1:', valid1)
 print('Part 2:', valid2)
 ```
+
+Note: another way to compute the logical XOR between two boolean values is `!=`.
+In fact, if two boolean values are different from each other then one of them
+must be `True` and the other one must be `False`.
 
 
 [d01-problem]: https://adventofcode.com/2020/day/1

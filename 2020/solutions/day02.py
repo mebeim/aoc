@@ -18,9 +18,7 @@ for mmin, mmax, letter, password in policies:
 	if mmin <= password.count(letter) <= mmax:
 		valid1 += 1
 
-	if password[mmin - 1] == letter and password[mmax - 1] != letter:
-		valid2 += 1
-	elif password[mmin - 1] != letter and password[mmax - 1] == letter:
+	if (password[mmin - 1] == letter) ^ (password[mmax - 1] == letter):
 		valid2 += 1
 
 advent.print_answer(1, valid1)
