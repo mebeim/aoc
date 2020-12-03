@@ -237,7 +237,8 @@ at the same time. One problem though: we don't know when to stop `col`. We could
 calculate the number mathematically, but a really simpler way is to take
 advantage of [`itertools.count()`][py-itertools-count]: this generator function
 takes a `start` and a `step`, and returns numbers from `start` to infinity, in
-increments of `step`.
+increments of `step`. Since `zip()` stops at the end of the shortest iterable
+supplied, it will automagically stop for us when we reach `height`.
 
 ```python
 from itertools import count
