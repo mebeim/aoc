@@ -6,6 +6,7 @@ Table of Contents
 
 - [Day 1 - Report Repair](#day-1---report-repair)
 - [Day 2 - Password Philosophy](#day-2---password-philosophy)
+- [Day 3 - Toboggan Trajectory](#day-3---toboggan-trajectory)
 
 
 Day 1 - Report Repair
@@ -183,17 +184,124 @@ In fact, if two boolean values are different from each other then one of them
 must be `True` and the other one must be `False`.
 
 
+Day 3 - Toboggan Trajectory
+---------------------------
+
+[Problem statement][d03-problem] — [Complete solution][d03-solution]
+
+### Part 1
+
+First grid of ASCII characters of the year! I was just waiting for that. Today's
+puzzle input consists of a rectangular grid of characters. Each character can be
+either be a dot (`.`) meaning "open square" or a hash (`#`) representing a tree.
+The grid we are given is quite tall but very thin (i.e. `height >> width`).
+However, we are told that the rows of the real grid are actually periodic and
+they extend indefinitely to the right.
+
+We need to traverse the grid following a certain "slope", starting from the
+top-left corner and moving 1 square down and 3 squares to the right each step,
+counting all the trees that we encounter on our way.
+
+First of all, let's parse the input. We use a
+[generator expression][py-generator-expr] iterating over the file line by line
+(in case you did not know, iterating over a file obtained from `open()` yields
+the lines one by one) using [`str.strip()`][py-str-strip] to remove newline
+characters (`\n`) at the end of each line. We end up with a list of strings, one
+string per row of the grid.
+
+```python
+grid = [l.rstrip() for l in fin]
+height, width = len(grid), len(grid[0])
+```
+
+Now we can just start at `(0, 0)` and check each square we want incrementing by
+`(1, 3)` each time. To take into account the fact that the grid is actually
+periodically repeating to the right, we can use the modulo (`%`) operator for
+the column, doing `col % width`, which will effectively "wrap" around and
+re-start from `0` each time we go above `width`, as if the row is repeating.
+
+```python
+trees = 0
+col = 0
+
+for row in range(height):
+    if grid[row][col % width] == '#':
+        trees += 1
+    col += 3
+```
+
+Okay, that seems reasonable. It doesn't smell *Pythonic* enough though! A
+simpler, more concise way to do this is to use the [`zip()`][py-builtin-zip]
+built-in function to iterate over two ranges (one for `row` and one for `col`)
+at the same time. One problem though: we don't know when to stop `col`. We could
+calculate the number mathematically, but a really simpler way is to take
+advantage of [`itertools.count()`][py-itertools-count]: this generator function
+takes a `start` and a `step`, and returns numbers from `start` to infinity, in
+increments of `step`.
+
+```python
+from itertools import count
+
+trees = 0
+for row, col in zip(range(height), count(0, 3)):
+    if grid[row][col % width] == '#':
+        trees += 1
+
+print('Part 1:', trees)
+```
+
+Now that looks nice and compact.
+
+### Part 2
+
+Now we need to do the same thing as part 1 multiple times, for different slopes.
+Our original slope was `(1, 3)` (1 down and 3 right each step). We now have four
+additional slopes to follow and count trees on: `(1, 1)`, `(1, 5)`, `(1, 7)`,
+and `(2, 1)`. The answer we must give is the product of the number of
+encountered trees on each different slope.
+
+Simple enough, we can just wrap everything in a `for` loop, iterating over the
+slopes. The only difference from part 1 is that now we'll need to advance our
+`range()` and `count()` with the two steps given by each slope. We already
+calculated the number of trees for slope `(1, 3)`, so we start with that number.
+
+```python
+total = trees
+slopes = ((1, 1), (1, 5), (1, 7), (2, 1))
+
+for dr, dc in slopes:
+    trees = 0
+
+    # Only difference from part 1 is that we now use 'dr' and 'dc' as steps
+    for row, col in zip(range(0, height, dr), count(0, dc)):
+        if grid[row][col % width] == '#':
+            trees += 1
+
+    total *= trees
+
+print('Part 2:', total)
+```
+
+And that's six out of fifty stars!
+
+
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
+[d03-problem]: https://adventofcode.com/2020/day/3
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
+[d03-solution]: solutions/day03.py
 
-[py-builtin-enumerate]: https://docs.python.org/3/library/functions.html#enumerate
+[py-raw-string]:        https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
+[py-generator-expr]:    https://www.python.org/dev/peps/pep-0289/
 [py-set]:               https://docs.python.org/3/library/stdtypes.html?#set
 [py-str-count]:         https://docs.python.org/3/library/stdtypes.html#str.count
+[py-str-strip]:         https://docs.python.org/3/library/stdtypes.html#str.strip
+[py-builtin-enumerate]: https://docs.python.org/3/library/functions.html#enumerate
+[py-builtin-zip]:       https://docs.python.org/3/library/functions.html#zip
+[py-itertools-count]:   https://docs.python.org/3/library/itertools.html#itertools.count
 [py-re]:                https://docs.python.org/3/library/re.html
 [py-re-findall]:        https://docs.python.org/3/library/re.html#re.findall
-[py-raw-string]:        https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
 
 [algo-manhattan]:     https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
 [algo-dijkstra]:      https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
