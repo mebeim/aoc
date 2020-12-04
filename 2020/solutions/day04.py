@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from utils import advent
-from utils.timer import *
 
 def check_height(v):
 	if v.endswith('cm'):
