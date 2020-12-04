@@ -7,6 +7,7 @@ Table of Contents
 - [Day 1 - Report Repair](#day-1---report-repair)
 - [Day 2 - Password Philosophy](#day-2---password-philosophy)
 - [Day 3 - Toboggan Trajectory](#day-3---toboggan-trajectory)
+- [Day 4 - Passport Processing](#day-4---passport-processing)
 
 
 Day 1 - Report Repair
@@ -286,19 +287,201 @@ print('Part 2:', total)
 And that's six out of fifty stars!
 
 
+Day 4 - Passport Processing
+---------------------------
+
+[Problem statement][d04-problem] — [Complete solution][d04-solution]
+
+### Part1
+
+Another input validation puzzle. This time we are going to process passports: we
+are given a list of passports as input, which are separated by empty lines (that
+is, two consecutive newline characters). Each passport is a list `key:value`
+pairs delimited by either a space or a newline.
+
+A passport is deemed valid if and only if it has all the required fields, which
+are identified by these keys: `byr`, `iyr`, `eyr`, `hgt`, `hcl`, `ecl`, `pid`.
+There is also a `cid` field described, but it does not matter if it's present or
+not. We need to count the number of valid passports.
+
+First of all, let's get all passports:
+
+```python
+passports = fin.read().split('\n\n')
+```
+
+Easy enough, after splitting the input data on empty lines, we can just check if
+all the required fields above are present in each passport. Since we don't know
+what the `value` of a field could contain, we cannot simply just check if each
+field key is present in the string representation of a passport: we also need to
+make sure it's present *as a key*. We could parse each passport, but I'm going
+to cheat and solve this check by just adding a colon (`:`) after each field key,
+since keys must be followed by colons.
+
+```python
+KEYS = ('byr:', 'iyr:', 'eyr:', 'hgt:', 'hcl:', 'ecl:', 'pid:')
+n_valid = 0
+
+for passport in passports:
+    valid = False
+    for k in KEYS:
+        if k not in passport:
+            valid = False
+
+    if valid:
+        n_valid += 1
+```
+
+Okay, that's a bit too long for my taste. Not Pythonic at all! We can simplify
+here taking advantage of the [`all()`][py-builtin-all] and
+[`sum()`][py-builtin-sum] built-in functions. The `all()` function checks if all
+the values of an iterable are `True` (or evaluate to `True`, e.g. a non-empty
+list, and so on). We can therefore rewrite the internal loop (`for k in keys`)
+as a single line using a generator expression:
+
+```python
+all(k in passport for k in keys)
+# -> True only if the passport has all the required keys
+```
+
+The `sum()` function computes the sum of all the values of an iterable (duh!),
+and treats boolean values as integers (`int(True) == 1`, `int(False) == 0`).
+This means that we can use `sum(all(...))` to count how many values are true in
+an iterable. Therefore, one more generator expression gives us the solution in
+just one line.
+
+```python
+n_valid = sum(all(k in p for k in KEYS) for p in passports)
+print('Part 1:', n_valid)
+```
+
+### Part2
+
+We now also have to validate the `value` of each field. We still need to ignore
+the `cid` field, but other fields have specific validity requirements:
+
+- `byr` (Birth Year): a 4-digit number in the range `[1920, 2002]`.
+- `iyr` (Issue Year): a 4-digit number in the range `[2010, 2020]`.
+- `eyr` (Expiration Year): a 4-digit number in the range `[2020, 2030]`.
+- `hgt` (Height): a number followed by `cm` or `in`. If `cm`, it must be in the
+  range `[150, 193]`; if `in`, it must be in the range `[59, 76]`.
+- `hcl` (Hair Color): `#` followed by exactly six characters `0-9` or `a-f`.
+- `ecl` (Eye Color): exactly one of: `amb`, `blu`, `brn`, `gry`, `grn`, `hzl`, `oth`.
+- `pid` (Passport ID): a 9-digit number, including leading zeroes.
+
+Whelp, now we really need to parse those passports. We don't care about having a
+`{key: value}` dictionary of fields since we will need to validate all fields
+anyway, so a simple `list` of `(key, value)` pairs will suffice. To obtain the
+fields, we'll split the entire "raw" passport string using the
+[`str.split()`][py-str-split] method, which by default conveniently splits on
+any sequence of whitespace, so we don't even need to care about passports
+contining newlines. Then, we'll split each field on `:` to saparate keys and
+values.
+
+```python
+for raw in passports:
+    passport = (field.split(':') for field in raw.split())
+```
+
+To validate each field, since the validations to perform are rather simple, we
+can use a dictionary of [`lambda`][py-lambda] expressions. It's simpler to show
+the code than describe it:
+
+```python
+def check_height(v):
+    if v.endswith('cm'):
+        return 150 <= int(v[:-2]) <= 193
+    if v.endswith('in'):
+        return 59 <= int(v[:-2]) <= 76
+    return False
+
+checks = {
+    'byr': lambda v: 1920 <= int(v) <= 2020,
+    'iyr': lambda v: 2010 <= int(v) <= 2020,
+    'eyr': lambda v: 2020 <= int(v) <= 2030,
+    'hcl': lambda v: len(v) == 7 and all(c in '0123456789abcdef' for c in v[1:]),
+    'pid': lambda v: len(v) == 9 and all(c in '0123456789' for c in v),
+    'ecl': lambda v: v in ('amb', 'blu', 'brn', 'gry', 'grn', 'hzl', 'oth'),
+    'cid': lambda v: True,
+    'hgt': check_height
+}
+```
+
+The two checks for `hcl` and `pid` could also be written using regular
+expressions, but for such a short string and simple set of characters using
+regular expressions is just overkill and will be slower than a simple string
+check. It *could* be faster to check in a pre-built `set('0123456789abcdef')`,
+but again for such a little number of passports the overhead of hashing
+characters to check for their presence in a set is only going to make things
+slower than checking in the entire string of allowed characters.
+
+The only non `lambda` function in the above dictionary is `check_weight`, since
+it needs to do a couple of checks more than the others and writing it as a
+`lambda` would make it pretty hard to read and understand. Finally, the `lambda`
+function for `cid` just returns `True` since we do not care about that field.
+
+We can now parse all passports and run the right check for any given `key:value`
+field. We can again use the `all()` function to make all checks for a single
+passport in one line, iterating over the `(key, value)` pairs that we have.
+
+```python
+n_valid = 0
+
+for raw in passports:
+    passport = (field.split(':') for field in raw.split())
+
+    if all(checks[k](v) for k, v in passport):
+        n_valid += 1
+```
+
+Note that in the above code we are *not* enclosing the generator expression to
+parse the passport in square brackets (`[]`), but merely in parentheses (`()`):
+that's because we only need to iterate over it once, so we don't care about
+transforming it into a `list`, that would just slow things down. Using
+parentheses yields the underlying `generator` object ready to be iterated over.
+
+Going one last little step further we can also do both vaildity checks (part 1
+and part 2) in a single loop:
+
+```python
+n_valid1 = 0
+n_valid2 = 0
+
+for raw in passports:
+    if all(k in raw for k in KEYS):
+        n_valid1 += 1
+        passport = (field.split(':') for field in raw.split())
+
+        if all(checks[k](v) for k, v in passport):
+            n_valid2 += 1
+
+print('Part 1:', n_valid1)
+print('Part 2:', n_valid2)
+```
+
+Not really that interesting or complicated of a puzzle if you ask me, but the
+code looks nice nonetheless!
+
+
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
 [d03-problem]: https://adventofcode.com/2020/day/3
+[d04-problem]: https://adventofcode.com/2020/day/4
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
+[d04-solution]: solutions/day04.py
 
 [py-raw-string]:        https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
 [py-generator-expr]:    https://www.python.org/dev/peps/pep-0289/
+[py-lambda]:            https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
 [py-set]:               https://docs.python.org/3/library/stdtypes.html?#set
 [py-str-count]:         https://docs.python.org/3/library/stdtypes.html#str.count
+[py-str-split]:         https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-strip]:         https://docs.python.org/3/library/stdtypes.html#str.strip
 [py-builtin-enumerate]: https://docs.python.org/3/library/functions.html#enumerate
+[py-builtin-all]:       https://docs.python.org/3/library/functions.html#all
+[py-builtin-sum]:       https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:       https://docs.python.org/3/library/functions.html#zip
 [py-itertools-count]:   https://docs.python.org/3/library/itertools.html#itertools.count
 [py-re]:                https://docs.python.org/3/library/re.html
