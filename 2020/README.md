@@ -399,21 +399,19 @@ checks = {
     'byr': lambda v: 1920 <= int(v) <= 2020,
     'iyr': lambda v: 2010 <= int(v) <= 2020,
     'eyr': lambda v: 2020 <= int(v) <= 2030,
-    'hcl': lambda v: len(v) == 7 and all(c in '0123456789abcdef' for c in v[1:]),
-    'pid': lambda v: len(v) == 9 and all(c in '0123456789' for c in v),
+    'pid': lambda v: len(v) == 9 and all(c.isdigit() for c in v),
+    'hcl': lambda v: len(v) == 7 and all(c.isdigit() or c in 'abcdef' for c in v[1:]),
     'ecl': lambda v: v in ('amb', 'blu', 'brn', 'gry', 'grn', 'hzl', 'oth'),
     'cid': lambda v: True,
     'hgt': check_height
 }
 ```
 
-The two checks for `hcl` and `pid` could also be written using regular
-expressions, but for such a short string and simple set of characters using
-regular expressions is just overkill and will be slower than a simple string
-check. It *could* be faster to check in a pre-built `set('0123456789abcdef')`,
-but again for such a little number of passports the overhead of hashing
-characters to check for their presence in a set is only going to make things
-slower than checking in the entire string of allowed characters.
+The check for `pid` uses the built-in [`str.isdigit()`][py-str-isdigit], which
+is faster than checking `c in '0123456789'` or even
+`ok = set('123456789'); c in ok`. The check for `hcl` could also be written
+using a regular expression or an `in` on a `set`, but for such a short
+string and simple set of characters that would just slow things down.
 
 The only non `lambda` function in the above dictionary is `check_weight`, since
 it needs to do a couple of checks more than the others and writing it as a
@@ -477,6 +475,7 @@ code looks nice nonetheless!
 [py-lambda]:            https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
 [py-set]:               https://docs.python.org/3/library/stdtypes.html?#set
 [py-str-count]:         https://docs.python.org/3/library/stdtypes.html#str.count
+[py-str-isdigit]:       https://docs.python.org/3/library/stdtypes.html#str.isdigit
 [py-str-split]:         https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-strip]:         https://docs.python.org/3/library/stdtypes.html#str.strip
 [py-builtin-enumerate]: https://docs.python.org/3/library/functions.html#enumerate
