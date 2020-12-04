@@ -10,7 +10,7 @@ def check_height(v):
 	return False
 
 checks = {
-	'byr': lambda v: 1920 <= int(v) <= 2020,
+	'byr': lambda v: 1920 <= int(v) <= 2002,
 	'iyr': lambda v: 2010 <= int(v) <= 2020,
 	'eyr': lambda v: 2020 <= int(v) <= 2030,
 	'pid': lambda v: len(v) == 9 and all(c.isdigit() for c in v),

@@ -292,7 +292,7 @@ Day 4 - Passport Processing
 
 [Problem statement][d04-problem] — [Complete solution][d04-solution]
 
-### Part1
+### Part 1
 
 Another input validation puzzle. This time we are going to process passports: we
 are given a list of passports as input, which are separated by empty lines (that
@@ -355,7 +355,7 @@ n_valid = sum(all(k in p for k in KEYS) for p in passports)
 print('Part 1:', n_valid)
 ```
 
-### Part2
+### Part 2
 
 We now also have to validate the `value` of each field. We still need to ignore
 the `cid` field, but other fields have specific validity requirements:
@@ -396,7 +396,7 @@ def check_height(v):
     return False
 
 checks = {
-    'byr': lambda v: 1920 <= int(v) <= 2020,
+    'byr': lambda v: 1920 <= int(v) <= 2002,
     'iyr': lambda v: 2010 <= int(v) <= 2020,
     'eyr': lambda v: 2020 <= int(v) <= 2030,
     'pid': lambda v: len(v) == 9 and all(c.isdigit() for c in v),
