@@ -8,6 +8,7 @@ Table of Contents
 - [Day 2 - Password Philosophy](#day-2---password-philosophy)
 - [Day 3 - Toboggan Trajectory](#day-3---toboggan-trajectory)
 - [Day 4 - Passport Processing](#day-4---passport-processing)
+- [Day 5 - Binary Boarding](#day-5---binary-boarding)
 
 
 Day 1 - Report Repair
@@ -461,25 +462,243 @@ Not really that interesting or complicated of a puzzle if you ask me, but the
 code looks nice nonetheless!
 
 
+Day 5 - Binary Boarding
+-----------------------
+
+[Problem statement][d05-problem] — [Complete solution][d05-solution]
+
+### Part 1
+
+Cool and simple problem today. We have a list of "special" seat numbers as
+input: each one consists of exactly 10 characters, where the first 7 are either
+`F` or `B` and represent the seat row, while the last 3 are either `L` or `R`
+and represent the seat column. The airplane we are boarding has 128 rows
+(numbered `0` through `127` from the front) and 8 columns (numbered `0` through
+`7` from the left).
+
+The first character of the seat's row identifies a half of the plane where the
+seat will be: either the front half `F` (rows `0` through `63`) or the back half
+`B` (rows `64` to `127`). Moving on, each subsequent character identifies which
+half of *the previous half* the row will be. Each character restricts the space
+to a half of the previous one until we finally identify a single row.
+
+We need to identify the seat with the highest ID, calculated as `row * 8 + col`.
+
+To make it clearer, let's look at an example. Assume the first 7 characters of
+the seat are `FBFBBFF`, this means:
+
+1. `F` front half: from `0` to `63`.
+2. `B` back half of previous half: from `32` to `63`.
+3. `F` front half of previous half: from `32` to `47`.
+4. `B` back half: from `40` to `47`.
+5. `B` back half: from `44` to `47`.
+6. `F` front half: row `44` or `45`.
+7. `F` the row is `44`.
+
+It's easy to notice that all those `F`s and `B`s are doing is just encode the
+row in binary. `F` makes the number lower, so it can be seen as a binary `0`,
+and `B` makes the number higher, so it can be seen as `1`. If we rewrite the
+above example substituting `F` with `0` and `B` with `1` we get `0101100`, which
+is exactly `44` in binary. The exact same thing applies to the columns, each `L`
+can be seen as a `0` and each `R` as a `1`.
+
+All we have to do to find the row and column of a seat is to just separate row
+and column first, and then interpret those as two binary numbers. Python already
+knows how to transform a string representing a binary number into an integer,
+but it obviouslt expects the characters to be either `0` or `1`. We can just
+replace all instances of `F` and `L` with `0`, and all instances of `B` and `R`
+with `1`. Then, separate the first 7 and the last 3, and use
+[`int(x, 2)`][py-builtin-int] to convert them to integers.
+
+Normally, to replace a characters in a string you would use
+[`str.replace()`][py-str-replace], so something like this:
+
+```python
+>>> 'FBFBBFFRLR'.replace('F', '0').replace('B', '1').replace('L', '0').replace('R', '1')
+'0101100101'
+```
+
+However, that is (1) pretty ugly and (2) pretty slow as it scans everything
+*four* times. Thankfully, we can do this in a much cleaner way using
+[`str.maketrans()`][py-str-maketrans] and [`str.translate()`][py-str-translate].
+These two built-in methods exist exactly for this purpose: `.maketrans()` takes
+two strings of equal length and builds a *translation table* that turns each
+i-th character of the first to the i-th character of the second. This
+translation table can then be passed to `.translate()` to do the translation. If
+you are familiar with the Linux command line, you might now of the
+[`tr`][misc-man1-tr] command (shorthand for "translate"): what we are going to
+write will produce exactly the same result as the command
+`cat input | tr BFRL 1010`.
+
+It's almost ridicolous that all of the long explanations above just translate to
+two lines of Python:
+
+```python
+table = str.maketrans('BFRL', '1010')
+seats = fin.read().translate(table).splitlines()
+# 'BBFFBFBRRR\nBBFBFFBLLR\n...' -> ['1100101111', '1101001001', ...]
+```
+
+We now have a list of binary strings. Remember what we want to find? We want to
+get the ID obtained as `row * 8 + col`. Do we really need to split the string in
+two and convert each `row` and `col` from binary to integer to do this? Not
+really! What that multiplication by `8` actually does, thinking about it in
+binary, is just shifting `row` left by 3 bits. In fact, `row * 8` and `row << 3`
+are equivalent operations. The column, which is the lower 3 bits, is then added
+to it. In short, we are doing:
+
+```
+1100101|111 -> 1100101000 + 111 == 1100101000 + 111 == 110010111
+    row|col ->    row * 8 + col == (row << 3) + col == initial number!
+```
+
+So all of this is just useless gibberish. We already have the binary
+representation of all the seat IDs! We just need to turn them into integers.
+Let's use our beloved `map()` and `lambda` combination again to do just that.
+Then, use [`max()`][py-builtin-max] to find the maximum of those.
+
+```python
+ids    = tuple(map(lambda s: int(s, 2), seats))
+max_id = max(ids)
+
+print('Part 1:', max_id)
+```
+
+Today's part 1 was 4 lines of Python. Actually, you could make it 1 line if
+you really wanted, but that's probably not going to help anybody when it comes
+to readability. On we go!
+
+Note: we are making that seemingly useless `tuple()` of `ids` only because it's
+needed for part 2.
+
+### Part 2
+
+We are now told that our seat is missing from the input list, and we need to
+find its ID. We know that the plane does not have seats at the very front and at
+the very back, so those are also missing from our list. Our seat was not at the
+very front or very back though, and the seats with ID at distance `+1` and `-1`
+from our ID are present in the list.
+
+Interesting. We know we have a list of *consecutive* IDs, starting from some
+`min_id`, going up to our already calculated `max_id`. Somewhere in the middle
+of those, there is a missing ID, which is the one we are looking for.
+
+We should know the formula to get the sum of a range of consecutive numbers
+without actually having to calculate it, right? Well, let's look at Wikipedia to
+[refresh our memory][wiki-sum-range]. We know the sum of consecutive integers
+from `1` to `N` is `N * (N - 1) // 2`: if our consecutive integers don't start
+from `1` but from some `m`, we can just subtract the sum of the integers from
+`1` to `m` from that, and we have the sum of all the consective integers from
+`m` to `N`. That is: `N * (N - 1) // 2 - m * (m - 1) // 2`.
+
+Which means, we can compute the sum of all our IDs from the minimum to the
+maximum like this:
+
+```python
+min_id   = min(ids)
+expected = max_id * (max_id + 1) // 2 - min_id * (min_id - 1) // 2
+```
+
+That would be the *expected* sum, if our ID wasn't missing. That's right. We can
+now just calculate the *real* sum and get the missing ID with a subtraction:
+
+```python
+my_id = expected - sum(ids)
+print('Part 2:', my_id)
+```
+
+### Reflections
+
+Calculating the missing ID with a simple mathematical formula is pretty neat,
+but you might be wondering: can't the above code be optimized? It seems like we
+are wasting more time than needed by iterating over the entire list of IDs
+multiple times: one with `tuple()` to build the tuple of IDs, one with `max()`
+for part 1, and another two times with `min()` and `sum()` for part 2. Couldn't
+we just iterate over it once and get all the three values?
+
+Well, there is no built-in function for that, which means we would need to write
+our own. Something like this (assuming our numbers are all positive and lower
+than 1024, which is the case for this problem):
+
+```python
+def min_max_sum(iterable):
+    mmin, mmax, ssum = 0, 1024, 0
+
+    for x in iterable:
+        ssum += x
+
+        if x < mmin:
+            mmin = x
+        elif x > mmax:
+            mmax = x
+
+    return mmin, mmax, ssum
+```
+
+We could then just solve part 1 and part 2 without iterating over the ids ever
+again, which also means that we wouldn't need to build a `tuple()` in the first
+place and we could just pass the generator returned by the very first `map()` to
+our `min_max_sum()`.
+
+```python
+table = str.maketrans('BFRL', '1010')
+seats = fin.read().translate(table).splitlines()
+ids   = map(lambda s: int(s, 2), seats)
+
+m, M, s = min_max_sum(ids)
+```
+
+This looks pretty good on paper. We are saving unneeded iterations, so it should
+take less time, right? Well... not really. As it turns out, Python bytecode is
+*pretty slow*, while the `min()`, `max()` and `sum()` built-in functions use
+internal Python code, which means native, compiled and optimized C code. As a
+consequence, any of those functions traverses an iterable faster than any Python
+`for` loop by an order of magnitude. This means that the above "optimized"
+solution that that iterates *only once* over the `ids` is actually *slower* than
+my original solution which iterates over the `ids` *four times*!
+
+Of course, this is only true because our list of IDs is pretty small, and it
+also does not apply to *all* Python implementations, but it is true for the
+"official" and most widely used one, which is [CPython][wiki-cpython]. Running
+this on my machine with CPython 3.9, timing with my [timer
+utilities](/utils/timer.py) yields the following:
+
+```
+Timer A: 241.736µs wall, 240.477µs CPU
+Timer B: 328.511µs wall, 328.626µs CPU
+```
+
+Where `A` uses `tuple()` + `min()` + `max()` + `sum()` while `B` uses
+`min_max_sum()` defined above. The "optimized" solution is ~36% slower. Pretty
+sad, huh? The slowness of interpreted languages!
+
+
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
 [d03-problem]: https://adventofcode.com/2020/day/3
 [d04-problem]: https://adventofcode.com/2020/day/4
+[d05-problem]: https://adventofcode.com/2020/day/5
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
 [d04-solution]: solutions/day04.py
+[d05-solution]: solutions/day05.py
 
 [py-raw-string]:        https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
 [py-generator-expr]:    https://www.python.org/dev/peps/pep-0289/
 [py-lambda]:            https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
-[py-set]:               https://docs.python.org/3/library/stdtypes.html?#set
+[py-set]:               https://docs.python.org/3/library/stdtypes.html#set
 [py-str-count]:         https://docs.python.org/3/library/stdtypes.html#str.count
 [py-str-isdigit]:       https://docs.python.org/3/library/stdtypes.html#str.isdigit
+[py-str-maketrans]:     https://docs.python.org/3/library/stdtypes.html#str.maketrans
+[py-str-replace]:       https://docs.python.org/3/library/stdtypes.html#str.replace
 [py-str-split]:         https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-strip]:         https://docs.python.org/3/library/stdtypes.html#str.strip
-[py-builtin-enumerate]: https://docs.python.org/3/library/functions.html#enumerate
+[py-str-translate]:     https://docs.python.org/3/library/stdtypes.html#str.translate
 [py-builtin-all]:       https://docs.python.org/3/library/functions.html#all
+[py-builtin-enumerate]: https://docs.python.org/3/library/functions.html#enumerate
+[py-builtin-int]:       https://docs.python.org/3/library/functions.html#int
+[py-builtin-max]:       https://docs.python.org/3/library/functions.html#max
 [py-builtin-sum]:       https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:       https://docs.python.org/3/library/functions.html#zip
 [py-itertools-count]:   https://docs.python.org/3/library/itertools.html#itertools.count
@@ -493,6 +712,9 @@ code looks nice nonetheless!
 [algo-binsrc]:        https://en.wikipedia.org/wiki/Binary_search_algorithm
 [algo-wall-follower]: https://en.wikipedia.org/wiki/Maze_solving_algorithm#Wall_follower
 
+[wiki-cpython]:         https://en.wikipedia.org/wiki/CPython
 [wiki-linear-time]:     https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-polynomial-time]: https://en.wikipedia.org/wiki/Time_complexity#Polynomial_time
 [wiki-regexp]:          https://www.regular-expressions.info/
+[wiki-sum-range]:       https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
+[misc-man1-tr]: https://man7.org/linux/man-pages/man1/tr.1.html
