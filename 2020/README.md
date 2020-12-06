@@ -14,7 +14,7 @@ Table of Contents
 Day 1 - Report Repair
 ---------------------
 
-[Problem statement][d01-problem] — [Complete solution][d01-solution]
+[Problem statement][d01-problem] — [Complete solution][d01-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -189,7 +189,7 @@ must be `True` and the other one must be `False`.
 Day 3 - Toboggan Trajectory
 ---------------------------
 
-[Problem statement][d03-problem] — [Complete solution][d03-solution]
+[Problem statement][d03-problem] — [Complete solution][d03-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -291,7 +291,7 @@ And that's six out of fifty stars!
 Day 4 - Passport Processing
 ---------------------------
 
-[Problem statement][d04-problem] — [Complete solution][d04-solution]
+[Problem statement][d04-problem] — [Complete solution][d04-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -465,7 +465,7 @@ code looks nice nonetheless!
 Day 5 - Binary Boarding
 -----------------------
 
-[Problem statement][d05-problem] — [Complete solution][d05-solution]
+[Problem statement][d05-problem] — [Complete solution][d05-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -676,7 +676,7 @@ sad, huh? The slowness of interpreted languages!
 Day 6 - Custom Customs
 ----------------------
 
-[Problem statement][d06-problem] — [Complete solution][d06-solution]
+[Problem statement][d06-problem] — [Complete solution][d06-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -921,12 +921,14 @@ n_all_yes = sum(map(len, map(intersect, groups)))
 ```
 
 
+[top]: #advent-of-code-2020-walkthrough
 [d01]: #day-1---report-repair
 [d02]: #day-2---password-philosophy
 [d03]: #day-3---toboggan-trajectory
 [d04]: #day-4---passport-processing
 [d05]: #day-5---binary-boarding
 [d06]: #day-6---custom-customs
+
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
 [d03-problem]: https://adventofcode.com/2020/day/3

@@ -33,7 +33,7 @@ Table of Contents
 Day 1 - The Tyranny of the Rocket Equation
 ------------------------------------------
 
-[Problem statement][d01-problem] — [Complete solution][d01-solution]
+[Problem statement][d01-problem] — [Complete solution][d01-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -78,7 +78,7 @@ First puzzle of the year, so not really that much of a challenge, but still fun!
 Day 2 - 1202 Program Alarm
 --------------------------
 
-[Problem statement][d02-problem] — [Complete solution][d02-solution]
+[Problem statement][d02-problem] — [Complete solution][d02-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -162,7 +162,7 @@ print('Part 2:', a * 100 + b)
 Day 3 - Crossed Wires
 ---------------------
 
-[Problem statement][d03-problem] — [Complete solution][d03-solution]
+[Problem statement][d03-problem] — [Complete solution][d03-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -274,7 +274,7 @@ print('Part 2:', best)
 Day 4 - Secure Container
 ------------------------
 
-[Problem statement][d04-problem] — [Complete solution][d04-solution]
+[Problem statement][d04-problem] — [Complete solution][d04-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -402,7 +402,7 @@ which is what I did in the complete solution linked above.
 Day 5 - Sunny with a Chance of Asteroids
 ----------------------------------------
 
-[Problem statement][d05-problem] — [Complete solution][d05-solution]
+[Problem statement][d05-problem] — [Complete solution][d05-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -575,7 +575,7 @@ print('Part 2:', result)
 Day 6 - Universal Orbit Map
 ---------------------------
 
-[Problem statement][d06-problem] — [Complete solution][d06-solution]
+[Problem statement][d06-problem] — [Complete solution][d06-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -720,7 +720,7 @@ print('Part 2:', min_transfers)
 Day 7 - Amplification Circuit
 -----------------------------
 
-[Problem statement][d07-problem] — [Complete solution][d07-solution]
+[Problem statement][d07-problem] — [Complete solution][d07-solution] — [Back to top][top]
 
 ### A working Intcode VM
 
@@ -881,7 +881,7 @@ written easily extensible code for the VM would have been an annoyance too.
 Day 8 - Space Image Format
 --------------------------
 
-[Problem statement][d08-problem] — [Complete solution][d08-solution]
+[Problem statement][d08-problem] — [Complete solution][d08-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -992,7 +992,7 @@ Now that's readable, and we successfully got our part 2 answer!
 Day 9 - Sensor Boost
 --------------------
 
-[Problem statement][d09-problem] — [Complete solution][d09-solution]
+[Problem statement][d09-problem] — [Complete solution][d09-solution] — [Back to top][top]
 
 ### Prerequisites
 
@@ -1219,7 +1219,7 @@ And there it is, day 9 completed and we now have a complete Intcode VM! Nice.
 Day 10 - Monitoring Station
 ---------------------------
 
-[Problem statement][d10-problem] — [Complete solution][d10-solution]
+[Problem statement][d10-problem] — [Complete solution][d10-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -1419,7 +1419,7 @@ print('Part 2:', answer)
 Day 11 - Space Police
 ---------------------
 
-[Problem statement][d11-problem] — [Complete solution][d11-solution]
+[Problem statement][d11-problem] — [Complete solution][d11-solution] — [Back to top][top]
 
 ### Prerequisites
 
@@ -1591,7 +1591,7 @@ And today's puzzle is completed!
 Day 12 - The N-Body Problem
 ---------------------------
 
-[Problem statement][d12-problem] — [Complete solution][d12-solution]
+[Problem statement][d12-problem] — [Complete solution][d12-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -1822,7 +1822,7 @@ tailored to be solvable. Quite interesting!
 Day 13 - Care Package
 ---------------------
 
-[Problem statement][d13-problem] — [Complete solution][d13-solution]
+[Problem statement][d13-problem] — [Complete solution][d13-solution] — [Back to top][top]
 
 ### Prerequisites
 
@@ -1977,7 +1977,7 @@ get our answer as expected.
 Day 14 - Space Stoichiometry
 ----------------------------
 
-[Problem statement][d14-problem] — [Complete solution][d14-solution]
+[Problem statement][d14-problem] — [Complete solution][d14-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -2154,7 +2154,7 @@ Quite messy, right?
 Day 15 - Oxygen System
 ----------------------
 
-[Problem statement][d15-problem] — [Complete solution][d15-solution]
+[Problem statement][d15-problem] — [Complete solution][d15-solution] — [Back to top][top]
 
 ### Prerequisites
 
@@ -2439,7 +2439,7 @@ print('Part 2:', time)
 Day 16 - Flawed Frequency Transmission
 --------------------------------------
 
-[Problem statement][d16-problem] — [Complete solution][d16-solution]
+[Problem statement][d16-problem] — [Complete solution][d16-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -2703,7 +2703,7 @@ sad :(.
 Day 17 - Set and Forget
 -----------------------
 
-[Problem statement][d17-problem] — [Complete solution][d17-solution]
+[Problem statement][d17-problem] — [Complete solution][d17-solution] — [Back to top][top]
 
 ### Prerequisites
 
@@ -3035,7 +3035,7 @@ print('Part 2:', answer)
 Day 18 - Many-Worlds Interpretation
 -----------------------------------
 
-[Problem statement][d18-problem] — [Complete solution][d18-solution]
+[Problem statement][d18-problem] — [Complete solution][d18-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -3610,7 +3610,7 @@ Beautiful! Another two stars to add to our collection.
 Day 19 - Tractor Beam
 ---------------------
 
-[Problem statement][d19-problem] — [Complete solution][d19-solution]
+[Problem statement][d19-problem] — [Complete solution][d19-solution] — [Back to top][top]
 
 ### Prerequisites
 
@@ -3884,7 +3884,7 @@ a fraction of a second!
 Day 20 - Donut Maze
 -------------------
 
-[Problem statement][d20-problem] — [Complete solution][d20-solution]
+[Problem statement][d20-problem] — [Complete solution][d20-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -4288,7 +4288,7 @@ twice, so the code runs nice and fast either way.
 Day 21 - Springdroid Adventure
 ------------------------------
 
-[Problem statement][d21-problem] — [Complete solution][d21-solution]
+[Problem statement][d21-problem] — [Complete solution][d21-solution] — [Back to top][top]
 
 ### Prerequisites
 
@@ -4586,7 +4586,7 @@ other side, and we get our part 2 solution.
 Day 22 - Slam Shuffle
 ---------------------
 
-[Problem statement][d22-problem] — [Complete solution][d22-solution]
+[Problem statement][d22-problem] — [Complete solution][d22-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -5095,7 +5095,7 @@ subjective.
 Day 23 - Category Six
 ---------------------
 
-[Problem statement][d23-problem] — [Complete solution][d23-solution]
+[Problem statement][d23-problem] — [Complete solution][d23-solution] — [Back to top][top]
 
 ### Prerequisites
 
@@ -5358,7 +5358,7 @@ Welcome to *IntcodeNET* I guess!
 Day 24 - Planet of Discord
 --------------------------
 
-[Problem statement][d24-problem] — [Complete solution][d24-solution]
+[Problem statement][d24-problem] — [Complete solution][d24-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -5674,6 +5674,7 @@ Yeah, that triple nested [`sum()`][py-builtin-sum] is pretty funny, isn't it?
 Day 24 completed, only one left!
 
 
+[top]: #advent-of-code-2019-walkthrough
 [d01]: #day-1---the-tyranny-of-the-rocket-equation
 [d02]: #day-2---1202-program-alarm
 [d03]: #day-3---crossed-wires
