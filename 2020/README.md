@@ -525,10 +525,9 @@ These two built-in methods exist exactly for this purpose: `.maketrans()` takes
 two strings of equal length and builds a *translation table* that turns each
 i-th character of the first to the i-th character of the second. This
 translation table can then be passed to `.translate()` to do the translation. If
-you are familiar with the Linux command line, you might now of the
-[`tr`][misc-man1-tr] command (shorthand for "translate"): what we are going to
-write will produce exactly the same result as the command
-`cat input | tr BFRL 1010`.
+you are familiar with Linux command line tools, you might know about
+[`tr`][misc-man1-tr]: what we are going to write will produce exactly the same
+result as the command `cat input | tr BFRL 1010`.
 
 It's almost ridicolous that all of the long explanations above just translate to
 two lines of Python:
@@ -654,8 +653,8 @@ take less time, right? Well... not really. As it turns out, Python bytecode is
 internal Python code, which means native, compiled and optimized C code. As a
 consequence, any of those functions traverses an iterable faster than any Python
 `for` loop by an order of magnitude. This means that the above "optimized"
-solution that that iterates *only once* over the `ids` is actually *slower* than
-my original solution which iterates over the `ids` *four times*!
+solution that iterates *only once* over the `ids` is actually *slower* than my
+original solution which iterates over the `ids` *four times*!
 
 Of course, this is only true because our list of IDs is pretty small, and it
 also does not apply to *all* Python implementations, but it is true for the
@@ -765,10 +764,11 @@ people in the group answered. The solution to give for this second part is the
 sum of that count for all groups.
 
 We need to re-build our groups, this time separating different lines. We'll
-transform each group into a `tuple` of strings (one string per person):
+transform each group into a `list` of strings (one string per person), using
+[`str.splitlines()`][py-str-splitlines].
 
 ```python
-groups = map(lambda g: tuple(str.splitlines(g)), raw_groups)
+groups = map(lambda g: str.splitlines(g), raw_groups)
 ```
 
 To give an idea of what the above produces, applying it to our example:
@@ -786,9 +786,9 @@ Will produce the following:
 
 ```python
 >>> next(groups)
-('abc', 'def')
+['abc', 'def']
 >>> next(groups)
-('ac', 'ab', 'acd')
+['ac', 'ab', 'acd']
 ```
 
 As we can already see, the solution for this example would be 1 (in the second
@@ -802,22 +802,29 @@ will be the set of letters that appear in both strings. In Python, the
 intersection between two sets can be calculated using the `&` operator, or the
 equivalent [`.intersection()`][py-set-intersection] method.
 
-Our `groups` now are just tuples of strings. We want to turn those strings into
+Our `groups` now are just lists of strings. We want to turn those strings into
 sets to compute their intersection. To do this, we'll need an additional
 `map()`, so the above becomes:
 
 ```python
-groups = map(lambda g: tuple(map(set, g.splitlines())), raw)
+groups = map(lambda g: map(set, g.splitlines()), raw)
 ```
 
 Which produces:
 
-```
->>> next(groups)
+```python
+>>> g = next(groups)
+>>> g
+<map at 0x7f7a0e40fdf0>
+>>> tuple(g)
 ({'a', 'b', 'c'}, {'d', 'e', 'f'})
->>> next(groups)
+>>> tuple(next(groups))
 ({'a', 'c'}, {'a', 'b'}, {'a', 'c', 'd'})
 ```
+
+Note that we now have a `map` of `map`s. These are only iterable *onece*. We
+don't need to, but if we wanted to iterate on those multiple times, we would
+need to turn them into `tuple`s or `list`s first.
 
 Now iterate over the groups, compute the intersection of all the sets of answers
 in each group, and sum everything up:
@@ -855,12 +862,13 @@ but to some extent it can be treated as such.
 
 The body of the above loop can be shortened into a single line taking advantage
 of the very cool [`reduce()`][py-functools-reduce] function from the
-[`functools`][py-functools] module. This function, takes a function, an iterable
+[`functools`][py-functools] module. This function takes a function, an iterable
 and an optional initializer (if not supplied, the first element of the iterable
 is used). It starts with `res = initializer`, and then for each element of the
-iterable does `res = function(res, element)`. This means that if we supply a
-[`set.intersection`][py-set-intersection] as function, and our `groups` as
-iterable, the body of the above loop can be rewritten in one line.
+iterable does `res = function(res, element)`, finally returning `res`. This
+means that if we supply [`set.intersection`][py-set-intersection] as function,
+and our `groups` as iterable, the body of the above loop can be rewritten in one
+line.
 
 ```python
 from functools import reduce
@@ -893,13 +901,13 @@ n_all_yes = sum(map(len, map(intersect, groups)))
 print('Part 2:', n_all_yes)
 ```
 
-### One last step
+### One last stretch
 
 We can re-use the same technique of part 2 for part 1 too. The only difference
-is that for part 1 we only need to calcualte the [union][wiki-set-union] of the
-sets of answers (using [`set.union`][py-set-union]). To iterate over the
-`groups` two times, we'll turn them into a `tuple` now, then apply the same
-dance of `sum()` + `map()` + `reduce()` for both parts.
+is that for part 1 we need to calcualte the [union][wiki-set-union] of the sets
+of answers (using [`set.union`][py-set-union]). To iterate over the `groups` two
+times, we'll now need to turn them into `tuple`s of `tuple`s. After that, we can
+apply the same dance of `sum()` + `map()` + `reduce()` for both parts.
 
 ```python
 from functools import reduce, partial
@@ -907,11 +915,13 @@ from functools import reduce, partial
 raw_groups = fin.read().split('\n\n')
 
 groups = tuple(map(lambda g: tuple(map(set, g.splitlines())), raw_groups))
+
 # Or equivalent, "abusing" partial():
-groups = tuple(map(tuple, map(partial(map, set), map(str.splitlines, raw_groups))))
+map_to_sets = partial(map, set)
+groups = tuple(map(tuple, map(map_to_sets, map(str.splitlines, raw_groups))))
 ```
 
-Then:
+Finally:
 
 ```python
 unionize  = partial(reduce, set.union)
@@ -919,6 +929,8 @@ intersect = partial(reduce, set.intersection)
 n_any_yes = sum(map(len, map(unionize, groups)))
 n_all_yes = sum(map(len, map(intersect, groups)))
 ```
+
+We now have a quite elegant functional Python solution!
 
 ---
 
@@ -961,6 +973,7 @@ n_all_yes = sum(map(len, map(intersect, groups)))
 [py-str-maketrans]:      https://docs.python.org/3/library/stdtypes.html#str.maketrans
 [py-str-replace]:        https://docs.python.org/3/library/stdtypes.html#str.replace
 [py-str-split]:          https://docs.python.org/3/library/stdtypes.html#str.split
+[py-str-splitlines]:     https://docs.python.org/3/library/stdtypes.html#str.splitlines
 [py-str-strip]:          https://docs.python.org/3/library/stdtypes.html#str.strip
 [py-str-translate]:      https://docs.python.org/3/library/stdtypes.html#str.translate
 [py-builtin-all]:        https://docs.python.org/3/library/functions.html#all
