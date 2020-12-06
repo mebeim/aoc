@@ -4,12 +4,12 @@ Advent of Code 2020 walkthrough
 Table of Contents
 -----------------
 
-- [Day 1 - Report Repair](#day-1---report-repair)
-- [Day 2 - Password Philosophy](#day-2---password-philosophy)
-- [Day 3 - Toboggan Trajectory](#day-3---toboggan-trajectory)
-- [Day 4 - Passport Processing](#day-4---passport-processing)
-- [Day 5 - Binary Boarding](#day-5---binary-boarding)
-
+- [Day 1 - Report Repair][d01]
+- [Day 2 - Password Philosophy][d02]
+- [Day 3 - Toboggan Trajectory][d03]
+- [Day 4 - Passport Processing][d04]
+- [Day 5 - Binary Boarding][d05]
+- [Day 6 - Custom Customs][d06]
 
 Day 1 - Report Repair
 ---------------------
@@ -673,37 +673,301 @@ Where `A` uses `tuple()` + `min()` + `max()` + `sum()` while `B` uses
 sad, huh? The slowness of interpreted languages!
 
 
+Day 6 - Custom Customs
+----------------------
+
+[Problem statement][d06-problem] — [Complete solution][d06-solution]
+
+### Part 1
+
+Remember all those times I said "todays puzzle could really be solved in one/two
+lines of Python"? Well guess what, I'ma stop talking and do it for real this
+time. It's a simple puzzle, and the solution looks clean enough for my taste.
+
+**Disclaimer:** this is going to be rather lengthy, in order to explain
+everything properly.
+
+We have an unknown set of questions identified by lowercase letters (`a` to
+`z`). We are given a list of groups of answers. Each group of answers is
+separated by an empty line (just like passports in [day 4][d04]); each line of a
+group of answers corresponds to a person, and contains multiple lowercase
+letters identifying which questions they answered "yes" to.
+
+To better understand the problem, here's an example input:
+
+```
+abc
+def
+
+ac
+ab
+acd
+```
+
+And here are some facts about the above input:
+
+- There are 2 groups of people: one with 2 people and one with 3 people.
+- In the first group, the first person answered "yes" to questions `a`, `b`
+  and `c`.
+- In the second group, the third person answered "yes" to questions `a`, `c`,
+  `d`.
+- The number of *unique* questions answered by the first group is 6 (they all
+  answered different questions).
+- The number of *unique* questions answered by the second group is 4. Every
+  person answered to `a`, and person 1 and 3 both answered to `c`.
+
+For the first part of this puzzle, we need to find the sum of the number of
+unique questions answered by each group. In the above example, it would be 6 + 4
+= 10.
+
+First, let's notice one thing: we do not really care about the fact that each
+group is split into different people. We can treat groups just as strings of
+letters (ignoring the newlines). Now, how would you count the number of unique
+letters in a string? Simple: build a [`set()`][py-set] from its characters and
+get the length of the set.
+
+The solution should now be simple. Start by separating the groups in the input,
+and removing newline characters from each group. Another straightforward usage
+of [`map()`][py-builtin-map] and [`lambda`][py-lambda] combination.
+
+```python
+raw_groups = fin.read().split('\n\n')
+groups = map(lambda g: g.replace('\n', ''), raw_groups)
+```
+
+Now we just need to build a set out of each group, and sum the lengths of all
+the sets. You guessed it: `map()` it again, this time computing `len(set(g))`
+for every group `g`, and [`sum()`][py-builtin-sum] everything up. We could
+either use a single `map()` with a `lambda g: len(set(g))`, or a double `map()`
+first for `set`, then for `len`. The latter is fastest, because it's less Python
+code.
+
+```python
+n_any_yes = sum(map(len, map(set, groups)))
+print('Part 1:', n_any_yes)
+```
+
+Yes, the above could be compressed even more by avoiding the usage of those
+temporary variables:
+
+```python
+n_any_yes = sum(map(len, map(set, map(lambda g: g.replace('\n', ''), fin.read().split('\n\n')))))
+```
+
+But no thanks, that's where I draw the line between "cool solution" and
+"unreadable mess".
+
+### Part 2
+
+Now the fact that each group contains answers given by different people comes
+into play. For each group, we need to count the number of questions to which all
+people in the group answered. The solution to give for this second part is the
+sum of that count for all groups.
+
+We need to re-build our groups, this time separating different lines. We'll
+transform each group into a `tuple` of strings (one string per person):
+
+```python
+groups = map(lambda g: tuple(str.splitlines(g)), raw_groups)
+```
+
+To give an idea of what the above produces, applying it to our example:
+
+```
+abc
+def
+
+ac
+ab
+acd
+```
+
+Will produce the following:
+
+```python
+>>> next(groups)
+('abc', 'def')
+>>> next(groups)
+('ac', 'ab', 'acd')
+```
+
+As we can already see, the solution for this example would be 1 (in the second
+group there is `a` which was answered by all three).
+
+Given two strings of letters (answers from two people), how would you compute
+the number of letters that are in *both* strings? Well, we know how to get all
+the unique letters of a string `s`: `set(s)`. If we do this for two strings and
+then calculate the [intersection][wiki-set-intersection] of the two, the result
+will be the set of letters that appear in both strings. In Python, the
+intersection between two sets can be calculated using the `&` operator, or the
+equivalent [`.intersection()`][py-set-intersection] method.
+
+Our `groups` now are just tuples of strings. We want to turn those strings into
+sets to compute their intersection. To do this, we'll need an additional
+`map()`, so the above becomes:
+
+```python
+groups = map(lambda g: tuple(map(set, g.splitlines())), raw)
+```
+
+Which produces:
+
+```
+>>> next(groups)
+({'a', 'b', 'c'}, {'d', 'e', 'f'})
+>>> next(groups)
+({'a', 'c'}, {'a', 'b'}, {'a', 'c', 'd'})
+```
+
+Now iterate over the groups, compute the intersection of all the sets of answers
+in each group, and sum everything up:
+
+```python
+n_all_yes = 0
+
+for group in groups:
+    # Start with the first set of answers
+    all_yes = group[0]
+
+    # Intersect with all other sets
+    for answers in group[1:]:
+        all_yes &= answers
+
+    n_all_yes += len(all_yes)
+```
+
+**Note that** there is a huge difference between `a &= b` and `a = a & b` when
+working with sets. These operations would usually be analogous for integers, but
+Python sets behave differently. Doing `a &= b` computes the intersection and
+modifies the original `a` without creating a new `set`, while `a = a & b`
+creates a new `set`, which is the result of the intersection, and then assigns
+that to `a`. The actual analogous method for the `&=` operator is
+[`.intersection_update()`][py-set-intersection-u].
+
+The above code already gives us the answer, and we could stop there, but today I
+want to go a little bit further.
+
+Notice that we are applying the same operation to all the elements of a
+sequence, accumulating the result into a single variable? This technique is
+called [reduction][wiki-reduction], and it's one of the most useful operations
+in functional programming. Granted, Python isn't really a functional language,
+but to some extent it can be treated as such.
+
+The body of the above loop can be shortened into a single line taking advantage
+of the very cool [`reduce()`][py-functools-reduce] function from the
+[`functools`][py-functools] module. This function, takes a function, an iterable
+and an optional initializer (if not supplied, the first element of the iterable
+is used). It starts with `res = initializer`, and then for each element of the
+iterable does `res = function(res, element)`. This means that if we supply a
+[`set.intersection`][py-set-intersection] as function, and our `groups` as
+iterable, the body of the above loop can be rewritten in one line.
+
+```python
+from functools import reduce
+
+n_all_yes = 0
+for group in groups:
+    n_all_yes += len(reduce(set.intersection, group))
+```
+
+Huh, now we are using a loop just to sum values. Wonder if there is a function
+that does that for us. Yep, `sum()`. The `map()` feng shui never ends! The above
+can just be simplified into:
+
+```python
+n_all_yes = sum(map(lambda g: len(reduce(set.intersection, g)), groups))
+```
+
+We can make this a little bit readable using
+[`functools.partial()`][py-functools-partial] to fix the first argument of
+`reduce` to `set.intersection`, trasforming it into a function that only takes
+one argument (an iterable) and returns the intersection of all the items in the
+iterable.
+
+```python
+from functools import reduce, partial
+
+intersect = partial(reduce, set.intersection)
+n_all_yes = sum(map(len, map(intersect, groups)))
+
+print('Part 2:', n_all_yes)
+```
+
+### One last step
+
+We can re-use the same technique of part 2 for part 1 too. The only difference
+is that for part 1 we only need to calcualte the [union][wiki-set-union] of the
+sets of answers (using [`set.union`][py-set-union]). To iterate over the
+`groups` two times, we'll turn them into a `tuple` now, then apply the same
+dance of `sum()` + `map()` + `reduce()` for both parts.
+
+```python
+from functools import reduce, partial
+
+raw_groups = fin.read().split('\n\n')
+
+groups = tuple(map(lambda g: tuple(map(set, g.splitlines())), raw_groups))
+# Or equivalent, "abusing" partial():
+groups = tuple(map(tuple, map(partial(map, set), map(str.splitlines, raw_groups))))
+```
+
+Then:
+
+```python
+unionize  = partial(reduce, set.union)
+intersect = partial(reduce, set.intersection)
+n_any_yes = sum(map(len, map(unionize, groups)))
+n_all_yes = sum(map(len, map(intersect, groups)))
+```
+
+
+[d01]: #day-1---report-repair
+[d02]: #day-2---password-philosophy
+[d03]: #day-3---toboggan-trajectory
+[d04]: #day-4---passport-processing
+[d05]: #day-5---binary-boarding
+[d06]: #day-6---custom-customs
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
 [d03-problem]: https://adventofcode.com/2020/day/3
 [d04-problem]: https://adventofcode.com/2020/day/4
 [d05-problem]: https://adventofcode.com/2020/day/5
+[d06-problem]: https://adventofcode.com/2020/day/6
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
 [d04-solution]: solutions/day04.py
 [d05-solution]: solutions/day05.py
+[d06-solution]: solutions/day06.py
 
-[py-raw-string]:        https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
-[py-generator-expr]:    https://www.python.org/dev/peps/pep-0289/
-[py-lambda]:            https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
-[py-set]:               https://docs.python.org/3/library/stdtypes.html#set
-[py-str-count]:         https://docs.python.org/3/library/stdtypes.html#str.count
-[py-str-isdigit]:       https://docs.python.org/3/library/stdtypes.html#str.isdigit
-[py-str-maketrans]:     https://docs.python.org/3/library/stdtypes.html#str.maketrans
-[py-str-replace]:       https://docs.python.org/3/library/stdtypes.html#str.replace
-[py-str-split]:         https://docs.python.org/3/library/stdtypes.html#str.split
-[py-str-strip]:         https://docs.python.org/3/library/stdtypes.html#str.strip
-[py-str-translate]:     https://docs.python.org/3/library/stdtypes.html#str.translate
-[py-builtin-all]:       https://docs.python.org/3/library/functions.html#all
-[py-builtin-enumerate]: https://docs.python.org/3/library/functions.html#enumerate
-[py-builtin-int]:       https://docs.python.org/3/library/functions.html#int
-[py-builtin-max]:       https://docs.python.org/3/library/functions.html#max
-[py-builtin-sum]:       https://docs.python.org/3/library/functions.html#sum
-[py-builtin-zip]:       https://docs.python.org/3/library/functions.html#zip
-[py-itertools-count]:   https://docs.python.org/3/library/itertools.html#itertools.count
-[py-re]:                https://docs.python.org/3/library/re.html
-[py-re-findall]:        https://docs.python.org/3/library/re.html#re.findall
+[py-raw-string]:         https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
+[py-generator-expr]:     https://www.python.org/dev/peps/pep-0289/
+[py-lambda]:             https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
+[py-set]:                https://docs.python.org/3/library/stdtypes.html#set
+[py-set-intersection]:   https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
+[py-set-intersection-u]: https://docs.python.org/3/library/stdtypes.html#frozenset.intersection_update
+[py-set-union]:          https://docs.python.org/3/library/stdtypes.html#frozenset.union
+[py-set-union-u]:        https://docs.python.org/3/library/stdtypes.html#frozenset.union_update
+[py-str-count]:          https://docs.python.org/3/library/stdtypes.html#str.count
+[py-str-isdigit]:        https://docs.python.org/3/library/stdtypes.html#str.isdigit
+[py-str-maketrans]:      https://docs.python.org/3/library/stdtypes.html#str.maketrans
+[py-str-replace]:        https://docs.python.org/3/library/stdtypes.html#str.replace
+[py-str-split]:          https://docs.python.org/3/library/stdtypes.html#str.split
+[py-str-strip]:          https://docs.python.org/3/library/stdtypes.html#str.strip
+[py-str-translate]:      https://docs.python.org/3/library/stdtypes.html#str.translate
+[py-builtin-all]:        https://docs.python.org/3/library/functions.html#all
+[py-builtin-enumerate]:  https://docs.python.org/3/library/functions.html#enumerate
+[py-builtin-int]:        https://docs.python.org/3/library/functions.html#int
+[py-builtin-map]:        https://docs.python.org/3/library/functions.html#map
+[py-builtin-max]:        https://docs.python.org/3/library/functions.html#max
+[py-builtin-sum]:        https://docs.python.org/3/library/functions.html#sum
+[py-builtin-zip]:        https://docs.python.org/3/library/functions.html#zip
+[py-itertools-count]:    https://docs.python.org/3/library/itertools.html#itertools.count
+[py-functools]:          https://docs.python.org/3/library/functools.html
+[py-functools-partial]:  https://docs.python.org/3/library/functools.html#functools.partial
+[py-functools-reduce]:   https://docs.python.org/3/library/functools.html#functools.reduce
+[py-re]:                 https://docs.python.org/3/library/re.html
+[py-re-findall]:         https://docs.python.org/3/library/re.html#re.findall
 
 [algo-manhattan]:     https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
 [algo-dijkstra]:      https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
@@ -712,9 +976,13 @@ sad, huh? The slowness of interpreted languages!
 [algo-binsrc]:        https://en.wikipedia.org/wiki/Binary_search_algorithm
 [algo-wall-follower]: https://en.wikipedia.org/wiki/Maze_solving_algorithm#Wall_follower
 
-[wiki-cpython]:         https://en.wikipedia.org/wiki/CPython
-[wiki-linear-time]:     https://en.wikipedia.org/wiki/Time_complexity#Linear_time
-[wiki-polynomial-time]: https://en.wikipedia.org/wiki/Time_complexity#Polynomial_time
-[wiki-regexp]:          https://www.regular-expressions.info/
-[wiki-sum-range]:       https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
+[wiki-cpython]:          https://en.wikipedia.org/wiki/CPython
+[wiki-linear-time]:      https://en.wikipedia.org/wiki/Time_complexity#Linear_time
+[wiki-polynomial-time]:  https://en.wikipedia.org/wiki/Time_complexity#Polynomial_time
+[wiki-reduction]:        https://en.wikipedia.org/wiki/Reduction_Operator
+[wiki-regexp]:           https://www.regular-expressions.info/
+[wiki-set-intersection]: https://en.wikipedia.org/wiki/Intersection_(set_theory)
+[wiki-set-union]:        https://en.wikipedia.org/wiki/Union_(set_theory)
+[wiki-sum-range]:        https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
+
 [misc-man1-tr]: https://man7.org/linux/man-pages/man1/tr.1.html
