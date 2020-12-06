@@ -79,6 +79,22 @@ Complete calendars
 ------------------------------------------|------------------------------------------
 ![2018 calendear](2018/misc/calendar.gif) | ![2019 calendear](2019/misc/calendar.gif)
 
+Licensing
+---------
+
+The content of this repository, *with the exception of walkthroughs* (as defined
+in and linked at the top of this document), is licensed under the
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0), which you can
+find in the file [`LICENSE.Apache-2.0`](/LICENSE.Apache-2.0). Walkthroughs are
+licensed under the
+[Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+license, which you can find in the file
+[`LICENSE.CC-BY-NC-SA-4.0`](/LICENSE.CC-BY-NC-SA-4.0).
+
+---
+
+*Copyright &copy; 2020 Marco Bonelli.*
+
 
 [2020-wal]: 2020/README.md
 [2020-sol]: 2020/solutions

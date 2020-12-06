@@ -5673,6 +5673,12 @@ print('Part 2:', bugs)
 Yeah, that triple nested [`sum()`][py-builtin-sum] is pretty funny, isn't it?
 Day 24 completed, only one left!
 
+---
+
+*Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
+
+![License icon](https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png)
+
 
 [top]: #advent-of-code-2019-walkthrough
 [d01]: #day-1---the-tyranny-of-the-rocket-equation

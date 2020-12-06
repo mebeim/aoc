@@ -920,6 +920,12 @@ n_any_yes = sum(map(len, map(unionize, groups)))
 n_all_yes = sum(map(len, map(intersect, groups)))
 ```
 
+---
+
+*Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
+
+![License icon](https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png)
+
 
 [top]: #advent-of-code-2020-walkthrough
 [d01]: #day-1---report-repair
