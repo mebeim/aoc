@@ -72,13 +72,6 @@ If you enjoy what I'm doing and would like to say "thanks", you can
 [buy me a drink here][paypal-donate-btn].
 
 
-Complete calendars
-------------------
-
-2018                                      | 2019
-------------------------------------------|------------------------------------------
-![2018 calendear](2018/misc/calendar.gif) | ![2019 calendear](2019/misc/calendar.gif)
-
 Licensing
 ---------
 
