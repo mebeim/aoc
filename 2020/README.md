@@ -945,7 +945,7 @@ Today's puzzle is the first puzzle of the year to involve graphs! Last year's
 PTSD starts to creep in. Thankfully it's only day 7, so nothing wild.
 
 We have a bunch of color-coded bags. Each bag of a certain color can hold a
-specific number of bags of other colors. This information is given as inpu in a
+specific number of bags of other colors. This information is given as input in a
 quite verbose manner, like so:
 
 ```
@@ -955,7 +955,7 @@ muted yellow bags contain 2 shiny gold bags, 9 faded blue bags.
 faded blue bags contain no other bags.
 ```
 
-We are asked to find how many different colored bags can contain (either
+We are asked to find how many differently colored bags can contain (either
 directly or indirectly) at least one `shiny gold` bag.
 
 Looking at the above example, the answer would be 3, because:
@@ -973,13 +973,15 @@ In order to parse each line, we will first split it in two right at
 we'll use a [regular expression][misc-regexp] to extract all colors of the
 second part. Since bag colors are always followed by the word `bag` or `bags`
 and then by a comma (`,`) or a dot (`.`), we can search for letters and spaces
-followed by `bags?[.,]` to match the each inner color.
+followed by `bags?[.,]` to match each inner color.
 
 To make our life easier, we'll use a
 [`defaultdict`][py-collections-defaultdict], which is an awesome dictionary
-that, given a function returning a "default" object, automatically creates
+that, given a function returning a "default" entry, automatically creates
 missing entries if we try to access a missing key. Since we want a dict of
-lists, we'll pass the `list` function as parameter.
+lists, we'll pass the `list` function as parameter so that by default missing
+entries will be created as empty lists. This makes us able to do
+`d[k].append(x)` even if `k` is not a dictionary key.
 
 ```python
 fin = open(...)
@@ -1003,11 +1005,15 @@ filtering.
 Note: the above regular expression is a little bit more complex than what we
 need, since it also extracts the numbers (which we'll only need in part 2).
 
-If we think about it for a second, the `contained_by` dictionary we just built
-represents a [directed acyclic graph][wiki-dag] (assuming the input does not say
-both "A contains B" and "B contains A", which wouldn't make much sense). Nodes
-represent bag colors, and where edges signify "is directly contained by". It
-looks something like this (using the example above):
+Now `contained_by[x]` is the list of bag colors capable of directly containing
+bags of color `x`. If we think about it for a second, the `contained_by`
+dictionary we just built represents a [directed acyclic graph][wiki-dag]
+(assuming the input does not say both "A contains B" and "B contains A", which
+wouldn't make much sense). Nodes represent bag colors, and edges signify "is
+directly contained by". In graph terms, `contained_by[x]` yields the list of
+nodes that are reachable from `x`.
+
+Drawing it out, it looks something like this (using the example input above):
 
 ```
      shiny gold   faded blue
@@ -1041,6 +1047,10 @@ created the `visited` set in the function body, but that would have just been
 slower since each recursive call would have created a new set, and would have
 also needed to return it. Taking `visited` as parameter makes us modify that set
 only without creating new ones.
+
+Notice how above we just access `G[src]` without checking `if src in G` first:
+this would normally raise a `KeyError` on a normal `dict`, but not on a
+`defaultdict`: we just get an empty list back.
 
 We can now just call the above function to get the solution:
 
@@ -1096,8 +1106,10 @@ for line in fin:
 
 Now we have a dictionary of the form:
 `{outer: [(n1, inner1), (n2, inner2), ...]}` where nodes represent bag colors,
-and edges signify "contains". Drawing it for the above example, it looks
-something like this:
+and edges signify "contains". Now `contains[x]` is the list of bag colors and
+quantities that are contained in a bag of color `x`.
+
+Drawing it for the above example, it looks something like this:
 
 ```
            shiny gold
@@ -1113,15 +1125,15 @@ Bear with my questionable ASCII art graphing abilities, hope it's clear enough.
 
 Given a graph like this one, we now essentially have to do the same thing as
 before and explore it using depth-first search. The only difference is that (as
-can be seen from th example above) we cam very well visit a node multiple times,
+can be seen from th example above) we can very well visit a node multiple times,
 and we also want to take into account the numbers on each edge which indicate
 how many inner bags of such color our outer bag contains.
 
 Opting for a recursive solution again for its consiseness, each time we visit a
 node (bag color) we will first add the number of needed bags of that color to
 the total, then recursively calculate the subtotal number of bags which that
-specific color can hold, and multiply it by the `qty` that we need. It's simpler
-to show the code really.
+specific color can hold, and multiply it by the `qty` of that color, adding the
+result to the total. It's simpler to show the code really.
 
 ```python
 def count_contained(G, src):
@@ -1133,14 +1145,9 @@ def count_contained(G, src):
     return tot
 ```
 
-That's it, we are one function call away from the answer:
+That's it, we are one function call away from the answer...
 
-```python
-total_bags = count_contained(contains, 'shiny gold')
-print('Part 2:', total_bags)
-```
-
-If we want to optimize this a bit more, we can "remember" the number of bags
+However, we can optimize this a bit more: we can "remember" the number of bags
 contained by each color so that if we get to the same color multiple times we
 don't have to re-calculate everything again. This technique is known as
 [*memoization*][wiki-memoization], and is the holy grail of speeding up
@@ -1154,15 +1161,14 @@ def count_contained(G, src, cache={}):
 
     tot = 0
     for qty, color in G[src]:
-        tot += qty
-        tot += qty * count_contained(G, color)
+        tot += qty * (1 + count_contained(G, color))
 
     cache[src] = tot
     return tot
 ```
 
 Although the time this takes is still infinitesimal, this second function is
-about 70% faster on my machine.
+about 70% faster on my machine. I've also simplified the two additions into one.
 
 As it turns out, Python already has a decorator for memoizing function results
 based on the passed arguments: [`functools.cache`][py-functools-cache]. We can
@@ -1174,14 +1180,18 @@ Python do the caching for us:
 def count_contained(src):
     tot = 0
     for qty, color in contains[src]:
-        tot += qty
-        tot += qty * count_contained(color)
+        tot += qty * (1 + count_contained(color))
 
     return tot
 ```
 
 About the same speed as the previous manual method. Maaaaaybe around one
-microsecond faster, but really who knows.
+microsecond faster, but really who knows. Let's finally calculate the solution:
+
+```python
+total_bags = count_contained(contains, 'shiny gold')
+print('Part 2:', total_bags)
+```
 
 *P.S.:* we could have also abused this decorator just for fun to avoid keeping
 track of the visited nodes for part 1. Up to you to figure out how, if you want.
