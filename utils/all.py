@@ -3,3 +3,4 @@ from .modules import *
 from .helpers import *
 from .decorators import *
 from .timer import *
+from .algorithms import *
