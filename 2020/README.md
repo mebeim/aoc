@@ -10,6 +10,7 @@ Table of Contents
 - [Day 4 - Passport Processing][d04]
 - [Day 5 - Binary Boarding][d05]
 - [Day 6 - Custom Customs][d06]
+- [Day 7 - Handy Haversacks][d07]
 
 Day 1 - Report Repair
 ---------------------
@@ -104,7 +105,7 @@ A password is deemed "valid" if it contains the specified `<letter>` at least
 number of valid passwords.
 
 Let's use the [`re`][py-re] module to make our life easier and parse the
-policies using a [regular expression][wiki-regexp]. In order to match a single
+policies using a [regular expression][misc-regexp]. In order to match a single
 policy, we can use the regexp `\d+-\d+ \w: \w+`, which means: *match one or more
 digits, followed by an hyphen, followed by one or more digits, followed by a
 space, followed by a character, followed by a colon and a space, followed by one
@@ -932,6 +933,259 @@ n_all_yes = sum(map(len, map(intersect, groups)))
 
 We now have a quite elegant functional Python solution!
 
+
+Day 7 - Handy Haversacks
+------------------------
+
+[Problem statement][d07-problem] — [Complete solution][d07-solution] — [Back to top][top]
+
+### Part 1
+
+Today's puzzle is the first puzzle of the year to involve graphs! Last year's
+PTSD starts to creep in. Thankfully it's only day 7, so nothing wild.
+
+We have a bunch of color-coded bags. Each bag of a certain color can hold a
+specific number of bags of other colors. This information is given as inpu in a
+quite verbose manner, like so:
+
+```
+dark orange bags contain 3 bright white bags.
+bright white bags contain 1 shiny gold bag.
+muted yellow bags contain 2 shiny gold bags, 9 faded blue bags.
+faded blue bags contain no other bags.
+```
+
+We are asked to find how many different colored bags can contain (either
+directly or indirectly) at least one `shiny gold` bag.
+
+Looking at the above example, the answer would be 3, because:
+
+- `dark orange` can contain `bright white`, which can contain `shiny gold`
+- `bright white` can directly contain `shiny gold`
+- `muted yellow` can directly contain `shiny gold`
+
+Let's get started. First of all, we need an appropriate data structure to keep
+track of the relationship "is directly contained by": we can use a dictionary
+for this, of the form `{inner_color: [outer_color1, outer_color2, ...]}`.
+
+In order to parse each line, we will first split it in two right at
+`"bags contain"`. The first part will just be the color of the outer bag. Then
+we'll use a [regular expression][misc-regexp] to extract all colors of the
+second part. Since bag colors are always followed by the word `bag` or `bags`
+and then by a comma (`,`) or a dot (`.`), we can search for letters and spaces
+followed by `bags?[.,]` to match the each inner color.
+
+To make our life easier, we'll use a
+[`defaultdict`][py-collections-defaultdict], which is an awesome dictionary
+that, given a function returning a "default" object, automatically creates
+missing entries if we try to access a missing key. Since we want a dict of
+lists, we'll pass the `list` function as parameter.
+
+```python
+fin = open(...)
+
+inner_exp    = re.compile(r'(\d+) ([\w ]+) bags?[.,]')
+contained_by = defaultdict(list)
+
+for line in fin:
+    outer, inners = line.split(' bags contain ')
+    inners = inner_exp.findall(inners)
+
+    for _, inner in inners:
+        contained_by[inner].append(outer)
+```
+
+The above regular expression does not match lines saying
+`X bags contain no other bags`, it returns an empty list of matches for those.
+This is good since we don't care about that information and can avoid doing more
+filtering.
+
+Note: the above regular expression is a little bit more complex than what we
+need, since it also extracts the numbers (which we'll only need in part 2).
+
+If we think about it for a second, the `contained_by` dictionary we just built
+represents a [directed acyclic graph][wiki-dag] (assuming the input does not say
+both "A contains B" and "B contains A", which wouldn't make much sense). Nodes
+represent bag colors, and where edges signify "is directly contained by". It
+looks something like this (using the example above):
+
+```
+     shiny gold   faded blue
+      |        \     |
+      v         v    v
+bright white    muted yellow
+      |
+      v
+dark orange
+```
+
+All we have to do now to find how many differently colored bags can contain a
+`shiny gold` bag is explore the graph starting from `shiny gold` and counting
+how many different colors we can reach. This can be done through eigther a
+[breadth-first][algo-bfs] or [depth-first][algo-dfs] search. We'll use the
+latter for its simplicity, writing a recursive implementation:
+
+```python
+def count_can_contain(G, src, visited=set()):
+    for color in G[src]:
+        if color not in visited:
+            visited.add(color)
+            count_can_contain(G, color, visited)
+
+    return len(visited)
+```
+
+At the end of the search we return the length of the `visited` set instead of
+the set itself, because that's all we really care about. We could have also
+created the `visited` set in the function body, but that would have just been
+slower since each recursive call would have created a new set, and would have
+also needed to return it. Taking `visited` as parameter makes us modify that set
+only without creating new ones.
+
+We can now just call the above function to get the solution:
+
+```python
+can_contain_gold = count_can_contain(contained_by, 'shiny gold')
+print('Part 1:', can_contain_gold)
+```
+
+### Part 2
+
+Things get a little bit more complicated. We are now asked the "opposite"
+question: count how many bags are contained in one `shiny gold` bag.
+
+To make it clear, here's an example:
+
+```
+shiny gold bags contain 1 dark red bag, 2 dark green bags.
+dark red bags conain 5 bright yellow bags, 2 bright blue bags.
+dark green bags contain 3 bright blue bags.
+```
+
+How many bags does a `shiny gold` bag contain?
+
+- `dark red` bags contain 7 bags total: 5 `bright yellow`, 2 `bright blue`.
+- `dark green` bags contain 3 `bright blue` bags.
+
+Therefore a `shiny gold` bag, which contains 1 `dark red` and 2 `dark green`
+bags, will contain `1 + 1*7 + 2 + 2*3 = 16` bags total.
+
+It's easy to see that this one is also a problem that involves exploring a
+directed acyclic graph. This time though, we want to traverse it in the opposite
+direction, that is, the relationship we care about ("contains") is the opposite
+of the one we used in part 1 ("is contained by").
+
+The graph we build earlier is of no use now. We need a new one that has edges in
+the opposite direction, and we also need to remember the number of bags
+associated with each edge. Let's modify the initial input parsing loop to build
+this second graph too:
+
+```python
+inner_exp    = re.compile(r'(\d+) ([\w ]+) bags?[.,]')
+contained_by = defaultdict(list)
+contains     = defaultdict(list) # line added
+
+for line in fin:
+    outer, inners = line.split(' bags contain ')
+    inners = inner_exp.findall(inners)
+
+    for qty, inner in inners: # line modified
+        contained_by[inner].append(outer)
+        contains[outer].append((int(qty), inner)) # line added
+```
+
+Now we have a dictionary of the form:
+`{outer: [(n1, inner1), (n2, inner2), ...]}` where nodes represent bag colors,
+and edges signify "contains". Drawing it for the above example, it looks
+something like this:
+
+```
+           shiny gold
+         1 /       \ 2
+          v         v
+       dark red    dark green
+      5 |    2 \      | 3
+        v       v     v
+bright yellow   bright blue
+```
+
+Bear with my questionable ASCII art graphing abilities, hope it's clear enough.
+
+Given a graph like this one, we now essentially have to do the same thing as
+before and explore it using depth-first search. The only difference is that (as
+can be seen from th example above) we cam very well visit a node multiple times,
+and we also want to take into account the numbers on each edge which indicate
+how many inner bags of such color our outer bag contains.
+
+Opting for a recursive solution again for its consiseness, each time we visit a
+node (bag color) we will first add the number of needed bags of that color to
+the total, then recursively calculate the subtotal number of bags which that
+specific color can hold, and multiply it by the `qty` that we need. It's simpler
+to show the code really.
+
+```python
+def count_contained(G, src):
+    tot = 0
+    for qty, color in G[src]:
+        tot += qty
+        tot += qty * count_contained(G, color)
+
+    return tot
+```
+
+That's it, we are one function call away from the answer:
+
+```python
+total_bags = count_contained(contains, 'shiny gold')
+print('Part 2:', total_bags)
+```
+
+If we want to optimize this a bit more, we can "remember" the number of bags
+contained by each color so that if we get to the same color multiple times we
+don't have to re-calculate everything again. This technique is known as
+[*memoization*][wiki-memoization], and is the holy grail of speeding up
+redundant recursive algorithms that need to calculate the same values many
+times. To do memoization, we can use a simple dictionary as cache:
+
+```python
+def count_contained(G, src, cache={}):
+    if src in cache:
+        return cache[src]
+
+    tot = 0
+    for qty, color in G[src]:
+        tot += qty
+        tot += qty * count_contained(G, color)
+
+    cache[src] = tot
+    return tot
+```
+
+Although the time this takes is still infinitesimal, this second function is
+about 70% faster on my machine.
+
+As it turns out, Python already has a decorator for memoizing function results
+based on the passed arguments: [`functools.cache`][py-functools-cache]. We can
+refactor the above code using the global `contains` dictionary like this and let
+Python do the caching for us:
+
+```python
+@cache
+def count_contained(src):
+    tot = 0
+    for qty, color in contains[src]:
+        tot += qty
+        tot += qty * count_contained(color)
+
+    return tot
+```
+
+About the same speed as the previous manual method. Maaaaaybe around one
+microsecond faster, but really who knows.
+
+*P.S.:* we could have also abused this decorator just for fun to avoid keeping
+track of the visited nodes for part 1. Up to you to figure out how, if you want.
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -946,6 +1200,7 @@ We now have a quite elegant functional Python solution!
 [d04]: #day-4---passport-processing
 [d05]: #day-5---binary-boarding
 [d06]: #day-6---custom-customs
+[d07]: #day-7---handy-haversacks
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -953,57 +1208,64 @@ We now have a quite elegant functional Python solution!
 [d04-problem]: https://adventofcode.com/2020/day/4
 [d05-problem]: https://adventofcode.com/2020/day/5
 [d06-problem]: https://adventofcode.com/2020/day/6
+[d07-problem]: https://adventofcode.com/2020/day/7
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
 [d04-solution]: solutions/day04.py
 [d05-solution]: solutions/day05.py
 [d06-solution]: solutions/day06.py
+[d07-solution]: solutions/day07.py
 
-[py-raw-string]:         https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
-[py-generator-expr]:     https://www.python.org/dev/peps/pep-0289/
-[py-lambda]:             https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
-[py-set]:                https://docs.python.org/3/library/stdtypes.html#set
-[py-set-intersection]:   https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
-[py-set-intersection-u]: https://docs.python.org/3/library/stdtypes.html#frozenset.intersection_update
-[py-set-union]:          https://docs.python.org/3/library/stdtypes.html#frozenset.union
-[py-set-union-u]:        https://docs.python.org/3/library/stdtypes.html#frozenset.union_update
-[py-str-count]:          https://docs.python.org/3/library/stdtypes.html#str.count
-[py-str-isdigit]:        https://docs.python.org/3/library/stdtypes.html#str.isdigit
-[py-str-maketrans]:      https://docs.python.org/3/library/stdtypes.html#str.maketrans
-[py-str-replace]:        https://docs.python.org/3/library/stdtypes.html#str.replace
-[py-str-split]:          https://docs.python.org/3/library/stdtypes.html#str.split
-[py-str-splitlines]:     https://docs.python.org/3/library/stdtypes.html#str.splitlines
-[py-str-strip]:          https://docs.python.org/3/library/stdtypes.html#str.strip
-[py-str-translate]:      https://docs.python.org/3/library/stdtypes.html#str.translate
-[py-builtin-all]:        https://docs.python.org/3/library/functions.html#all
-[py-builtin-enumerate]:  https://docs.python.org/3/library/functions.html#enumerate
-[py-builtin-int]:        https://docs.python.org/3/library/functions.html#int
-[py-builtin-map]:        https://docs.python.org/3/library/functions.html#map
-[py-builtin-max]:        https://docs.python.org/3/library/functions.html#max
-[py-builtin-sum]:        https://docs.python.org/3/library/functions.html#sum
-[py-builtin-zip]:        https://docs.python.org/3/library/functions.html#zip
-[py-itertools-count]:    https://docs.python.org/3/library/itertools.html#itertools.count
-[py-functools]:          https://docs.python.org/3/library/functools.html
-[py-functools-partial]:  https://docs.python.org/3/library/functools.html#functools.partial
-[py-functools-reduce]:   https://docs.python.org/3/library/functools.html#functools.reduce
-[py-re]:                 https://docs.python.org/3/library/re.html
-[py-re-findall]:         https://docs.python.org/3/library/re.html#re.findall
+[py-raw-string]:              https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
+[py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
+[py-lambda]:                  https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
+[py-set]:                     https://docs.python.org/3/library/stdtypes.html#set
+[py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
+[py-set-intersection-u]:      https://docs.python.org/3/library/stdtypes.html#frozenset.intersection_update
+[py-set-union]:               https://docs.python.org/3/library/stdtypes.html#frozenset.union
+[py-set-union-u]:             https://docs.python.org/3/library/stdtypes.html#frozenset.union_update
+[py-str-count]:               https://docs.python.org/3/library/stdtypes.html#str.count
+[py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigit
+[py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
+[py-str-replace]:             https://docs.python.org/3/library/stdtypes.html#str.replace
+[py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
+[py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
+[py-str-strip]:               https://docs.python.org/3/library/stdtypes.html#str.strip
+[py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
+[py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
+[py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
+[py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
+[py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
+[py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
+[py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
+[py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
+[py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
+[py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
+[py-functools]:               https://docs.python.org/3/library/functools.html
+[py-functools-cache]:         https://docs.python.org/3/library/functools.html#functools.cache
+[py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
+[py-functools-reduce]:        https://docs.python.org/3/library/functools.html#functools.reduce
+[py-re]:                      https://docs.python.org/3/library/re.html
+[py-re-findall]:              https://docs.python.org/3/library/re.html#re.findall
 
 [algo-manhattan]:     https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
 [algo-dijkstra]:      https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
 [algo-bfs]:           https://en.wikipedia.org/wiki/Breadth-first_search
+[algo-dfs]:           https://en.wikipedia.org/wiki/Depth-first_search
 [algo-kahn]:          https://en.wikipedia.org/wiki/Topological_sorting#Kahn's_algorithm
 [algo-binsrc]:        https://en.wikipedia.org/wiki/Binary_search_algorithm
 [algo-wall-follower]: https://en.wikipedia.org/wiki/Maze_solving_algorithm#Wall_follower
 
 [wiki-cpython]:          https://en.wikipedia.org/wiki/CPython
+[wiki-dag]:              https://en.wikipedia.org/wiki/Directed_acyclic_graph
 [wiki-linear-time]:      https://en.wikipedia.org/wiki/Time_complexity#Linear_time
+[wiki-memoization]:      https://en.wikipedia.org/wiki/Memoization
 [wiki-polynomial-time]:  https://en.wikipedia.org/wiki/Time_complexity#Polynomial_time
 [wiki-reduction]:        https://en.wikipedia.org/wiki/Reduction_Operator
-[wiki-regexp]:           https://www.regular-expressions.info/
 [wiki-set-intersection]: https://en.wikipedia.org/wiki/Intersection_(set_theory)
 [wiki-set-union]:        https://en.wikipedia.org/wiki/Union_(set_theory)
 [wiki-sum-range]:        https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
 
 [misc-man1-tr]: https://man7.org/linux/man-pages/man1/tr.1.html
+[misc-regexp]:  https://www.regular-expressions.info/
