@@ -107,8 +107,8 @@ def submit_answer(part, answer):
 	t = r.text.lower()
 
 	if 'did you already complete it' in t:
-		log('[advent] Already completed!\n')
-		return True
+		log('[advent] Already completed or wrong day/part.\n')
+		return False
 
 	if "that's the right answer" in t:
 		log('[advent] Right answer!\n')
