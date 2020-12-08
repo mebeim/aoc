@@ -17,6 +17,10 @@ def rlog(recursion_depth):
 def eprint(*a, **kwa):
 	print(*a, **kwa, file=sys.stderr)
 
+def wait(msg):
+	eprint(msg, end=' ')
+	input()
+
 def dump_iterable(iterable, fmt='{}'):
 	for item in iterable:
 		log(fmt + '\n', item)
