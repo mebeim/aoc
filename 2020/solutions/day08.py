@@ -20,7 +20,9 @@ advent.print_answer(1, vm.acc)
 for i in range(1, vm.prog_len):
 	original = vm.prog[i]
 
-	if original[0] == 'jmp':
+	if original[0] == 'acc':
+		continue
+	elif original[0] == 'jmp':
 		vm.prog[i] = ('nop',) + original[1:]
 	elif original[0] == 'nop':
 		vm.prog[i] = ('jmp',) + original[1:]

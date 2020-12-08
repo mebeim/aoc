@@ -1362,20 +1362,31 @@ correctly run until its end. The solution is still the accumulator value after
 the program terminates.
 
 Well, there isn't much we can do except trying to change every single
-instruction and restart the VM to see what happens. We'll either end up in an
-infinite loop again (which can be detected as we just did), or we'll finish
-execution at some point: we can detect this by checking if
-`vm.running == False` after `vm.run(1)`.
+instruction and restart the VM to see what happens. Okay, not true: there *is* a
+better solution than bruteforcing, see [this Reddit thread][d08-better-solution]
+if you are courious. However, the complexity of the code needed to implement
+such a solution would most likely just outweight its benefits. A dead-simple
+bruteforce approach on such a small program is nearly instantaneous in any case
+(on my machine where one execution of the program takes less than 300
+microseconds).
 
-We'll iterate over and check each instruction in `vm.prog`, swapping any `nop`
-with `jmp` and vice versa. If the run was not successful, we'll restore the
-original instruction and try the next one.
+Anyway, where were we? Ah yes, testing all instructions: each time we try
+executing the code we'll either end up in an infinite loop again (which can be
+detected as we just did), or correctly finish execution (which can be detected
+by checking if `vm.running == False` after `vm.run(1)`).
+
+We'll iterate over and check each instruction in `vm.prog`, ignoring any `acc`,
+but trying to swap any `nop` with `jmp` (and vice versa) before running the
+program. If the run is not successful, we'll restore the original instruction
+and go on with the next one.
 
 ```python
 for i in range(1, vm.prog_len):
     original = vm.prog[i]
 
-    if original[0] == 'jmp':
+    if original[0] == 'acc':
+        continue
+    elif original[0] == 'jmp':
         vm.prog[i] = ('nop',) + original[1:]
     elif original[0] == 'nop':
         vm.prog[i] = ('jmp',) + original[1:]
@@ -1433,7 +1444,8 @@ hope not.
 [d07-solution]: solutions/day07.py
 [d08-solution]: solutions/day08.py
 
-[d08-vm]: https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
+[d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
+[d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
 
 [py-raw-string]:              https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
 [py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
