@@ -11,6 +11,7 @@ Table of Contents
 - [Day 5 - Binary Boarding][d05]
 - [Day 6 - Custom Customs][d06]
 - [Day 7 - Handy Haversacks][d07]
+- [Day 8 - Handheld Halting][d08]
 
 Day 1 - Report Repair
 ---------------------
@@ -1196,6 +1197,208 @@ print('Part 2:', total_bags)
 *P.S.:* we could have also abused this decorator just for fun to avoid keeping
 track of the visited nodes for part 1. Up to you to figure out how, if you want.
 
+
+Day 8 - Handheld Halting
+------------------------
+
+[Problem statement][d08-problem] — [Complete solution][d08-solution] ([current VM][d08-vm]) — [Back to top][top]
+
+### Part 1
+
+First puzzle of the year to involve writing a custom [virtual machine][wiki-vm]!
+I was waiting for this to happen. Hopefylly this year we'll have a saner
+specification than [last year's][misc-2019-d05] self-modifying intcode.
+
+We have only 3 opcodes:
+
+- `nop N`: does nothing, advances to the next instruciton, the argument is
+  ignored.
+- `acc N`: increments the value of a global "accumulator" by `N`, which is a
+  signed integer. The accumulator starts at `0`.
+- `jmp N`: jumps `N` instructions forward (or backwards if `N` is negative) the
+  current instruction. I.E. `jmp +1` goes to the next instruction.
+
+The source code we are given as input, if executed, will result in an endless
+loop. We need to detect when that happens, stopping the first time we try to
+execute an already seen instruction (before *executing* it). The soultion is
+the accumulator value after stopping.
+
+**NOTE**: I'll try to create a simpler VM implementation than my last year's
+[`IntcodeVM`][misc-2019-vm]. Since the VM implementation will likely change and
+I will keep updating the same file, I'll just link to the exact version of the
+code at the time of writing, containing the current VM implementation, which
+we'll be writing ritht now. You can find the link above.
+
+Let's start! We need our VM to have at least three foundamental properties:
+
+1. Ability to easily pause and resume execution.
+2. Ability to reset in order to restart execution without having to
+   re-initialize everything manually.
+3. Ability to inspect and alter the execution state from outside (program
+   counter, accumulator, the program itself, etc...).
+
+Let's declare a `VM` class for this. The [`__init__()`][py-object-init] method
+will take the source code as argument and parse extracting opcodes and
+arguments, then it will initialize the initial state doing a reset right away.
+
+```python
+class VM:
+    def __init__(self, source, inp=None, out=None):
+        self.inp = inp # unused for now, may be useful on next days
+        self.out = out # unused for now, may be useful on next days
+        self.parse_program(source)
+        self.reset()
+```
+
+We now want to have a program counter, an accumulator, and a boolean value
+indicating whether the VM is running or not, useful for external inspecion.
+We'll just create and initialize these values as attributes of our class in the
+`reset()` method:
+
+```python
+    def reset(self):
+        self.pc  = 0
+        self.acc = 0
+        self.running = True
+```
+
+Onto the parsing: for now, we will just assume an instruction to be of the form
+`op A1 A2 A3 ...`, with space separated integer arguments. In the
+`parse_program()` method, we'll parse the `source` into a list of tuples in the
+form `(op, (a1, a2, ...))`, simply splitting each line and turning arguments
+into `int`.
+
+```python
+    def parse_program(self, source):
+        self.prog = []
+
+        for line in source.splitlines():
+            # Assume ops and args will be separated by spaces only
+            op, *args = line.split()
+
+            # Treat every argument as an immediate integer for now
+            args  = tuple(map(int, args))
+            self.prog.append((op, args))
+
+        # For faster and simpler bound checking later
+        self.prog_len = len(self.prog)
+```
+
+Perfect. Now the core of the VM, the `run()` method. We'll use this to actually
+run the parsed code that was stored in `self.code` during initialization. Since
+we want to be able to pause and resume execution, we'll take a `steps` argument,
+and then simply run everything in a `while steps` loop decrementing it each
+time. To allow running without stopping, we'll use a simple trick: the
+[`inf`][py-math-inf] special value from the [`math`][py-math] module, which is
+the floating point representation of positive infinity and will never change no
+matter how many times we try to decrement it.
+
+The implementation for now is really simple, since we only have 3 instructions,
+one of which (`nop`) we'll outright ignore.
+
+```python
+    def run(self, steps=inf):
+        while steps:
+            op, args = self.prog[self.pc]
+
+            if op == 'acc':
+                self.acc += args[0]
+            elif op == 'jmp':
+                self.pc += args[0] - 1
+
+            self.pc += 1
+
+            # Assume that running the last instruction (or jumping right after it)
+            # means that the program terminated correctly
+            if self.pc == self.prog_len:
+                self.running = False
+                break
+
+            # If somehow the program counter gets outside vm.prog bounds we cannot continue
+            if not (0 <= self.pc < self.prog_len):
+                raise VMRuntimeError('bad program counter')
+
+            steps -= 1
+```
+
+That `VMRuntimeError` is a custom `Exception` which I'll `raise` when things go
+bad. It will help debugging if placed in the correct places when the code gets
+more complicated. It's defined like this for now:
+
+```python
+class VMRuntimeError(Exception):
+    pass
+```
+
+Now let's actually solve the problem! We can now `import` our `VM` and put it to
+good use. To detect when an instruction is executed again, we can save the
+values of the program counter (`vm.pc`) in a [`set`][py-set], since the program
+counter uniquely identifies an instruction in the whole program, and stop if we
+ever get a value that was already seen.
+
+```python
+from lib.vm import VM
+
+fin = open(...)
+source = fin.read()
+vm = VM(source)
+
+seen = set()
+while vm.pc not in seen:
+    seen.add(vm.pc)
+    vm.run(1)
+
+print('Part 1:', vm.acc)
+```
+
+Clean and simple as that!
+
+### Part 2
+
+Now we are told that we can "fix" our broken program that runs in an endless
+loop simply by swapping a `nop` with a `jmp` (or vice-versa) somewhere in the
+code. We need to find which instruction to change which will let the program
+correctly run until its end. The solution is still the accumulator value after
+the program terminates.
+
+Well, there isn't much we can do except trying to change every single
+instruction and restart the VM to see what happens. We'll either end up in an
+infinite loop again (which can be detected as we just did), or we'll finish
+execution at some point: we can detect this by checking if
+`vm.running == False` after `vm.run(1)`.
+
+We'll iterate over and check each instruction in `vm.prog`, swapping any `nop`
+with `jmp` and vice versa. If the run was not successful, we'll restore the
+original instruction and try the next one.
+
+```python
+for i in range(1, vm.prog_len):
+    original = vm.prog[i]
+
+    if original[0] == 'jmp':
+        vm.prog[i] = ('nop',) + original[1:]
+    elif original[0] == 'nop':
+        vm.prog[i] = ('jmp',) + original[1:]
+
+    vm.reset()
+
+    seen = set()
+    while vm.running and vm.pc not in seen:
+        seen.add(vm.pc)
+        vm.run(1)
+
+    if not vm.running:
+        break
+
+    vm.prog[i] = original
+
+print('Part 2:', vm.acc)
+```
+
+Sweet! Hopefully the code we wrote is robust and simple enough to allow for easy
+modifications in the next days. Assuming things will not get very weird... I
+hope not.
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -1211,6 +1414,7 @@ track of the visited nodes for part 1. Up to you to figure out how, if you want.
 [d05]: #day-5---binary-boarding
 [d06]: #day-6---custom-customs
 [d07]: #day-7---handy-haversacks
+[d08]: #day-8---handheld-halting
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -1219,6 +1423,7 @@ track of the visited nodes for part 1. Up to you to figure out how, if you want.
 [d05-problem]: https://adventofcode.com/2020/day/5
 [d06-problem]: https://adventofcode.com/2020/day/6
 [d07-problem]: https://adventofcode.com/2020/day/7
+[d08-problem]: https://adventofcode.com/2020/day/8
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
@@ -1226,6 +1431,9 @@ track of the visited nodes for part 1. Up to you to figure out how, if you want.
 [d05-solution]: solutions/day05.py
 [d06-solution]: solutions/day06.py
 [d07-solution]: solutions/day07.py
+[d08-solution]: solutions/day08.py
+
+[d08-vm]: https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 
 [py-raw-string]:              https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
 [py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
@@ -1243,6 +1451,7 @@ track of the visited nodes for part 1. Up to you to figure out how, if you want.
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 [py-str-strip]:               https://docs.python.org/3/library/stdtypes.html#str.strip
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
+[py-object-init]:             https://docs.python.org/3/reference/datamodel.html#object.__init__
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
@@ -1256,6 +1465,8 @@ track of the visited nodes for part 1. Up to you to figure out how, if you want.
 [py-functools-cache]:         https://docs.python.org/3/library/functools.html#functools.cache
 [py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
 [py-functools-reduce]:        https://docs.python.org/3/library/functools.html#functools.reduce
+[py-math]:                    https://docs.python.org/3/library/math.html
+[py-math-inf]:                https://docs.python.org/3/library/math.html#math.inf
 [py-re]:                      https://docs.python.org/3/library/re.html
 [py-re-findall]:              https://docs.python.org/3/library/re.html#re.findall
 
@@ -1276,6 +1487,9 @@ track of the visited nodes for part 1. Up to you to figure out how, if you want.
 [wiki-set-intersection]: https://en.wikipedia.org/wiki/Intersection_(set_theory)
 [wiki-set-union]:        https://en.wikipedia.org/wiki/Union_(set_theory)
 [wiki-sum-range]:        https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
+[wiki-vm]:               https://en.wikipedia.org/wiki/Virtual_machine
 
-[misc-man1-tr]: https://man7.org/linux/man-pages/man1/tr.1.html
-[misc-regexp]:  https://www.regular-expressions.info/
+[misc-man1-tr]:  https://man7.org/linux/man-pages/man1/tr.1.html
+[misc-regexp]:   https://www.regular-expressions.info/
+[misc-2019-d05]: https://github.com/mebeim/aoc/blob/master/2019/README.md#day-5---sunny-with-a-chance-of-asteroids
+[misc-2019-vm]:  https://github.com/mebeim/aoc/blob/master/2019/lib/intcode.py#L283
