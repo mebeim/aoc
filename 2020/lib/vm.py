@@ -19,19 +19,12 @@ class VM:
 		self.prog = []
 
 		for line in source.splitlines():
-			# Assume args will be separated by spaces only
+			# Assume ops and args will be separated by spaces only
 			op, *args = line.split()
 
-			# Treat everything as immediate for now
-			nargs = len(args)
-			types = (ARGTYPE_IMMEDIATE,) * nargs
+			# Treat every arg as an immediate integer for now
 			args  = tuple(map(int, args))
-
-			# for i in range(nargs):
-			# 	if types[i] == ARGTYPE_IMMEDIATE:
-			# 		args[i] = int(args[i])
-
-			self.prog.append((op, args, types))
+			self.prog.append((op, args))
 
 		self.prog_len = len(self.prog)
 
@@ -42,15 +35,11 @@ class VM:
 
 	def run(self, steps=inf, debug=False):
 		while steps:
-			op, args, types = self.prog[self.pc]
+			op, args = self.prog[self.pc]
 
 			if debug:
-				fmt = '{:4d}: {:4s}'
-
-				for t, a in zip(types, args):
-					fmt += '{} '
-
-				log(fmt + '\n', self.pc, op, *args)
+				fmt = '{:4d}: {:4s}' + '{} ' * len(args) + '\n'
+				log(fmt, self.pc, op, *args)
 
 			if op == 'acc':
 				self.acc += args[0]
@@ -66,10 +55,3 @@ class VM:
 				raise VMRuntimeError('bad program counter')
 
 			steps -= 1
-
-ARGTYPE_IMMEDIATE = 0
-ARGTYPES = {
-	'nop': None,
-	'acc': (ARGTYPE_IMMEDIATE,),
-	'jmp': (ARGTYPE_IMMEDIATE,)
-}
