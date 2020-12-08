@@ -4,6 +4,7 @@ import re
 
 from importlib import find_loader
 from datetime import datetime, timedelta
+from time import sleep
 
 def log(s, *a):
 	sys.stderr.write('[advent] ' + s.format(*a))
@@ -120,6 +121,12 @@ def submit_answer(part, answer):
 
 	if "that's the right answer" in t:
 		log('Right answer!\n')
+
+		if DAY == 25 and part == 1:
+			log("It's Christmas! Automatically submitting second part in 5s...\n")
+			sleep(5)
+			submit_answer(2, 0)
+
 		return True
 
 	if 'you have to wait' in t:
