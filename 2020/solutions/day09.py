@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from utils import advent
-from collections import deque
 
 def two_sum(nums, target):
 	compls = set()
