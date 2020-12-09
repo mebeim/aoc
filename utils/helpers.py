@@ -1,6 +1,11 @@
+__all__ = [
+	'log', 'rlog', 'eprint', 'wait',
+	'dump_iterable', 'dump_dict', 'dump_char_matrix',
+	'get_ints', 'get_int_matrix', 'get_lines', 'get_char_matrix'
+]
+
 import sys
 import re
-
 from functools import wraps
 
 def log(s, *a):
@@ -82,11 +87,3 @@ def get_char_matrix(file, rstrip=True, lstrip=True, as_tuples=False):
 	if lstrip:
 		return kind(kind(l.lstrip()) for l in lines)
 	return kind(map(kind, lines))
-
-################################################################################
-
-__all__ = [
-	'log', 'rlog', 'eprint', 'wait',
-	'dump_iterable', 'dump_dict', 'dump_char_matrix',
-	'get_ints', 'get_int_matrix', 'get_lines', 'get_char_matrix'
-]

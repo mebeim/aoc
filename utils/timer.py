@@ -1,7 +1,8 @@
+__all__ = ['timer_start', 'timer_lap', 'timer_stop', 'timer_stop_all']
+
 import sys
 import time
 import atexit
-
 from .helpers import log
 
 def seconds_to_most_relevant_unit(s):
@@ -22,22 +23,22 @@ def seconds_to_most_relevant_unit(s):
 
 def timer_start(name=sys.argv[0]):
 	now_wall, now_cpu = time.perf_counter(), time.process_time()
-	TIMERS[name] = (now_wall, now_cpu, now_wall, now_cpu, 1)
+	timers[name] = (now_wall, now_cpu, now_wall, now_cpu, 1)
 
 def timer_lap(name=sys.argv[0]):
 	now_wall, now_cpu =  time.perf_counter(), time.process_time()
-	*x, prev_wall, prev_cpu, lap = TIMERS[name]
+	*x, prev_wall, prev_cpu, lap = timers[name]
 
 	dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
 	dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
 
 	log('Timer {} lap #{}: {} wall, {} CPU\n'.format(name, lap, dt_wall, dt_cpu))
 
-	TIMERS[name] = (*x,  time.perf_counter(), time.process_time(), lap + 1)
+	timers[name] = (*x,  time.perf_counter(), time.process_time(), lap + 1)
 
 def timer_stop(name=sys.argv[0]):
 	now_wall, now_cpu = time.perf_counter(), time.process_time()
-	prev_wall, prev_cpu, *_ = TIMERS.pop(name)
+	prev_wall, prev_cpu, *_ = timers.pop(name)
 
 	dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
 	dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
@@ -45,10 +46,10 @@ def timer_stop(name=sys.argv[0]):
 	log('Timer {}: {} wall, {} CPU\n'.format(name, dt_wall, dt_cpu))
 
 def timer_stop_all():
-	now_wall, now_cpu =  time.perf_counter(), time.process_time()
+	now_wall, now_cpu = time.perf_counter(), time.process_time()
 
-	while TIMERS:
-		k, v = TIMERS.popitem()
+	while timers:
+		k, v = timers.popitem()
 		prev_wall, prev_cpu, *_ = v
 		dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
 		dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
@@ -57,7 +58,5 @@ def timer_stop_all():
 
 ################################################################################
 
-TIMERS = {}
+timers = {}
 atexit.register(timer_stop_all)
-
-__all__ = ['timer_start', 'timer_lap', 'timer_stop', 'timer_stop_all']

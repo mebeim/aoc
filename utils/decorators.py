@@ -1,5 +1,6 @@
-from functools import wraps
+__all__ = ['log_calls']
 
+from functools import wraps
 from .helpers import log
 
 def log_calls(log_return=True):
@@ -17,5 +18,3 @@ def log_calls(log_return=True):
 		return wrapper
 
 	return decorating_func
-
-__all__ = ['log_calls']

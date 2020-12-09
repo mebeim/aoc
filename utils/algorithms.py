@@ -1,9 +1,3 @@
-import heapq
-from collections import deque, defaultdict
-from functools import lru_cache
-from bisect import bisect_left
-from math import inf as INFINITY
-
 __all__ = [
 	'INFINITY',
 	'neighbors4', 'neighbors4x', 'neighbors8',
@@ -11,6 +5,12 @@ __all__ = [
 	'dijkstra', 'dijkstra_lru', 'dijkstra_path', 'dijkstra_path_lru',
 	'bisection', 'binary_search'
 ]
+
+import heapq
+from collections import deque, defaultdict
+from functools import lru_cache
+from bisect import bisect_left
+from math import inf as INFINITY
 
 # Cache size used for memoization with lru_Cache
 CACHE_SIZE = 256 * 2**20 # ~256M entries
