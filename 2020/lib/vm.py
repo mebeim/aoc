@@ -9,6 +9,8 @@ class VMRuntimeError(Exception):
 	pass
 
 class VM:
+	__slots__ = ('prog', 'prog_len', 'pc', 'acc', 'running', 'inp', 'out')
+
 	def __init__(self, source, inp=None, out=None):
 		self.inp = inp # deque or None
 		self.out = out # deque or None
