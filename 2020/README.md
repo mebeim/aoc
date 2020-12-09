@@ -57,7 +57,7 @@ Same thing as part 1, but we need to search for *three* numbers that sum up to
 
 This complicates things a little bit. We can no longer find an answer in linear
 time, but we surely can avoid cubic time and find it in quadratic time. We can
-use the exact same aproach used for part 1, wrapping everything in one more
+use the exact same approach used for part 1, wrapping everything in one more
 `for` loop.
 
 It's like solving the same problem for each number: for every `x` we want to
@@ -123,7 +123,7 @@ of tuples, one tuple per policy:
 
 ```python
 data     = fin.read()
-policies = rexp.findall(r'(\d+)-(\d+) (\w): (\w+)', data)
+policies = re.findall(r'(\d+)-(\d+) (\w): (\w+)', data)
 ```
 
 The syntax `r'string'` denotes a [raw string][py-raw-string]: it means to
@@ -165,8 +165,8 @@ Since we are already transforming `mmin` and `mmax` into integers in the
 previous loop, let's just modify it to calculate both answers instead of doing
 the whole thing again. In order to check if *only one* of the two indexes in the
 password contains the letter we want, we can use the XOR operator (`^`), which
-in Python it can also be used on boolean values, and returns `True` if only one
-of the two operands is `True`.
+in Python can also be used on boolean values, and acts like a logical XOR,
+returning `True` if only one of the two operands is `True`.
 
 ```python
 valid1, valid2 = 0, 0
@@ -508,7 +508,7 @@ can be seen as a `0` and each `R` as a `1`.
 All we have to do to find the row and column of a seat is to just separate row
 and column first, and then interpret those as two binary numbers. Python already
 knows how to transform a string representing a binary number into an integer,
-but it obviouslt expects the characters to be either `0` or `1`. We can just
+but it obviously expects the characters to be either `0` or `1`. We can just
 replace all instances of `F` and `L` with `0`, and all instances of `B` and `R`
 with `1`. Then, separate the first 7 and the last 3, and use
 [`int(x, 2)`][py-builtin-int] to convert them to integers.
@@ -590,7 +590,7 @@ without actually having to calculate it, right? Well, let's look at Wikipedia to
 [refresh our memory][wiki-sum-range]. We know the sum of consecutive integers
 from `1` to `N` is `N * (N - 1) // 2`: if our consecutive integers don't start
 from `1` but from some `m`, we can just subtract the sum of the integers from
-`1` to `m` from that, and we have the sum of all the consective integers from
+`1` to `m` from that, and we have the sum of all the consecutive integers from
 `m` to `N`. That is: `N * (N - 1) // 2 - m * (m - 1) // 2`.
 
 Which means, we can compute the sum of all our IDs from the minimum to the
@@ -825,7 +825,7 @@ Which produces:
 ({'a', 'c'}, {'a', 'b'}, {'a', 'c', 'd'})
 ```
 
-Note that we now have a `map` of `map`s. These are only iterable *onece*. We
+Note that we now have a `map` of `map`s. These are only iterable *once*. We
 don't need to, but if we wanted to iterate on those multiple times, we would
 need to turn them into `tuple`s or `list`s first.
 
@@ -1070,7 +1070,7 @@ To make it clear, here's an example:
 
 ```
 shiny gold bags contain 1 dark red bag, 2 dark green bags.
-dark red bags conain 5 bright yellow bags, 2 bright blue bags.
+dark red bags contain 5 bright yellow bags, 2 bright blue bags.
 dark green bags contain 3 bright blue bags.
 ```
 
@@ -1131,7 +1131,7 @@ can be seen from th example above) we can very well visit a node multiple times,
 and we also want to take into account the numbers on each edge which indicate
 how many inner bags of such color our outer bag contains.
 
-Opting for a recursive solution again for its consiseness, each time we visit a
+Opting for a recursive solution again for its conciseness, each time we visit a
 node (bag color) we will first add the number of needed bags of that color to
 the total, then recursively calculate the subtotal number of bags which that
 specific color can hold, and multiply it by the `qty` of that color, adding the
@@ -1207,8 +1207,8 @@ Day 8 - Handheld Halting
 ### Part 1
 
 First puzzle of the year to involve writing a custom [virtual machine][wiki-vm]!
-I was waiting for this to happen. Hopefylly this year we'll have a saner
-specification than [last year's][misc-2019-d05] self-modifying intcode.
+I was waiting for this to happen. Hopefully this year we'll have a saner
+specification than [last year's][misc-2019-d05] self-modifying "Intcode".
 
 We have only 3 opcodes:
 
@@ -1221,7 +1221,7 @@ We have only 3 opcodes:
 
 The source code we are given as input, if executed, will result in an endless
 loop. We need to detect when that happens, stopping the first time we try to
-execute an already seen instruction (before *executing* it). The soultion is
+execute an already seen instruction (before *executing* it). The solution is
 the accumulator value after stopping.
 
 **NOTE**: I'll try to create a simpler VM implementation than my last year's
@@ -1230,7 +1230,7 @@ I will keep updating the same file, I'll just link to the exact version of the
 code at the time of writing, containing the current VM implementation, which
 we'll be writing ritht now. You can find the link above.
 
-Let's start! We need our VM to have at least three foundamental properties:
+Let's start! We need our VM to have at least three fundamental properties:
 
 1. Ability to easily pause and resume execution.
 2. Ability to reset in order to restart execution without having to
@@ -1239,20 +1239,18 @@ Let's start! We need our VM to have at least three foundamental properties:
    counter, accumulator, the program itself, etc...).
 
 Let's declare a `VM` class for this. The [`__init__()`][py-object-init] method
-will take the source code as argument and parse extracting opcodes and
+will take the source code as argument and parse it extracting opcodes and
 arguments, then it will initialize the initial state doing a reset right away.
 
 ```python
 class VM:
-    def __init__(self, source, inp=None, out=None):
-        self.inp = inp # unused for now, may be useful on next days
-        self.out = out # unused for now, may be useful on next days
+    def __init__(self, source):
         self.parse_program(source)
         self.reset()
 ```
 
 We now want to have a program counter, an accumulator, and a boolean value
-indicating whether the VM is running or not, useful for external inspecion.
+indicating whether the VM is running or not, useful for external inspection.
 We'll just create and initialize these values as attributes of our class in the
 `reset()` method:
 
@@ -1278,7 +1276,7 @@ into `int`.
             op, *args = line.split()
 
             # Treat every argument as an immediate integer for now
-            args  = tuple(map(int, args))
+            args = tuple(map(int, args))
             self.prog.append((op, args))
 
         # For faster and simpler bound checking later
@@ -1331,8 +1329,8 @@ class VMRuntimeError(Exception):
     pass
 ```
 
-Now let's actually solve the problem! We can now `import` our `VM` and put it to
-good use. To detect when an instruction is executed again, we can save the
+Now let's actually solve the problem! We can finally `import` our `VM` and put
+it to good use. To detect when an instruction is executed again, we can save the
 values of the program counter (`vm.pc`) in a [`set`][py-set], since the program
 counter uniquely identifies an instruction in the whole program, and stop if we
 ever get a value that was already seen.
@@ -1365,8 +1363,8 @@ the program terminates.
 Well, there isn't much we can do except trying to change every single
 instruction and restart the VM to see what happens. Okay, not true: there *is* a
 better solution than bruteforcing, see [this Reddit thread][d08-better-solution]
-if you are courious. However, the complexity of the code needed to implement
-such a solution would most likely just outweight its benefits. A dead-simple
+if you are curious. However, the complexity of the code needed to implement such
+a solution would most likely just outweigh its benefits. A dead-simple
 bruteforce approach on such a small program is nearly instantaneous in any case
 (on my machine where one execution of the program takes less than 300
 microseconds).
@@ -1421,7 +1419,7 @@ Day 9 - Encoding Error
 
 We are given a list of numbers, and we are told that all the numbers in the list
 should adhere to a specific rule: each number after the 25th is the sum of one
-pair of numbers amongst the 25 that preceed it. We need to find the first number
+pair of numbers amongst the 25 that precede it. We need to find the first number
 in the list that does not satisfy this rule.
 
 We already know how to find a pair of numbers that sum up to some target number,
@@ -1450,7 +1448,7 @@ Now let's get the numbers from the input file into a `tuple` of integers using
 nums = tuple(map(int, fin.readlines()))
 ```
 
-And then just loop over the input numbers strating from the 26th and checking
+And then just loop over the input numbers starting from the 26th and checking
 each chunk of 25 numbers. The [`enumerate()`][py-builtin-enumerate] function
 comes in handy.
 
