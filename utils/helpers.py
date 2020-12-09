@@ -21,11 +21,11 @@ def wait(msg):
 	eprint(msg, end=' ')
 	input()
 
-def dump_iterable(iterable, fmt='{}'):
-	for item in iterable:
-		log(fmt + '\n', item)
+def dump_iterable(iterable, fmt='{:d}: {!r}'):
+	for i, item in enumerate(iterable):
+		log(fmt + '\n', i, item)
 
-def dump_dict(dct, fmt='{}: {}'):
+def dump_dict(dct, fmt='{}: {!r}'):
 	for k, v in dct.items():
 		log(fmt + '\n', k, v)
 
