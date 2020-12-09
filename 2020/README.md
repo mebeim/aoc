@@ -1450,8 +1450,9 @@ Now let's get the numbers from the input file into a `tuple` of integers using
 nums = tuple(map(int, fin.readlines()))
 ```
 
-And then just loop over the input numbers checking each one. The
-[`enumerate()`][py-builtin-enumerate] function comes in handy.
+And then just loop over the input numbers strating from the 26th and checking
+each chunk of 25 numbers. The [`enumerate()`][py-builtin-enumerate] function
+comes in handy.
 
 ```python
 for i, target in enumerate(nums[25:]):
@@ -1461,11 +1462,12 @@ for i, target in enumerate(nums[25:]):
 print('Part 1:', target)
 ```
 
-Although it seems quadratic in time (O(n^<sup>2</sup>)), this solution is
-actually linear, as we always need to check a fixed and relatively small amount
-of previous numbers which does not depend on the number of numbers. We make at
-most `25 * len(nums)` iterations (well, excluding the fact that `arr[x:y]`
-creates a copy and therefore also iterates `y-x` times... dammit Python).
+Although it seems [quadratic in time][wiki-polynomial-time] (O(n<sup>2</sup>)),
+this solution actually runs in [linear time][wiki-linear-time] (O(n)), as we
+always need to check a fixed and relatively small amount of previous numbers
+which does not depend on the length of the input sequence. We make at most
+`25 * len(nums)` iterations (well, excluding the fact that `lst[x:y]` creates a
+copy and therefore also iterates `y-x` times... dammit Python).
 
 ### Part 2
 
@@ -1475,10 +1477,10 @@ sequence, the answer we must give is the sum of its minimum and its maximum
 element.
 
 We can do this the dumb way: loop over each possible subsequence and compute the
-sum every time. This approach is cubic in time (O(n<sup>3</sup>)). We are smart
-though, and after thinking about it for a couple minutes we figure out that this
-can be done in a single scan of the input sequence (O(n) time).
-
+sum every time. This approach is cubic in time (O(n<sup>3</sup>), *iff* I am not
+mistaken, well it's *at least* quadratic for sure). We are smart though, and
+after thinking about it for a couple minutes we figure out that this can be done
+in linear time with a single scan of the input sequence.
 
 We can take advantage of the *cumulative sum*, also known as
 [running total][wiki-running-total]. Given a sequence `S` of numbers, the sum of
@@ -1487,15 +1489,15 @@ the numbers in a given subsequence `s = S[a:b]` is equal to
 of the first `b` elements and the cumulative sum of the first `a` elements. If
 we pre-calculate the all the cumulative sums from the first number up to all
 numbers, we can then calculate the sum of any subsequence (given its start and
-end) with a single subtraction: `cusum(end) - cusum(start)`.
+end) with a single subtraction: `cusum[end] - cusum[start]`.
 
 Our numbers are all positive, so the cumulative sum can only increase each time.
-We can start with an initial "guess" for the correct start and end of the
+We can begin with an initial "guess" for the correct start and end of the
 subsequence: `S[a:b] = S[0:1]`. Then, adjust the extremes iteratively until we
 converge to the solution:
 
 1. Start with `a, b = 0, 1`.
-2. Compute `partsum = sum(S[a:b]) == cusum(b) - cusum(a)`.
+2. Compute `partsum = sum(S[a:b]) == cusum[b] - cusum[a]`.
 3. Compare `partsum` and `target`:
    - If `partsum < target` then we need to sum more elements: `b += 1`.
    - If `partsum > target` then we overestimated `target`, drop the element at
@@ -1504,7 +1506,7 @@ converge to the solution:
 
 Note: this only works if a subsequence with partial sum equal to the target
 exists in the input list (which is our case). If it does not, we'd just keep
-advancing `b` and go beyond its end.
+advancing `b` and go beyond its end running into an `IndexError`.
 
 In terms of code:
 
@@ -1557,6 +1559,11 @@ answer = min(subsequence) + max(subsequence)
 
 print('Part 2:', answer)
 ```
+
+As a last note: we could even implement our "sliding window" using a
+[`deque`][py-collections-deque], popping elements from the left as we increment
+`a` to minimize the used space. This "optimization" is kind of insignificant
+though, and the space used would still be linear in terms of `len(nums)`.
 
 ---
 
@@ -1623,6 +1630,7 @@ print('Part 2:', answer)
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
+[py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
 [py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-cache]:         https://docs.python.org/3/library/functools.html#functools.cache
