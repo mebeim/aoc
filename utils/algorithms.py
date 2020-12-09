@@ -1,7 +1,7 @@
 __all__ = [
 	'INFINITY',
 	'neighbors4', 'neighbors4x', 'neighbors8',
-	'bfs_grid', 'bfs_grid_lru',
+	'grid_find_adjacent', 'graph_from_grid', 'grid_bfs', 'grid_bfs_lru',
 	'dijkstra', 'dijkstra_lru', 'dijkstra_path', 'dijkstra_path_lru',
 	'bisection', 'binary_search'
 ]
@@ -41,14 +41,24 @@ neighbors4  = _grid_neighbors(((1, 0), (-1, 0), (0, 1), (0, -1)))
 neighbors4x = _grid_neighbors(((1, 1), (1, -1), (-1, 1), (-1, -1)))
 neighbors8  = _grid_neighbors(((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)))
 
-def find_adjacent(grid, src):
-	raise NotImplementedError('TODO')
+def grid_find_adjacent(grid, src, find, avoid='#', coords=False):
+	'''Find edges to reachable nodes in a character grid (2D matrix) given a
+	source and a set of characters to consider as nodes.
 
+	src: (row, col) to start searching from.
+	find: characters to consider as nodes.
+	avoid: characters to consider walls.
+	Anyting else is considered open space.
+
+	If coords=False (default), yields edges in the form (char, dist), otherwise
+	in the form ((row, col, char), dist).
+
+	Uses breadth-first search.
+	'''
 	visited = {src}
 	queue   = deque()
-	found   = []
 
-	for n in neighbors4(grid, *src):
+	for n in neighbors4(grid, *src, avoid):
 		queue.append((1, n))
 
 	while queue:
@@ -56,33 +66,43 @@ def find_adjacent(grid, src):
 
 		if node not in visited:
 			visited.add(node)
+			r, c = node
 
-			portal = portal_from_grid(grid, *node)
+			if grid[r][c] in find:
+				if coords:
+					yield ((r, c, grid[r][c]), dist)
+				else:
+					yield (grid[r][c], dist)
 
-			if portal is not None:
-				found.append((portal, dist))
 				continue
 
 			for neighbor in filter(lambda n: n not in visited, neighbors4(grid, *node)):
 				queue.append((dist + 1, neighbor))
 
-	return found
+def graph_from_grid(grid, find, avoid='#', coords=False):
+	'''Reduce a character grid (2D matrix) to an undirected graph by finding
+	nodes and calculating their distance to others.
 
-def build_graph(grid):
-	raise NotImplementedError('TODO')
+	find: characters to find in the grid which will be nodes of the graph.
+	avoid: characters to consider walls.
+	Anything else is considered open space.
 
+	If coord=False (default), nodes of the graph will be represented by the
+	found character only, otherwise by a tuple of the form (row, col, char).
+
+	Resulting graph will be of the form {node: [(dist, node)]}.
+	'''
 	graph = {}
 
 	for r, row in enumerate(grid):
-		for c in range(len(row)):
-			key = portal_from_grid(grid, r, c)
-
-			if key is not None:
-				graph[key] = find_adjacent(grid, (r, c))
+		for c, char in enumerate(row):
+			if char in find:
+				node = (r, c, char) if coords else char
+				graph[node] = list(grid_find_adjacent(grid, (r, c), find, avoid, coords))
 
 	return graph
 
-def bfs_grid(grid, src, dst):
+def grid_bfs(grid, src, dst):
 	'''Find the length of any path from src to dst in grid using breadth-first
 	search, where grid is a 2D matrix i.e. list of lists or similar.
 
@@ -105,7 +125,7 @@ def bfs_grid(grid, src, dst):
 
 	return INFINITY
 
-def bfs_grid_lru(grid):
+def grid_bfs_lru(grid):
 	@lru_cache(CACHE_SIZE)
 	def wrapper(src, dst):
 		return bfs_grid(grid, src, dst)
