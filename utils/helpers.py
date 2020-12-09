@@ -86,7 +86,7 @@ def get_char_matrix(file, rstrip=True, lstrip=True, as_tuples=False):
 ################################################################################
 
 __all__ = [
-	'log', 'rlog', 'eprint',
+	'log', 'rlog', 'eprint', 'wait',
 	'dump_iterable', 'dump_dict', 'dump_char_matrix',
 	'get_ints', 'get_int_matrix', 'get_lines', 'get_char_matrix'
 ]
