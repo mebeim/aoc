@@ -12,6 +12,7 @@ Table of Contents
 - [Day 6 - Custom Customs][d06]
 - [Day 7 - Handy Haversacks][d07]
 - [Day 8 - Handheld Halting][d08]
+- [Day 9 - Encoding Error][d09]
 
 Day 1 - Report Repair
 ---------------------
@@ -1410,6 +1411,153 @@ Sweet! Hopefully the code we wrote is robust and simple enough to allow for easy
 modifications in the next days. Assuming things will not get very weird... I
 hope not.
 
+
+Day 9 - Encoding Error
+----------------------
+
+[Problem statement][d09-problem] — [Complete solution][d09-solution] — [Back to top][top]
+
+### Part 1
+
+We are given a list of numbers, and we are told that all the numbers in the list
+should adhere to a specific rule: each number after the 25th is the sum of one
+pair of numbers amongst the 25 that preceed it. We need to find the first number
+in the list that does not satisfy this rule.
+
+We already know how to find a pair of numbers that sum up to some target number,
+we did this in part 1 of [day 1][d01]. We can just loop over the numbers,
+starting from the 25th, and keep going until we find the first one for which we
+cannot find a pair summing up to amongst its 25 predecessors. Let's just write
+this check like we did for day 1, but this time as a function:
+
+```python
+def two_sum(nums, target):
+    compls = set()
+
+    for x in nums:
+        if x in compls:
+            return True
+
+        compls.add(target - x)
+
+    return False
+```
+
+Now let's get the numbers from the input file into a `tuple` of integers using
+[`map()`][py-builtin-map] as usual:
+
+```python
+nums = tuple(map(int, fin.readlines()))
+```
+
+And then just loop over the input numbers checking each one. The
+[`enumerate()`][py-builtin-enumerate] function comes in handy.
+
+```python
+for i, target in enumerate(nums[25:]):
+    if not two_sum(nums[i:i + 25], target):
+        break
+
+print('Part 1:', target)
+```
+
+Although it seems quadratic in time (O(n^<sup>2</sup>)), this solution is
+actually linear, as we always need to check a fixed and relatively small amount
+of previous numbers which does not depend on the number of numbers. We make at
+most `25 * len(nums)` iterations (well, excluding the fact that `arr[x:y]`
+creates a copy and therefore also iterates `y-x` times... dammit Python).
+
+### Part 2
+
+The goal changes: we need to find a contiguous subsequence of numbers (of any
+length) that sums up to the number we just found in part 1 (`target`). Found the
+sequence, the answer we must give is the sum of its minimum and its maximum
+element.
+
+We can do this the dumb way: loop over each possible subsequence and compute the
+sum every time. This approach is cubic in time (O(n<sup>3</sup>)). We are smart
+though, and after thinking about it for a couple minutes we figure out that this
+can be done in a single scan of the input sequence (O(n) time).
+
+
+We can take advantage of the *cumulative sum*, also known as
+[running total][wiki-running-total]. Given a sequence `S` of numbers, the sum of
+the numbers in a given subsequence `s = S[a:b]` is equal to
+`sum(S[0:b]) - sum(S[0:a])`, that is: the difference between the cumulative sum
+of the first `b` elements and the cumulative sum of the first `a` elements. If
+we pre-calculate the all the cumulative sums from the first number up to all
+numbers, we can then calculate the sum of any subsequence (given its start and
+end) with a single subtraction: `cusum(end) - cusum(start)`.
+
+Our numbers are all positive, so the cumulative sum can only increase each time.
+We can start with an initial "guess" for the correct start and end of the
+subsequence: `S[a:b] = S[0:1]`. Then, adjust the extremes iteratively until we
+converge to the solution:
+
+1. Start with `a, b = 0, 1`.
+2. Compute `partsum = sum(S[a:b]) == cusum(b) - cusum(a)`.
+3. Compare `partsum` and `target`:
+   - If `partsum < target` then we need to sum more elements: `b += 1`.
+   - If `partsum > target` then we overestimated `target`, drop the element at
+     the start of the subsequence: `a += 1`.
+   - If `partsum == target` then we found the correct subsequence.
+
+Note: this only works if a subsequence with partial sum equal to the target
+exists in the input list (which is our case). If it does not, we'd just keep
+advancing `b` and go beyond its end.
+
+In terms of code:
+
+```python
+cusums = [0]
+for n in nums:
+    cusums.append(cusums[-1] + n)
+
+a, b = 0, 1
+
+while 1:
+    partsum = cusums[b] - cusums[a]
+
+    if partsum < target:
+        b += 1
+    elif partsum > target:
+        a += 1
+    else:
+        break
+```
+
+Note: we set `cusums[0] = 0` since we also want to account for the first number
+of the sequence (if we set `cusums[0] = nums[0]` instead, then
+`cusums[1] - cusums[0]` would just be `nums[1]` and we'd exclude `nums[0]` from
+all our calculations).
+
+We do not actually need to precalculate *all* the cumulative sums, we are never
+going to use all of them unless our subsequence ends up being the entire initial
+sequence of numbers. We can re-write the above loop to only calculate the needed
+cumulative sums lazily, when advancing `b`. This time we need to start at
+`a, b = 0, 0` though.
+
+```python
+cusums = [0]
+a, b = 0, 0
+
+while 1:
+    partsum = cusums[b] - cusums[a]
+
+    if partsum < target:
+        cusums.append(cusums[-1] + nums[b])
+        b += 1
+    elif partsum > target:
+        a += 1
+    else:
+        break
+
+subsequence = nums[a:b + 1]
+answer = min(subsequence) + max(subsequence)
+
+print('Part 2:', answer)
+```
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -1426,6 +1574,7 @@ hope not.
 [d06]: #day-6---custom-customs
 [d07]: #day-7---handy-haversacks
 [d08]: #day-8---handheld-halting
+[d09]: #day-9---encoding-error
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -1435,6 +1584,7 @@ hope not.
 [d06-problem]: https://adventofcode.com/2020/day/6
 [d07-problem]: https://adventofcode.com/2020/day/7
 [d08-problem]: https://adventofcode.com/2020/day/8
+[d09-problem]: https://adventofcode.com/2020/day/9
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
@@ -1443,6 +1593,7 @@ hope not.
 [d06-solution]: solutions/day06.py
 [d07-solution]: solutions/day07.py
 [d08-solution]: solutions/day08.py
+[d09-solution]: solutions/day09.py
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
@@ -1496,6 +1647,7 @@ hope not.
 [wiki-memoization]:      https://en.wikipedia.org/wiki/Memoization
 [wiki-polynomial-time]:  https://en.wikipedia.org/wiki/Time_complexity#Polynomial_time
 [wiki-reduction]:        https://en.wikipedia.org/wiki/Reduction_Operator
+[wiki-running-total]:    https://en.wikipedia.org/wiki/Running_total
 [wiki-set-intersection]: https://en.wikipedia.org/wiki/Intersection_(set_theory)
 [wiki-set-union]:        https://en.wikipedia.org/wiki/Union_(set_theory)
 [wiki-sum-range]:        https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
