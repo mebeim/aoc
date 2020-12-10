@@ -1595,34 +1595,26 @@ nums = map(int, fin.readlines())
 nums = sorted(nums)
 ```
 
-Then, we can cycle through the numbers doing the following each iteration:
+Then, we can cycle through the numbers and check each of them against its
+successor to see if their difference is `1` or `3`. Beware though: the first
+time we find a match (for distance 1 and 3) it means we actually have *two*
+numbers matching. After that, each match only discovers one new number at a
+time. This means that we need to add 1 to both counters. I do this by
+initializing them to `1`.
 
-1. Check if the current number minus 1 is equal to the previous: if so increment
-   the count of numbers at distance 1.
-2. Check if the current number minus 3 is equal to any of the three previous
-   numbers: if so increment the count of numbers at distance 3.
-
-The first time we find a match (either for distance 1 or 3) it means we actually
-have *two* numbers matching. After that, each match only discovers one new
-number at a time. This means that we need to add 1 to both counters. I do this
-by initializing them to `1`.
-
-To start from the second number, we can simply use `nums[1:]`. Additionally,
-[`enumerate()`][py-builtin-enumerate] always comes in handy to get both current
-number and index and the same time. To check the previous number we can just use
-`nums[i - 1]` (since we start at `1`). To check for the last three numbers we
-can use `nums[:i][-3:]`: this will return a list of *at most* three numbers. We
-can do this because Python allows slicing starting with negative indexes higher
-or equal (in modulo) than the size of the list, returning the entire list in
-such case: `[1, 2][-100:] == [1, 2]`.
+To iterate over pairs of consecutive numbers we can take advantage of the
+[`zip()`][py-builtin-zip] function passing `nums, nums[1:]` as arguments. The
+checks are straightforward.
 
 ```python
 dist1, dist3 = 1, 1
 
-for i, cur in enumerate(nums[1:], 1):
-    if cur - 1 == nums[i - 1]:
+for cur, nxt in zip(nums, nums[1:]):
+    delta = nxt - cur
+
+    if delta == 1:
         dist1 += 1
-    elif cur - 3 in nums[:i][-3:]:
+    elif delta == 3:
         dist3 += 1
 ```
 

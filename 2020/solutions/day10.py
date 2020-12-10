@@ -23,11 +23,13 @@ nums = map(int, fin.readlines())
 nums = sorted(nums)
 dist1, dist3 = 1, 1
 
-for i, cur in enumerate(nums[1:], 1):
-	if cur - 1 == nums[i - 1]:
-		dist1 += 1
-	elif cur - 3 in nums[:i][-3:]:
-		dist3 += 1
+for cur, nxt in zip(nums, nums[1:]):
+    delta = nxt - cur
+
+    if delta == 1:
+        dist1 += 1
+    elif delta == 3:
+        dist3 += 1
 
 ans = dist1 * dist3
 advent.print_answer(1, ans)
