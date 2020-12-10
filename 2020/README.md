@@ -13,6 +13,7 @@ Table of Contents
 - [Day 7 - Handy Haversacks][d07]
 - [Day 8 - Handheld Halting][d08]
 - [Day 9 - Encoding Error][d09]
+- [Day 10 - Adapter Array][d10]
 
 Day 1 - Report Repair
 ---------------------
@@ -1566,6 +1567,182 @@ As a last note: we could even implement our "sliding window" using a
 `a` to minimize the used space. This "optimization" is kind of insignificant
 though, and the space used would still be linear in terms of `len(nums)`.
 
+
+Day 10 - Adapter Array
+----------------------
+
+[Problem statement][d10-problem] — [Complete solution][d10-solution] — [Back to top][top]
+
+### Part 1
+
+First part of today's puzzle feels more like a reading comprehension test than
+an actual programming puzzle.
+
+Long story short: we are given a list of numbers and we were told (with a
+reeeeally long explanation) that these numbers respect a certain rule: when
+sorted, the difference between any pair of consecutive numbers is always
+between at least 1 and at most 3.
+
+We want to count how many of these numbers have a difference of (A) exactly 1
+and (B) exactly 3. The answer we must give is the product of these two counts.
+
+Looks pretty simple: in order to do this we can sort the input sequence and then
+scan it starting from the second number. Let's do the sorting right away using
+the built-in [`sorted()`][py-builtin-sorted] function:
+
+```python
+nums = map(int, fin.readlines())
+nums = sorted(nums)
+```
+
+Then, we can cycle through the numbers doing the following each iteration:
+
+1. Check if the current number minus 1 is equal to the previous: if so increment
+   the count of numbers at distance 1.
+2. Check if the current number minus 3 is equal to any of the three previous
+   numbers: if so increment the count of numbers at distance 3.
+
+The first time we find a match (either for distance 1 or 3) it means we actually
+have *two* numbers matching. After that, each match only discovers one new
+number at a time. This means that we need to add 1 to both counters. I do this
+by initializing them to `1`.
+
+To start from the second number, we can simply use `nums[1:]`. Additionally,
+[`enumerate()`][py-builtin-enumerate] always comes in handy to get both current
+number and index and the same time. To check the previous number we can just use
+`nums[i - 1]` (since we start at `1`). To check for the last three numbers we
+can use `nums[:i][-3:]`: this will return a list of *at most* three numbers. We
+can do this because Python allows slicing starting with negative indexes higher
+or equal (in modulo) than the size of the list, returning the entire list in
+such case: `[1, 2][-100:] == [1, 2]`.
+
+```python
+dist1, dist3 = 1, 1
+
+for i, cur in enumerate(nums[1:], 1):
+    if cur - 1 == nums[i - 1]:
+        dist1 += 1
+    elif cur - 3 in nums[:i][-3:]:
+        dist3 += 1
+```
+
+Now just multiply the two counts together and get the answer:
+
+```python
+ans = dist1 * dist3
+print('Part 1:', ans)
+```
+
+### Part 2
+
+The problem turns into a real puzzle: we need to count
+*how many different subsets* of our numbers satisfy the rule defined in part 1.
+We also need to start each sequence with a `0` (which is not in our input) and
+end it with the maximum value we have plus 3.
+
+As an example, if our numbers were `1 2 3 6`, we could build 4 different
+sequences that respect the above rule using a subset of the numbers (always
+adding `0` at the start and `9` at the end):
+
+```
+(0) 1 2 3 6 (9)
+(0) 1 3 6 (9)
+(0) 2 3 6 (9)
+(0) 3 6 (9)
+```
+
+Something like `(0) 1 6 (9)` or `(0) 6 (9)` wouldn't be valid since the rule
+does not hold for all numbers in the sequence.
+
+Our list is kind of long, and we are told that the solution is inthe order of
+trillions, so we can't really use bruteforce testing all possible subsets of
+numbers. This problem can be solved using
+[dynamic programming][wiki-dynamic-programming].
+
+Let's start by adding `0` and `max + 3` to our list, since we always need those:
+
+```python
+nums = [0] + nums + [max(nums) + 3]
+```
+
+Remember that our numbers are still sorted. For each number, we have the
+possibility to chose betwee 1 and 3 successors. For example if we have
+`(0) 1 2 3 ...`, after choosing `0` (forced choice), we could take any of
+`1 2 3`, and those would constitute three different solutions. On the other hand
+if we have `(0) 2 3` we only have two choices, and in the extreme case of
+`(0) 3` we are forced to take `3` (one choice only).
+
+We don't really know how to count the number of possible solutions if the list
+is too large, but we can now think of this recursively:
+
+- If we only have the last number left to choose, we can only take that number,
+  so `1` possible solution.
+- For any other number before the last, the number of possible solutions is the
+  sum of the possible solutions choosing any of the valid successors we have.
+
+Turning the above into a recursive function:
+
+```python
+# Returns the number of possible solutions having chosen nums[i]
+def possible_solutions(nums, i):
+    # If this is the last number, we only have one possible solution
+    if i == len(nums) - 1:
+        return 1
+
+    # Otherwise, sum the number of possible solutions for any valid next number
+    tot = 0
+    for j in range(i + 1, min(i + 4, len(nums))): # min() to avoid going past the end of the list
+        if nums[j] - nums[i] <= 3:                # difference <= 3 to enforce the rule
+            tot += possible_solutions(nums, j)
+
+    return tot
+```
+
+Pretty cool. We have a little bit of a problem though: for each number we have
+we are calling this function between 1 and three times recursively. This means
+that (in the worst case of 3 calls for each call) we'll end up making
+3<sup>N</sup> calls (where N is the number of numbers we have). Needless to say,
+such a solution, which runs in [exponential time][wiki-exponential-time] and
+also uses an exponential amount of space, will never work. For my input I have
+`len(nums) == 97`, so 3<sup>97</sup> = ~10<sup>46</sup> iterations. Nope!
+
+The thing to notice to make this work is that we do not actually *need* to make
+all those calls: that would be akin to bruteforcing the solution. Most of the
+times, our recursive call will end up being called with the same `i`, therefore
+calculating the same value multiple times. If we [memoize][wiki-memoization] the
+results (just like we did to optimize [day 7][d07] part 2) we can save an
+*enormous* amount of work.
+
+In order to do this using the [`functools.lru_cache`][py-functools-lru-cache]
+decorator, since we want to only memoize based on the index `i`, we can remove
+the first argument and use the global `nums`.
+
+```python
+from functools import lru_cache
+
+@lru_cache()
+def possible_solutions(i):
+    if i == len(nums) - 1:
+        return 1
+
+    tot = 0
+    for j in range(i + 1, min(i + 4, len(nums))):
+        if nums[j] - nums[i] <= 3:
+            tot += possible_solutions(j)
+
+    return tot
+```
+
+Now just call the above function with an argument of `0` to know the total
+amount of possible solutions:
+
+```python
+total = possible_solutions(0)
+print('Part 2:', total)
+```
+
+Cool puzzle!
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -1583,6 +1760,7 @@ though, and the space used would still be linear in terms of `len(nums)`.
 [d07]: #day-7---handy-haversacks
 [d08]: #day-8---handheld-halting
 [d09]: #day-9---encoding-error
+[d10]: #day-10---adapter-array
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -1628,6 +1806,7 @@ though, and the space used would still be linear in terms of `len(nums)`.
 [py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
+[py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
@@ -1635,6 +1814,7 @@ though, and the space used would still be linear in terms of `len(nums)`.
 [py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-cache]:         https://docs.python.org/3/library/functools.html#functools.cache
+[py-functools-lru-cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
 [py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
 [py-functools-reduce]:        https://docs.python.org/3/library/functools.html#functools.reduce
 [py-math]:                    https://docs.python.org/3/library/math.html
@@ -1650,17 +1830,19 @@ though, and the space used would still be linear in terms of `len(nums)`.
 [algo-binsrc]:        https://en.wikipedia.org/wiki/Binary_search_algorithm
 [algo-wall-follower]: https://en.wikipedia.org/wiki/Maze_solving_algorithm#Wall_follower
 
-[wiki-cpython]:          https://en.wikipedia.org/wiki/CPython
-[wiki-dag]:              https://en.wikipedia.org/wiki/Directed_acyclic_graph
-[wiki-linear-time]:      https://en.wikipedia.org/wiki/Time_complexity#Linear_time
-[wiki-memoization]:      https://en.wikipedia.org/wiki/Memoization
-[wiki-polynomial-time]:  https://en.wikipedia.org/wiki/Time_complexity#Polynomial_time
-[wiki-reduction]:        https://en.wikipedia.org/wiki/Reduction_Operator
-[wiki-running-total]:    https://en.wikipedia.org/wiki/Running_total
-[wiki-set-intersection]: https://en.wikipedia.org/wiki/Intersection_(set_theory)
-[wiki-set-union]:        https://en.wikipedia.org/wiki/Union_(set_theory)
-[wiki-sum-range]:        https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
-[wiki-vm]:               https://en.wikipedia.org/wiki/Virtual_machine
+[wiki-cpython]:             https://en.wikipedia.org/wiki/CPython
+[wiki-dag]:                 https://en.wikipedia.org/wiki/Directed_acyclic_graph
+[wiki-dynamic-programming]: https://en.wikipedia.org/wiki/Dynamic_programming
+[wiki-exponential-time]:    https://en.wikipedia.org/wiki/Time_complexity#Exponential_time
+[wiki-linear-time]:         https://en.wikipedia.org/wiki/Time_complexity#Linear_time
+[wiki-memoization]:         https://en.wikipedia.org/wiki/Memoization
+[wiki-polynomial-time]:     https://en.wikipedia.org/wiki/Time_complexity#Polynomial_time
+[wiki-reduction]:           https://en.wikipedia.org/wiki/Reduction_Operator
+[wiki-running-total]:       https://en.wikipedia.org/wiki/Running_total
+[wiki-set-intersection]:    https://en.wikipedia.org/wiki/Intersection_(set_theory)
+[wiki-set-union]:           https://en.wikipedia.org/wiki/Union_(set_theory)
+[wiki-sum-range]:           https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
+[wiki-vm]:                  https://en.wikipedia.org/wiki/Virtual_machine
 
 [misc-man1-tr]:  https://man7.org/linux/man-pages/man1/tr.1.html
 [misc-regexp]:   https://www.regular-expressions.info/
