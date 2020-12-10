@@ -1777,7 +1777,7 @@ total_steps = reduce(lcm, periods, 1)
 print('Part 2:', total_steps)
 ```
 
-### Considerations
+### Reflections
 
 By observing the behavior of moons, we can notice that their velocity only gets
 to zero one time before going back to the initial state. This means that we
@@ -2663,7 +2663,7 @@ part 1 too, but since those are only 650, that would really just save us a few
 milliseconds (I nevertheless do this in my complete solution linked above, since
 it's straightforward).
 
-### Considerations
+### Reflections
 
 Although the solution to part 2 is clever, it still runs pretty slowly on
 CPython 3 (don't get scared by the name, it's just the standard Python
@@ -5058,7 +5058,7 @@ value = (start + step * 2020) % size
 print('Part 2:', value)
 ```
 
-### Considerations
+### Reflections
 
 We can use the logic of the second part to solve part 1 too. Since part 1 asks
 for the position of the value 2019 (and not the value at position 2019), we can
