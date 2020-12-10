@@ -5,6 +5,9 @@ from inspect import signature, Parameter
 from .helpers import log
 
 def log_calls(log_return=True):
+	'''Decorate a function logging arguments and return value
+	(if log_return=True) of every call to standard error.
+	'''
 	def decorator(fn):
 		@wraps(fn)
 		def wrapper(*args):
@@ -24,7 +27,7 @@ def selective_cache(*arg_names):
 
 	Example:
 
-		# Cache results using only (a, 'b') as key.
+		# Cache results using (a, b) as key.
 		@selective_cache('a', 'b')
 		def func(a, b, c):
 			return a + b + c
@@ -44,7 +47,6 @@ def selective_cache(*arg_names):
 	def decorator(fn):
 		key_args_indexes = []
 		cache = {}
-
 
 		for i, (name, p) in enumerate(signature(fn).parameters.items()):
 			# We are lazy, supporting every kind of strange Python parameter
