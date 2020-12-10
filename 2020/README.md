@@ -1212,7 +1212,7 @@ Day 8 - Handheld Halting
 
 First puzzle of the year to involve writing a custom [virtual machine][wiki-vm]!
 I was waiting for this to happen. Hopefully this year we'll have a saner
-specification than [last year's][misc-2019-d05] self-modifying "Intcode".
+specification than [last year's][2019-d05] self-modifying "Intcode".
 
 We have only 3 opcodes:
 
@@ -1229,8 +1229,8 @@ execute an already seen instruction (before *executing* it). The solution is
 the accumulator value after stopping.
 
 **NOTE**: I'll try to create a simpler VM implementation than my last year's
-[`IntcodeVM`][misc-2019-vm]. Since the VM implementation will likely change and
-I will keep updating the same file, I'll just link to the exact version of the
+[`IntcodeVM`][2019-vm]. Since the VM implementation will likely change and I
+will keep updating the same file, I'll just link to the exact version of the
 code at the time of writing, containing the current VM implementation, which
 we'll be writing ritht now. You can find the link above.
 
@@ -1735,6 +1735,52 @@ print('Part 2:', total)
 
 Cool puzzle!
 
+### Reflections
+
+This dance of having to move out arguments from functions just to make them
+cacheable by `lru_cache()` is kind of annoying, isn't it? Also, as we
+[learned last year][2019-d16-reflections], using global variables instead of
+local variables is always slower. If we can, we should try avoiding it.
+
+Indeed, we could solve this annoying problem in two ways:
+
+1. If we only need to do a single external call, we can write a custom wrapper
+   that remembers the first argument for us:
+
+    ```python
+    def possible_solutions(nums, i):
+        @lru_cache()
+        def real_fn(i):
+            if i == len(nums) - 1:
+                return 1
+
+            tot = 0
+            for j in range(i + 1, min(i + 4, len(nums))):
+                if nums[j] - nums[i] <= 3:
+                    tot += real_fn(j)
+
+            return tot
+
+        return real_fn(i)
+    ```
+
+    This is what I actually did in my solution for today's problem, and probably
+    what I'll keep doing when possible.
+
+    However, note that as mentioned above this is not a general solution at all,
+    since calling `possible_solutions()` multiple times from the outside just
+    creates new copies of `real_fn()`, which *don't* share the same cache.
+
+2. Create a more generic `selective_cache()` decorator which takes the names of
+   specific arguments to use as keys for memoization. This solution is more
+   generic and also a lot cooler, but it obviously requires some fairly higher
+   level of engineering.
+
+   Nonetheless, I've [implemented this decorator][utils-selective-cache] in my
+   utilities just for fun. I only plan on using it for my initial solves thogh,
+   not in cleaned up solutions. Just know that it can be done and you have the
+   code for it if you are curious.
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -1775,6 +1821,12 @@ Cool puzzle!
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
+
+[2019-d05]:             https://github.com/mebeim/aoc/blob/master/2019/README.md#day-5---sunny-with-a-chance-of-asteroids
+[2019-vm]:              https://github.com/mebeim/aoc/blob/master/2019/lib/intcode.py#L283
+[2019-d16-reflections]: https://github.com/mebeim/aoc/blob/master/2019/README.md#reflections-1
+
+[utils-selective-cache]: https://github.com/mebeim/aoc/blob/bd28a12be5444126dc531e8594181e0275424ee8/utils/decorators.py#L21
 
 [py-raw-string]:              https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
 [py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
@@ -1838,5 +1890,3 @@ Cool puzzle!
 
 [misc-man1-tr]:  https://man7.org/linux/man-pages/man1/tr.1.html
 [misc-regexp]:   https://www.regular-expressions.info/
-[misc-2019-d05]: https://github.com/mebeim/aoc/blob/master/2019/README.md#day-5---sunny-with-a-chance-of-asteroids
-[misc-2019-vm]:  https://github.com/mebeim/aoc/blob/master/2019/lib/intcode.py#L283

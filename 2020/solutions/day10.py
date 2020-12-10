@@ -3,17 +3,20 @@
 from utils import advent
 from functools import lru_cache
 
-@lru_cache()
-def arrangements(i):
-	if i == len(nums) - 1:
-		return 1
+def arrangements(nums, i):
+	@lru_cache()
+	def real_fn(i):
+		if i == len(nums) - 1:
+			return 1
 
-	tot = 0
-	for j in range(i + 1, min(i + 4, len(nums))):
-		if nums[j] - nums[i] <= 3:
-			tot += arrangements(j)
+		tot = 0
+		for j in range(i + 1, min(i + 4, len(nums))):
+			if nums[j] - nums[i] <= 3:
+				tot += real_fn(j)
 
-	return tot
+		return tot
+
+	return real_fn(i)
 
 
 advent.setup(2020, 10)
@@ -36,6 +39,6 @@ advent.print_answer(1, ans)
 
 
 nums = [0] + nums + [max(nums) + 3]
-total = arrangements(0)
+total = arrangements(nums, 0)
 
 advent.print_answer(2, total)
