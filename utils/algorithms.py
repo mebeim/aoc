@@ -3,6 +3,7 @@ __all__ = [
 	'neighbors4', 'neighbors4x', 'neighbors8',
 	'grid_find_adjacent', 'graph_from_grid', 'grid_bfs', 'grid_bfs_lru',
 	'dijkstra', 'dijkstra_lru', 'dijkstra_path', 'dijkstra_path_lru',
+	'dijkstra_all', 'dijkstra_all_paths',
 	'bisection', 'binary_search'
 ]
 
@@ -223,7 +224,7 @@ def dijkstra_path(G, src, dst, get_neighbors=None):
 					distance[neighbor] = new_dist
 					heapq.heappush(queue, (new_dist, neighbor, path + (neighbor,)))
 
-	return None, INFINITY
+	return (), INFINITY
 
 def dijkstra_path_lru(G, get_neighbors=None):
 	@lru_cache(CACHE_SIZE)
@@ -231,6 +232,83 @@ def dijkstra_path_lru(G, get_neighbors=None):
 		nonlocal G, get_neighbors
 		return dijkstra_path(G, src, dst, get_neighbors)
 	return wrapper
+
+def dijkstra_all(G, src, get_neighbors=None):
+	'''Find the length of all the shortest path from src to any reachable node
+	in G using Dijkstra's algorithm.
+
+	Reurns a defaultdict {node: distance}, where unreachable nodes have
+	distance=INFINITY.
+
+	G is a "graph dictionary": {src: [(dst, weight)]}. The get_neighbors
+	function is used to determine the neighbors of a node (defaults to G.get).
+	'''
+	if get_neighbors is None:
+		get_neighbors = G.get
+
+	distance = defaultdict(lambda: INFINITY)
+	queue    = [(0, src)]
+	visited  = set()
+
+	distance[src] = 0
+
+	while queue:
+		dist, node = heapq.heappop(queue)
+
+		if node not in visited:
+			visited.add(node)
+			neighbors = get_neighbors(node)
+
+			if not neighbors:
+				continue
+
+			for neighbor, weight in filter(lambda n: n[0] not in visited, neighbors):
+				new_dist = dist + weight
+
+				if new_dist < distance[neighbor]:
+					distance[neighbor] = new_dist
+					heapq.heappush(queue, (new_dist, neighbor))
+
+	return distance
+
+def dijkstra_all_paths(G, src, get_neighbors=None):
+	'''Find all the shortest paths from src to any reachable node in G and their
+	lengths Dijkstra's algorithm.
+
+	Returns a defaultdict {node: (path, length)}, where unreachable nodes have
+	path=() and length=INFINITY.
+
+	G is a "graph dictionary": {src: [(dst, weight)]}. The get_neighbors
+	function is used to determine the neighbors of a node (defaults to G.get).
+	'''
+	if get_neighbors is None:
+		get_neighbors = G.get
+
+	pd      = defaultdict(lambda: ((), INFINITY))
+	queue   = [(0, src, (src,))]
+	visited = set()
+
+	pd[src] = ((src,), 0)
+
+	while queue:
+		dist, node, path = heapq.heappop(queue)
+
+		if node not in visited:
+			visited.add(node)
+			neighbors = get_neighbors(node)
+
+			if not neighbors:
+				continue
+
+			for neighbor, weight in filter(lambda n: n[0] not in visited, neighbors):
+				new_dist = dist + weight
+
+				if new_dist < pd[neighbor][1]:
+					new_path = path + (neighbor,)
+					pd[neighbor] = (new_path, new_dist)
+					heapq.heappush(queue, (new_dist, neighbor, new_path))
+
+	return pd
 
 def bisection(fn, y, lo=None, hi=None, tolerance=1e-9, upper=False):
 	'''Find a value x in the range [hi, lo] such that f(x) approximates y.
