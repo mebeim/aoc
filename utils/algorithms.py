@@ -4,6 +4,7 @@ __all__ = [
 	'grid_find_adjacent', 'graph_from_grid', 'grid_bfs', 'grid_bfs_lru',
 	'dijkstra', 'dijkstra_lru', 'dijkstra_path', 'dijkstra_path_lru',
 	'dijkstra_all', 'dijkstra_all_paths',
+	'bellman_ford',
 	'bisection', 'binary_search'
 ]
 
@@ -151,11 +152,9 @@ def dijkstra(G, src, dst, get_neighbors=None):
 	if get_neighbors is None:
 		get_neighbors = G.get
 
-	distance = defaultdict(lambda: INFINITY)
+	distance = defaultdict(lambda: INFINITY, {src: 0})
 	queue    = [(0, src)]
 	visited  = set()
-
-	distance[src] = 0
 
 	while queue:
 		dist, node = heapq.heappop(queue)
@@ -198,11 +197,9 @@ def dijkstra_path(G, src, dst, get_neighbors=None):
 	if get_neighbors is None:
 		get_neighbors = G.get
 
-	distance = defaultdict(lambda: INFINITY)
+	distance = defaultdict(lambda: INFINITY, {src: 0})
 	queue    = [(0, src, (src,))]
 	visited  = set()
-
-	distance[src] = 0
 
 	while queue:
 		dist, node, path = heapq.heappop(queue)
@@ -246,11 +243,9 @@ def dijkstra_all(G, src, get_neighbors=None):
 	if get_neighbors is None:
 		get_neighbors = G.get
 
-	distance = defaultdict(lambda: INFINITY)
+	distance = defaultdict(lambda: INFINITY, {src: 0})
 	queue    = [(0, src)]
 	visited  = set()
-
-	distance[src] = 0
 
 	while queue:
 		dist, node = heapq.heappop(queue)
@@ -284,11 +279,9 @@ def dijkstra_all_paths(G, src, get_neighbors=None):
 	if get_neighbors is None:
 		get_neighbors = G.get
 
-	pd      = defaultdict(lambda: ((), INFINITY))
+	pd      = defaultdict(lambda: ((), INFINITY), {src: ((src,), 0)})
 	queue   = [(0, src, (src,))]
 	visited = set()
-
-	pd[src] = ((src,), 0)
 
 	while queue:
 		dist, node, path = heapq.heappop(queue)
