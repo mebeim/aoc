@@ -41,7 +41,7 @@ neighbors4  = _grid_neighbors(((1, 0), (-1, 0), (0, 1), (0, -1)))
 neighbors4x = _grid_neighbors(((1, 1), (1, -1), (-1, 1), (-1, -1)))
 neighbors8  = _grid_neighbors(((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)))
 
-def grid_find_adjacent(grid, src, find, avoid='#', coords=False):
+def grid_find_adjacent(grid, src, find, avoid='#', coords=False, get_neighbors=neighbors4):
 	'''Find edges to reachable nodes in a character grid (2D matrix) given a
 	source and a set of characters to consider as nodes.
 
@@ -50,6 +50,7 @@ def grid_find_adjacent(grid, src, find, avoid='#', coords=False):
 	avoid: characters to consider walls.
 	Anyting else is considered open space.
 
+	The get_neighbors function is used to determine the neighbors of a cell.
 	If coords=False (default), yields edges in the form (char, dist), otherwise
 	in the form ((row, col, char), dist).
 
@@ -76,10 +77,10 @@ def grid_find_adjacent(grid, src, find, avoid='#', coords=False):
 
 				continue
 
-			for neighbor in filter(lambda n: n not in visited, neighbors4(grid, *node)):
+			for neighbor in filter(lambda n: n not in visited, get_neighbors(grid, *node)):
 				queue.append((dist + 1, neighbor))
 
-def graph_from_grid(grid, find, avoid='#', coords=False):
+def graph_from_grid(grid, find, avoid='#', coords=False, get_neighbors=neighbors4):
 	'''Reduce a character grid (2D matrix) to an undirected graph by finding
 	nodes and calculating their distance to others.
 
@@ -87,6 +88,7 @@ def graph_from_grid(grid, find, avoid='#', coords=False):
 	avoid: characters to consider walls.
 	Anything else is considered open space.
 
+	The get_neighbors function is used to determine the neighbors of a cell.
 	If coord=False (default), nodes of the graph will be represented by the
 	found character only, otherwise by a tuple of the form (row, col, char).
 
@@ -98,13 +100,16 @@ def graph_from_grid(grid, find, avoid='#', coords=False):
 		for c, char in enumerate(row):
 			if char in find:
 				node = (r, c, char) if coords else char
-				graph[node] = list(grid_find_adjacent(grid, (r, c), find, avoid, coords))
+				graph[node] = list(grid_find_adjacent(grid, (r, c), find, avoid, coords, get_neighbors))
 
 	return graph
 
-def grid_bfs(grid, src, dst):
+def grid_bfs(grid, src, dst, get_neighbors=neighbors4):
 	'''Find the length of any path from src to dst in grid using breadth-first
 	search, where grid is a 2D matrix i.e. list of lists or similar.
+
+	src and dst are tuples in the form (row, col).
+	The get_neighbors function is used to determine the neighbors of a cell.
 
 	For memoization, use: bfs = bfs_grid_lru(grid); bfs(src, dst).
 	'''
@@ -125,18 +130,20 @@ def grid_bfs(grid, src, dst):
 
 	return INFINITY
 
-def grid_bfs_lru(grid):
+def grid_bfs_lru(grid, get_neighbors=neighbors4):
 	@lru_cache(CACHE_SIZE)
 	def wrapper(src, dst):
-		return bfs_grid(grid, src, dst)
+		nonlocal grid, get_neighbors
+		return bfs_grid(grid, src, dst, get_neighbors)
 	return wrapper
 
 def dijkstra(G, src, dst, get_neighbors=None):
 	'''Find the length of the shortest path from src to dst in G using
 	Dijkstra's algorithm.
 
-	G is a "graph dictionary": {src: [(dst, weight)]}. The get_neighbors
-	function is used to determine the neighbors of a node (defaults to G.get).
+	G is a "graph dictionary": {src: [(dst, weight)]}.
+	The get_neighbors function is used to determine the neighbors of a node
+	(defaults to G.get).
 
 	For memoization, use: djk = dijkstra_lru(G); djk(src, dst).
 	'''
@@ -171,9 +178,10 @@ def dijkstra(G, src, dst, get_neighbors=None):
 
 	return INFINITY
 
-def dijkstra_lru(G):
+def dijkstra_lru(G, get_neighbors=None):
 	@lru_cache(CACHE_SIZE)
-	def wrapper(src, dst, get_neighbors=None):
+	def wrapper(src, dst):
+		nonlocal G, get_neighbors
 		return dijkstra(G, src, dst, get_neighbors)
 	return wrapper
 
@@ -217,9 +225,10 @@ def dijkstra_path(G, src, dst, get_neighbors=None):
 
 	return None, INFINITY
 
-def dijkstra_path_lru(G):
+def dijkstra_path_lru(G, get_neighbors=None):
 	@lru_cache(CACHE_SIZE)
-	def wrapper(src, dst, get_neighbors=None):
+	def wrapper(src, dst):
+		nonlocal G, get_neighbors
 		return dijkstra_path(G, src, dst, get_neighbors)
 	return wrapper
 
