@@ -3,7 +3,7 @@
 from utils import advent
 import re
 from collections import defaultdict
-from functools import cache
+from functools import lru_cache
 
 def count_can_contain(G, src, visited=set()):
 	for color in G[src]:
@@ -13,7 +13,7 @@ def count_can_contain(G, src, visited=set()):
 
 	return len(visited)
 
-@cache
+@lru_cache()
 def count_contained(src):
 	tot = 0
 	for qty, color in contains[src]:

@@ -1187,6 +1187,9 @@ def count_contained(src):
     return tot
 ```
 
+Note: `@cache` is new in Python 3.9, but it's only a shorthand for
+`@lru_cache()`. You can use the latter on older Python versions.
+
 About the same speed as the previous manual method. Maaaaaybe around one
 microsecond faster, but really who knows. Let's finally calculate the solution:
 
