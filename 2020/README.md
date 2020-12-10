@@ -1742,44 +1742,76 @@ cacheable by `lru_cache()` is kind of annoying, isn't it? Also, as we
 [learned last year][2019-d16-reflections], using global variables instead of
 local variables is always slower. If we can, we should try avoiding it.
 
-Indeed, we could solve this annoying problem in two ways:
+Indeed, we could solve this annoying problem in multiple ways:
 
 1. If we only need to do a single external call, we can write a custom wrapper
    that remembers the first argument for us:
 
     ```python
-    def possible_solutions(nums, i):
+    def func(A, x):
+        # Decorate using lru_cache() without the first parameter
         @lru_cache()
-        def real_fn(i):
-            if i == len(nums) - 1:
-                return 1
+        def real_func(x):
+            nonlocal A
+            # ... do work
+            # ... recursively call real_func(y)
+            return something
 
-            tot = 0
-            for j in range(i + 1, min(i + 4, len(nums))):
-                if nums[j] - nums[i] <= 3:
-                    tot += real_fn(j)
+        # Do the actual initial call passing only the second parameter
+        return real_func(x)
 
-            return tot
-
-        return real_fn(i)
+    # Example usage
+    res = func(nums, 0)
     ```
 
-    This is what I actually did in my solution for today's problem, and probably
-    what I'll keep doing when possible.
+    This is what I actually did in [my solution][d10-solution] for today's
+    problem, and probably what I'll keep doing when possible.
 
     However, note that as mentioned above this is not a general solution at all,
     since calling `possible_solutions()` multiple times from the outside just
     creates new copies of `real_fn()`, which *don't* share the same cache.
 
-2. Create a more generic `selective_cache()` decorator which takes the names of
-   specific arguments to use as keys for memoization. This solution is more
-   generic and also a lot cooler, but it obviously requires some fairly higher
-   level of engineering.
+2. If we need to do multiple external calls, we can do *almost the same* thing
+   as above, returning the entire function instead, and then use *that*
+   function.
+
+    ```python
+    def apply_caching(A):
+        # Decorate using lru_cache() without the A parameter
+        @lru_cache()
+        def real_func(x):
+            nonlocal A
+            # ...
+            return something
+
+        # Return real_func, which will always use the same A and only take one
+        # parameter
+        return real_func
+
+    # Example usage
+    func = apply_caching(nums)
+    res1 = func(0)
+    res2 = func(1)
+    ```
+
+    This technique is known as [*closure*][wiki-closure]. Here, the internal
+    `real_func()` will use the value of `A` that was originally passed to
+    `apply_caching()`. This makes it possible to call the function externally
+    multiple times always using the same cache and the same `A`.
+
+3. For a general, reusable solution: create a custom more generic
+   `selective_cache()` decorator which takes the names of specific arguments to
+   use as keys for memoization. This solution a lot cooler, but it obviously
+   requires some fairly higher level of engineering.
 
    Nonetheless, I've [implemented this decorator][utils-selective-cache] in my
    utilities just for fun. I only plan on using it for my initial solves thogh,
    not in cleaned up solutions. Just know that it can be done and you have the
    code for it if you are curious.
+
+Approach #3 could probably be made to work using `lru_cache()`, but I did not
+figure out a good way of doing it, so I ended up implementing "manual" caching
+using an internal dictionary.
 
 ---
 
@@ -1809,6 +1841,7 @@ Indeed, we could solve this annoying problem in two ways:
 [d07-problem]: https://adventofcode.com/2020/day/7
 [d08-problem]: https://adventofcode.com/2020/day/8
 [d09-problem]: https://adventofcode.com/2020/day/9
+[d10-problem]: https://adventofcode.com/2020/day/10
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
@@ -1818,6 +1851,7 @@ Indeed, we could solve this annoying problem in two ways:
 [d07-solution]: solutions/day07.py
 [d08-solution]: solutions/day08.py
 [d09-solution]: solutions/day09.py
+[d10-solution]: solutions/day10.py
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
@@ -1874,6 +1908,7 @@ Indeed, we could solve this annoying problem in two ways:
 [algo-binsrc]:        https://en.wikipedia.org/wiki/Binary_search_algorithm
 [algo-wall-follower]: https://en.wikipedia.org/wiki/Maze_solving_algorithm#Wall_follower
 
+[wiki-closure]:             https://en.wikipedia.org/wiki/Closure_(computer_programming)
 [wiki-cpython]:             https://en.wikipedia.org/wiki/CPython
 [wiki-dag]:                 https://en.wikipedia.org/wiki/Directed_acyclic_graph
 [wiki-dynamic-programming]: https://en.wikipedia.org/wiki/Dynamic_programming
