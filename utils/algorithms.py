@@ -5,7 +5,8 @@ __all__ = [
 	'dijkstra', 'dijkstra_lru', 'dijkstra_path', 'dijkstra_path_lru',
 	'dijkstra_all', 'dijkstra_all_paths',
 	'bellman_ford',
-	'bisection', 'binary_search'
+	'bisection', 'binary_search',
+	'knapsack'
 ]
 
 import heapq
@@ -14,8 +15,8 @@ from functools import lru_cache
 from bisect import bisect_left
 from math import inf as INFINITY
 
-# Cache size used for memoization with lru_Cache
-CACHE_SIZE = 256 * 2**20 # ~256M entries
+# Maximum cache size used for memoization with lru_Cache
+MAX_CACHE_SIZE = 256 * 2**20 # 256Mi entries -> ~4GiB if one entry is 32 bytes
 
 def _grid_neighbors(deltas):
 	'''Create a generator function for finding neighbors in a 2D grid.
@@ -133,7 +134,7 @@ def grid_bfs(grid, src, dst, get_neighbors=neighbors4):
 	return INFINITY
 
 def grid_bfs_lru(grid, get_neighbors=neighbors4):
-	@lru_cache(CACHE_SIZE)
+	@lru_cache(MAX_CACHE_SIZE)
 	def wrapper(src, dst):
 		nonlocal grid, get_neighbors
 		return bfs_grid(grid, src, dst, get_neighbors)
@@ -179,7 +180,7 @@ def dijkstra(G, src, dst, get_neighbors=None):
 	return INFINITY
 
 def dijkstra_lru(G, get_neighbors=None):
-	@lru_cache(CACHE_SIZE)
+	@lru_cache(MAX_CACHE_SIZE)
 	def wrapper(src, dst):
 		nonlocal G, get_neighbors
 		return dijkstra(G, src, dst, get_neighbors)
@@ -224,7 +225,7 @@ def dijkstra_path(G, src, dst, get_neighbors=None):
 	return (), INFINITY
 
 def dijkstra_path_lru(G, get_neighbors=None):
-	@lru_cache(CACHE_SIZE)
+	@lru_cache(MAX_CACHE_SIZE)
 	def wrapper(src, dst):
 		nonlocal G, get_neighbors
 		return dijkstra_path(G, src, dst, get_neighbors)
@@ -305,12 +306,12 @@ def dijkstra_all_paths(G, src, get_neighbors=None):
 
 def bellman_ford(G, src):
 	'''Find all the shortest paths from src to any reachable node in G and their
-	lengths using the Bellman-Ford algorithm. NOTE: all nodes of G should be in
-	G as keys!
+	lengths using the Bellman-Ford algorithm. IMPORTANT: all nodes of the graph
+	should be in G as keys!
 
 	G is a "graph dictionary": {src: [(dst, weight)]}.
 
-	Retudns two defaultdicts: distance, previous.
+	Returns two defaultdicts: distance, previous.
 
 	distance[node]: length of the shortest path from src to node
 		default	to INFINITY for unreachable nodes.
@@ -406,14 +407,58 @@ def bisection(fn, y, lo=None, hi=None, tolerance=1e-9, upper=False):
 
 	return lo
 
-# https://docs.python.org/3/library/bisect.html#searching-sorted-lists
 def binary_search(a, x):
-	'''Find the index of x in the sorted iterable a using binary search. Return
+	'''Find the index of x in the sorted iterable a using binary search. Returns
 	-1 if x not in a.
 
 	Note: a must be indexable.
 	'''
+	# https://docs.python.org/3/library/bisect.html#searching-sorted-lists
 	i = bisect_left(a, x)
 	if i != len(a) and a[i] == x:
 		return i
 	return -1
+
+def knapsack(items, weight_limit):
+	'''0-1 knapsack: find the best subset of items to choose to get the maximum
+	total value with the given total weight limit.
+
+	items is a dictionary in the form {key: (value, weight)}
+
+	Returns a tuple (best, chosen) where best is the maximum total value
+	achievable and chosen is a list of keys representing chosen items.
+	'''
+	# Solve w/ dynamic programming, number items arbitrarily from 1 to N
+	# creating a mapping {index: key}
+	key = {i: k for i, k in enumerate(items, 1)}
+
+	# best(n, wl) -> best score choosing amongst the first n elements
+	# with a total weight limit of wl
+	@lru_cache(MAX_CACHE_SIZE)
+	def best(n, wl):
+		if n == 0 or wl <= 0:
+			return 0
+
+		v, w = items[key[n]]
+		if w > wl:
+			return best(n - 1, wl)
+
+		return max(best(n - 1, wl), best(n - 1, wl - w) + v)
+
+	n = len(items)
+	wl = weight_limit
+	sol = best(n, wl)
+	chosen = []
+
+	for n in range(n, 0, -1):
+		if best(n, wl) != best(n - 1, wl):
+			chosen.append(key[n])
+			wl -= items[key[n]][1]
+
+	return sol, chosen
+
+def knapsack_bounded():
+	raise NotImplementedError('TODO?')
+
+def knapsack_unbounded():
+	raise NotImplementedError('TODO?')
