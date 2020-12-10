@@ -303,6 +303,42 @@ def dijkstra_all_paths(G, src, get_neighbors=None):
 
 	return pd
 
+def bellman_ford(G, src):
+	'''Find all the shortest paths from src to any reachable node in G and their
+	lengths using the Bellman-Ford algorithm. NOTE: all nodes of G should be in
+	G as keys!
+
+	G is a "graph dictionary": {src: [(dst, weight)]}.
+
+	Retudns two defaultdicts: distance, previous.
+
+	distance[node]: length of the shortest path from src to node
+		default	to INFINITY for unreachable nodes.
+	previous[node]: previous node in the shortest path from src to node
+		default to None for unreachable nodes.
+	'''
+	distance = defaultdict(lambda: INFINITY, {src: 0})
+	previous = defaultdict(lambda: None)
+
+	# This needs to run exactly num_of_nodes - 1 times. If G does not have all
+	# nodes as keys this will run fewer times and produce wrong results.
+	for _ in range(len(G) - 1):
+		for node, edges in G.items():
+			for neighbor, weight in edges:
+				new_dist = distance[node] + weight
+
+				if new_dist < distance[neighbor]:
+					distance[neighbor] = new_dist
+					previous[neighbor] = node
+
+	for _ in range(len(G) - 1):
+		for node, edges in G.items():
+			for neighbor, weight in edges:
+				if distance[node] + weight < distance[neighbor]:
+					raise Exception('Bellman-Ford on graph containing negative-weight cycles')
+
+	return distance, previous
+
 def bisection(fn, y, lo=None, hi=None, tolerance=1e-9, upper=False):
 	'''Find a value x in the range [hi, lo] such that f(x) approximates y.
 
