@@ -14,6 +14,7 @@ Table of Contents
 - [Day 8 - Handheld Halting][d08]
 - [Day 9 - Encoding Error][d09]
 - [Day 10 - Adapter Array][d10]
+- [Day 11 - Seating System][d11]
 
 Day 1 - Report Repair
 ---------------------
@@ -1813,6 +1814,231 @@ Approach #3 could probably be made to work using `lru_cache()`, but I did not
 figure out a good way of doing it, so I ended up implementing "manual" caching
 using an internal dictionary.
 
+
+Day 11 - Seating System
+-----------------------
+
+[Problem statement][d11-problem] — [Complete solution][d11-solution] — [Back to top][top]
+
+### Part 1
+
+Any cellular automaton fans around here? Before starting, let me just mark
+another square in my [Advent of Code 2020 bingo card][misc-aoc-bingo]... done.
+Let's go!
+
+We are given a quite large character grid as input. The grid represents seats in
+a public waiting area. Each cell in the grid can be in 3 different states
+represented by different characters: occupied seat (`#`), empty seat (`L`) and
+floor (`.`).
+
+Cells change state according to a very simple set of rules, turning the whole
+thing into a [cellular automaton][wiki-cellular-automaton]. Each iteration,
+the new state of a cell depends on its current state and the current state of
+its 8 neighbor cells. The rules are as follows:
+
+1. Floor (`.`) never changes state.
+2. If a seat is empty (`L`) and no neighbor seat is occupied (`#`), it becomes
+   occupied.
+3. If a seat is occupied (`#`) and at least 4 neighbor seats are also occupied,
+   it becomes empty (`L`).
+
+We want to simulate the evolution of the grid until all the cells "stabilize"
+and stop changing states. That is, until the content of the grid stops changing.
+Once stabilized, we must count the total number of occupied seats.
+
+Before starting, let's define the seat states as some global constants so that
+we don't get confused with different characters:
+
+```python
+OCCUPIED, EMPTY, FLOOR = '#L.'
+```
+
+Now let's the grid from our input file, and turn it into a list of lists of
+characters in order to be able to edit each cell individually. We need to remove
+newline characters (`\n`) from each line, then turn it into a `list`. Our black
+belt in Python iterable [mapping][py-builtin-map] makes us able to do this in
+one line. We also calculate a couple more useful global constants to make
+bound-checking easier for the rest of the program:
+
+```python
+original = list(map(list, map(str.rstrip, fin.readlines())))
+MAXROW, MAXCOL = len(original) - 1, len(original[0]) - 1
+```
+
+If you're wondering why the name `original`, that's because we're going to need
+the initial grid again for part 2. We'll make a copy of the original using
+[`deepcopy()`][py-copy-deepcopy] from the [`copy`][py-copy] module in order to
+preserve it for later.
+
+```python
+from copy import deepcopy
+grid = deepcopy(original)
+```
+
+In order to evolve a cell we need to follow the rules, and in order to follow
+the rules we need to be able to count the number of occupied neighbor seats.
+We'll define a function that does just that.
+
+```python
+def occupied_neighbors(grid, r, c):
+    deltas = ((-1, 0), ( 1,  0), (0, 1), ( 0, -1), # North, South, East, West
+              (-1, 1), (-1, -1), (1, 1), ( 1, -1)) # NE, NW, SE, SW
+
+    total = 0
+    for dr, dc in deltas:
+        rr, cc = r + dr, c + dc
+        if 0 <= rr <= MAXROW and 0 <= cc <= MAXCOL:
+            total += grid[rr][cc] == OCCUPIED # += True/False behaves as += 1/0
+
+    return total
+```
+
+It's time to simulate! Every generation we'll create a new copy of the current
+`grid`, then check the cells of the copy in order to not mix cells at different
+generations together. Applying the rules is pretty straight forward. We'll keep
+doing so until the grid stops changing: that is, after evolving the grid is
+still equal the copy that was made before evolving. As usual, we'll make good
+use of [`enumerate()`][py-builtin-enumerate] to make our life easier.
+
+```python
+while 1:
+    previous = deepcopy(grid)
+
+    for r, row in enumerate(previous):
+        for c, cell in enumerate(row):
+            if cell == FLOOR:
+                continue
+
+            occ = occupied_neighbors(previous, r, c)
+
+            if cell == EMPTY and occ == 0:
+                grid[r][c] = OCCUPIED
+            elif cell == OCCUPIED and occ >= 4:
+                grid[r][c] = EMPTY
+
+    if grid == previous:
+        break
+```
+
+All that's left to do is count the total number of occupied seats, easy
+[`list.count()`][py-list-count] + [`sum()`][py-builtin-sum]:
+
+```python
+total_occupied = sum(row.count(OCCUPIED) for row in grid)
+print('Part 1:', total_occupied)
+```
+
+### Part 2
+
+The state of a seat now changes according to state of the first seats that can
+be seen in each of the 8 directions (north, south, east, west, NE, NW, SE, SW).
+
+The rules however stay almost the same: now an occupied seat (`#`) becomes empty
+(`L`) if at least *5* in-sight seats are also occupied, and an empty seat still
+stays empty unless there's no occupied seat in sight in any of the directions.
+
+To make it clearer, in the following example:
+
+```
+  0123456789
+0 .L.L.#.#.L
+1 ..........
+2 .......#.#
+```
+
+The empty seat at row column `1` only sees *1* other seat in total, which
+is the empty seat at row `0` column `3`; it does not see any other seat beyond
+that on the same row. The empty seat at column `9` sees *3* seats in total: the
+occupied seats at `(0, 7)`, `(2, 7)` and `(2, 9)`.
+
+Our task is still the same as before: count the total number of occupied seats
+after the situation becomes stable.
+
+There isn't really much to change in our evolution loop. All we need to do is
+define a new function to count occupied "neighbors". We still look in the same 8
+directions as before, but now we don't want to stop at the first cell in each
+direction: we want to continue advancing in each direction until we find a seat.
+Then, if that seat was occupied, count it.
+
+In order to do this, we can start from the code of `occupied_neighbors()` above,
+and add a loop for each direction, where we continue to increment the row and
+column (`rr`, `cc`) of the same deltas (`dr`, `dc`) each step, stopping as soon
+as we go out of bounds or we encounter a seat.
+
+```python
+def occupied_in_sight(grid, r, c):
+    deltas = ((-1, 0), ( 1,  0), (0, 1), ( 0, -1), # North, South, East, West
+              (-1, 1), (-1, -1), (1, 1), ( 1, -1)) # NE, NW, SE, SW
+
+    total = 0
+    for dr, dc in deltas:
+        rr, cc = r + dr, c + dc
+
+        while 0 <= rr <= MAXROW and 0 <= cc <= MAXCOL:
+            if grid[rr][cc] != FLOOR:
+                if grid[rr][cc] == OCCUPIED:
+                    total += 1
+                break
+
+            rr += dr
+            cc += dc
+
+    return total
+```
+Now we just need to create a new copy of the original grid:
+
+```python
+grid = deepcopy(original)
+```
+
+And run the "evolution loop", which is almost the same as before, exept for
+these two simple changes:
+
+```python
+            occ = occupied_in_sight(previous, r, c)  # changed function
+
+            if cell == EMPTY and occ == 0:
+                grid[r][c] = OCCUPIED
+            elif cell == OCCUPIED and occ >= 5:      # changed 4 to 5
+                grid[r][c] = EMPTY
+```
+
+The final calculation is also unchanged:
+
+```python
+total_occupied = sum(row.count(OCCUPIED) for row in grid)
+print('Part 2:', total_occupied)
+```
+
+That's some pretty slick code, [Conway][wiki-john-horton-conway] would be proud
+:')
+
+### Reflections
+
+Today marks the first day of Advent of Code 2020 in which [PyPy][misc-pypy]
+completely obliterates [CPython][wiki-cpython] in performance, being faster by
+an order of magnitude (woah). I knew this would happen sooner or later.
+
+When it comes to iterating over and modifying lists millions of times there
+isn't much to do: CPython sucks hard and is greatly outperformed by PyPy. This
+hasn't been the case for previous problems because (1) we did not make as much
+list manipulation as we did today, and (2) the programs we wrote solved each
+puzzle so fast that PyPy's [JIT compiler][wiki-jit] didn't even have the time to
+*rev up* to be taken advantage of. Today's puzzle however the chosen Python
+implementation makes a big difference:
+
+```none
+$ python day11.py
+Timer part 1: 2.214s wall, 2.213s CPU
+Timer part 2: 3.309s wall, 3.308s CPU
+
+$ pypy day11.py
+Timer part 1: 254.161ms wall, 253.942ms CPU
+Timer part 2: 336.266ms wall, 335.970ms CPU
+```
+
+Tested on: `CPython 3.9.0+`, `PyPy 7.3.3 Python 3.7.9`.
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -1831,6 +2057,7 @@ using an internal dictionary.
 [d08]: #day-8---handheld-halting
 [d09]: #day-9---encoding-error
 [d10]: #day-10---adapter-array
+[d11]: #day-11---seating-system
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -1842,6 +2069,7 @@ using an internal dictionary.
 [d08-problem]: https://adventofcode.com/2020/day/8
 [d09-problem]: https://adventofcode.com/2020/day/9
 [d10-problem]: https://adventofcode.com/2020/day/10
+[d11-problem]: https://adventofcode.com/2020/day/11
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
@@ -1852,6 +2080,7 @@ using an internal dictionary.
 [d08-solution]: solutions/day08.py
 [d09-solution]: solutions/day09.py
 [d10-solution]: solutions/day10.py
+[d11-solution]: solutions/day11.py
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
@@ -1865,6 +2094,7 @@ using an internal dictionary.
 [py-raw-string]:              https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
 [py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
 [py-lambda]:                  https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
+[py-list-count]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-set]:                     https://docs.python.org/3/library/stdtypes.html#set
 [py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
 [py-set-intersection-u]:      https://docs.python.org/3/library/stdtypes.html#frozenset.intersection_update
@@ -1889,6 +2119,8 @@ using an internal dictionary.
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
+[py-copy]:                    https://docs.python.org/3/library/copy.html
+[py-copy-deepcopy]:           https://docs.python.org/3/library/copy.html#copy.deepcopy
 [py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-cache]:         https://docs.python.org/3/library/functools.html#functools.cache
@@ -1908,11 +2140,14 @@ using an internal dictionary.
 [algo-binsrc]:        https://en.wikipedia.org/wiki/Binary_search_algorithm
 [algo-wall-follower]: https://en.wikipedia.org/wiki/Maze_solving_algorithm#Wall_follower
 
+[wiki-cellular-automaton]:  https://en.wikipedia.org/wiki/Cellular_automaton
 [wiki-closure]:             https://en.wikipedia.org/wiki/Closure_(computer_programming)
 [wiki-cpython]:             https://en.wikipedia.org/wiki/CPython
 [wiki-dag]:                 https://en.wikipedia.org/wiki/Directed_acyclic_graph
 [wiki-dynamic-programming]: https://en.wikipedia.org/wiki/Dynamic_programming
 [wiki-exponential-time]:    https://en.wikipedia.org/wiki/Time_complexity#Exponential_time
+[wiki-jit]:                 https://en.wikipedia.org/wiki/Just-in-time_compilation
+[wiki-john-horton-conway]:  https://en.wikipedia.org/wiki/John_Horton_Conway
 [wiki-linear-time]:         https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-memoization]:         https://en.wikipedia.org/wiki/Memoization
 [wiki-polynomial-time]:     https://en.wikipedia.org/wiki/Time_complexity#Polynomial_time
@@ -1923,5 +2158,7 @@ using an internal dictionary.
 [wiki-sum-range]:           https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
 [wiki-vm]:                  https://en.wikipedia.org/wiki/Virtual_machine
 
-[misc-man1-tr]:  https://man7.org/linux/man-pages/man1/tr.1.html
-[misc-regexp]:   https://www.regular-expressions.info/
+[misc-aoc-bingo]: https://www.reddit.com/r/adventofcode/comments/k3q7tr/
+[misc-man1-tr]:   https://man7.org/linux/man-pages/man1/tr.1.html
+[misc-pypy]:      https://www.pypy.org/
+[misc-regexp]:    https://www.regular-expressions.info/
