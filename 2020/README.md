@@ -1897,34 +1897,44 @@ It's time to simulate! Every generation we'll create a new copy of the current
 `grid`, then check the cells of the copy in order to not mix cells at different
 generations together. Applying the rules is pretty straight forward. We'll keep
 doing so until the grid stops changing: that is, after evolving the grid is
-still equal the copy that was made before evolving. As usual, we'll make good
-use of [`enumerate()`][py-builtin-enumerate] to make our life easier.
+still equal the copy that was made before evolving.
+
+We'll wrap everything in a function since we'll make good use of this code for
+part 2 too with only a couple of modifications. When two consecutive generations
+are equal (we can just check the two grids with `==`), we'll count the total
+number of occupied seats ([`list.count()`][py-list-count] +
+[`sum()`][py-builtin-sum]) and return it. As usual, we'll also make good use of
+[`enumerate()`][py-builtin-enumerate] to make our life easier.
 
 ```python
-while 1:
-    previous = deepcopy(grid)
+def evolve(grid):
+    while 1:
+        previous = deepcopy(grid)
 
-    for r, row in enumerate(previous):
-        for c, cell in enumerate(row):
-            if cell == FLOOR:
-                continue
+        for r, row in enumerate(previous):
+            for c, cell in enumerate(row):
+                if cell == FLOOR:
+                    continue
 
-            occ = occupied_neighbors(previous, r, c)
+                occ = occupied_neighbors(previous, r, c)
 
-            if cell == EMPTY and occ == 0:
-                grid[r][c] = OCCUPIED
-            elif cell == OCCUPIED and occ >= 4:
-                grid[r][c] = EMPTY
+                # Evolve a single cell based on rules
+                if cell == EMPTY and occ == 0:
+                    grid[r][c] = OCCUPIED
+                elif cell == OCCUPIED and occ >= 4:
+                    grid[r][c] = EMPTY
 
-    if grid == previous:
-        break
+        # If nothing changes, we reached a "stable" point and we're done
+        if grid == previous:
+            return sum(row.count(OCCUPIED) for row in grid)
+
+        previous = grid
 ```
 
-All that's left to do is count the total number of occupied seats, easy
-[`list.count()`][py-list-count] + [`sum()`][py-builtin-sum]:
+All that's left to do is call the function we just wrote:
 
 ```python
-total_occupied = sum(row.count(OCCUPIED) for row in grid)
+total_occupied = evolve(grid)
 print('Part 1:', total_occupied)
 ```
 
@@ -1985,28 +1995,37 @@ def occupied_in_sight(grid, r, c):
 
     return total
 ```
-Now we just need to create a new copy of the original grid:
+
+Our `evolve()` function can be made slightly more generic by passing a function
+to use for counting occupied seats, and a threshold above which a seat will
+change from occupied to empty. Everything else stays the same, including the
+final calculation (number of occupied seats).
+
+```python
+def evolve(grid, occ_counter, occ_threshold): # new signature
+    # ... unchanced ...
+                occ = occ_counter(previous, r, c) # use function passed as parameter to count occupied seats
+
+                # Evolve a single cell based on rules
+                if cell == EMPTY and occ == 0:
+                    grid[r][c] = OCCUPIED
+                elif cell == OCCUPIED and occ >= occ_threshold: # use threshold parameter
+                    grid[r][c] = EMPTY
+    # ... unchanced ...
+```
+
+Part 1 solution can now be calculated passing the right parameters:
+
+```python
+total_occupied = evolve(grid, occupied_neighbors, 4)
+print('Part 1:', total_occupied)
+```
+
+And so can part 2, after copying the original grid again:
 
 ```python
 grid = deepcopy(original)
-```
-
-And run the "evolution loop", which is almost the same as before, exept for
-these two simple changes:
-
-```python
-            occ = occupied_in_sight(previous, r, c)  # changed function
-
-            if cell == EMPTY and occ == 0:
-                grid[r][c] = OCCUPIED
-            elif cell == OCCUPIED and occ >= 5:      # changed 4 to 5
-                grid[r][c] = EMPTY
-```
-
-The final calculation is also unchanged:
-
-```python
-total_occupied = sum(row.count(OCCUPIED) for row in grid)
+total_occupied = evolve(grid, occupied_in_sight, 5)
 print('Part 2:', total_occupied)
 ```
 
@@ -2029,12 +2048,12 @@ implementation makes a big difference:
 
 ```none
 $ python day11.py
-Timer part 1: 2.214s wall, 2.213s CPU
-Timer part 2: 3.309s wall, 3.308s CPU
+Timer part 1: 2.011s wall, 2.010s CPU
+Timer part 2: 3.319s wall, 3.318s CPU
 
 $ pypy day11.py
-Timer part 1: 254.161ms wall, 253.942ms CPU
-Timer part 2: 336.266ms wall, 335.970ms CPU
+Timer part 1: 178.545ms wall, 178.426ms CPU
+Timer part 2: 292.076ms wall, 291.934ms CPU
 ```
 
 Tested on: `CPython 3.9.0+`, `PyPy 7.3.3 Python 3.7.9`.

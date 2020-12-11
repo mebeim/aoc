@@ -38,7 +38,29 @@ def occupied_in_sight(grid, r, c):
 
 	return total
 
+def evolve(grid, occ_counter, occ_threshold):
+	while 1:
+		previous = deepcopy(grid)
 
+		for r, row in enumerate(previous):
+			for c, cell in enumerate(row):
+				if cell == FLOOR:
+					continue
+
+				occ = occ_counter(previous, r, c)
+
+				if cell == EMPTY and occ == 0:
+					grid[r][c] = OCCUPIED
+				elif cell == OCCUPIED and occ >= occ_threshold:
+					grid[r][c] = EMPTY
+
+		if grid == previous:
+			return sum(row.count(OCCUPIED) for row in grid)
+
+		previous = grid
+
+
+from utils.timer import *
 advent.setup(2020, 11)
 fin = advent.get_input()
 
@@ -46,51 +68,8 @@ original = list(map(list, map(str.rstrip, fin.readlines())))
 MAXROW, MAXCOL = len(original) - 1, len(original[0]) - 1
 OCCUPIED, EMPTY, FLOOR = '#L.'
 
-grid = deepcopy(original)
-
-while 1:
-	previous = deepcopy(grid)
-
-	for r, row in enumerate(previous):
-		for c, cell in enumerate(row):
-			if cell == FLOOR:
-				continue
-
-			occ = occupied_neighbors(previous, r, c)
-
-			if cell == EMPTY and occ == 0:
-				grid[r][c] = OCCUPIED
-			elif cell == OCCUPIED and occ >= 4:
-				grid[r][c] = EMPTY
-
-	if grid == previous:
-		break
-
-total_occupied = sum(row.count(OCCUPIED) for row in grid)
+total_occupied = evolve(deepcopy(original), occupied_neighbors, 4)
 advent.print_answer(1, total_occupied)
 
-
-grid = deepcopy(original)
-
-while 1:
-	previous = deepcopy(grid)
-
-	for r, row in enumerate(previous):
-		for c, cell in enumerate(row):
-			if cell == FLOOR:
-				continue
-
-			occ = occupied_in_sight(previous, r, c)
-
-			if cell == EMPTY and occ == 0:
-				grid[r][c] = OCCUPIED
-			elif cell == OCCUPIED and occ >= 5:
-				grid[r][c] = EMPTY
-
-	if grid == previous:
-		break
-
-	previous = grid
-
-total_occupied = sum(row.count(OCCUPIED) for row in grid)
+total_occupied = evolve(deepcopy(original), occupied_in_sight, 5)
 advent.print_answer(2, total_occupied)
