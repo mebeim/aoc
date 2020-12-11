@@ -1,11 +1,11 @@
 import re
 import io
 import sys
-import copy
 import heapq
 import string
 
 from importlib import find_loader
+from copy import deepcopy
 from functools import lru_cache, reduce, partial
 from collections import defaultdict, deque, namedtuple, Counter
 from operator import itemgetter, attrgetter, methodcaller
