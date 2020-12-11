@@ -27,14 +27,21 @@ def _grid_neighbors(deltas):
 	'''
 	def g(grid, r, c, avoid='#'):
 		'''Get neighbors of a cell in a 2D grid (matrix) i.e. list of lists or
-		similar. Performs bounds checking.
+		similar. Performs bounds checking. Grid is assumed to be rectangular.
 		'''
-		width  = len(grid)
-		height = len(grid[0])
+		maxr = len(grid) - 1
+		maxc = len(grid[0]) - 1
+		check = r == 0 or r == maxr or c == 0 or c == maxc
 
-		for dr, dc in deltas:
-			rr, cc = (r + dr, c + dc)
-			if 0 <= rr < width and 0 <= cc < height:
+		if check:
+			for dr, dc in deltas:
+				rr, cc = (r + dr, c + dc)
+				if 0 <= rr <= maxr and 0 <= cc <= maxc:
+					if grid[rr][cc] not in avoid:
+						yield (rr, cc)
+		else:
+			for dr, dc in deltas:
+				rr, cc = (r + dr, c + dc)
 				if grid[rr][cc] not in avoid:
 					yield (rr, cc)
 
