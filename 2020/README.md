@@ -515,7 +515,7 @@ replace all instances of `F` and `L` with `0`, and all instances of `B` and `R`
 with `1`. Then, separate the first 7 and the last 3, and use
 [`int(x, 2)`][py-builtin-int] to convert them to integers.
 
-Normally, to replace a characters in a string you would use
+Normally, to replace a character in a string you would use
 [`str.replace()`][py-str-replace], so something like this:
 
 ```python
@@ -1853,7 +1853,7 @@ we don't get confused with different characters:
 OCCUPIED, EMPTY, FLOOR = '#L.'
 ```
 
-Now let's the grid from our input file, and turn it into a list of lists of
+Now let's get the grid from our input file, and turn it into a list of lists of
 characters in order to be able to edit each cell individually. We need to remove
 newline characters (`\n`) from each line, then turn it into a `list`. Our black
 belt in Python iterable [mapping][py-builtin-map] makes us able to do this in
