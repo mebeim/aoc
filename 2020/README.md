@@ -15,6 +15,7 @@ Table of Contents
 - [Day 9 - Encoding Error][d09]
 - [Day 10 - Adapter Array][d10]
 - [Day 11 - Seating System][d11]
+- [Day 12 - Rain Risk][d12]
 
 Day 1 - Report Repair
 ---------------------
@@ -2058,6 +2059,201 @@ Timer part 2: 292.076ms wall, 291.934ms CPU
 
 Tested on: `CPython 3.9.0+`, `PyPy 7.3.3 Python 3.7.9`.
 
+
+Day 12 - Rain Risk
+-------------------
+
+[Problem statement][d12-problem] — [Complete solution][d12-solution] — [Back to top][top]
+
+### Part 1
+
+Moving in 2D space is easy right? Well, part 1 of today's puzzle is all about
+that. We are driving a ship, initially facing east, and we are given a list of
+commands in the form `<command><n>` where `<n>` is a positive integer.
+
+Here are the different possible commands:
+
+- `F`: move forward `n` steps in the currently facing direction.
+- `L` / `R`: turn `n` degrees left/right without moving; `n` can only be one of
+  `90`, `180`, `270`.
+- `N` / `S` / `E` / `W`: directly move `n` steps north/south/east/west,
+  independent of the currently facing direction.
+
+After applying all commands, we need to calculate the
+[Manhattan distance][wiki-manhattan-dist] between our final position and the
+starting point.
+
+Let's start with defining a handful of helpful constants:
+
+```python
+LEFT, RIGHT, FORWARD = 'LRF'
+NORTH, SOUTH, EAST, WEST = 'NSEW'
+```
+
+Instead of writing an inconsiderate amount of `if`/`elif` statements (which is
+probably the first thing that comes to mind), we can approach the problem in a
+[functional][wiki-functional-prog] and more intuitive way with the help of a
+couple of dictionaries.
+
+The first dictionary will define the new directions we end up facing after
+turning:
+
+```python
+# New direction when turning 90 degrees LEFT or RIGHT based on current direction.
+DIRMAP = {
+    NORTH: {LEFT:  WEST, RIGHT:  EAST},
+    SOUTH: {LEFT:  EAST, RIGHT:  WEST},
+    EAST : {LEFT: NORTH, RIGHT: SOUTH},
+    WEST : {LEFT: SOUTH, RIGHT: NORTH}
+}
+```
+
+The second one will define the "moves" to apply when moving in a certain
+direction. This can be done defining one [`lambda`][py-lambda] per direction,
+taking our current coordinates and the number of steps to move as parameters,
+and returning new coordinates.
+
+The coordinate system I'll be using is the standard
+[cartesian coordinate system][wiki-cartesian-coords] with positive `x` meaning
+"east" and positive `y` meaning "north".
+
+```python
+# Function to apply to move forward in a specific direction.
+MOVEMAP = {
+    NORTH: lambda x, y, n: (    x, y + n),
+    SOUTH: lambda x, y, n: (    x, y - n),
+    EAST : lambda x, y, n: (x + n,     y),
+    WEST : lambda x, y, n: (x - n,     y)
+}
+```
+
+Now let's parse the list of commands from the input file. We'll turn each line
+into a tuple of tuples `(command, n)` using [`map()`][py-builtin-map] over a
+simple `lambda`. We graduated top of the class in the Map-Lambda Academy so this
+is too easy for us:
+
+```python
+commands = tuple(map(lambda l: (l[0], int(l[1:])), fin))
+```
+
+Now in order to apply the commands, we just need to make good use of the two
+dictionaries defined above. Since our goal is to calculate the Manhattan
+distance from the starting point, let's just start at `(0, 0)` so that the final
+distance will just be the sum of the absolute values of the final coordinates.
+
+For each command, we'll differentiate between three alternatives:
+
+- Command is `F`: use `MOVEMAP` to move forward in the current direction.
+- Command is one of `L`, `R`: use `DIRMAP` to change direction. We'll do this
+  applying `DIRMAP` as many times as `n // 90`.
+- Command is one of `N`, `S`, `E`, `W`: use `MOVEMAP` to move in the given
+  direction. We'll put this branch as `else` since it's the one with the most
+  commands, so we can avoid a bunch of comparisons.
+
+```python
+direction = EAST # our currently facing direction
+x, y = 0, 0      # our current position
+
+for cmd, n in commands:
+    if cmd == FORWARD:
+        # move forward in the current direction
+        x, y = MOVEMAP[direction](x, y, n)
+    elif cmd in (LEFT, RIGHT):
+        # rotate 90 degrees left or right n//90 times
+        for _ in range(n // 90):
+            direction = DIRMAP[direction][cmd]
+    else:
+        # move N/S/E/W
+        x, y = MOVEMAP[cmd](x, y, n)
+```
+
+Well, that was smooth. Now let's just calculate the Manhattan distance from the
+final position and the starting point:
+
+```python
+dist = abs(x) + abs(y)
+print('Part 1:', dist)
+```
+
+### Part 2
+
+For this second part, our task is still to find the final Manhattan distance
+from the starting point, but we are told that we were interpreting the commands
+wrong. In reality, there is a "waypoint" which starts at position `(10, 1)`
+relative to our position and moves with us. All the commands affect the
+waypoint, except for `F` which affects our position too.
+
+The new command meaning is the following:
+
+- `F`: move *to* the current waypoint position.
+- `L` / `R`: rotate *the waypoint* `n` degrees left/right around us without
+  moving; `n` can only be one of `90`, `180`, `270`.
+- `N` / `S` / `E` / `W`: move *the waypoint* `n` steps north/south/east/west.
+
+Two important things to notice are:
+
+1. The waypoint moves with us, so its position relative to us does not change
+   when we apply the `F` command.
+2. `L`/`R` now have completely different meanings. When rotating the waypoint
+   relative to us, we are moving it on an ideal circumference around us. Using
+   the relative coordinates of the waypoint this can be seen as a simple
+   [rotation around the origin][wiki-2d-rotation]. A rotation around the origin
+   in 2D space can be expressed as two reflections, effectively only swapping
+   and/or changing sign of the point's coordinates.
+
+We can use the same `MOVEMAP` as before, this time applying it to the waypoint,
+but we need to define a new map of functions for handling rotations. As
+explained in point 2 above, a rotation in 2D space is nothing less than two
+reflections combined. With the help of pen and paper it's simple to figure out
+the different functions we need:
+
+- Rotating a point left or right 180 degrees around the origin means one
+  reflection along the X axis and one along the Y axis.
+- Rotating a point right 90 degrees means inverting *y* and then swapping the
+  two coordinates.
+- Rotating a point right 270 degrees means inverting *x* and then swapping the
+  two coordinates.
+- Rotating a point left 270 degrees or right 90 degrees is the exact same
+  operation; same goes for left 90 and right 270.
+
+The above translates in the following `lambda` function table:
+
+```python
+# Function to apply to rotate around the origin.
+ROTMAP = {
+    ( LEFT,  90): lambda x, y: (-y,  x), # same as RIGHT 270
+    ( LEFT, 180): lambda x, y: (-x, -y), # same as RIGHT 180
+    ( LEFT, 270): lambda x, y: ( y, -x), # same as RIGHT 90
+    (RIGHT,  90): lambda x, y: ( y, -x), # same as LEFT 270
+    (RIGHT, 180): lambda x, y: (-x, -y), # same as LEFT 180
+    (RIGHT, 270): lambda x, y: (-y,  x), # same as LEFT 90
+}
+```
+
+We can now loop through the commands and apply them as we did for part 1:
+
+```python
+x, y = 0, 0     # our current position
+wx, wy = 10, 1  # current waypoint position relative to us
+
+for cmd, n in commands:
+    if cmd == FORWARD:
+        # move to waypoint
+        x += wx * n
+        y += wy * n
+    elif cmd in (LEFT, RIGHT):
+        # rotate waypoint around us
+        wx, wy = ROTMAP[cmd, n](wx, wy)
+    else:
+        # move waypoint
+        wx, wy = MOVEMAP[cmd](wx, wy, n)
+
+dist = abs(x) + abs(y)
+print('Part 2:', dist)
+```
+
+Man, I kind of miss high school geometry classes... :')
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -2077,6 +2273,7 @@ Tested on: `CPython 3.9.0+`, `PyPy 7.3.3 Python 3.7.9`.
 [d09]: #day-9---encoding-error
 [d10]: #day-10---adapter-array
 [d11]: #day-11---seating-system
+[d12]: #day-12---rain-risk
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -2089,6 +2286,7 @@ Tested on: `CPython 3.9.0+`, `PyPy 7.3.3 Python 3.7.9`.
 [d09-problem]: https://adventofcode.com/2020/day/9
 [d10-problem]: https://adventofcode.com/2020/day/10
 [d11-problem]: https://adventofcode.com/2020/day/11
+[d12-problem]: https://adventofcode.com/2020/day/12
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
@@ -2100,6 +2298,7 @@ Tested on: `CPython 3.9.0+`, `PyPy 7.3.3 Python 3.7.9`.
 [d09-solution]: solutions/day09.py
 [d10-solution]: solutions/day10.py
 [d11-solution]: solutions/day11.py
+[d12-solution]: solutions/day12.py
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
@@ -2159,15 +2358,19 @@ Tested on: `CPython 3.9.0+`, `PyPy 7.3.3 Python 3.7.9`.
 [algo-binsrc]:        https://en.wikipedia.org/wiki/Binary_search_algorithm
 [algo-wall-follower]: https://en.wikipedia.org/wiki/Maze_solving_algorithm#Wall_follower
 
+[wiki-2d-rotation]:         https://en.wikipedia.org/wiki/Rotations_and_reflections_in_two_dimensions
+[wiki-cartesian-coords]:    https://en.wikipedia.org/wiki/Cartesian_coordinate_system
 [wiki-cellular-automaton]:  https://en.wikipedia.org/wiki/Cellular_automaton
 [wiki-closure]:             https://en.wikipedia.org/wiki/Closure_(computer_programming)
 [wiki-cpython]:             https://en.wikipedia.org/wiki/CPython
 [wiki-dag]:                 https://en.wikipedia.org/wiki/Directed_acyclic_graph
 [wiki-dynamic-programming]: https://en.wikipedia.org/wiki/Dynamic_programming
 [wiki-exponential-time]:    https://en.wikipedia.org/wiki/Time_complexity#Exponential_time
+[wiki-functional-prog]:     https://en.wikipedia.org/wiki/Functional_programming
 [wiki-jit]:                 https://en.wikipedia.org/wiki/Just-in-time_compilation
 [wiki-john-horton-conway]:  https://en.wikipedia.org/wiki/John_Horton_Conway
 [wiki-linear-time]:         https://en.wikipedia.org/wiki/Time_complexity#Linear_time
+[wiki-manhattan-dist]:      https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
 [wiki-memoization]:         https://en.wikipedia.org/wiki/Memoization
 [wiki-polynomial-time]:     https://en.wikipedia.org/wiki/Time_complexity#Polynomial_time
 [wiki-reduction]:           https://en.wikipedia.org/wiki/Reduction_Operator
