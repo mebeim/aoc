@@ -2090,32 +2090,88 @@ LEFT, RIGHT, FORWARD = 'LRF'
 NORTH, SOUTH, EAST, WEST = 'NSEW'
 ```
 
-Instead of writing an inconsiderate amount of `if`/`elif` statements (which is
-probably the first thing that comes to mind), we can approach the problem in a
-[functional][wiki-functional-prog] and more intuitive way with the help of a
-couple of dictionaries.
-
-The first dictionary will define the new directions we end up facing after
-turning:
+Now let's parse the list of commands from the input file. We'll turn each line
+into a tuple of tuples `(command, n)` using [`map()`][py-builtin-map] over a
+simple [`lambda`][py-lambda]. We graduated top of the class in the Map-Lambda
+Academy so this is too easy for us:
 
 ```python
-# New direction when turning 90 degrees LEFT or RIGHT based on current direction.
-DIRMAP = {
-    NORTH: {LEFT:  WEST, RIGHT:  EAST},
-    SOUTH: {LEFT:  EAST, RIGHT:  WEST},
-    EAST : {LEFT: NORTH, RIGHT: SOUTH},
-    WEST : {LEFT: SOUTH, RIGHT: NORTH}
+commands = tuple(map(lambda l: (l[0], int(l[1:])), fin))
+```
+
+The coordinate system I'll be using for the rest of today's walkthrough is the
+standard [cartesian coordinate system][wiki-cartesian-coords], with positive `x`
+meaning "east" and positive `y` meaning "north". We'll define our position as a
+point `(x, y)` in the cartesian plane. Then, we'll also define a
+*delta [vector][wiki-vector]* `(dx, dy)` to indicate the change in position that
+we apply for each step forward.
+
+Starting at `0, 0`, we are initially facing east, therefore:
+
+```python
+x, y = 0, 0
+dx, dy = 1, 0 # delta to apply when moving 1 step forward
+```
+
+A single step forward will then just be a `x += dx; y += dy`. For an arbitrary
+amount `n` of steps, it will be:
+
+```python
+x += dx * n
+y += dy * n
+```
+
+When turning, we'll update the delta vector to point in the new direction. In
+order to do this, we'll need to update the coordinates `(dx, dy)` based on their
+current value, the direction we are turning in and the amount of degrees of the
+turn. We basically want to rotate the head of the vector around the origin.
+
+A simple [rotation around the origin][wiki-2d-rotation] in 2D space can be
+expressed as two reflections, effectively only swapping and/or changing sign of
+the two components `(dx, dy)`:
+
+- Rotating left or right 180 degrees around the origin means one reflection
+  along the X axis and one along the Y axis: in other words, just invert the
+  sign of both coordinates.
+- Rotating right 90 degrees means inverting *y* and then swapping the two
+  coordinates.
+- Rotating right 270 degrees means inverting *x* and then swapping the two
+  coordinates.
+- Rotating left 270 degrees or right 90 degrees is the exact same operation;
+  same goes for left 90 and right 270.
+
+Instead of writing an inconsiderate amount of `if`/`elif` statements (which is
+probably the first thing that comes to mind), we can approach the problem in a
+[functional][wiki-functional-prog] (and perhaps more intuitive) way, with the
+help of a couple of dictionaries and some `lambda` expressions.
+
+We need to define a map of functions for handling rotations of our delta vector.
+With the help of pen and paper it's simple to figure out the different functions
+we need:
+
+```python
+# Functions to apply to rotate a point around the origin.
+ROTMAP = {
+    ( LEFT,  90): lambda x, y: (-y,  x), # same as RIGHT 270
+    ( LEFT, 180): lambda x, y: (-x, -y), # same as RIGHT 180
+    ( LEFT, 270): lambda x, y: ( y, -x), # same as RIGHT 90
+    (RIGHT,  90): lambda x, y: ( y, -x), # same as LEFT 270
+    (RIGHT, 180): lambda x, y: (-x, -y), # same as LEFT 180
+    (RIGHT, 270): lambda x, y: (-y,  x), # same as LEFT 90
 }
 ```
 
-The second one will define the "moves" to apply when moving in a certain
-direction. This can be done defining one [`lambda`][py-lambda] per direction,
-taking our current coordinates and the number of steps to move as parameters,
-and returning new coordinates.
+A rotation command can now be handled as a change of delta:
 
-The coordinate system I'll be using is the standard
-[cartesian coordinate system][wiki-cartesian-coords] with positive `x` meaning
-"east" and positive `y` meaning "north".
+```python
+# Here cmd = 'L' or 'R', and n = amount of degrees.
+dx, dy = ROTMAP[cmd, n](dx, dy)
+```
+
+The final thing we need to consider are the commands that move us directly in a
+direction regardless of which way we are facing. We'll create another dictionary
+of `lambda` expresisons just for that. These will take our current coordinates
+and the number of steps to move as parameters, and return the new coordinates.
 
 ```python
 # Function to apply to move forward in a specific direction.
@@ -2127,48 +2183,33 @@ MOVEMAP = {
 }
 ```
 
-Now let's parse the list of commands from the input file. We'll turn each line
-into a tuple of tuples `(command, n)` using [`map()`][py-builtin-map] over a
-simple `lambda`. We graduated top of the class in the Map-Lambda Academy so this
-is too easy for us:
+A direct movement command (`NSEW`) can now be written as:
 
 ```python
-commands = tuple(map(lambda l: (l[0], int(l[1:])), fin))
+x, y = MOVEMAP[cmd](x, y, n)
 ```
 
-Now in order to apply the commands, we just need to make good use of the two
-dictionaries defined above. Since our goal is to calculate the Manhattan
-distance from the starting point, let's just start at `(0, 0)` so that the final
-distance will just be the sum of the absolute values of the final coordinates.
-
-For each command, we'll differentiate between three alternatives:
-
-- Command is `F`: use `MOVEMAP` to move forward in the current direction.
-- Command is one of `L`, `R`: use `DIRMAP` to change direction. We'll do this
-  applying `DIRMAP` as many times as `n // 90`.
-- Command is one of `N`, `S`, `E`, `W`: use `MOVEMAP` to move in the given
-  direction. We'll put this branch as `else` since it's the one with the most
-  commands, so we can avoid a bunch of comparisons.
+Putting all of this together and applying each command in a loop:
 
 ```python
-direction = EAST # our currently facing direction
-x, y = 0, 0      # our current position
+x, y = 0, 0   # our current position
+dx, dy = 1, 0 # delta to apply moving forward (start facing EAST)
 
 for cmd, n in commands:
     if cmd == FORWARD:
         # move forward in the current direction
-        x, y = MOVEMAP[direction](x, y, n)
+        x += dx * n
+        y += dy * n
     elif cmd in (LEFT, RIGHT):
-        # rotate 90 degrees left or right n//90 times
-        for _ in range(n // 90):
-            direction = DIRMAP[direction][cmd]
+        # rotate delta to face the new direction
+        dx, dy = ROTMAP[cmd, n](dx, dy)
     else:
-        # move N/S/E/W
+        # directly move N/S/E/W
         x, y = MOVEMAP[cmd](x, y, n)
 ```
 
-Well, that was smooth. Now let's just calculate the Manhattan distance from the
-final position and the starting point:
+Nice. Now let's just calculate the Manhattan distance between the final position
+and the starting point and we have our answer:
 
 ```python
 dist = abs(x) + abs(y)
@@ -2183,71 +2224,45 @@ wrong. In reality, there is a "waypoint" which starts at position `(10, 1)`
 relative to our position and moves with us. All the commands affect the
 waypoint, except for `F` which affects our position too.
 
-The new command meaning is the following:
+The new commands' meaning is the following:
 
-- `F`: move *to* the current waypoint position.
+- `F`: move to the current waypoint position `n` times in a row.
 - `L` / `R`: rotate *the waypoint* `n` degrees left/right around us without
   moving; `n` can only be one of `90`, `180`, `270`.
 - `N` / `S` / `E` / `W`: move *the waypoint* `n` steps north/south/east/west.
 
-Two important things to notice are:
+The two things to notice here are:
 
 1. The waypoint moves with us, so its position relative to us does not change
-   when we apply the `F` command.
-2. `L`/`R` now have completely different meanings. When rotating the waypoint
-   relative to us, we are moving it on an ideal circumference around us. Using
-   the relative coordinates of the waypoint this can be seen as a simple
-   [rotation around the origin][wiki-2d-rotation]. A rotation around the origin
-   in 2D space can be expressed as two reflections, effectively only swapping
-   and/or changing sign of the point's coordinates.
+   when we apply the `F` command. Exactly as the point of our previous delta
+   vector `(dx, dy)`.
+2. When applying `L`/`R` to rotate the waypoint, we are rotating it around us.
+   This is the exact same thing we are already doing to update our delta vector.
 
-We can use the same `MOVEMAP` as before, this time applying it to the waypoint,
-but we need to define a new map of functions for handling rotations. As
-explained in point 2 above, a rotation in 2D space is nothing less than two
-reflections combined. With the help of pen and paper it's simple to figure out
-the different functions we need:
+All of this is effectively the same as working with a "longer" delta vector (our
+original one was always one unit in modulus). "Waypoint" is only another name
+for the vector.
 
-- Rotating a point left or right 180 degrees around the origin means one
-  reflection along the X axis and one along the Y axis.
-- Rotating a point right 90 degrees means inverting *y* and then swapping the
-  two coordinates.
-- Rotating a point right 270 degrees means inverting *x* and then swapping the
-  two coordinates.
-- Rotating a point left 270 degrees or right 90 degrees is the exact same
-  operation; same goes for left 90 and right 270.
-
-The above translates in the following `lambda` function table:
+In other words, the only thing that changes from our previous part 1 solution is
+that now a direct movement command (`NSEW`) updates the head of the delta vector
+instead of our position. The only two things that we need to change are the
+initial value of `(dx, dy)` and the code in last `else` statement:
 
 ```python
-# Function to apply to rotate around the origin.
-ROTMAP = {
-    ( LEFT,  90): lambda x, y: (-y,  x), # same as RIGHT 270
-    ( LEFT, 180): lambda x, y: (-x, -y), # same as RIGHT 180
-    ( LEFT, 270): lambda x, y: ( y, -x), # same as RIGHT 90
-    (RIGHT,  90): lambda x, y: ( y, -x), # same as LEFT 270
-    (RIGHT, 180): lambda x, y: (-x, -y), # same as LEFT 180
-    (RIGHT, 270): lambda x, y: (-y,  x), # same as LEFT 90
-}
-```
-
-We can now loop through the commands and apply them as we did for part 1:
-
-```python
-x, y = 0, 0     # our current position
-wx, wy = 10, 1  # current waypoint position relative to us
+x, y = 0, 0
+dx, dy = 10, 0 # changed
 
 for cmd, n in commands:
-    if cmd == FORWARD:
-        # move to waypoint
-        x += wx * n
-        y += wy * n
-    elif cmd in (LEFT, RIGHT):
-        # rotate waypoint around us
-        wx, wy = ROTMAP[cmd, n](wx, wy)
+    # ... unchanged ...
     else:
-        # move waypoint
-        wx, wy = MOVEMAP[cmd](wx, wy, n)
+        # directly adjust delta N/S/E/W
+        dx, dy = MOVEMAP[cmd](dx, dy, n) # changed
+```
 
+Well, that was smooth. The final distance calculation is also unchanged, so
+let's get our second star of the day:
+
+```python
 dist = abs(x) + abs(y)
 print('Part 2:', dist)
 ```
@@ -2264,20 +2279,20 @@ commands as simple arithmetic operations on complex numbers.
 This is pretty straightforward for this problem, because:
 
 - Movements become simple additions between complex numbers.
-- Rotations of 90 degrees [becomes a multiplication][wiki-complex-rotation] by
+- Rotations of 90 degrees [become a multiplication][wiki-complex-rotation] by
   *i* (imaginary unit) if counter-clockwise, or by *-i* if clockwise.
 - Rotations where `n` is amultiple of 90 degrees are just multiple rotations of
-  90 degrees, equivalent to multiplication by *i<sup>n/90</sup>*
-  (counter-clockwise) or *i<sup>-n/90</sup>* (clockwise).
+  90 degrees, equivalent to multiplication by *`i**(n/90)`* (counter-clockwise)
+  or *`i**(-n/90)`* (clockwise).
 
 Python [supports complex numbers][py-complex] out of the box, and a complex
 number can be created using the syntax `1 + 1j` where `j` has the special
 meaning of imaginary unit.
 
-Our solution for today above solution could be written with (arguably) simpler
-and shorter code in terms of complex number, eliminating the need for dictionary
-lookups and `lambda` expressions (which also makes it a little bit faster, about
-28% faster on my machine).
+Our solution for today could be written with (arguably) simpler and shorter code
+in terms of complex numbers, eliminating the need for dictionary lookups and
+`lambda` expressions. This also makes everything faster, about 50% faster on my
+machine (not bad, though both solutions still run in under 1 millisecond).
 
 If you are curious, you can find my solution using complex numbers
 **[here][d12-complex]**.
@@ -2410,6 +2425,7 @@ If you are curious, you can find my solution using complex numbers
 [wiki-set-intersection]:    https://en.wikipedia.org/wiki/Intersection_(set_theory)
 [wiki-set-union]:           https://en.wikipedia.org/wiki/Union_(set_theory)
 [wiki-sum-range]:           https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
+[wiki-vector]:              https://en.wikipedia.org/wiki/Euclidean_vector
 [wiki-vm]:                  https://en.wikipedia.org/wiki/Virtual_machine
 
 [misc-aoc-bingo]: https://www.reddit.com/r/adventofcode/comments/k3q7tr/
