@@ -2254,6 +2254,34 @@ print('Part 2:', dist)
 
 Man, I kind of miss high school geometry classes... :')
 
+### Reflections
+
+As noted and tried by many (myself included), a more mathematical approach to
+this problem would be to interpret coordinates as
+[complex numbers][wiki-complex-numbers], and then implement all movement
+commands as simple arithmetic operations on complex numbers.
+
+This is pretty straightforward for this problem, because:
+
+- Movements become simple additions between complex numbers.
+- Rotations of 90 degrees [becomes a multiplication][wiki-complex-rotation] by
+  *i* (imaginary unit) if counter-clockwise, or by *-i* if clockwise.
+- Rotations where `n` is amultiple of 90 degrees are just multiple rotations of
+  90 degrees, equivalent to multiplication by *i<sup>n/90</sup>*
+  (counter-clockwise) or *i<sup>-n/90</sup>* (clockwise).
+
+Python [supports complex numbers][py-complex] out of the box, and a complex
+number can be created using the syntax `1 + 1j` where `j` has the special
+meaning of imaginary unit.
+
+Our solution for today above solution could be written with (arguably) simpler
+and shorter code in terms of complex number, eliminating the need for dictionary
+lookups and `lambda` expressions (which also makes it a little bit faster, about
+28% faster on my machine).
+
+If you are curious, you can find my solution using complex numbers
+**[here][d12-complex]**.
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -2302,6 +2330,7 @@ Man, I kind of miss high school geometry classes... :')
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
+[d12-complex]:         misc/day12/complex.py
 
 [2019-d05]:             https://github.com/mebeim/aoc/blob/master/2019/README.md#day-5---sunny-with-a-chance-of-asteroids
 [2019-vm]:              https://github.com/mebeim/aoc/blob/master/2019/lib/intcode.py#L283
@@ -2311,6 +2340,7 @@ Man, I kind of miss high school geometry classes... :')
 
 [py-raw-string]:              https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
 [py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
+[py-complex]:                 https://docs.python.org/3/library/stdtypes.html#numeric-types-int-float-complex
 [py-lambda]:                  https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
 [py-list-count]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-set]:                     https://docs.python.org/3/library/stdtypes.html#set
@@ -2362,6 +2392,8 @@ Man, I kind of miss high school geometry classes... :')
 [wiki-cartesian-coords]:    https://en.wikipedia.org/wiki/Cartesian_coordinate_system
 [wiki-cellular-automaton]:  https://en.wikipedia.org/wiki/Cellular_automaton
 [wiki-closure]:             https://en.wikipedia.org/wiki/Closure_(computer_programming)
+[wiki-complex-numbers]:     https://en.wikipedia.org/wiki/Complex_number
+[wiki-complex-rotation]:    https://en.wikipedia.org/wiki/Rotation_(mathematics)#Complex_numbers:~:text=This%20can%20be%20rotated%20through%20an%20angle
 [wiki-cpython]:             https://en.wikipedia.org/wiki/CPython
 [wiki-dag]:                 https://en.wikipedia.org/wiki/Directed_acyclic_graph
 [wiki-dynamic-programming]: https://en.wikipedia.org/wiki/Dynamic_programming
