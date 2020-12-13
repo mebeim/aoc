@@ -1,35 +1,21 @@
 #!/usr/bin/env python3
 
 from utils import advent
-from math import inf
-from functools import reduce
-from operator import mul, itemgetter
+from math import inf, gcd
+from itertools import count
 
-def egcd(a, b):
-	if a == 0:
-		return (b, 0, 1)
+def lcm(a, b): # math.lcm() on Python >= 3.9
+	return a * b // gcd(a, b)
 
-	g, y, x = egcd(b % a, a)
-	return (g, x - (b // a) * y, y)
-
-def modinv(x, m):
-	g, inv, y = egcd(x, m)
-	assert g == 1, 'modular inverse does not exist'
-	return inv % m
-
-def chinese_remainder_theorem(equations):
-	x = 0
-	P = reduce(mul, map(itemgetter(1), equations))
-
-	for ai, pi in equations:
-		ni = P // pi
-		inv = modinv(ni, pi) # pow(ni, -1, pi) on Python >= 3.8
-		x = (x + ai * ni * inv) % P
-
-	return x
 
 advent.setup(2020, 13)
 fin = advent.get_input()
+
+# from io import StringIO
+# fin = StringIO('''\
+# 0
+# 7,13,x,x,59,x,31,19
+# ''')
 
 arrival = int(fin.readline())
 raw = fin.readline().strip().split(',')
@@ -37,7 +23,7 @@ raw = fin.readline().strip().split(',')
 buses = []
 for i, t in enumerate(raw):
 	if t != 'x':
-		buses.append((-i, int(t)))
+		buses.append((i, int(t)))
 
 best = inf
 for _, period in buses:
@@ -51,5 +37,13 @@ for _, period in buses:
 ans = best_p * best
 advent.print_answer(1, ans)
 
-time = chinese_remainder_theorem(buses)
+
+time, step = buses[0]
+for delta, period in buses[1:]:
+	for time in count(time, step):
+		if (time + delta) % period == 0:
+			break
+
+	step = lcm(step, period)
+
 advent.print_answer(2, time)
