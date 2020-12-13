@@ -2533,7 +2533,7 @@ def lcm(a, b):
 
 t, step = buses[0]
 for delta, period in buses[1:]:
-	for t in count(time, step):
+	for t in count(t, step):
 		if (t + delta) % period == 0:
 			break
 
