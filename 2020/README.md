@@ -2399,28 +2399,26 @@ minutes after `t` (i.e. bus at index `i` in the list departs at `t + i`). The
 `x` values just represent IDs that we do not care about (i.e. they are only
 there to shift the index of the next bus in the list).
 
-Let's take for example the list `2,3,x,x,4`. Bus `2` has index `0`, bus `3` has
-index `1` and bus `4` has index `4`. This means that we want to find some `t`
-such that bus `2` departs at `t`, bus `3` departs at `t + 1`, and bus `4`
-departs at `t + 4`.
+Let's take for example the list `2,3,5`. Bus `2` has index `0`, bus `3` has
+index `1` and bus `5` has index `2`. This means that we want to find some `t`
+such that bus `2` departs at `t`, bus `3` departs at `t + 1`, and bus `5`
+departs at `t + 2`.
 
 If we draw the bus departure times in a time table:
 
 ```
- time | bus 2 | bus 3 | bus 4 |
+ time | bus 2 | bus 3 | bus 5 |
     0 |   .   |   .   |   .   | (all buses start at the sea port at 0)
     1 |       |       |       |
     2 |   .   |       |       |
     3 |       |   .   |       |
-    4 |   .   |       |   .   |
-    5 |       |       |       |
+    4 |   .   |       |       |
+    5 |       |       |   .   |
     6 |   .   |   .   |       |
     7 |       |       |       |
-    8 |   X   |       |   .   | <-- bus 2 departs at t = 8
+    8 |   X   |       |       | <-- bus 2 departs at t = 8
     9 |       |   X   |       | <-- bus 3 departs at t + 1 = 8 + 1 = 9
-   10 |   .   |       |       |
-   11 |       |       |       |
-   12 |   .   |   .   |   X   | <-- bus 4 departs at t + 4 = 8 + 4 = 12
+   10 |   .   |       |   X   | <-- bus 5 departs at t + 2 = 8 + 2 = 10
 ```
 
 We can see that `t=8` is the solution, because we satisfy the input constraints
@@ -2433,7 +2431,7 @@ taking into account the above example.
 - Bus `2` departs at `8`: indeed, `8` is a multiple of `2` (the period of the
   bus).
 - Bus `3` departs at `9`, which is a multiple of `3`.
-- Bus `4` departs at `12`, which is a multiple of `4`.
+- Bus `5` departs at `10`, which is a multiple of `5`.
 
 Okay, this is all obvious. Now assume that we don't know the solution, and let's
 express those times in terms of `t`:
@@ -2442,8 +2440,8 @@ express those times in terms of `t`:
   `2`, if it departs at `t`, then `t` must be a multiple of `2`.
 - Bus `3` needs to depart at `t + 1`: since bus `3` departs at intervals of
   period `3`, if it departs at `t + 1`, then `t + 1` must be a multiple of `3`.
-- Bus `4` needs to depart at `t + 4`: since bus `4` departs at intervals of
-  period `4`, if it departs at `t + 4`, then `t + 4` must be a multiple of `4`.
+- Bus `5` needs to depart at `t + 2`: since bus `5` departs at intervals of
+  period `5`, if it departs at `t + 2`, then `t + 2` must be a multiple of `5`.
 
 To generalize the above: for any given bus at index `i` with period `p`, we know
 that it will need to depart at some time `t + i` such that `t + i` is a multiple
