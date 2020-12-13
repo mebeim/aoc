@@ -72,6 +72,14 @@ If you enjoy what I'm doing and would like to say "thanks", you can
 [buy me a drink here][paypal-donate-btn].
 
 
+Contributing
+------------
+
+If you have question or spotted a typo/bug/mistake, you are most welcome to
+[submit a new issue][new-issue]. For pull reqeusts and other kinds of
+contributions, please read [`CONTRIBUTING.md`][contributing].
+
+
 Licensing
 ---------
 
@@ -106,6 +114,9 @@ license, which you can find in the file
 [2018-ori]: 2018/original_solutions
 [2018-lea]: 2018/misc/full_leaderboard.md
 [2018-cal]: 2018/misc/calendar.gif
+
+[contributing]: /CONTRIBUTING.md
+[new-issue]:    https://github.com/mebeim/aoc/issues/new
 
 [aoc-about]:   https://adventofcode.com/2019/about
 [aoc-eric]:    https://twitter.com/ericwastl
