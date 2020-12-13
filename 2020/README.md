@@ -2296,7 +2296,7 @@ in terms of complex numbers, eliminating the need for dictionary lookups and
 machine (not bad, though both solutions still run in under 1 millisecond).
 
 If you are curious, you can find my solution using complex numbers
-**[here][d12-complex]**.
+**[here][d12-alternative]**.
 
 
 Day 13 - Shuttle Search
@@ -2337,7 +2337,7 @@ valid fields to integers using [`map()`][py-builtin-map].
 
 ```python
 arrival = int(fin.readline())
-raw     = fin.readline().strip().split(',')
+raw     = fin.readline().strip().split(',') # will be reused in part 2
 periods = map(int, filter(lambda x: x != 'x', raw))
 ```
 
@@ -2389,7 +2389,7 @@ print('Part 1:', ans)
 
 Things get *a lot* more complicated and also quite mathematical. You should read
 the original problem statement linked above in order to understand this. The
-explanation I will give here is shorter.
+explanation of the problem statement I will give here is shorter.
 
 Now we need to ignore the first line of input (our arrival time) and just focus
 on the second. The list of comma-separated values is still a list of bus IDs.
@@ -2425,30 +2425,154 @@ We can see that `t=8` is the solution, because we satisfy the input constraints
 listed above. In the above table, `X` marks the time at which each bus will
 match our constraints.
 
-To "easily" solve this problem, we can follow the following reasoning, always
-taking into account the above example.
+There are two approaches to solving this problem: one is simpler, with a
+combination of math and bruteforce, the second one is purely mathematical and
+involves modular arithmetic. While the first is simpler explain in practice,
+I'll explain both step by step, since I cannot pick a favorit and really enjoy
+both approaches.
+
+### Part 2 - Simple approach
+
+It's clear that simply trying *all possible timestamps* isn't going to get us
+any solution anytime soon. The puzzle statement itself hints at the fact that
+the solution is larger than 100,000,000,000,000.
+
+In order to solve the problem, we need to notice a couple of things, for which
+the above example can help. In the solution of the above example, we can see
+that:
 
 - Bus `2` departs at `8`: indeed, `8` is a multiple of `2` (the period of the
   bus).
 - Bus `3` departs at `9`, which is a multiple of `3`.
 - Bus `5` departs at `10`, which is a multiple of `5`.
 
-Okay, this is all obvious. Now assume that we don't know the solution, and let's
-express those times in terms of `t`:
+Okay, this is all obvious. Now assume that we don't know the solution `t`, and
+let's express those times in terms of `t`:
 
 - Bus `2` needs to depart at `t`: since bus `2` departs at intervals of period
-  `2`, if it departs at `t`, then `t` must be a multiple of `2`.
+  `2`, then `t` must be a multiple of `2`.
 - Bus `3` needs to depart at `t + 1`: since bus `3` departs at intervals of
-  period `3`, if it departs at `t + 1`, then `t + 1` must be a multiple of `3`.
+  period `3`, then `t + 1` must be a multiple of `3`.
 - Bus `5` needs to depart at `t + 2`: since bus `5` departs at intervals of
-  period `5`, if it departs at `t + 2`, then `t + 2` must be a multiple of `5`.
+  period `5`, then `t + 2` must be a multiple of `5`.
 
-To generalize the above: for any given bus at index `i` with period `p`, we know
-that it will need to depart at some time `t + i` such that `t + i` is a multiple
-of `p`. Therefore, for each bus we want to satisfy the formula
-`(t + i) % p == 0`.
+Now let's only think about the buses `2` and `3` in the example in the section
+above and see what would happen if we only had those two:
 
-*NOTE: From now on, some basic knowledge of
+- We know bus `2` departure times "advance" `2` minutes at a time.
+- We knoe bus `3` needs to be at distance `1` from any of the departure times
+  of bus `2`.
+
+We can start with `t=0` and advance 2 steps at a time until we find that `t + 1`
+is a multiple of `3`. Since we don't know how much we'll need to advance, let's
+use [`itertools.count()`][py-itertools-count] for simplicity.
+
+```python
+t = 0
+step = 2
+
+for t in count(t, step):
+    if (t + 1) % 3 == 0:
+        break
+```
+
+Indeed, the above works and spits out `2`, as we would expect:
+
+```
+ time | bus 2 | bus 3 |
+    0 |   .   |   .   |
+    1 |       |       |
+    2 |   X   |       | <-- bus 2 departs at t = 2
+    3 |       |   X   | <-- bus 3 departs at t + 1 = 2 + 1 = 3
+```
+
+Now what happens if we add another bus, for example `5`? We can use the exact
+same approach to find out, and keep advancing of `2` steps each time. However,
+we want to go faster than that, otherwise we'll never reach the insanely high
+solution.
+
+In order to do this, we need to notice one last thing: we still need to satisfy
+the constraints of buses `2` and `3`. The next time that the departure times of
+bus `2` and `3` will differ of the same time delta again is exactly after `6`
+steps. Indeed, from now on, those times will only match every `6` steps: at
+`t=8`, `t=14`... and so on.
+
+In order for the two departure times to "align" again, since one is advancing
+`2` minutes each time and the other `3` minutes each time, we need to advance
+exactly a number of minutes equal to the [least common multiple][wiki-lcm]
+between the two, whch is `6`.
+
+Now it should be somehow clear: we can apply the same approach iteratively,
+updating the step that we use to advance each time we "match" a bus. After each
+match, we already know that the times of already matched buses will only align
+again after *LCM(periods of all matched buses so far)* minutes, so each time we
+match a bus, we can just update `step` to be the LCM of all the matched buses'
+periods. Oay, onto the solution!
+
+First, let's parse the buses into a list of tuples `(delta, period)`. The
+`delta` of time is just the index in the input list, so let's use
+[`enumerate()`][py-builtin-enumerate] for this:
+
+```python
+buses = []
+for i, v in enumerate(raw):
+    if v != 'x':
+        buses.append((i, int(v))) # delta, period for each bus
+```
+
+Now in terms of code, we just need to wrap in a loop the above solution for the
+case of only two buses.
+
+```python
+from math import inf, gcd
+from itertools import count
+
+# Don't have math.lcm() in Python < 3.9, but it's easy to implement.
+def lcm(a, b):
+	return a * b // gcd(a, b)
+
+t, step = buses[0]
+for delta, period in buses[1:]:
+	for t in count(time, step):
+		if (t + delta) % period == 0:
+			break
+
+	step = lcm(step, period)
+
+print('Part 2:', t)
+```
+
+That was quick! I barely hit ENTER on my keyboard and the solution popped on the
+terminal (a 15 digits solution, by the way).
+
+Although I originally solved this problem using the solution illustrated in the
+next section, I've decided to use this as my "clean" solution to link above for
+today. This is because I find it much simpler to implement, and is also more
+about programming than math. Continue reading for the alternative solution.
+
+### Part 2 - Purely mathematical approach
+
+This is a more complex mathematical solution, the one I used to solve the
+problem the first time. I find this solution quite satisfying, but I must say it
+may not be obvious to many. You can find the full solution
+**[here][d13-alternative]**.
+
+First, let's refresh our mind with the example I provided [earlier](#part-2-12).
+As I said above, we know that:
+
+- Bus `2` needs to depart at `t`: since bus `2` departs at intervals of period
+  `2`, then `t` must be a multiple of `2`.
+- Bus `3` needs to depart at `t + 1`: since bus `3` departs at intervals of
+  period `3`, then `t + 1` must be a multiple of `3`.
+- Bus `5` needs to depart at `t + 2`: since bus `5` departs at intervals of
+  period `5`, then `t + 2` must be a multiple of `5`.
+
+To generalize the above: for any given bus in our list at index (aka delta) `i`
+and with period `p`, we know that it will need to depart at some time `t + i`
+such that `t + i` is a multiple of `p`. Therefore, for each bus we want to
+satisfy the formula `(t + i) % p == 0`.
+
+*NOTE: going ahead, some basic knowledge of
 [modular arithmetic][wiki-modular-arithmetic] is required, so go ahead and read
 the Wikipedia articles I'll be linking from now on if you have never heard of
 some of these concepts.*
@@ -2555,21 +2679,22 @@ P = reduce(mul, map(itemgetter(1), equations))
 ```
 
 Now that we have a function to solve the system using the Chinese remainder
-theorem, we can just provide it with the current input and let it spit out the
+theorem, we can just provide it with the correct input and let it spit out the
 solution for us:
 
 ```python
 buses = []
-for i, t in enumerate(raw):
-    if t != 'x':
-        buses.append((-i, int(t)))
+for i, v in enumerate(raw):
+    if v != 'x':
+        buses.append((-i, int(v)))
 
 time = chinese_remainder_theorem(buses)
 print('Part 2:', time)
 ```
 
-Overall, hardest puzzle so far, with a real steep increase in difficulty from
-part 1 to part 2.
+Overall, maybe the hardest puzzle so far, with a real steep increase in
+difficulty from part 1 to part 2. Once again, you can find this "alternative"
+solution [here][d13-alternative].
 
 ---
 
@@ -2622,7 +2747,8 @@ part 1 to part 2.
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
-[d12-complex]:         misc/day12/complex.py
+[d12-alternative]:     misc/day12/complex.py
+[d13-alternative]:     misc/day13/modular_arithmetic.py
 
 [2019-d05]:             https://github.com/mebeim/aoc/blob/master/2019/README.md#day-5---sunny-with-a-chance-of-asteroids
 [2019-vm]:              https://github.com/mebeim/aoc/blob/master/2019/lib/intcode.py#L283
@@ -2703,6 +2829,7 @@ part 1 to part 2.
 [wiki-functional-prog]:     https://en.wikipedia.org/wiki/Functional_programming
 [wiki-jit]:                 https://en.wikipedia.org/wiki/Just-in-time_compilation
 [wiki-john-horton-conway]:  https://en.wikipedia.org/wiki/John_Horton_Conway
+[wiki-lcm]:                 https://en.wikipedia.org/wiki/Least_common_multiple
 [wiki-linear-time]:         https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-manhattan-dist]:      https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
 [wiki-memoization]:         https://en.wikipedia.org/wiki/Memoization
