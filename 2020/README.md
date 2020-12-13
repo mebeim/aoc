@@ -2427,8 +2427,8 @@ match our constraints.
 
 There are two approaches to solving this problem: one is simpler, with a
 combination of math and bruteforce, the second one is purely mathematical and
-involves modular arithmetic. While the first is simpler explain in practice,
-I'll explain both step by step, since I cannot pick a favorit and really enjoy
+involves modular arithmetic. While the first is simpler to explain in practice,
+I'll explain both step by step, since I cannot pick a favorite and really enjoy
 both approaches.
 
 ### Part 2 - Simple approach
@@ -2460,7 +2460,7 @@ Now let's only think about the buses `2` and `3` in the example in the section
 above and see what would happen if we only had those two:
 
 - We know bus `2` departure times "advance" `2` minutes at a time.
-- We knoe bus `3` needs to be at distance `1` from any of the departure times
+- We know bus `3` needs to be at distance `1` from any of the departure times
   of bus `2`.
 
 We can start with `t=0` and advance 2 steps at a time until we find that `t + 1`
@@ -2494,7 +2494,7 @@ solution.
 In order to do this, we need to notice one last thing: we still need to satisfy
 the constraints of buses `2` and `3`. The next time that the departure times of
 bus `2` and `3` will differ of the same time delta again is exactly after `6`
-steps. Indeed, from now on, those times will only match every `6` steps: at
+steps. Indeed, from now on, those times will only align every `6` steps: at
 `t=8`, `t=14`... and so on.
 
 In order for the two departure times to "align" again, since one is advancing
@@ -2502,29 +2502,49 @@ In order for the two departure times to "align" again, since one is advancing
 exactly a number of minutes equal to the [least common multiple][wiki-lcm]
 between the two, whch is `6`.
 
+I'll use an horizontal representation to show this for a longer period of time:
+
+```
+time  | 0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20 21 22 ...
+------+-------------------------------------------------------------------------
+bus 2 | .     x     .     .     x     .     .     x     .     .     x     .
+bus 3 | .        x        .        x        .        x        .        x
+------+-------^-----------------^-----------------^-----------------^-----------
+              |                 |                 |                 |
+              1st alignment     2nd alignment     3rd alignment     4th alignment
+              t = 2             t = 2+6 = 8       t = 8+6 = 14      t = 14+6 = 20
+```
+
 Now it should be somehow clear: we can apply the same approach iteratively,
 updating the step that we use to advance each time we "match" a bus. After each
-match, we already know that the times of already matched buses will only align
-again after *LCM(periods of all matched buses so far)* minutes, so each time we
-match a bus, we can just update `step` to be the LCM of all the matched buses'
-periods. Oay, onto the solution!
+match, we already know that the departure times of already matched buses will
+only align again after *LCM(periods of all matched buses so far)* minutes, so
+each time we match a bus, we can just update `step` to be the LCM of all the
+matched buses' periods. Okay, onto the solution!
 
 First, let's parse the buses into a list of tuples `(delta, period)`. The
 `delta` of time is just the index in the input list, so let's use
-[`enumerate()`][py-builtin-enumerate] for this:
+[`enumerate()`][py-builtin-enumerate] for this and
+[`filter()`][py-builtin-filter] out all the `x` values with a `lambda` like we
+did in part 1.
 
 ```python
 buses = []
-for i, v in enumerate(raw):
-    if v != 'x':
-        buses.append((i, int(v))) # delta, period for each bus
+for i, v in filter(lambda *iv: iv[1] != 'x', enumerate(raw)):
+    buses.append((i, int(v))) # delta, period for each bus
 ```
 
-Now in terms of code, we just need to wrap in a loop the above solution for the
-case of only two buses.
+To compute the least common multiple of two numbers we can either use
+[`math.lcm()`][py-math-lcm] (only available Python >= 3.9) or create our own
+using [`math.gcd()`][py-math-gcd] if we are not running a bleeding edge Python
+version (*stares at his Debian Stretch installation shipping Python 3.5 trying
+not to cry*).
+
+Now in terms of code, we just need to wrap our solution above (which only
+matches one bus) in a loop:
 
 ```python
-from math import inf, gcd
+from math import gcd
 from itertools import count
 
 # Don't have math.lcm() in Python < 3.9, but it's easy to implement.
@@ -2533,7 +2553,7 @@ def lcm(a, b):
 
 t, step = buses[0]
 for delta, period in buses[1:]:
-	for t in count(time, step):
+	for t in count(t, step):
 		if (t + delta) % period == 0:
 			break
 
@@ -2798,6 +2818,8 @@ solution [here][d13-alternative].
 [py-math]:                    https://docs.python.org/3/library/math.html
 [py-math-inf]:                https://docs.python.org/3/library/math.html#math.inf
 [py-math-ceil]:               https://docs.python.org/3/library/math.html#math.ceil
+[py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
+[py-math-lcm]:                https://docs.python.org/3/library/math.html#math.lcm
 [py-operator-mul]:            https://docs.python.org/3/library/operator.html#operator.mul
 [py-operator-itemgetter]:     https://docs.python.org/3/library/operator.html#operator.itemgetter
 [py-re]:                      https://docs.python.org/3/library/re.html

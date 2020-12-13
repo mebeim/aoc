@@ -4,26 +4,19 @@ from utils import advent
 from math import inf, gcd
 from itertools import count
 
-def lcm(a, b): # math.lcm() on Python >= 3.9
+def lcm(a, b):
 	return a * b // gcd(a, b)
 
 
 advent.setup(2020, 13)
 fin = advent.get_input()
 
-# from io import StringIO
-# fin = StringIO('''\
-# 0
-# 7,13,x,x,59,x,31,19
-# ''')
-
 arrival = int(fin.readline())
 raw = fin.readline().strip().split(',')
 
 buses = []
-for i, v in enumerate(raw):
-	if v != 'x':
-		buses.append((i, int(v)))
+for i, v in filter(lambda iv: iv[1] != 'x', enumerate(raw)):
+	buses.append((i, int(v)))
 
 best = inf
 for _, period in buses:
@@ -44,6 +37,6 @@ for delta, period in buses[1:]:
 		if (time + delta) % period == 0:
 			break
 
-	step = lcm(step, period)
+	step = lcm(step, period) # math.lcm() on Python >= 3.9
 
 advent.print_answer(2, time)

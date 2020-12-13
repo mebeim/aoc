@@ -36,9 +36,8 @@ arrival = int(fin.readline())
 raw = fin.readline().strip().split(',')
 
 buses = []
-for i, v in enumerate(raw):
-	if v != 'x':
-		buses.append((-i, int(v)))
+for i, v in filter(lambda iv: iv[1] != 'x', enumerate(raw)):
+	buses.append((i, int(v)))
 
 best = inf
 for _, period in buses:
