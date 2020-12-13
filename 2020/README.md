@@ -16,6 +16,7 @@ Table of Contents
 - [Day 10 - Adapter Array][d10]
 - [Day 11 - Seating System][d11]
 - [Day 12 - Rain Risk][d12]
+- [Day 13 - Shuttle Search][d13]
 
 Day 1 - Report Repair
 ---------------------
@@ -2297,6 +2298,281 @@ machine (not bad, though both solutions still run in under 1 millisecond).
 If you are curious, you can find my solution using complex numbers
 **[here][d12-complex]**.
 
+
+Day 13 - Shuttle Search
+-----------------------
+
+[Problem statement][d13-problem] — [Complete solution][d13-solution] — [Back to top][top]
+
+### Part 1
+
+Oh no, modular arithmetic shenanigans again!
+
+As input, we are first given a timestamp in minutes, and then a bunch of
+comma-separated fields, which can be either `x` or a number. For this first part
+of the problem, we are told to just ignore those `x` and focus on the numbers:
+they represent the IDs of different buses.
+
+Each bus starts from the sea port, and has a pre-determined circular route to
+follow. The number of minutes that it takes for a bus to travel its entire route
+(ending up back at the sea port) is equal to its ID.
+
+We want to catch a bus (any bus), and the timestamp we are given represents the
+time at which we'll arrive at the sea port. We need to determine at which
+timestamp we'll be able to catch the first bus that passes, and the time we need
+to wait for it. The answer we must give is the product of these two values.
+
+For simplicity and ease of understanding, let's refer to bus IDs as "periods",
+since that's actually their meaning. It's clear that if our arrival time is a
+multiple of one of the bus periods, we will catch that bus exactly at the same
+time we arrive at the sea port, waiting `0` minutes. However, if that's not the
+case, we'll need to wait some time for the bus to arrive. For example, if our
+arrival time is `5` and there only is one bus with period `4`, then we'll have
+to wait `3` minutes for it to arrive at timestamp `8`. The answer would then be
+`3 * 8 = 24`.
+
+Let's get and parse our input. We'll split the second line on commas (`,`), then
+[`filter()`][py-builtin-filter] out any field that is `x`, and transform the
+valid fields to integers using [`map()`][py-builtin-map].
+
+```python
+arrival = int(fin.readline())
+raw     = fin.readline().strip().split(',')
+periods = map(int, filter(lambda x: x != 'x', raw))
+```
+
+For each bus, we can to calculate the amount of time that we would need to wait
+at the sea port before catching it. If one bus has period `p`, and we arrive at
+`arrival`, this means the bus will have already done `arrival // p` complete
+rounds of its route before our arrival. If `arrival` is exactly a multiple of
+`p`, then we arrive exactly at the same time of the bus, and there is no
+additional wait time. Otherwise, we will have to wait for the bus to finish one
+more cycle of its route.
+
+In the end, we need to find the first multiple of `p` higher or equal to
+`arrival`. This can be done with [`math.ceil()`][py-math-ceil] doing
+`ceil(p/arrival)`. If we want to do this using integers only, we can use a
+little trick to calculate this without `ceil()`.
+
+```python
+n = ceil(arrival / p)
+wait = n * p - arrival
+
+# Or equivalent using integers only
+n = arrival // p + (arrival % p != 0)
+wait = n * p - arrival
+```
+
+The second version works taking advantage of the fact that we can add an `int`
+and a `bool` together (`+False == 0`, `+True == 1`).
+
+Now to solve the problem we'll calculate the waiting time for each bus and then
+take the minimum.
+
+```python
+best = float('inf')
+best_p = None
+
+for p in periods:
+	n = arrival // p + (arrival % p != 0)
+	wait = n * p - arrival
+
+	if wait < best:
+		best = wait
+		best_p = p
+
+ans = best_p * p
+print('Part 1:', ans)
+```
+
+### Part 2
+
+Things get *a lot* more complicated and also quite mathematical. You should read
+the original problem statement linked above in order to understand this. The
+explanation I will give here is shorter.
+
+Now we need to ignore the first line of input (our arrival time) and just focus
+on the second. The list of comma-separated values is still a list of bus IDs.
+The *index* of each ID in the list is a *time delta*. We want to find some time
+`t` for which all buses of our list depart from the sea station exactly *delta*
+minutes after `t` (i.e. bus at index `i` in the list departs at `t + i`). The
+`x` values just represent IDs that we do not care about (i.e. they are only
+there to shift the index of the next bus in the list).
+
+Let's take for example the list `2,3,x,x,4`. Bus `2` has index `0`, bus `3` has
+index `1` and bus `4` has index `4`. This means that we want to find some `t`
+such that bus `2` departs at `t`, bus `3` departs at `t + 1`, and bus `4`
+departs at `t + 4`.
+
+If we draw the bus departure times in a time table:
+
+```
+ time | bus 2 | bus 3 | bus 4 |
+    0 |   .   |   .   |   .   | (all buses start at the sea port at 0)
+    1 |       |       |       |
+    2 |   .   |       |       |
+    3 |       |   .   |       |
+    4 |   .   |       |   .   |
+    5 |       |       |       |
+    6 |   .   |   .   |       |
+    7 |       |       |       |
+    8 |   X   |       |   .   | <-- bus 2 departs at t = 8
+    9 |       |   X   |       | <-- bus 3 departs at t + 1 = 8 + 1 = 9
+   10 |   .   |       |       |
+   11 |       |       |       |
+   12 |   .   |   .   |   X   | <-- bus 4 departs at t + 4 = 8 + 4 = 12
+```
+
+We can see that `t=8` is the solution, because we satisfy the input constraints
+listed above. In the above table, `X` marks the time at which each bus will
+match our constraints.
+
+To "easily" solve this problem, we can follow the following reasoning, always
+taking into account the above example.
+
+- Bus `2` departs at `8`: indeed, `8` is a multiple of `2` (the period of the
+  bus).
+- Bus `3` departs at `9`, which is a multiple of `3`.
+- Bus `4` departs at `12`, which is a multiple of `4`.
+
+Okay, this is all obvious. Now assume that we don't know the solution, and let's
+express those times in terms of `t`:
+
+- Bus `2` needs to depart at `t`: since bus `2` departs at intervals of period
+  `2`, if it departs at `t`, then `t` must be a multiple of `2`.
+- Bus `3` needs to depart at `t + 1`: since bus `3` departs at intervals of
+  period `3`, if it departs at `t + 1`, then `t + 1` must be a multiple of `3`.
+- Bus `4` needs to depart at `t + 4`: since bus `4` departs at intervals of
+  period `4`, if it departs at `t + 4`, then `t + 4` must be a multiple of `4`.
+
+To generalize the above: for any given bus at index `i` with period `p`, we know
+that it will need to depart at some time `t + i` such that `t + i` is a multiple
+of `p`. Therefore, for each bus we want to satisfy the formula
+`(t + i) % p == 0`.
+
+*NOTE: From now on, some basic knowledge of
+[modular arithmetic][wiki-modular-arithmetic] is required, so go ahead and read
+the Wikipedia articles I'll be linking from now on if you have never heard of
+some of these concepts.*
+
+Putting these constraints in terms of modular arithmetic, using the
+[modular congruence][wiki-modular-congruence] notation *(mod n)*:
+
+```
+(t + i) mod p = 0
+⇒  (t + i) ≡ 0 (mod p)
+⇒  t ≡ -i (mod p) ≡ p - i (mod p)
+```
+
+We now have a system of modular equations of the above form, one for each bus in
+our list at index `i` and with ID (period) `p`. Let's rename `-i = a` for ease
+of understanding. We have:
+
+```
+t ≡ a1 (mod p1)
+t ≡ a2 (mod p2)
+...
+t ≡ aK (mod pK)
+```
+
+*Note: `a1` here is to be interpreted as a<sub>1</sub> and `aK` as
+a<sub>K</sub>, likewise for `p1`, `p2`, `pK`.*
+
+To solve this system of modular equations, we can use the
+[Chinese remainder theorem][wiki-chinese-remainder]. Let's call *P* the product
+of all the *p* above. This theorem states that if all the integers
+*p<sub>i</sub>*...*p<sub>K</sub>* form a [coprime set][wiki-coprime-set] (i.e.
+all possible pairs of those numbers are [coprime][wiki-coprime] with each
+other), then there is one and only one solution *t* such that *0 ≤ t < P*, and
+the remainder of the [Euclidean division][wiki-euclidean-division] of *t* with
+each *p<sub>i</sub>* is *a<sub>i</sub>*.
+
+Putting aside all the math and theory behind this (which is quite a good
+amount), this means that we are able to calculate our solution `t` using the
+Chinese remainder theorem. This involves the calculation of the
+[modular multiplicative inverse][wiki-modular-inverse] of a number. Overall,
+this might not be an obvious and straightforward task, specially if we are not
+familiar with modular arithmetic. Explaining the whole concept would probably
+make today's walkthrough longer than this entire document, so I will only limit
+myself to explaining the algorithm used to solve the Chinese remainder theorem.
+
+Chinese remainder theorem for dummies:
+
+1. Start with a list of remainders *a<sub>i</sub>* and a list of moduli
+*p<sub>i</sub>*.
+2. Compute *P* = product of all moduli *p<sub>i</sub>*.
+3. For each *a<sub>i</sub>* calculate:
+   - *n<sub>i</sub> = N/p<sub>i</sub>*
+   - *y<sub>i</sub>* = modular inverse of *n<sub>i</sub>* modulo *p<sub>i</sub>*
+   - *x<sub>i</sub> = a<sub>i</sub>n<sub>i</sub>y<sub>i</sub>*
+4. Finally calculate the solution *t = (sum of all x<sub>i</sub>) mod P*.
+
+Translated into a Python function which takes a list of tuples `(ai, pi)`, we'll
+have:
+
+```python
+def chinese_remainder_theorem(equations):
+    # equations = [(a1, p1), (a2, p2), ...]
+    t = 0
+    P = 1
+    for _, pi in equations:
+        P *= pi
+
+    for ai, pi in equations:
+        ni = P // pi
+        inv = pow(ni, -1, pi)
+        t = (t + ai * ni * inv) % P
+
+    return t
+```
+
+Here `pow(ni, -1, pi)` calculates the inverse of `ni` modulo `pi` using Python's
+built-in [`pow()`][py-builtin-pow]. Support for calculation of the modular
+inverse has only been added in Python 3.8, so if you have an earlier version you
+will have to do this by hand, using (a simplification of) the
+[extended Euclidean algorithm][algo-extended-euclidean]. Again, this is not the
+simplest algorithm to explain, but nonetheless I've implemented this in
+[my solution][d13-solution], so you can check that out if you want, or just let
+Google be your friend.
+
+We could simplify the calculation of `P` above using a simple
+[`functools.reduce()`][py-functools-reduce] with
+[`operator.mul()`][py-operator-mul] plus a [`lambda`][py-lambda] to extract the
+moduli from the equations:
+
+```python
+from functools import reduce
+from operator import mul
+
+P = reduce(mul, map(lambda e: e[1], equations))
+```
+
+Or even better also using [`operator.itemgetter()`][py-operator-itemgetter]:
+
+```python
+from functools import reduce
+from operator import mul, itemgetter
+
+P = reduce(mul, map(itemgetter(1), equations))
+```
+
+Now that we have a function to solve the system using the Chinese remainder
+theorem, we can just provide it with the current input and let it spit out the
+solution for us:
+
+```python
+buses = []
+for i, t in enumerate(raw):
+    if t != 'x':
+        buses.append((-i, int(t)))
+
+time = chinese_remainder_theorem(buses)
+print('Part 2:', time)
+```
+
+Overall, hardest puzzle so far, with a real steep increase in difficulty from
+part 1 to part 2.
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -2317,6 +2593,7 @@ If you are curious, you can find my solution using complex numbers
 [d10]: #day-10---adapter-array
 [d11]: #day-11---seating-system
 [d12]: #day-12---rain-risk
+[d13]: #day-13---shuttle-search
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -2330,6 +2607,7 @@ If you are curious, you can find my solution using complex numbers
 [d10-problem]: https://adventofcode.com/2020/day/10
 [d11-problem]: https://adventofcode.com/2020/day/11
 [d12-problem]: https://adventofcode.com/2020/day/12
+[d13-problem]: https://adventofcode.com/2020/day/13
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
@@ -2342,6 +2620,7 @@ If you are curious, you can find my solution using complex numbers
 [d10-solution]: solutions/day10.py
 [d11-solution]: solutions/day11.py
 [d12-solution]: solutions/day12.py
+[d13-solution]: solutions/day13.py
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
@@ -2374,9 +2653,11 @@ If you are curious, you can find my solution using complex numbers
 [py-object-init]:             https://docs.python.org/3/reference/datamodel.html#object.__init__
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
+[py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
+[py-builtin-pow]:             https://docs.python.org/3/library/functions.html#pow
 [py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
@@ -2392,26 +2673,34 @@ If you are curious, you can find my solution using complex numbers
 [py-functools-reduce]:        https://docs.python.org/3/library/functools.html#functools.reduce
 [py-math]:                    https://docs.python.org/3/library/math.html
 [py-math-inf]:                https://docs.python.org/3/library/math.html#math.inf
+[py-math-ceil]:               https://docs.python.org/3/library/math.html#math.ceil
+[py-operator-mul]:            https://docs.python.org/3/library/operator.html#operator.mul
+[py-operator-itemgetter]:     https://docs.python.org/3/library/operator.html#operator.itemgetter
 [py-re]:                      https://docs.python.org/3/library/re.html
 [py-re-findall]:              https://docs.python.org/3/library/re.html#re.findall
 
-[algo-manhattan]:     https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
-[algo-dijkstra]:      https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
-[algo-bfs]:           https://en.wikipedia.org/wiki/Breadth-first_search
-[algo-dfs]:           https://en.wikipedia.org/wiki/Depth-first_search
-[algo-kahn]:          https://en.wikipedia.org/wiki/Topological_sorting#Kahn's_algorithm
-[algo-binsrc]:        https://en.wikipedia.org/wiki/Binary_search_algorithm
-[algo-wall-follower]: https://en.wikipedia.org/wiki/Maze_solving_algorithm#Wall_follower
+[algo-manhattan]:          https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
+[algo-dijkstra]:           https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
+[algo-extended-euclidean]: https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
+[algo-bfs]:                https://en.wikipedia.org/wiki/Breadth-first_search
+[algo-dfs]:                https://en.wikipedia.org/wiki/Depth-first_search
+[algo-kahn]:               https://en.wikipedia.org/wiki/Topological_sorting#Kahn's_algorithm
+[algo-binsrc]:             https://en.wikipedia.org/wiki/Binary_search_algorithm
+[algo-wall-follower]:      https://en.wikipedia.org/wiki/Maze_solving_algorithm#Wall_follower
 
 [wiki-2d-rotation]:         https://en.wikipedia.org/wiki/Rotations_and_reflections_in_two_dimensions
 [wiki-cartesian-coords]:    https://en.wikipedia.org/wiki/Cartesian_coordinate_system
 [wiki-cellular-automaton]:  https://en.wikipedia.org/wiki/Cellular_automaton
+[wiki-chinese-remainder]:   https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Statement
 [wiki-closure]:             https://en.wikipedia.org/wiki/Closure_(computer_programming)
 [wiki-complex-numbers]:     https://en.wikipedia.org/wiki/Complex_number
 [wiki-complex-rotation]:    https://en.wikipedia.org/wiki/Rotation_(mathematics)#Complex_numbers:~:text=This%20can%20be%20rotated%20through%20an%20angle
+[wiki-coprime]:             https://en.wikipedia.org/wiki/Coprime_integers
+[wiki-coprime-set]:         https://en.wikipedia.org/wiki/Coprime_integers#Coprimality_in_sets
 [wiki-cpython]:             https://en.wikipedia.org/wiki/CPython
 [wiki-dag]:                 https://en.wikipedia.org/wiki/Directed_acyclic_graph
 [wiki-dynamic-programming]: https://en.wikipedia.org/wiki/Dynamic_programming
+[wiki-euclidean-division]:  https://en.wikipedia.org/wiki/Euclidean_division
 [wiki-exponential-time]:    https://en.wikipedia.org/wiki/Time_complexity#Exponential_time
 [wiki-functional-prog]:     https://en.wikipedia.org/wiki/Functional_programming
 [wiki-jit]:                 https://en.wikipedia.org/wiki/Just-in-time_compilation
@@ -2419,6 +2708,9 @@ If you are curious, you can find my solution using complex numbers
 [wiki-linear-time]:         https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-manhattan-dist]:      https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
 [wiki-memoization]:         https://en.wikipedia.org/wiki/Memoization
+[wiki-modular-arithmetic]:  https://en.wikipedia.org/wiki/Modular_arithmetic
+[wiki-modular-congruence]:  https://en.wikipedia.org/wiki/Modular_arithmetic#Congruence
+[wiki-modular-inverse]:     https://en.wikipedia.org/wiki/Modular_multiplicative_inverse
 [wiki-polynomial-time]:     https://en.wikipedia.org/wiki/Time_complexity#Polynomial_time
 [wiki-reduction]:           https://en.wikipedia.org/wiki/Reduction_Operator
 [wiki-running-total]:       https://en.wikipedia.org/wiki/Running_total
