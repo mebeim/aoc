@@ -2531,12 +2531,12 @@ did in part 1.
 
 ```python
 buses = []
-for i, v in filter(lambda *iv: iv[1] != 'x', enumerate(raw)):
+for i, v in filter(lambda iv: iv[1] != 'x', enumerate(raw)):
     buses.append((i, int(v))) # delta, period for each bus
 ```
 
 To compute the least common multiple of two numbers we can either use
-[`math.lcm()`][py-math-lcm] (only available Python >= 3.9) or create our own
+[`math.lcm()`][py-math-lcm] (only available on Python >= 3.9) or create our own
 using [`math.gcd()`][py-math-gcd] if we are not running a bleeding edge Python
 version (*stares at his Debian Stretch installation shipping Python 3.5 trying
 not to cry*).
@@ -2552,15 +2552,15 @@ from itertools import count
 def lcm(a, b):
     return a * b // gcd(a, b)
 
-    t, step = buses[0]
-    for delta, period in buses[1:]:
+t, step = buses[0]
+for delta, period in buses[1:]:
     for t in count(t, step):
         if (t + delta) % period == 0:
             break
 
     step = lcm(step, period)
 
-    print('Part 2:', t)
+print('Part 2:', t)
 ```
 
 That was quick! I barely hit ENTER on my keyboard and the solution popped on the
@@ -2599,27 +2599,18 @@ the Wikipedia articles I'll be linking from now on if you have never heard of
 some of these concepts.*
 
 Putting these constraints in terms of modular arithmetic, using the
-[modular congruence][wiki-modular-congruence] notation *(mod n)*:
+[modular congruence][wiki-modular-congruence] notation:
 
-```
-(t + i) mod p = 0
-⇒  (t + i) ≡ 0 (mod p)
-⇒  t ≡ -i (mod p) ≡ p - i (mod p)
-```
+(*t + i*) mod *p* = 0  ⇒  *t + i* ≡ 0 (mod *p*)  ⇒  *t* ≡ *-i* (mod *p*)
 
 We now have a system of modular equations of the above form, one for each bus in
-our list at index `i` and with ID (period) `p`. Let's rename `-i = a` for ease
+our list at index `i` and with ID (period) `p`. Let's rename *-i = a* for ease
 of understanding. We have:
 
-```
-t ≡ a1 (mod p1)
-t ≡ a2 (mod p2)
-...
-t ≡ aK (mod pK)
-```
-
-*Note: `a1` here is to be interpreted as a<sub>1</sub> and `aK` as
-a<sub>K</sub>, likewise for `p1`, `p2`, `pK`.*
+- *t* ≡ *a<sub>1</sub>* (mod *p<sub>1</sub>*)
+- *t* ≡ *a<sub>2</sub>* (mod *p<sub>2</sub>*)
+- ...
+- *t* ≡ *a<sub>K</sub>* (mod *p<sub>K</sub>*)
 
 To solve this system of modular equations, we can use the
 [Chinese remainder theorem][wiki-chinese-remainder]. Let's call *P* the product
@@ -2628,7 +2619,8 @@ of all the *p* above. This theorem states that if all the integers
 all possible pairs of those numbers are [coprime][wiki-coprime] with each
 other), then there is one and only one solution *t* such that *0 ≤ t < P*, and
 the remainder of the [Euclidean division][wiki-euclidean-division] of *t* with
-each *p<sub>i</sub>* is *a<sub>i</sub>*.
+each *p<sub>i</sub>* is *a<sub>i</sub>*. The bus IDs in our input indeed form a
+coprime set, so we can apply the theorem.
 
 Putting aside all the math and theory behind this (which is quite a good
 amount), this means that we are able to calculate our solution `t` using the
@@ -2648,7 +2640,7 @@ Chinese remainder theorem for dummies:
    - *n<sub>i</sub> = N/p<sub>i</sub>*
    - *y<sub>i</sub>* = modular inverse of *n<sub>i</sub>* modulo *p<sub>i</sub>*
    - *x<sub>i</sub> = a<sub>i</sub>n<sub>i</sub>y<sub>i</sub>*
-4. Finally calculate the solution *t = (sum of all x<sub>i</sub>) mod P*.
+4. Finally calculate the solution: *t* = (*sum of all x<sub>i</sub>*) mod *P*.
 
 Translated into a Python function which takes a list of tuples `(ai, pi)`, we'll
 have:
@@ -2675,8 +2667,8 @@ inverse has only been added in Python 3.8, so if you have an earlier version you
 will have to do this by hand, using (a simplification of) the
 [extended Euclidean algorithm][algo-extended-euclidean]. Again, this is not the
 simplest algorithm to explain, but nonetheless I've implemented this in
-[my solution][d13-solution], so you can check that out if you want, or just let
-Google be your friend.
+[my solution][d13-alternative], so you can check that out if you want, or just
+let Google be your friend.
 
 We could simplify the calculation of `P` above using a simple
 [`functools.reduce()`][py-functools-reduce] with
@@ -2705,9 +2697,8 @@ solution for us:
 
 ```python
 buses = []
-for i, v in enumerate(raw):
-    if v != 'x':
-        buses.append((-i, int(v)))
+for i, v in filter(lambda iv: iv[1] != 'x', enumerate(raw)):
+    buses.append((-i, int(v)))
 
 time = chinese_remainder_theorem(buses)
 print('Part 2:', time)
