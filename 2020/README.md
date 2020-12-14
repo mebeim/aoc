@@ -17,6 +17,7 @@ Table of Contents
 - [Day 11 - Seating System][d11]
 - [Day 12 - Rain Risk][d12]
 - [Day 13 - Shuttle Search][d13]
+- [Day 14 - Docking Data][d14]
 
 Day 1 - Report Repair
 ---------------------
@@ -2374,12 +2375,12 @@ best = float('inf')
 best_p = None
 
 for p in periods:
-	n = arrival // p + (arrival % p != 0)
-	wait = n * p - arrival
+    n = arrival // p + (arrival % p != 0)
+    wait = n * p - arrival
 
-	if wait < best:
-		best = wait
-		best_p = p
+    if wait < best:
+        best = wait
+        best_p = p
 
 ans = best_p * p
 print('Part 1:', ans)
@@ -2549,17 +2550,17 @@ from itertools import count
 
 # Don't have math.lcm() in Python < 3.9, but it's easy to implement.
 def lcm(a, b):
-	return a * b // gcd(a, b)
+    return a * b // gcd(a, b)
 
-t, step = buses[0]
-for delta, period in buses[1:]:
-	for t in count(t, step):
-		if (t + delta) % period == 0:
-			break
+    t, step = buses[0]
+    for delta, period in buses[1:]:
+    for t in count(t, step):
+        if (t + delta) % period == 0:
+            break
 
-	step = lcm(step, period)
+    step = lcm(step, period)
 
-print('Part 2:', t)
+    print('Part 2:', t)
 ```
 
 That was quick! I barely hit ENTER on my keyboard and the solution popped on the
@@ -2716,6 +2717,283 @@ Overall, maybe the hardest puzzle so far, with a real steep increase in
 difficulty from part 1 to part 2. Once again, you can find this "alternative"
 solution [here][d13-alternative].
 
+
+Day 14 - Docking Data
+---------------------
+
+[Problem statement][d14-problem] — [Complete solution][d14-solution] — [Back to top][top]
+
+### Part 1
+
+A good programmer should always be able to do some good ol' bit twiddling. Today
+we need to emulate some kind of machine, which writes values to memory using a
+really strange binary masking method. The machine works only with 36-bit
+unsigned values.
+
+Each line of our input is a command:
+
+- `mask = MASKVAL`: sets the internal mask to `MASKVAL`, which is a binary
+  number of exactly 36 digits: each digit can either be a binary digit (`01`) or
+  the special digit `X`.
+- `mem[ADDR] = VAL`: writes the value `VAL` to memory at address `ADDR`, both
+  values are decimal.
+
+The peculiar thing about this machine is that *before* writing a value to
+memory, the value is modified according to the current mask:
+
+- Each `0` or `1` bit in the mask overwrites the corresponding value bit.
+- Each `X` in the mask leaves the corresponding value bit unchanged.
+
+Our input always starts with a `mask` command to set the initial value of the
+mask. After starting with a memory fully initialized to zero and applying all
+commands, we need to calculate the sum of all values in memory.
+
+Let's get to work. First, let's get the input file lines and create a
+[regular expression][misc-regexp] to extract the values from `mem` commands:
+
+```python
+import re
+lines = fin.readlines()
+rexp = re.compile(r'mem\[(\d+)\] = (\d+)')
+```
+
+The next thing ***NOT*** to do is trying to create an array `mem = [0] * 2**36`,
+like I immediately did like an idiot, exhausting all the RAM of my computer.
+Instead, we'll use a dictionary for the memory, which is perfect for what we
+need: values we add will be counted, values that are not present will still
+count as zero when summing all up.
+
+Let's parse each input line in a loop to extract the relevant values. For `mask`
+commands it's just a simple skip of 7 and strip the trailing newline; for `mem`
+commands we'll use the regexp and [`map()`][py-builtin-map] the values into
+integers.
+
+```python
+mem = {}
+for line in lines:
+    if line.startswith('mask'):
+        mask = line[7:].rstrip()
+        # ...
+    else:
+        addr, value = map(int, rexp.findall(line)[0])
+        # ...
+```
+
+The kind of mask we are working with isn't really a [bitmask][wiki-bitmask] at
+all: it cannot simply be applied to values with bitwise operations, and does not
+actually "extract" or "mask" anything, it just replaces bits. However, we can
+turn it into a real mask.
+
+We know that all bits set to `0` or `1` in the mask are going to overwrite the
+bits at the same position in the value. Therefore, we can create a *real mask*
+which has a `1` for each `X` in the mask, and a `0` anywhere else.
+
+Here's an example with only 8 bits to make it simple, the operation can be
+performed with any number of bits:
+
+```
+     mask  X11XXX0X
+real mask  10011101
+```
+
+We can then use this real mask to actually mask the input value with a
+[*bitwise AND*][wiki-bitwise-and] (`&` in Python), zeroing out every bit of
+`value` that needs to be overwritten by the corresponding `0` or `1` bit in the
+mask. Then, we can extract an actual number (let's call it *addend*) from the
+original mask (ignoring all `X`) and add it to the value. This has the effect of
+overwriting all value bits at the same position of zeros and ones in the mask,
+with the value they have in the mask.
+
+To make it clear, here's an example:
+
+```
+     mask  X11XXX0X
+real mask  10011101
+   addend  01100000
+
+Suppose value = 42
+
+       value  00101010 &
+   real mask  10011101 =
+masked value  00001000
+
+masked value  00001000 +
+      addend  01100000 =
+ final value  01101000   --> write this to memory
+```
+
+Now to extract two values from the mask:
+
+- For the *real mask* we need to perform 2 replacements: `1` with `0` and `X`
+  with `1`, then turn the string into an `int`. We can use
+  [`str.maketrans()`][py-str-maketrans] plus
+  [`str.translate()`][py-str-translate] for this, just like we did in
+  [day 5][d05].
+- For the *addend* we just need to replace every `X` with `0` and then turn the
+  string into an `int`.
+
+Finally, when writing to memory, we'll calculate the value as we did in the
+above example. The code is quite simple really:
+
+```python
+table = str.maketrans('1X', '01')
+mem = {}
+
+for line in lines:
+    if line.startswith('mask'):
+        mask      = line[7:].rstrip()
+        real_mask = int(mask.translate(table), 2)
+        addend    = int(mask.replace('X', '0'), 2)
+    else:
+        addr, value = map(int, rexp.findall(line)[0])
+        mem[addr] = (value & real_mask) | addend
+```
+
+I use `|` as a bitwise alternative to `+`, the operation really is the same in
+this case.
+
+Now we can just sum all values in memory and get our answer:
+
+```python
+total = sum(mem.values())
+print('Part 1:', total)
+```
+
+### Part 2
+
+Now the meaning of our strange mask changes. We need to use it to alter the
+address we want to write to. In particular:
+
+- Every `0` in the mask leaves the corresponding address bit unchanged.
+- Every `1` in the mask overwrites the corresponding address bit with a `1`.
+- Every `X` in the mask overwrites the corresponding address bit with a
+  *floating bit*.
+
+A floating bit is a bit that assumes both values at once. For example, `XXX` is
+composed of 3 floating bits, and corresponds to any value from `000` to `111`.
+When the machine tries to write a value at an address which contains floating
+bits, the machine will actually write the same value at *all* addresses that the
+address represents.
+
+Here's an example:
+
+```
+       mask  00010X0X
+    address  11001000
+new address  11011X0X  (where X = floating bit)
+
+Real addresses:
+
+             11011000
+             11011001
+             11011100
+             11011101
+```
+
+Our task is still finding the sum of all values in memory after running all
+commands.
+
+Okay, this complicates things: 1 floating bit in the address will translate to 2
+different real addresses, 2 floating bits will translate to 4, and so on. In
+general, if the address after applying the mask contains `n` floating bits, then
+it will translate to `2**n` different addresses, representing all the possible
+combinations of `0` and `1` in place of each `X`.
+
+In order to properly emulate all memory operations, we need a function to
+generate all real addresses given an address containing floating bits, so that
+we can write the same value to each of those.
+
+This task is kind of similar to the one accomplished by the
+[`product()`][py-itertools-product] generator function from the
+[`itertools`][py-itertools] module. In fact, this function does exactly what we
+need if se supply the adequate values.
+
+For example, if we want to generate all addresses for `10X0X`:
+
+```python
+>>> from itertools import product
+>>> addrs = product('1', '0', '01', '0', '01')
+>>> for a in addrs:
+        print(''.join(a))
+
+10000
+10001
+10100
+10101
+```
+
+We can just transform each "floating bit" `X` into `'01'`, keep all the other
+bits unchanged, and pass everything to `itertools.product()`. We'll start with
+an empty list `[]`, then for each corresponding bit of address and mask:
+
+- If the mask bit is `X`, add `'01'` to the list.
+- If the mask bit is `0`, add the address bit to the list.
+- If the mask bit is `1`, add `'1'` to the list.
+
+After this, we can pass the list to `itertools.product()` using the
+[unpack operator][py-unpacking] (`*lst`) to turn it into 36 different arguments.
+The function we write will be a generator: it will convert each value yielded by
+`product()` into an integer and then `yield` it.
+
+```python
+from itertools import product
+
+def all_addrs(addr, mask): # addr and mask are two strings of 36 characters
+    args = []
+
+    for addr_bit, mask_bit in zip(addr, mask):
+        if mask_bit == '0':
+            args.append(addr_bit)
+        elif mask_bit == '1':
+            args.append('1')
+        else:
+            args.append('01')
+
+    for a in product(*args):
+        yield int(''.join(a), 2)
+```
+
+All that's left to do is parse each line and use the above function. To
+transform the decimal addresses that we read from the input into a binary string
+we can use a [format string][py-format-string] specifying `036b` as format.
+
+```python
+mem = {}
+for line in lines:
+    if line.startswith('mask'):
+        mask = line[7:].rstrip()
+    else:
+        addr, value = map(int, rexp.findall(line)[0])
+        addr = '{:036b}'.format(addr)
+
+        for a in all_addrs(addr, mask):
+            mem[a] = value
+
+total = sum(mem.values())
+print('Part 2:', total)
+```
+
+An alternative manual implementation of the `product()` function for our
+specific use case would be a recursive generator function that takes an already
+masked address and yields an integer if the address does not contain any `X`,
+otherwise does a recursive call to get all possible values replacing that `X`
+with a `0` and a `1`. The [`yield from`][py-yield-from] "generator delegation"
+syntax comes in handy.
+
+```python
+def all_addrs(addr):
+    if 'X' in addr:
+        yield from all_addrs(addr.replace('X', '0', 1))
+        yield from all_addrs(addr.replace('X', '1', 1))
+    else:
+        yield int(addr, 2)
+
+# list(all_addrs('1XX')) -> [0b100, 0b101, 0b110, 0b111] -> [4, 5, 6, 7]
+```
+
+I really appreciate the elegance of the above code, however I chose to go with
+the `itertools` approach in my solution just because it's faster.
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -2737,6 +3015,7 @@ solution [here][d13-alternative].
 [d11]: #day-11---seating-system
 [d12]: #day-12---rain-risk
 [d13]: #day-13---shuttle-search
+[d14]: #day-14---docking-data
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -2751,6 +3030,7 @@ solution [here][d13-alternative].
 [d11-problem]: https://adventofcode.com/2020/day/11
 [d12-problem]: https://adventofcode.com/2020/day/12
 [d13-problem]: https://adventofcode.com/2020/day/13
+[d14-problem]: https://adventofcode.com/2020/day/14
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
@@ -2764,6 +3044,7 @@ solution [here][d13-alternative].
 [d11-solution]: solutions/day11.py
 [d12-solution]: solutions/day12.py
 [d13-solution]: solutions/day13.py
+[d14-solution]: solutions/day14.py
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
@@ -2776,10 +3057,13 @@ solution [here][d13-alternative].
 
 [utils-selective-cache]: https://github.com/mebeim/aoc/blob/bd28a12be5444126dc531e8594181e0275424ee8/utils/decorators.py#L21
 
-[py-raw-string]:              https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
-[py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
 [py-complex]:                 https://docs.python.org/3/library/stdtypes.html#numeric-types-int-float-complex
+[py-format-string]:           https://docs.python.org/3/library/string.html#formatstrings
+[py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
 [py-lambda]:                  https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
+[py-raw-string]:              https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
+[py-unpacking]:               https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
+[py-yield-from]:              https://docs.python.org/3.9/whatsnew/3.3.html#pep-380
 [py-list-count]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-set]:                     https://docs.python.org/3/library/stdtypes.html#set
 [py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
@@ -2809,7 +3093,9 @@ solution [here][d13-alternative].
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
 [py-copy]:                    https://docs.python.org/3/library/copy.html
 [py-copy-deepcopy]:           https://docs.python.org/3/library/copy.html#copy.deepcopy
+[py-itertools]:               https://docs.python.org/3/library/itertools.html
 [py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
+[py-itertools-product]:       https://docs.python.org/3/library/itertools.html#itertools.product
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-cache]:         https://docs.python.org/3/library/functools.html#functools.cache
 [py-functools-lru-cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
@@ -2835,6 +3121,8 @@ solution [here][d13-alternative].
 [algo-wall-follower]:      https://en.wikipedia.org/wiki/Maze_solving_algorithm#Wall_follower
 
 [wiki-2d-rotation]:         https://en.wikipedia.org/wiki/Rotations_and_reflections_in_two_dimensions
+[wiki-bitmask]:             https://en.wikipedia.org/wiki/Mask_(computing)
+[wiki-bitwise-and]:         https://en.wikipedia.org/wiki/Bitwise_operation#AND
 [wiki-cartesian-coords]:    https://en.wikipedia.org/wiki/Cartesian_coordinate_system
 [wiki-cellular-automaton]:  https://en.wikipedia.org/wiki/Cellular_automaton
 [wiki-chinese-remainder]:   https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Statement
