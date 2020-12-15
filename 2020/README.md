@@ -18,6 +18,7 @@ Table of Contents
 - [Day 12 - Rain Risk][d12]
 - [Day 13 - Shuttle Search][d13]
 - [Day 14 - Docking Data][d14]
+- [Day 15 - Rambunctious Recitation][d15]
 
 Day 1 - Report Repair
 ---------------------
@@ -2985,6 +2986,235 @@ def all_addrs(addr):
 I really appreciate the elegance of the above code, however I chose to go with
 the `itertools` approach in my solution just because it's faster.
 
+
+Day 15 - Rambunctious Recitation
+--------------------------------
+
+[Problem statement][d15-problem] — [Complete solution][d15-solution] — [Back to top][top]
+
+### Part 1
+
+Quite a simple problem today, although the text takes some time to comprehend.
+We have a short list of integers as input, and we need to implement an algorithm
+to play a game:
+
+- Start at turn 1, and "say" one number per turn from the input list.
+- Then, continue indefinitely, based on the previous number:
+  - If that number was already said before (other than the last turn), then the
+    next number to say is the difference between the last two turns in which
+    that number was said.
+  - Otherwise, say 0.
+
+Here's a simple example with the numbers `1,3,2`:
+
+1. Say `1`.
+2. Say `3`.
+3. Say `2`.
+4. The numbers in the list are over. The previous number was `2`: it was *not*
+   seen before the previous turn, so say `0`.
+5. `0` was *not* seen before the previous turn, say `0`.
+6. `0` was seen before the previous turn at turn 4. Say `1` (`== 5 - 4`).
+7. `1` was seen before the previous turn at turn 1. Say `5` (`== 6 - 1`).
+8. `5` was *not* seen before the previous turn, say `0`.
+9. ... and so on ...
+
+We need to find the number that is going to be said at turn 2020.
+
+Before we begin, little fun fact: this game seems to have been inspired by the
+[Van Eck's sequence][misc-van-eck]. The rules for constructing this sequence are
+the same, the only difference is that Van Eck's sequence starts with a single
+number: 0.
+
+Now let's start. Of course, first get the numbers from the input file. We can
+just split the content on commas (`,`) and [`map()`][py-builtin-map] everything
+to `int`, storing them in a `tuple`:
+
+```python
+fin = open(...)
+nums = tuple(map(int, fin.read().split(',')))
+```
+
+To solve this puzzle, there isn't really much else to think about other than
+following the directions. We'll write a really simple implementation using a
+dictionary to keep track of the last time a number was said. It looks like we
+need to remember the two most recent turns in which a number was said, but in
+reality since one of the turns is always the previous turn, we can just remember
+the one before that.
+
+First, let's consume all the numbers from the list, and keep track of the turn
+in which we last saw them. It does not really matter if we start the turns at
+`0` or `1`, we can choose `1` since we can, just for consistency with the
+problem statement and in case we want to debug the code. We can use a
+[dict comprehension][py-dict-comprehension] plus
+[`enumerate()`][py-builtin-enumerate] to process all numbers in one line.
+
+```python
+last_seen = {n: turn for turn, n in enumerate(nums[:-1], 1)}
+prev = nums[-1]
+```
+
+We keep the last number as `prev` (without adding it to `last_seen`) because we
+need if for the next turn, and we want to remember if we saw it before another
+time.
+
+Each turn we want to first look at `last_seen`. If the `prev` number is in
+`last_seen`, then it was seen two times: the previous turn, and some turn before
+that, which can just be retrieved from `last_seen`. The current number will
+either be `0` if we did not see `prev` before the previous turn, or the
+difference between the previous turn and `last_seen[prev]`. We can then update
+`last_seen[prev]` with the previous turn and keep going.
+
+Turning the above into a function:
+
+```python
+def play(nums, n_turns):
+    last_seen = {n: turn for turn, n in enumerate(nums[:-1], 1)}
+    prev = nums[-1]
+
+    # We said len(nums) numbers now, so the next turn is len(nums) + 1
+    # We want to keep going until n_turns (included), so n_turns + 1 since range() does one less iteration
+
+    for turn in range(len(nums) + 1, n_turns + 1):
+        if prev in last_seen:
+            # Before the previous turn, prev was seen at turn last_sen[prev]
+            cur = turn - 1 - last_seen[prev]
+        else:
+            cur = 0
+
+        # Remember that prev was said one turn ago and keep going
+        last_seen[prev] = turn - 1
+        prev = cur
+
+    return cur
+```
+
+Now to compute the solution we just need to call the function:
+
+```python
+ans = play(nums, 2020)
+print('Part 1:', ans)
+```
+
+### Part 2
+
+For part 2, we need to do the exact same thing as before, but this time we want
+to know what number will be said on the 30000000th turn (30 millionth).
+
+Well... we could really just run the above code again and be done with it:
+
+```python
+ans = play(nums, 30000000)
+```
+
+This works fine, but it is pretty damn slow to be honest, and this kind of bugs
+me. A lot. On my machine, this takes around 9 seconds with
+[CPython][wiki-cpython] 3.9, and around 6 second using [PyPy][misc-pypy] 7.3.3.
+
+The first thing to notice to speed things up, is that we can use a `list`
+instead of a dictionary for `last_seen`. How big? Well, I would say at least the
+number of turns (i.e. 30 million items), since that is the worst case, in which
+we see a number at the start and then we only see it again at the end, causing
+the last number to be exactly the total number of turns (minus one I guess). In
+theory this should significantly increase memory usage, but apparently Python
+dictionaries take up a lot of space, and the memory consumption only goes up
+from 360MB to 404MB on my machine using CPython).
+
+So let's do it. We can just create a list of 30M zeroes since we start counting
+turns from `1`. We can then check if `last_seen[last]` is zero or not. Now we
+need to process the numbers and initialize `last_seen` "by hand" with a `for`
+though.
+
+```python
+def play(nums, n_turns):
+    last_seen = [0] * n_turns
+    prev = nums[-1]
+    for turn, n in enumerate(nums[:-1], 1):
+        last_seen[n] = turn
+
+    for turn in range(len(nums) + 1, n_turns + 1):
+        if last_seen[prev]:
+            cur = turn - 1 - last_seen[prev]
+        else:
+            cur = 0
+
+        last_seen[prev] = turn - 1
+        prev = cur
+
+    return cur
+```
+
+The above code runs in 1.04 seconds with PyPy (nice!), but still in little less
+than 9 seconds with CPython. Really CPython? `list` access takes the same time
+as `dict` access? Wow. Let's continue!
+
+We can very well avoid those `- 1` since we apply them to `turn` both when
+storing it into `last_seen` and when calculating the `cur` number, so:
+
+```python
+cur = turn - 1 - last_seen[prev]
+    == turn - 1 - (some_previous_turn - 1)
+    == turn - some_previous_turn
+```
+
+Therefore we can just iterate over `prev_turn`, starting and stopping the range
+at one less than before, and removing those `- 1` from calculations:
+
+```python
+def play(nums, n_turns):
+    last_seen = [0] * n_turns
+    prev = nums[-1]
+    for turn, n in enumerate(nums[:-1], 1):
+        last_seen[n] = turn
+
+    for prev_turn in range(len(nums), n_turns):
+        if last_seen[prev]:
+            cur = prev_turn - last_seen[prev]
+        else:
+            cur = 0
+
+        last_seen[prev] = prev_turn
+        prev = cur
+
+    return cur
+```
+
+Aaaand... that takes ~970ms with PyPy (sub-second, wohoo!) and ~6.8 seconds with
+CPython. That's better. The last smart trick we can apply is avoiding indexing
+`last_seen` two times. Each loop we first check `if last_seen[prev]` and then do
+`last_seen[prev]` again in the calculation. We can avoid this exploiting the
+fact that `last_seen` is initialized to `0`. If we just calculate
+`cur = prev_turn - last_seen[prev]` right away, then if the number was already
+seen we'll have `last_seen[prev]` and therefore `cur == prev_turn`.
+
+```python
+def play(nums, n_turns):
+    last_seen = [0] * n_turns
+    prev = nums[-1]
+    for turn, n in enumerate(nums[:-1], 1):
+        last_seen[n] = turn
+
+    for prev_turn in range(len(nums), n_turns):
+        cur = prev_turn - last_seen[prev]
+        if cur == prev_turn:
+            cur = 0
+
+        last_seen[prev] = prev_turn
+        prev = cur
+
+    return cur
+```
+
+Well, after rewriting this for the n-th time: still ~970ms with PyPy, ~6.4s with
+CPython. I think I'll take it. It's not the best, but not the worst either. The
+next optimization step would just be to switch to a compiled language :P.
+
+```python
+ans = play(nums, 30000000)
+print('Part 2:', ans)
+```
+
+30 stars and counting...
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -3007,6 +3237,7 @@ the `itertools` approach in my solution just because it's faster.
 [d12]: #day-12---rain-risk
 [d13]: #day-13---shuttle-search
 [d14]: #day-14---docking-data
+[d15]: #day-15---rambunctious-recitation
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -3022,6 +3253,7 @@ the `itertools` approach in my solution just because it's faster.
 [d12-problem]: https://adventofcode.com/2020/day/12
 [d13-problem]: https://adventofcode.com/2020/day/13
 [d14-problem]: https://adventofcode.com/2020/day/14
+[d15-problem]: https://adventofcode.com/2020/day/15
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
@@ -3036,6 +3268,7 @@ the `itertools` approach in my solution just because it's faster.
 [d12-solution]: solutions/day12.py
 [d13-solution]: solutions/day13.py
 [d14-solution]: solutions/day14.py
+[d15-solution]: solutions/day15.py
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
@@ -3049,6 +3282,7 @@ the `itertools` approach in my solution just because it's faster.
 [utils-selective-cache]: https://github.com/mebeim/aoc/blob/bd28a12be5444126dc531e8594181e0275424ee8/utils/decorators.py#L21
 
 [py-complex]:                 https://docs.python.org/3/library/stdtypes.html#numeric-types-int-float-complex
+[py-dict-comprehension]:      https://www.python.org/dev/peps/pep-0274/
 [py-format-string]:           https://docs.python.org/3/library/string.html#formatstrings
 [py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
 [py-lambda]:                  https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
@@ -3150,3 +3384,4 @@ the `itertools` approach in my solution just because it's faster.
 [misc-man1-tr]:   https://man7.org/linux/man-pages/man1/tr.1.html
 [misc-pypy]:      https://www.pypy.org/
 [misc-regexp]:    https://www.regular-expressions.info/
+[misc-van-eck]:   https://oeis.org/A181391
