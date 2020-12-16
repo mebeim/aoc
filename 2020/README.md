@@ -19,6 +19,7 @@ Table of Contents
 - [Day 13 - Shuttle Search][d13]
 - [Day 14 - Docking Data][d14]
 - [Day 15 - Rambunctious Recitation][d15]
+- [Day 16 - Ticket Translation][d16]
 
 Day 1 - Report Repair
 ---------------------
@@ -3215,6 +3216,312 @@ print('Part 2:', ans)
 
 30 stars and counting...
 
+
+Day 16 - Ticket Translation
+---------------------------
+
+[Problem statement][d16-problem] — [Complete solution][d16-solution] — [Back to top][top]
+
+### Part 1
+
+Yet another input validation puzzle. This time we're going to validate some
+very detailed plane tickets.
+
+Each ticket is composed of 20 fields, and each kind of field has some validity
+requirements. The input we get is split in 3 parts, separated by empty lines:
+first all the field names along with validity requirements, then our ticket, and
+then a list of other tickets.
+
+All the tickets we have are lists of comma separated integers, but we don't know
+which field any of those represent (i.e. in which order the fields of a ticket
+are listed). We need to find invalid tickets: a ticket is invalid if *any* of
+its fields does not respect any validity requirement. We need to find all such
+fields for every ticket *excluding ours*, and sum all of them.
+
+Well, nothing exceptional to do except follow the directions. Since the input
+data format is not that simple to parse all in one go, we'll create a function
+to do it. First parse all requirements, which are field names and two couple of
+integers for each field representing valid ranges. Then, skip a few lines and
+get our ticket, skip some more lines and get all other tickets.
+
+Each requirement is in the following form:
+
+```
+field name: A-B or C-D
+```
+
+Here `A`, `B`, `C` and `D` are integers representing two ranges of valid values
+for the field. Since we'll need to check for validity of ticket fields a lot, we
+want this to be as simple as possible. Creating a simple class which is capable
+of handling the `in` operator seems like a pretty straightforward idea. We'll
+create a `DoubleRange` class which takes the four values for initialization and
+implements a custom [`__contains__()`][py-object-contains] method for easily
+checking if a value is in any of the two ranges.
+
+```python
+class DoubleRange:
+    def __init__(self, a, b, c, d):
+        self.a, self.b, self.c, self.d = a, b, c, d
+
+    def __contains__(self, value):
+        return self.a <= value <= self.b or self.c <= value <= self.d
+```
+
+We don't really care about field names, so we'll just use `\d+` as regular
+expression to extract all four numbers at once with
+[`re.findall()`][py-re-findall], then [`map()`][py-builtin-map] the numbers to
+`int`, and use them to create a `DoubleRange` object. We'll put all the ranges
+in a `list` and return it. To extract tickets, we can instead just
+[`.split()`][py-str-split] on commas (`,`) and `map()` to `int` directly,
+creating a `tuple` per ticket. We'll return everything along with the ranges.
+
+```python
+import re
+
+def parse_input(fin):
+    ranges = []
+    field_rexp = re.compile(r'(.+): (\d+)-(\d+) or (\d+)-(\d+)')
+
+    for line in map(str.rstrip, fin):
+        if not line:
+            break
+
+        field, *numbers = field_rexp.findall(line)[0]
+        numbers = map(int, numbers)
+        ranges.append(DoubleRange(*numbers))
+
+    fin.readline()
+    my_ticket = tuple(map(int, fin.readline().split(',')))
+    fin.readline()
+    fin.readline()
+
+    tickets = []
+    for line in fin:
+        tickets.append(tuple(map(int, line.split(','))))
+
+    return ranges, my_ticket, tickets
+
+fin = open(...)
+ranges, my_ticket, tickets = parse_input(fin)
+```
+
+Now that we have everything ready, we can create a function to check a ticket.
+In particular, we want to extract all invalid fields (i.e. fields that are not
+inside any of our `ranges`) from each ticket. For simplicity, we'll just pass
+the ticket as parameter and use the global `ranges` list.
+
+We'll create a nice generator function which given a ticket spits out all the
+values of invalid fields. To check for validity of a single field of a ticket,
+we can take advantage of the [`all()`][py-builtin-all] function to check the
+value against all `ranges`. If the value isn't in any of the ranges, we'll
+`yield` it and keep going. Easier to write than to explain.
+
+```python
+def invalid_fields(ticket):
+    for value in ticket:
+        if all(value not in rng for rng in ranges):
+            yield value
+```
+
+Now all that's left to do is sum all the invalid fields for every ticket:
+
+```python
+total = 0
+for ticket in tickets:
+    for f in invalid_fields(ticket):
+        total += f
+```
+
+The above can be simplified down to one line with the help of
+[`sum()`][py-builtin-sum], mapping all tickets using `invalid_fields()`:
+
+```python
+total = sum(map(sum, map(invalid_fields, tickets)))
+print('Part 1:', total)
+```
+
+We really spent more time writing the input parsing function than actually
+solving the puzzle!
+
+### Part 2
+
+For the second part of the puzzle, we now need to deduce which field corresponds
+to which number for each ticket. All tickets have their fields ordered in the
+same way, but we don't know the order. In other words, we don't know the index
+of a certain field in the list of values of a ticket.
+
+We are however told that, considering *valid tickets only*, we can deduce this
+from the ticket field values. This means that we can check for validity of the
+values of every single field of each ticket and deduce the correct ordering of
+the fields for tickets.
+
+For example, we know that if the field `x` has ranges `5-10 15-20` and we have a
+ticket `1,3,34,6`, then the field `x` can only be the last one (index `4`),
+because none of the previous ones matches the validity requirements for `x`.
+
+After determining the correct order of fields in tickets, we must calculate the
+product of the six fields of our ticket whose name starts with `departure`.
+
+First of all, we already know that these six fields are the first six of our
+`ranges` array, so no need to parse field names or change existing code. We just
+need to determine their correct index in our ticket.
+
+We are told to also use our ticket for determining the correct field ordering so
+we'll just include it in the list of tickets right away. Then, we'll keep a set
+of "possible" valid positions for each field. We'll start creating one `set` for
+each field including all the numbers from `0` to the number fo fields of a
+ticket:
+
+```python
+tickets.append(my_ticket)
+n_fields = len(my_ticket)
+possible = [set(range(n_fields)) for _ in range(len(ranges))]
+```
+
+Now since we only want to work with valid tickets, let's create a function to
+check the validity of a ticket. It's actually pretty simple, we just need to
+make sure that each field in the ticket has a value that is correct according to
+at least one of the field validity constraints.
+
+
+```python
+def is_valid(ticket):
+    for value in ticket:
+        ok = False
+        for rng in ranges:
+            if value in rng:
+                ok = True
+                break
+
+        if not ok:
+            return False
+
+    return True
+```
+
+It may not be so simple to notice at first, but the above can be simplified a
+lot with the help of [`all()`][py-builtin-all] and [`any()`][py-builtin-any].
+In the inner loop we are checking if the current `value` is inside any of the
+`ranges`. Therefore the inner loop can just be rewritten as:
+
+```python
+ok = any(value in rng for rng in ranges)
+```
+
+While in the outer loop we are making sure that the above is true for *all*
+values of the ticket. Therefore the entire thing can be rewritten as:
+
+```python
+def is_valid(ticket):
+    return all(any(v in r for r in ranges) for v in ticket)
+```
+
+Sweet. Now we just need to filter out invalid tickets and only work with valid
+ones. Perfect use case for the [`filter()`][py-builtin-filter] buil-in. Then,
+for each of the valid ticket, for all fields we want to check if any of the
+ticket values violate the field validity requirements. If it does, we'll remove
+the index of that value as a possible index for the field.
+
+We can iterate over `ranges` and `possible` pairwise using
+[`zip()`][py-builtin-zip], and use [`enumerate()`][py-builtin-enumerate] to scan
+the values of each ticket while also keeping track of their index.
+
+```python
+# For each valid ticket
+for ticket in filter(is_valid, tickets):
+    # For every field and its possible indexes
+    for rng, poss in zip(ranges, possible):
+        # For each value in the ticket
+        for i, value in enumerate(ticket):
+            # If that value cannot be valid for this field, then remove its
+            # index from the possible indexes for the field
+            if value not in rng and i in poss:
+                poss.remove(i)
+```
+
+Perfect, now taking a look at those `possible` indexes:
+
+```python
+>>> for i, p in enumerate(possible):
+        print(i, p)
+
+0 {0, 1, 3, 4, 8, 11, 12}
+1 {0, 1, 3, 4, 7, 8, 9, 11, 12}
+2 {0, 1, 3, 4, 8, 9, 11, 12}
+...
+15 {8}
+16 {0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19}
+17 {0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 16, 17, 19}
+18 {1, 3, 4, 8, 12}
+19 {8, 12}
+```
+
+Hmm... It doesn't look like we are certain about which field should have which
+position in a ticket. The only one we are sure about seems to be field `15`,
+which we see only has `8` as a possible index. If you look carefully though, you
+can see that field `19` only has `8` and `12` as possible indexes, but we know
+that `8` *must* be the index of field `15`, since no other option is available
+for it. We could therefore remove the `8` from the possible indexes of any other
+field, because we know it must be used for `15`.
+
+More generally, we can do the following in a loop until we find a solution:
+
+1. Find a set of possible indexes which only has one index, remove that index
+   from the set (making the set empty) and assign it to the corresponding field.
+2. Cycle through all the other sets and remove the index we just assigned from
+   each of them.
+3. Check if all the sets are empty: if so, we assigned all field indexes and we
+   are done.
+
+Let's code it in a function:
+
+```python
+def simplify(possible):
+    # Start with None for all fields so that we can catch errors later if some
+    # None is not replaced.
+    assigned = [None] * len(possible)
+
+    # Continue until all sets of possible indexes are empty (i.e. we assigned each field an index)
+    while any(possible):
+        # For each set of possible indexes
+        for i, poss in enumerate(possible):
+            # If only one possible index is left, then it must be assigned to this field
+            if len(poss) == 1:
+                assigned[i] = poss.pop()
+                break
+
+        # Remove the assigned value from every other set
+        for other in possible:
+            if assigned[i] in other:
+                other.remove(match)
+
+    # Optionally check for correctness
+    assert all(a is not None for a in assigned)
+
+    return assigned
+```
+
+Now we can just call the above function to finalize the index assignments and
+know the correct position of each field.
+
+```python
+indexes = simplify(possible)
+```
+
+Now, simply look at the correct index in our ticket for the first 6 fields. In
+order to multiply the values together we can use the helpful
+[`math.prod()`][py-math-prod].
+
+```python
+from math import prod
+
+total = prod(my_ticket[i] for i in indexes)
+print('Part 2:', total)
+```
+
+I feel like after all the travel documents validations in this Advent of Code,
+we're easily going to find a job as an airport passenger check-in officer.
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -3238,6 +3545,7 @@ print('Part 2:', ans)
 [d13]: #day-13---shuttle-search
 [d14]: #day-14---docking-data
 [d15]: #day-15---rambunctious-recitation
+[d16]: #day-16---ticket-translation
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -3254,6 +3562,7 @@ print('Part 2:', ans)
 [d13-problem]: https://adventofcode.com/2020/day/13
 [d14-problem]: https://adventofcode.com/2020/day/14
 [d15-problem]: https://adventofcode.com/2020/day/15
+[d16-problem]: https://adventofcode.com/2020/day/16
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
@@ -3269,6 +3578,7 @@ print('Part 2:', ans)
 [d13-solution]: solutions/day13.py
 [d14-solution]: solutions/day14.py
 [d15-solution]: solutions/day15.py
+[d16-solution]: solutions/day16.py
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
@@ -3304,6 +3614,7 @@ print('Part 2:', ans)
 [py-str-strip]:               https://docs.python.org/3/library/stdtypes.html#str.strip
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 [py-object-init]:             https://docs.python.org/3/reference/datamodel.html#object.__init__
+[py-object-contains]:         https://docs.python.org/3/reference/datamodel.html#object.__contains__
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
@@ -3331,6 +3642,7 @@ print('Part 2:', ans)
 [py-math-ceil]:               https://docs.python.org/3/library/math.html#math.ceil
 [py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
 [py-math-lcm]:                https://docs.python.org/3/library/math.html#math.lcm
+[py-math-prod]:               https://docs.python.org/3/library/math.html#math.prod
 [py-operator-mul]:            https://docs.python.org/3/library/operator.html#operator.mul
 [py-operator-itemgetter]:     https://docs.python.org/3/library/operator.html#operator.itemgetter
 [py-re]:                      https://docs.python.org/3/library/re.html
