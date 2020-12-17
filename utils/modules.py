@@ -9,6 +9,7 @@ from copy import deepcopy
 from functools import lru_cache, reduce, partial
 from collections import defaultdict, deque, namedtuple, Counter
 from operator import itemgetter, attrgetter, methodcaller
+from itertools import product, permutations, combinations
 
 if find_loader('z3') is not None:
 	import z3
