@@ -18,9 +18,12 @@ def all_addrs(addr, mask):
 	for a in product(*args):
 		yield int(''.join(a), 2)
 
-# Alternative manual implementation which takes addr after applying mask to it.
+# Alternative manual implementation.
 #
-# def all_addrs(addr):
+# def all_addrs(addr, mask=None):
+# 	if mask is not None:
+# 		addr = ''.join(a if m == '0' else m for a, m in zip(addr, mask))
+#
 # 	if 'X' in addr:
 # 		yield from all_addrs(addr.replace('X', '0', 1))
 # 		yield from all_addrs(addr.replace('X', '1', 1))
@@ -32,33 +35,26 @@ advent.setup(2020, 14)
 fin = advent.get_input()
 
 lines = fin.readlines()
-rexp = re.compile(r'mem\[(\d+)\] = (\d+)')
+rexp  = re.compile(r'mem\[(\d+)\] = (\d+)')
 table = str.maketrans('1X', '01')
+mem1  = {}
+mem2  = {}
 
-mem = {}
 for line in lines:
 	if line.startswith('mask'):
-		mask      = line[7:].rstrip()
-		real_mask = int(mask.translate(table), 2)
-		addend    = int(mask.replace('X', '0'), 2)
+		mask       = line[7:].rstrip()
+		mask_clear = int(mask.translate(table), 2)
+		mask_set   = int(mask.replace('X', '0'), 2)
 	else:
 		addr, value = map(int, rexp.findall(line)[0])
-		mem[addr] = (value & real_mask) | addend
+		mem1[addr]  = (value & mask_clear) | mask_set
 
-total = sum(mem.values())
-advent.print_answer(1, total)
-
-
-mem = {}
-for line in lines:
-	if line.startswith('mask'):
-		mask = line[7:].rstrip()
-	else:
-		addr, value = map(int, rexp.findall(line)[0])
 		addr = '{:036b}'.format(addr)
-
 		for a in all_addrs(addr, mask):
-			mem[a] = value
+			mem2[a] = value
 
-total = sum(mem.values())
-advent.print_answer(2, total)
+total1 = sum(mem1.values())
+total2 = sum(mem2.values())
+
+advent.print_answer(1, total1)
+advent.print_answer(2, total2)

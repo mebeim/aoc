@@ -2779,52 +2779,53 @@ actually "extract" or "mask" anything, it just replaces bits. However, we can
 turn it into a real mask.
 
 We know that all bits set to `0` or `1` in the mask are going to overwrite the
-bits at the same position in the value. Therefore, we can create a *real mask*
+bits at the same position in the value. Therefore, we can create a *clear mask*
 which has a `1` for each `X` in the mask, and a `0` anywhere else.
 
 Here's an example with only 8 bits to make it simple, the operation can be
 performed with any number of bits:
 
 ```
-     mask  X11XXX0X
-real mask  10011101
+      mask  X11XXX0X
+clear mask  10011101
 ```
 
 We can then use this real mask to actually mask the input value with a
 [*bitwise AND*][wiki-bitwise-and] (`&` in Python), zeroing out every bit of
 `value` that needs to be overwritten by the corresponding `0` or `1` bit in the
-mask. Then, we can extract an actual number (let's call it *addend*) from the
-original mask (ignoring all `X`) and add it to the value. This has the effect of
-overwriting all value bits at the same position of zeros and ones in the mask,
-with the value they have in the mask.
+
+mask. Then, we can extract the actual bits of mask that need to be written to
+the value (let's call this *set mask*) from the original mask (ignoring all `X`)
+and set them with a [*bitwise OR*][wiki-bitwise-or]. This will have the effect
+of setting the needed value bits after clearing them with the *clear mask*.
 
 To make it clear, here's an example:
 
 ```
-     mask  X11XXX0X
-real mask  10011101
-   addend  01100000
+      mask  X11XXX0X
+clear mask  10011101
+  set mask  01100000
 
 Suppose value = 42
 
        value  00101010 &
-   real mask  10011101 =
+  clear mask  10011101 =
 masked value  00001000
 
 masked value  00001000 +
-      addend  01100000 =
- final value  01101000   --> write this to memory
+    set mask  01100000 =
+ final value  01101000   ---> write this to memory
 ```
 
 Now to extract two values from the mask:
 
-- For the *real mask* we need to perform 2 replacements: `1` with `0` and `X`
+- For the *clear mask* we need to perform 2 replacements: `1` with `0` and `X`
   with `1`, then turn the string into an `int`. We can use
   [`str.maketrans()`][py-str-maketrans] plus
   [`str.translate()`][py-str-translate] for this, just like we did in
   [day 5][d05].
-- For the *addend* we just need to replace every `X` with `0` and then turn the
-  string into an `int`.
+- For the *set mask* we just need to replace every `X` with `0` and then turn
+  the string into an `int`.
 
 Finally, when writing to memory, we'll calculate the value as we did in the
 above example. The code is quite simple really:
@@ -2835,16 +2836,13 @@ mem = {}
 
 for line in lines:
     if line.startswith('mask'):
-        mask      = line[7:].rstrip()
-        real_mask = int(mask.translate(table), 2)
-        addend    = int(mask.replace('X', '0'), 2)
+        mask       = line[7:].rstrip()
+        mask_clear = int(mask.translate(table), 2)
+        mask_set   = int(mask.replace('X', '0'), 2)
     else:
         addr, value = map(int, rexp.findall(line)[0])
-        mem[addr] = (value & real_mask) | addend
+        mem[addr] = (value & mask_clear) | mask_set
 ```
-
-I use `|` as a bitwise alternative to `+`, the operation really is the same in
-this case.
 
 Now we can just sum all values in memory and get our answer:
 
@@ -2947,42 +2945,54 @@ def all_addrs(addr, mask): # addr and mask are two strings of 36 characters
         yield int(''.join(a), 2)
 ```
 
-All that's left to do is parse each line and use the above function. To
-transform the decimal addresses that we read from the input into a binary string
-we can use a [format string][py-format-string] specifying `036b` as format.
+All that's left to do is parse each line and use the above function. We can
+simply add a couple of lines in the original loop we wrote for part 1, using a
+second memory dictionaty. To transform the decimal addresses that we read from
+the input into a binary string we can use a [format string][py-format-string]
+specifying `036b` as format.
 
 ```python
-mem = {}
+mem1  = {}
+mem2  = {}
+
 for line in lines:
     if line.startswith('mask'):
-        mask = line[7:].rstrip()
+        mask       = line[7:].rstrip()
+        mask_clear = int(mask.translate(table), 2)
+        mask_set   = int(mask.replace('X', '0'), 2)
     else:
         addr, value = map(int, rexp.findall(line)[0])
+        mem1[addr]  = (value & mask_clear) | mask_set
+
+        # Part 2 code added
         addr = '{:036b}'.format(addr)
-
         for a in all_addrs(addr, mask):
-            mem[a] = value
+            mem2[a] = value
 
-total = sum(mem.values())
-print('Part 2:', total)
+total1 = sum(mem1.values())
+total2 = sum(mem2.values())
+print('Part 1:', total1)
+print('Part 2:', total2)
 ```
 
-An alternative manual implementation of the `product()` function for our
-specific use case would be a recursive generator function that takes an already
-masked address and yields an integer if the address does not contain any `X`,
-otherwise does a recursive call to get all possible values replacing that `X`
-with a `0` and a `1`. The [`yield from`][py-yield-from] "generator delegation"
-syntax comes in handy.
+An alternative manual implementation of the `itertools.product()` function for
+our specific use case would be a recursive generator function whiwh yields an
+integer if the address does not contain any `X`, otherwise does a recursive call
+to get all possible values replacing that `X` with a `0` and a `1`. The [`yield
+from`][py-yield-from] "generator delegation" syntax comes in handy.
 
 ```python
-def all_addrs(addr):
+def all_addrs(addr, mask=None):
+    if mask is not None:
+        addr = ''.join(a if m == '0' else m for a, m in zip(addr, mask))
+
     if 'X' in addr:
         yield from all_addrs(addr.replace('X', '0', 1))
         yield from all_addrs(addr.replace('X', '1', 1))
     else:
         yield int(addr, 2)
 
-# list(all_addrs('1XX')) -> [0b100, 0b101, 0b110, 0b111] -> [4, 5, 6, 7]
+# list(all_addrs('100', '1XX')) -> [0b100, 0b101, 0b110, 0b111] == [4, 5, 6, 7]
 ```
 
 I really appreciate the elegance of the above code, however I chose to go with
