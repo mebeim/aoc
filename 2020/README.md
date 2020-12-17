@@ -20,6 +20,7 @@ Table of Contents
 - [Day 14 - Docking Data][d14]
 - [Day 15 - Rambunctious Recitation][d15]
 - [Day 16 - Ticket Translation][d16]
+- [Day 17 - Conway Cubes][d17]
 
 Day 1 - Report Repair
 ---------------------
@@ -3522,6 +3523,335 @@ print('Part 2:', total)
 I feel like after all the travel documents validations in this Advent of Code,
 we're easily going to find a job as an airport passenger check-in officer.
 
+
+Day 17 - Conway Cubes
+---------------------
+
+[Problem statement][d17-problem] — [Complete solution][d17-solution] — [Back to top][top]
+
+### Part 1
+
+Oh boy, I hope you like [cellular automata][wiki-cellular-automaton]. If you had
+fun on [day 11][d11] you will have a lot more fun today!
+
+I'll cut the gibberish to the minimum and come right to the point: we are
+dealing with a 3-dimensional cellular automaton. In the initial generation all
+cells are dead, except of a few in the [plane][wiki-plane] `z=0`.
+
+Our input consists of the initial state of the cells at `z=0`: we are given a
+grid of characters (`#` for alive, `.` for dead) which is 8 columns wide and 8
+rows tall, representing a portion of 3D space from `(0, 0, 0)` to `(7, 7, 0)`.
+
+We need to simulate life according to two simple rules of evolution from one
+generation to the next:
+
+- If a cell is dead (`.`) and exactly 3 of its neighbors are alive, the cell
+  becomes alive (`#`).
+- If a cell is alive (`#`) and exactly 2 or 3 of its neighbors are alive, the cell
+  *stays alive*, otherwise it dies (`.`).
+
+In 3D space, "neighbors" of a cell means any of the 26 other cells where any of
+their coordinates differ by at most 1. That is, the entire 3x3 cube of cells
+centered at the cell, except the cell itself. You can also see this as the 26
+pieces of a [Rubik's cube][wiki-rubiks-cube].
+
+After evolving for 6 generations, we need to count the number of cells that are
+alive.
+
+Let's get the input parsing out of the way. We have a grid of characters as
+input, so we can just [`rstrip`][py-str-rstrip] each line of input to remove
+trailing newlines using [`map()`][py-builtin-map] and turn the whole thing into
+a `tuple`.
+
+```python
+grid = tuple(map(str.rstrip, fin))
+```
+
+Before we begin writing any more code, we need to think about which data
+structure to use to hold information about cells. It's important to notice that
+we can expand in *any* of the three dimensions, so using matrixes (i.e. nested
+`list`s) to represent each level of our 3-dimensional space is not as simple as
+it looks.
+
+After all, we do not really care how cells are arranged. The only thing we care
+about is being able to tell if a given point `(x, y, z)` in space represents a
+cell that is alive or not. In other words, we only want to keep track of the
+points in space that represent alive cells; we can consider anything else dead.
+
+To do this, we can simply use a `set` of coordinates. Our initial `grid`
+represents a small portion of the plane at `z=0`, so for each `(x, y)` we'll add
+the coordinates `(x, y, 0)` to our set if `grid[x][y]` is alive (`#`). I'll use
+[`enumerate()`][py-builtin-enumerate] to iterate over the grid.
+
+```python
+cube = set()
+
+for x, row in enumerate(grid):
+    for y, cell in enumerate(row):
+        if cell == '#':
+            cube.add((x, y, 0))
+```
+
+Now our `cube` represents the set of coordinates of alive cells in our 3D space.
+
+The next thing to do is define a function which can count how many cells are
+alive around a given cell (given its coordinates). Well, simple enough: it's
+almost the same thing we did in [day 11][d11] part 1. We'll vary each coordinate
+`c` in the range `[c+1, c-1]` and count how many of the coordinates we generate
+is in our `cube`. We don't need to do any bound checking since we don't actually
+have bounds. Doing `coords in cube` is enough to check if a cell at `coords` is
+alive.
+
+```python
+def alive_neighbors(cube, x, y, z):
+    alive = 0
+    for xx in range(x - 1, x + 2):
+        for yy in range(y - 1, y + 2):
+            for zz in range(z - 1, z + 2):
+                # Avoid checking the same cell as the one with the given coordinates
+                if xx != x or yy != y or zz != z:
+                    if (xx, yy, zz) in cube:
+                        alive += 1
+    return alive
+```
+
+We can simplify the above nested loops with the help of
+[`itertools.product()`][py-itertools-product]:
+
+```python
+from itertools import product
+
+def alive_neighbors(cube, x, y, z):
+    alive = 0
+    for coords in product(range(x-1, x+2), range(y-1, y+2), range(z-1, z+2)):
+        if coords in cube:
+            alive += 1
+
+    # Avoid the checking in the above loop and just subtract 1 if we counted the given cell
+    if (x, y, z) in cube:
+        alive -= 1
+
+    return alive
+```
+
+Now we need to evolve the cells. The cells in our `cube` are enclosed in a
+limited cube in space. We want to iterate over each cell of said cube. In
+addition to this, as we noticed earlier, each generation there's also
+possibility that this limited cube "expands". Any of the cells that are adjacent
+to the faces of the cube could potentially become alive if there are exactly 3
+alive cells near it on the face.
+
+For example, in an analogous 2D situation (sorry, can't really do 3D ASCII-art):
+
+```
+.......      .......
+.......      .......
+..##...      ..##...
+...#...  =>  .......
+..###..      ..###..
+.......      ...#... <-- expansion
+.......      .......
+```
+
+To determine the bounds of our limited cube, we need to check the minimum and
+maximum of each dimension (`x`, `y`, `z`) of all the coordinates we have. In
+order to do this, we can use [`max()`][py-builtin-max] plus `map()` to extract a
+given coordinate from each point. Since we also want to check around the cube,
+we'll subtract `1` from each minimum coordinate and add `1` to each maximum
+coordinate (actually `2` since we'll iterate using [`range()`][py-builtin-range]
+which stops one earlier).
+
+```python
+def bounds(cube):
+    lox = min(map(lambda p: p[0], cube)) - 1
+    loy = min(map(lambda p: p[1], cube)) - 1
+    loz = min(map(lambda p: p[2], cube)) - 1
+    hix = max(map(lambda p: p[0], cube)) + 2
+    hiy = max(map(lambda p: p[1], cube)) + 2
+    hiz = max(map(lambda p: p[2], cube)) + 2
+    return range(lox, hix), range(loy, hiy), range(loz, hiz)
+```
+
+We can also use [`operator.itemgetter()`][py-operator-itemgetter] to simplify
+the above:
+
+```python
+def bounds(cube):
+    lox = min(map(itemgetter(0), cube)) - 1
+    # ...
+```
+
+Now that we figured this out, all we have to do is iterate over all possible
+coordinates from `(minx-1, miny-1, minz-1)` to `(maxx+1, maxy+1, maxz+1)` and
+apply the rules. Let's write a function for this:
+
+```python
+def evolve(cube):
+    new = set()
+    rangex, rangey, rangez = bounds(cube)
+
+    for x in rangex:
+        for y in rangey:
+            for z in rangez:
+                alive = alive_neighbors(cube, x, y, z)
+
+                if (x, y, z) in cube:
+                    if alive == 2 or alive == 3:
+                        # alive cell stays alive only if exactly 2 or 3 neighbors are alive
+                        new.add((x, y, z))
+                elif alive == 3:
+                    # dead cell becomes alive only if exactly 3 neighbors are alive
+                    new.add((x, y, z))
+
+    return new
+```
+
+Hmm... That's kind of ugly. Those `3` ranges we return are the perfect use case
+for `itertools.product()`, so let's simplify:
+
+```python
+def evolve(cube):
+    new = set()
+
+    for coords in product(*bounds(cube)):
+        # coords is (x, y, z)
+        alive = alive_neighbors(cube, *coords)
+
+        # Simplified conditions from above
+        if (coords in cube and alive in (2, 3)) or alive == 3:
+            new.add(coords)
+
+    return new
+```
+
+That's nice. We can even turn the `bounds()` function into a generator for added
+coolness:
+
+```python
+def bounds(cube):
+    for i in range(3):
+        lo = min(map(itemgetter(i), cube)) - 1
+        hi = min(map(itemgetter(i), cube)) + 2
+        yield range(lo, hi)
+```
+
+Beautiful! The other code needs no change.
+
+Now that we have all we need, we can finally start simulating. We want to
+simulate 6 generations, then stop and count alive cells: since our `cube` is
+just a set of coordinates of alive cells, we can just take its size after the
+final evolution.
+
+```python
+for _ in range(6):
+    cube = evolve(cube)
+
+total_alive = len(cube)
+print('Part 1:', total_alive)
+```
+
+Well, that was nice! Onto the second part.
+
+### Part 2
+
+For this second part... nothing changes, except that we now have *four*
+dimensions.
+
+Oh no! All the code we wrote works with 3 dimensions, do we need to rewrite
+everything? Well, not quite. We can make the functions a little bit more
+general, adding the number of dimensions as parameter. The code of each function
+stays almost the same, we only need minor changes.
+
+To count alive neighbors, we would need to take an additional parameter `w` for
+the fourth dimension. Let's make it general, taking a tuple of `coords` instead.
+For each coordinate `c` we will create a tuple `(c - 1, c, c + 1)`, then pass
+all those tuples to `itertools.product()`.
+
+```python
+def alive(cube, coords):
+    alive  = 0
+    ranges = ((c - 1, c, c + 1) for c in coords)
+
+    for coords2 in product(*ranges):
+        if coords2 in cube:
+            alive += 1
+
+    if coords in cube:
+        alive -= 1
+
+    return alive
+```
+
+The loop we are doing can really just be simplified down to a single `sum()`:
+
+```python
+def alive_neighbors(cube, coords):
+    ranges = ((c - 1, c, c + 1) for c in coords)
+    alive = sum(p in cube for p in product(*ranges))
+    if coords in cube:
+        alive -= 1
+    return alive
+```
+
+To determine the bounds of our cube (which is now an
+[hypercube][wiki-hypercube]), we can make `bounds()` more general and just
+accept the number of dimensions as parameter:
+
+```python
+def bounds(cube, n_dims):
+    for i in range(n_dims):
+        lo = min(map(itemgetter(i), cube)) - 1
+        hi = max(map(itemgetter(i), cube)) + 2
+        yield range(lo, hi)
+```
+
+Finally, we'll also pass the number of dimensions to `evolve()`, in order to be
+able to pass it to `bounds()`:
+
+```python
+def evolve(cube, n_dims):
+    new = set()
+
+    for coord in product(*bounds(cube, n_dims)):
+        alive = alive_neighbors(cube, coord)
+
+        if (coord in cube and alive in (2, 3)) or alive == 3:
+            new.add(coord)
+
+    return new
+```
+
+The loop for part 1 now becomes:
+
+```python
+for _ in range(6):
+    cube = evolve(cube, 3)
+```
+
+And for part 2 all we have to do is create another cube with an additional
+coordinate set to `0` for all initial points:
+
+```python
+hypercube = set()
+
+for x, row in enumerate(grid):
+    for y, cell in enumerate(row):
+        if cell == '#':
+            hypercube.add((x, y, 0, 0))
+```
+
+Finally we can simulate again passing `n_dims=4` and get our answer:
+
+```python
+for _ in range(6):
+    hypercube = evolve(hypercube, 4)
+
+total_alive = len(hypercube)
+print('Part 2:', total_alive)
+```
+
+What a nice puzzle!
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -3546,6 +3876,7 @@ we're easily going to find a job as an airport passenger check-in officer.
 [d14]: #day-14---docking-data
 [d15]: #day-15---rambunctious-recitation
 [d16]: #day-16---ticket-translation
+[d17]: #day-17---conway-cubes
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -3563,6 +3894,7 @@ we're easily going to find a job as an airport passenger check-in officer.
 [d14-problem]: https://adventofcode.com/2020/day/14
 [d15-problem]: https://adventofcode.com/2020/day/15
 [d16-problem]: https://adventofcode.com/2020/day/16
+[d17-problem]: https://adventofcode.com/2020/day/17
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
@@ -3579,6 +3911,7 @@ we're easily going to find a job as an airport passenger check-in officer.
 [d14-solution]: solutions/day14.py
 [d15-solution]: solutions/day15.py
 [d16-solution]: solutions/day16.py
+[d17-solution]: solutions/day17.py
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
@@ -3612,6 +3945,7 @@ we're easily going to find a job as an airport passenger check-in officer.
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 [py-str-strip]:               https://docs.python.org/3/library/stdtypes.html#str.strip
+[py-str-rstrip]:              https://docs.python.org/3/library/stdtypes.html#str.rstrip
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 [py-object-init]:             https://docs.python.org/3/reference/datamodel.html#object.__init__
 [py-object-contains]:         https://docs.python.org/3/reference/datamodel.html#object.__contains__
@@ -3622,6 +3956,7 @@ we're easily going to find a job as an airport passenger check-in officer.
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
 [py-builtin-pow]:             https://docs.python.org/3/library/functions.html#pow
+[py-builtin-range]:           https://docs.python.org/3/library/functions.html#range
 [py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
@@ -3674,6 +4009,7 @@ we're easily going to find a job as an airport passenger check-in officer.
 [wiki-euclidean-division]:  https://en.wikipedia.org/wiki/Euclidean_division
 [wiki-exponential-time]:    https://en.wikipedia.org/wiki/Time_complexity#Exponential_time
 [wiki-functional-prog]:     https://en.wikipedia.org/wiki/Functional_programming
+[wiki-hypercube]:           https://en.wikipedia.org/wiki/Hypercube
 [wiki-jit]:                 https://en.wikipedia.org/wiki/Just-in-time_compilation
 [wiki-john-horton-conway]:  https://en.wikipedia.org/wiki/John_Horton_Conway
 [wiki-lcm]:                 https://en.wikipedia.org/wiki/Least_common_multiple
@@ -3683,8 +4019,10 @@ we're easily going to find a job as an airport passenger check-in officer.
 [wiki-modular-arithmetic]:  https://en.wikipedia.org/wiki/Modular_arithmetic
 [wiki-modular-congruence]:  https://en.wikipedia.org/wiki/Modular_arithmetic#Congruence
 [wiki-modular-inverse]:     https://en.wikipedia.org/wiki/Modular_multiplicative_inverse
+[wiki-plane]:               https://en.wikipedia.org/wiki/Plane_(geometry)
 [wiki-polynomial-time]:     https://en.wikipedia.org/wiki/Time_complexity#Polynomial_time
 [wiki-reduction]:           https://en.wikipedia.org/wiki/Reduction_Operator
+[wiki-rubiks-cube]:         https://en.wikipedia.org/wiki/Rubik%27s_Cube
 [wiki-running-total]:       https://en.wikipedia.org/wiki/Running_total
 [wiki-set-intersection]:    https://en.wikipedia.org/wiki/Intersection_(set_theory)
 [wiki-set-union]:           https://en.wikipedia.org/wiki/Union_(set_theory)
