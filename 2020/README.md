@@ -2597,8 +2597,8 @@ such that `t + i` is a multiple of `p`. Therefore, for each bus we want to
 satisfy the formula `(t + i) % p == 0`.
 
 *NOTE: going ahead, some basic knowledge of
-[modular arithmetic][wiki-modular-arithmetic] is required, so go ahead and read
-the Wikipedia articles I'll be linking from now on if you have never heard of
+[modular arithmetic][wiki-modular-arithmetic] is required, so feel free to stop
+and read the Wikipedia articles I'll be linking if you are not familiar with
 some of these concepts.*
 
 Putting these constraints in terms of modular arithmetic, using the
@@ -3088,7 +3088,7 @@ def play(nums, n_turns):
 
     for turn in range(len(nums) + 1, n_turns + 1):
         if prev in last_seen:
-            # Before the previous turn, prev was seen at turn last_sen[prev]
+            # Before the previous turn, prev was seen at turn last_seen[prev]
             cur = turn - 1 - last_seen[prev]
         else:
             cur = 0
@@ -3129,7 +3129,7 @@ we see a number at the start and then we only see it again at the end, causing
 the last number to be exactly the total number of turns (minus one I guess). In
 theory this should significantly increase memory usage, but apparently Python
 dictionaries take up a lot of space, and the memory consumption only goes up
-from 360MB to 404MB on my machine using CPython).
+from 360MB to 404MB on my machine using CPython.
 
 So let's do it. We can just create a list of 30M zeroes since we start counting
 turns from `1`. We can then check if `last_seen[last]` is zero or not. Now we
@@ -3291,14 +3291,13 @@ import re
 
 def parse_input(fin):
     ranges = []
-    field_rexp = re.compile(r'(.+): (\d+)-(\d+) or (\d+)-(\d+)')
+    num_exp = re.compile(r'\d+')
 
     for line in map(str.rstrip, fin):
         if not line:
             break
 
-        field, *numbers = field_rexp.findall(line)[0]
-        numbers = map(int, numbers)
+        numbers = map(int, num_exp.findall(line))
         ranges.append(DoubleRange(*numbers))
 
     fin.readline()
@@ -3429,9 +3428,9 @@ def is_valid(ticket):
 
 Sweet. Now we just need to filter out invalid tickets and only work with valid
 ones. Perfect use case for the [`filter()`][py-builtin-filter] buil-in. Then,
-for each of the valid ticket, for all fields we want to check if any of the
-ticket values violate the field validity requirements. If it does, we'll remove
-the index of that value as a possible index for the field.
+for each valid ticket, for each field we want to check if any of the ticket
+values violate that particular field's validity requirements. If so, we'll
+remove the index of that value as a possible index for the field.
 
 We can iterate over `ranges` and `possible` pairwise using
 [`zip()`][py-builtin-zip], and use [`enumerate()`][py-builtin-enumerate] to scan
@@ -3440,7 +3439,7 @@ the values of each ticket while also keeping track of their index.
 ```python
 # For each valid ticket
 for ticket in filter(is_valid, tickets):
-    # For every field and its possible indexes
+    # For every field and its set of possible indexes
     for rng, poss in zip(ranges, possible):
         # For each value in the ticket
         for i, value in enumerate(ticket):
@@ -3488,8 +3487,7 @@ Let's code it in a function:
 
 ```python
 def simplify(possible):
-    # Start with None for all fields so that we can catch errors later if some
-    # None is not replaced.
+    # Start with None for all fields so that we can catch errors later if some None is not replaced.
     assigned = [None] * len(possible)
 
     # Continue until all sets of possible indexes are empty (i.e. we assigned each field an index)
@@ -3519,9 +3517,9 @@ know the correct position of each field.
 indexes = simplify(possible)
 ```
 
-Now, simply look at the correct index in our ticket for the first 6 fields. In
-order to multiply the values together we can use the helpful
-[`math.prod()`][py-math-prod].
+Now, simply look at the correct index in our ticket for the first 6 fields and
+calculate their product. In order to multiply the values together we can use the
+helpful [`math.prod()`][py-math-prod].
 
 ```python
 from math import prod
@@ -3555,23 +3553,24 @@ rows tall, representing a portion of 3D space from `(0, 0, 0)` to `(7, 7, 0)`.
 We need to simulate life according to two simple rules of evolution from one
 generation to the next:
 
-- If a cell is dead (`.`) and exactly 3 of its neighbors are alive, the cell
-  becomes alive (`#`).
-- If a cell is alive (`#`) and exactly 2 or 3 of its neighbors are alive, the cell
-  *stays alive*, otherwise it dies (`.`).
+- If a cell is dead (`.`) and exactly 3 of its neighbors are alive (`#`), the
+  cell becomes alive (`#`).
+- If a cell is alive (`#`) and exactly 2 or 3 of its neighbors are alive (`#`),
+  the cell *stays alive*, otherwise it dies (`.`).
 
 In 3D space, "neighbors" of a cell means any of the 26 other cells where any of
 their coordinates differ by at most 1. That is, the entire 3x3 cube of cells
-centered at the cell, except the cell itself. You can also see this as the 26
-pieces of a [Rubik's cube][wiki-rubiks-cube].
+centered at the coordinates of the cell, except the cell itself. You can also
+see this as the 26 pieces surrounding the core of a
+[Rubik's cube][wiki-rubiks-cube].
 
 After evolving for 6 generations, we need to count the number of cells that are
 alive.
 
-Let's get the input parsing out of the way. We have a grid of characters as
-input, so we can just [`rstrip`][py-str-rstrip] each line of input to remove
-trailing newlines using [`map()`][py-builtin-map] and turn the whole thing into
-a `tuple`.
+Let's get input parsing out of the way. We have a grid of characters as input,
+so we can just [`rstrip`][py-str-rstrip] each line of input to remove trailing
+newlines using [`map()`][py-builtin-map] and turn the whole thing into a
+`tuple`.
 
 ```python
 grid = tuple(map(str.rstrip, fin))
@@ -3646,21 +3645,21 @@ def alive_neighbors(cube, x, y, z):
 
 Now we need to evolve the cells. The cells in our `cube` are enclosed in a
 limited cube in space. We want to iterate over each cell of said cube. In
-addition to this, as we noticed earlier, each generation there's also
-possibility that this limited cube "expands". Any of the cells that are adjacent
-to the faces of the cube could potentially become alive if there are exactly 3
-alive cells near it on the face.
+addition to this, as we noticed earlier, each generation there's also a
+possibility that this limited cube "expands" or even moves around. Any of the
+cells that are adjacent to the faces of the cube could potentially become alive
+if there are exactly 3 alive cells nearby on a face.
 
 For example, in an analogous 2D situation (sorry, can't really do 3D ASCII-art):
 
 ```
-.......      .......
-.......      .......
-..##...      ..##...
-...#...  =>  .......
-..###..      ..###..
-.......      ...#... <-- expansion
-.......      .......
+. . . . .      . . . . .
+. . . . .      . . . . .
+. # # . .      . # # . .
+. . # . .  =>  . . . . .
+. # # # .      . # # # .
+. . . . .      . . # . . <-- expansion
+. . . . .      . . . . .
 ```
 
 To determine the bounds of our limited cube, we need to check the minimum and
@@ -3673,12 +3672,12 @@ which stops one earlier).
 
 ```python
 def bounds(cube):
-    lox = min(map(lambda p: p[0], cube)) - 1
-    loy = min(map(lambda p: p[1], cube)) - 1
-    loz = min(map(lambda p: p[2], cube)) - 1
-    hix = max(map(lambda p: p[0], cube)) + 2
-    hiy = max(map(lambda p: p[1], cube)) + 2
-    hiz = max(map(lambda p: p[2], cube)) + 2
+    lox = min(map(lambda p: p[0], cube)) - 1 # minimum x coordinate minus 1
+    loy = min(map(lambda p: p[1], cube)) - 1 # minimum y coordinate minus 1
+    loz = min(map(lambda p: p[2], cube)) - 1 # minimum z coordinate minus 1
+    hix = max(map(lambda p: p[0], cube)) + 2 # maximum x coordinate plus 2
+    hiy = max(map(lambda p: p[1], cube)) + 2 # maximum y coordinate plus 2
+    hiz = max(map(lambda p: p[2], cube)) + 2 # maximum z coordinate plus 2
     return range(lox, hix), range(loy, hiy), range(loz, hiz)
 ```
 
@@ -3735,7 +3734,7 @@ def evolve(cube):
 ```
 
 That's nice. We can even turn the `bounds()` function into a generator for added
-coolness:
+coolness (and speed):
 
 ```python
 def bounds(cube):
@@ -3745,12 +3744,12 @@ def bounds(cube):
         yield range(lo, hi)
 ```
 
-Beautiful! The other code needs no change.
+Beautiful! The `evolve()` code above needs no change.
 
 Now that we have all we need, we can finally start simulating. We want to
 simulate 6 generations, then stop and count alive cells: since our `cube` is
-just a set of coordinates of alive cells, we can just take its size after the
-final evolution.
+just a set of coordinates of alive cells' cordinates, we can simply take its
+size after the final evolution.
 
 ```python
 for _ in range(6):
@@ -3770,15 +3769,16 @@ dimensions.
 Oh no! All the code we wrote works with 3 dimensions, do we need to rewrite
 everything? Well, not quite. We can make the functions a little bit more
 general, adding the number of dimensions as parameter. The code of each function
-stays almost the same, we only need minor changes.
+stays almost the same, we only need to apply minor changes.
 
 To count alive neighbors, we would need to take an additional parameter `w` for
 the fourth dimension. Let's make it general, taking a tuple of `coords` instead.
 For each coordinate `c` we will create a tuple `(c - 1, c, c + 1)`, then pass
-all those tuples to `itertools.product()`.
+all those tuples to `itertools.product()` (we could even do this using
+`range()`, but for only three values we won't really see any difference).
 
 ```python
-def alive(cube, coords):
+def alive_neighbors(cube, coords):
     alive  = 0
     ranges = ((c - 1, c, c + 1) for c in coords)
 
@@ -3792,14 +3792,16 @@ def alive(cube, coords):
     return alive
 ```
 
-The loop we are doing can really just be simplified down to a single `sum()`:
+The loop we are doing can really just be simplified down to a single `sum()`.
+Additionally, since booleans can be summed to integers acting as `0` or `1`, we
+can also remove the `if coords in cube` and just directly do a subtraction
+instead.
 
 ```python
 def alive_neighbors(cube, coords):
     ranges = ((c - 1, c, c + 1) for c in coords)
-    alive = sum(p in cube for p in product(*ranges))
-    if coords in cube:
-        alive -= 1
+    alive  = sum(p in cube for p in product(*ranges))
+    alive -= coords in cube
     return alive
 ```
 
@@ -3960,6 +3962,7 @@ What a nice puzzle!
 [py-object-init]:             https://docs.python.org/3/reference/datamodel.html#object.__init__
 [py-object-contains]:         https://docs.python.org/3/reference/datamodel.html#object.__contains__
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
+[py-builtin-any]:             https://docs.python.org/3/library/functions.html#any
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
@@ -4005,6 +4008,7 @@ What a nice puzzle!
 [wiki-2d-rotation]:         https://en.wikipedia.org/wiki/Rotations_and_reflections_in_two_dimensions
 [wiki-bitmask]:             https://en.wikipedia.org/wiki/Mask_(computing)
 [wiki-bitwise-and]:         https://en.wikipedia.org/wiki/Bitwise_operation#AND
+[wiki-bitwise-or]:          https://en.wikipedia.org/wiki/Bitwise_operation#OR
 [wiki-cartesian-coords]:    https://en.wikipedia.org/wiki/Cartesian_coordinate_system
 [wiki-cellular-automaton]:  https://en.wikipedia.org/wiki/Cellular_automaton
 [wiki-chinese-remainder]:   https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Statement
