@@ -3236,7 +3236,7 @@ Day 16 - Ticket Translation
 ### Part 1
 
 Yet another input validation puzzle. This time we're going to validate some
-very detailed plane tickets.
+very detailed train tickets.
 
 Each ticket is composed of 20 fields, and each kind of field has some validity
 requirements. The input we get is split in 3 parts, separated by empty lines:
