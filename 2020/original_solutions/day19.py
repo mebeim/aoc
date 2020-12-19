@@ -37,6 +37,11 @@ for l in fin:
 	rules[n] = arr
 
 
+# NOTE: I got lucky with this one. This function fails to recognize cases in
+#       which both options of an or (|) are a match, stopping at the first one.
+#       In such case, if the first option fails later on we report failure, even
+#       though the second option could have continued matching.This is taken
+#       into account by the second function.
 # @selective_cache('s', 'src', 'i')
 def validate(s, src, i, d):
 	# log = rlog(d)
