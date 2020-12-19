@@ -11,11 +11,12 @@ class UnionFind:
 	class Element:
 		# Internal rich representation of user elements.
 		# Each Element is in a circular linked list of els of the same set.
-		__slots__ = ('el', 'parent', 'rank', 'next')
+		__slots__ = ('el', 'rank', 'size', 'parent', 'next')
 
 		def __init__(self, el):
 			self.el     = el
 			self.rank   = 0
+			self.size   = 1
 			self.parent = self
 			self.next   = self
 
@@ -74,7 +75,8 @@ class UnionFind:
 		return self._find(uel).el
 
 	def union(self, a, b):
-		'''Merge the set containing a with the set containing b.'''
+		'''Merge the set containing a with the set containing b. Returns the new
+		size of the merged set.'''
 		try:
 			ua = self.elements[a]
 			ub = self.elements[b]
@@ -90,15 +92,26 @@ class UnionFind:
 			ua, ub = ub, ua
 
 		ub.parent = ua
+		ua.size += ub.size
 		if ua.rank == ub.rank:
 			ua.rank += 1
 
 		ua.next, ub.next = ub.next, ua.next
 		self.size -= 1
+		return ua.size
 
 	def merge(self, a, b):
 		'''Convenience alias for union().'''
-		self.union(a, b)
+		return self.union(a, b)
+
+	def get_size(self, el):
+		'''Get the size of the set of elements of which el is a member.'''
+		try:
+			uel = self.elements[el]
+		except:
+			raise LookupError('element is not in the UnionFind')
+
+		return self._find(uel).size
 
 	def iter_set(self, el):
 		'''Iterator over each element in the same set of el (el included).'''
