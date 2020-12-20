@@ -92,6 +92,7 @@ def rotate90(t):
 
 	return new
 
+# NOTE: this function does not properly flip the image
 def fliph(t):
 	h, w = len(t[0]), len(t)
 	new = [[None for _ in range(w)] for __ in range(h)]
@@ -309,7 +310,7 @@ def oof(xx):
 
 # dump_char_matrix(final)
 
-nmonsters = oof(final) + 2 # apparently bugged, whatever
+nmonsters = oof(final) + 2 # fliph is bugged and this counts wrong, whatever
 # eprint('# monsters:', nmonsters)
 
 water = sum(row.count('#') for row in final)
@@ -317,5 +318,5 @@ tot = water - len(DELTAS) * nmonsters
 
 # n 19 tot 1735 wrong
 # n 20 tot 1720 wrong
-# n 21 tot 1705 wrong - there's some bug counting monsters...
+# n 21 tot 1705 wrong
 advent.print_answer(2, tot)
