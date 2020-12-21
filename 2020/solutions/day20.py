@@ -110,8 +110,6 @@ def count_pattern(image, pattern):
 			if cell == '#':
 				deltas.append((r, c))
 
-	print(deltas)
-
 	for img in arrangements(image):
 		n = 0
 		for r in range(image_sz - pattern_h):
