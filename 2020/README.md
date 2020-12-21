@@ -2798,7 +2798,6 @@ clear mask  10011101
 We can then use this real mask to actually mask the input value with a
 [*bitwise AND*][wiki-bitwise-and] (`&` in Python), zeroing out every bit of
 `value` that needs to be overwritten by the corresponding `0` or `1` bit in the
-
 mask. Then, we can extract the actual bits of mask that need to be written to
 the value (let's call this *set mask*) from the original mask (ignoring all `X`)
 and set them with a [*bitwise OR*][wiki-bitwise-or]. This will have the effect
@@ -3241,7 +3240,7 @@ Day 16 - Ticket Translation
 ### Part 1
 
 Yet another input validation puzzle. This time we're going to validate some
-very detailed plane tickets.
+very detailed train tickets.
 
 Each ticket is composed of 20 fields, and each kind of field has some validity
 requirements. The input we get is split in 3 parts, separated by empty lines:
@@ -3549,7 +3548,7 @@ fun on [day 11][d11] you will have a lot more fun today!
 
 I'll cut the gibberish to the minimum and come right to the point: we are
 dealing with a 3-dimensional cellular automaton. In the initial generation all
-cells are dead, except of a few in the [plane][wiki-plane] `z=0`.
+cells are dead, except for a few in the [plane][wiki-plane] `z=0`.
 
 Our input consists of the initial state of the cells at `z=0`: we are given a
 grid of characters (`#` for alive, `.` for dead) which is 8 columns wide and 8
@@ -3583,7 +3582,7 @@ grid = tuple(map(str.rstrip, fin))
 
 Before we begin writing any more code, we need to think about which data
 structure to use to hold information about cells. It's important to notice that
-we can expand in *any* of the three dimensions, so using matrixes (i.e. nested
+we can expand in *any* of the three dimensions, so using matrices (i.e. nested
 `list`s) to represent each level of our 3-dimensional space is not as simple as
 it looks.
 
@@ -3753,8 +3752,8 @@ Beautiful! The `evolve()` code above needs no change.
 
 Now that we have all we need, we can finally start simulating. We want to
 simulate 6 generations, then stop and count alive cells: since our `cube` is
-just a set of coordinates of alive cells' cordinates, we can simply take its
-size after the final evolution.
+just a set of coordinates of alive cells, we can simply take its size after the
+final evolution.
 
 ```python
 for _ in range(6):
@@ -3921,11 +3920,11 @@ tiles = parse_input(fin)
 ```
 
 A function to extract an edge given a tile and a side (north, south, east, west)
-would be really useful. It will simply take two parameters: tile and side. Then,
-based on the side, we'll simply iterate over all its characters and return a
-string. For north and south it's pretty simple, we already have the string in
-the tile itself. For east or west we need to join together all characters of
-the first or last column respectively.
+would be really useful. It will simply take two parameters: tile and side. Based
+on the side, we'll iterate over all the characters of the corresponding edge and
+return a string. For north and south it's straightforward, we already have the
+string as a row of the tile. For east or west we need to join together all
+characters of the first or last column respectively.
 
 ```python
 def edge(matrix, side):
@@ -3984,7 +3983,7 @@ It's easy to notice the above with a simple drawing:
 +---+---+---+
 | 1 | 2 | 3 |
 +---+---+---+   Corner tiles: 1, 3, 7, 9
-| 4 | 5 | 6 |   Side tiles  : 2, 4, 6, 9
+| 4 | 5 | 6 |   Side tiles  : 2, 4, 6, 8
 +---+---+---+   Center tiles: 5
 | 7 | 8 | 9 |
 +---+---+---+
@@ -3992,7 +3991,7 @@ It's easy to notice the above with a simple drawing:
 
 In order to do the matching, we can look at every possible pair of tiles, and
 for each pair check if any two edges match. It's important to remember that
-tiles can be in any orientation and could even flipped. Trying to match each
+tiles can be in any orientation and could even be flipped. Trying to match each
 pair of edges for every couple of tiles we are already taking into account
 different orientations, but we also need to take into account flipping. We can
 do this by also checking if pairs of edges match when either one is flipped
@@ -4078,18 +4077,18 @@ After counting the number of sea monsters in the final image, we need to
 calculate the "water roughness" of the sea, which corresponds to the number of
 `#` that are *not* part of any sea monster.
 
-This is not a simple task, or actually. Well, it's not complicated either, it's
-just a really tedious process. We need to master the art of tile manipulation in
-order to go through all the steps needed to recompose the image without
-mistakes, which are pretty easy to make in such a scenario.
+This is not a simple task. Well, it's not complicated either, it's just a really
+tedious process. We need to master the art of tile manipulation in order to go
+through all the steps needed to recompose the image without mistakes, which are
+pretty easy to make in such a scenario.
 
 The first thing to notice is that we cannot really say which corner tile should
 go where since the tiles are arbitrarily rotated/flipped. It's not a problem
-though, we can really just pick any of the corner tiles we found earlier, and
-then start matching one tile after the other matching one edge at a time.
+though, we can just pick any of the corner tiles we found earlier, and then
+start matching one tile after the other, matching one edge at a time.
 
 We'll start by picking an arbitrary top left corner tile, and then rotate it
-until the two matching sides are on the right (east) and bottom (south). This
+until the two matching edges are on the right (east) and bottom (south). This
 way, the tile will be in the correct position, and we can start attaching tiles
 to either of the two edges. In order to know how many times we need to rotate
 the top left tile we need to first know which on which sides we matched it.
@@ -4190,11 +4189,11 @@ Now the top-left corner tile is oriented in the right direction, and we can
 start thinking about matching other tiles on its east and south edges.
 
 
-Let's calculate the dimension (in tiles) the final image (yes, we already know
-it should be 12x12 tiles, but let's not "cheat" and determine it from the input
-instead). Since the image is a square, we can calculate the square root of the
-number of tiles to know its dimension. The [power operator][py-power] (`**`) in
-Python can be used to compute roots by providing exponents smaller than `1`.
+Let's calculate the dimensions (in tiles) of the final image (yes, we already
+know it should be 12x12 tiles, but let's not "cheat" and determine it from the
+input instead). Since the image is a square, we can calculate the square root of
+the number of tiles to know its dimension. The [power operator][py-power] (`**`)
+in Python can be used to compute roots by providing exponents smaller than `1`.
 
 ```python
 image_dimension = int(len(tiles) ** 0.5)
@@ -4280,7 +4279,7 @@ def matching_row(prev, tiles, tiles_per_row):
 ```
 
 Now, as we should remember, each tile of the final image needs to be stripped of
-its outermost edges after being correctly placed. We'll get from 10x10 tiles to
+its outermost edges after being correctly placed. We'll go from 10x10 tiles to
 8x8 tiles. Let's write yet another helper function to "strip" the edges of a
 tile. It's quite straightforward: take every row except the first and last, and
 again for each row take all characters except the first the last. It's really
@@ -4295,7 +4294,7 @@ Now we can actually start building the image: we'll start from the top left
 corner, and keep adding rows using `matching_row()` until tiles run out. Each
 tile of each row will be passed through `strip_edges()`, builting a completely
 new row of stripped tiles (and this is why we only need to iterate over the rows
-returned by `matching_row()` once.
+returned by `matching_row()` once).
 
 After matching and stripping all tiles of a row, we can "join" them together
 into 8 rows of the final image using [`zip()`][py-builtin-zip] plus
@@ -4329,7 +4328,7 @@ def build_image(top_left_tile, tiles, image_dimension):
 Woah, almost there. We can finally build the image!
 
 ```python
-# Remove to-left tile from the tiles to match first. We need to do this since
+# Remove top-left tile from the tiles to match first. We need to do this since
 # our `top_left` is the result of rotations, hence it will no longer be equal to
 # the one in the `tiles` dictionary.
 tiles.pop(top_left_id)
@@ -4454,7 +4453,7 @@ name.
 We know that each recipe contains at least the listed allergens, but it could
 also contain more allergens which are not explicitly listed. Given our input, we
 must determine which ingredients are safe and definitely *don't* contain
-allergens, and count the number of times any of those ingredients appears in the
+allergens, and count the number of times any of those ingredients appear in the
 menu.
 
 Our task is not obvious, but we can understand it better through an example.
@@ -4479,14 +4478,19 @@ Remember that there is a 1-to-1 association between allergens and ingredients,
 so if `aceto` was the ingredient containing `dairy`, we should see `aceto` it in
 every dish which contains `dairy`. The same reasoning goes for `fish`. Since we
 see two other plates with `dairy` or `fish`, but none of them has `aceto` as an
-ingredient, we can conclude that `aceto` can be neither of those, and does not
-contain any allergen.
+ingredient, we can conclude that `aceto` can contain neither of those, and does
+not contain any allergen at all.
 
-Applying the same reasoning to all the ingredients of the above menu, we can
+In short, *all the ingridients missing from a specific recipe cannot possibly
+contain any of the allergenes listed in the recipe*. This appears to be the only
+deduction that we are allowed to make based on the given menu, and indeed it is
+enough to solve the problem.
+
+Applying this reasoning to all the ingredients of the above example menu, we can
 come to the conclusion that none of `aceto`, `origano`, `riso` and `patate`
 contain allergens. Counting the occurrences of those, the answer would be `5`.
 
-We can apply the above reasoning to each ingredient of the real menu to find out
+We can now apply the reasoning to each ingredient of the real menu to find out
 which ingredients don't contain allergens.
 
 Let's start with input parsing. We could use a regex, but the recipe format is
@@ -4565,6 +4569,9 @@ def safe_ingredients(recipes, possible_allers, recipes_with):
 safe = safe_ingredients(recipes, possible_allers, recipes_with)
 ```
 
+The continuous checking `if ingr not in recipes[i]` is the reason we used sets
+instead of lists for recipe ingredients.
+
 We can simplify the innermost `for` loop above using [`any()`][py-builtin-any],
 and replacing the `for` with a simple [generator expression][py-generator-expr],
 since all it's doing is checking if the ingredient `ingr` is in any of the
@@ -4585,14 +4592,14 @@ this easily we can use [`sum()`][py-builtin-sum]:
 
 ```python
 tot = 0
-for ingr in no_allergens:
+for ingr in safe:
     tot += sum(ingr in r for r in recipes)
 ```
 
 We can actually also compress the outer `for` into `sum()`:
 
 ```python
-tot = sum(ingr in r for r in recipes for ingr in no_allergens)
+tot = sum(ingr in r for r in recipes for ingr in safe)
 print('Part 1:' tot)
 ```
 
