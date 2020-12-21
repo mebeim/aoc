@@ -21,6 +21,9 @@ Table of Contents
 - [Day 15 - Rambunctious Recitation][d15]
 - [Day 16 - Ticket Translation][d16]
 - [Day 17 - Conway Cubes][d17]
+- *Day 18 - TODO*
+- *Day 19 - TODO*
+- [Day 20 - Jurassic Jigsaw][d20]
 
 Day 1 - Report Repair
 ---------------------
@@ -3864,6 +3867,572 @@ print('Part 2:', total_alive)
 
 What a nice puzzle!
 
+
+Day 20 - Jurassic Jigsaw
+------------------------
+
+[Problem statement][d20-problem] — [Complete solution][d20-solution] — [Back to top][top]
+
+### Part 1
+
+Today's puzzle is a literal puzzle, a jigsaw puzzle to be precise. Strap in
+because this is going to get wild. I'd recommend reading the problem statement
+linked above before continuing, in order to better understand what we're dealing
+with.
+
+We are given a list of ASCII-art tiles as input. Each tile is a little grid of
+10x10 characters and has an unique ID. We are told that these tiles compose a
+larger square image (we have 144 tiles, so the image is going to be 12x12
+tiles).
+
+The tiles we are given are in no particular order, and are also randomly flipped
+and rotated. The only thing that we know is that tiles which are supposed to be
+next to each other in the final image have matching edges, and the edge of each
+tile only matches exactly one other tile.
+
+For the first part of the problem we need to identify the four corner tiles of
+the image and calculate the product of their IDs.
+
+We're gonna write a lot of code, so better start using functions. The very first
+thing to do is of course parsing the input. Simple enough, there's one empty
+line between tiles, so we can split the input on a double newline (`\n\n`), then
+take the ID from the first line of each tile and the actual character grid from
+the others. I'll build a dictionary `{id: tile}`, where `tile` is a grid of
+characters (`list` of strings). I'll use [`map()`][py-builtin-map] to split each
+tile in lines through [`str.splitlines()`][py-str-splitlines], then simply
+iterate over those.
+
+```python
+def parse_input(fin):
+    raw_tiles = fin.read().rstrip().split('\n\n')
+    raw_tiles = map(str.splitlines, raw_tiles)
+    tiles = {}
+
+    for t in raw_tiles:
+        tid = int(t[0][5:-1])
+        tiles[tid] = t[1:]
+
+    return tiles
+
+fin = open(...)
+tiles = parse_input(fin)
+```
+
+A function to extract an edge given a tile and a side (north, south, east, west)
+would be really useful. It will simply take two parameters: tile and side. Then,
+based on the side, we'll simply iterate over all its characters and return a
+string. For north and south it's pretty simple, we already have the string in
+the tile itself. For east or west we need to join together all characters of
+the first or last column respectively.
+
+```python
+def edge(matrix, side):
+    if side == 'n':
+        return matrix[0] # north == first row
+    if side == 's':
+        return matrix[-1] # south == last row
+
+    res = ''
+    if side == 'e':
+        for row in matrix:
+            res += row[-1] # east == last column
+    else:
+        # 'w'
+        for row in matrix:
+            res += row[0] # east == first column
+
+    return res
+```
+
+The above function can be simplified further taking advantage of
+[`operator.itemgetter()`][py-operator-itemgetter] to extract all characters with
+a single `map()`:
+
+```python
+from operator import itemgetter
+
+def edge(matrix, side):
+    if side == 'n':
+        return matrix[0]
+    if side == 's':
+        return matrix[-1]
+    if side == 'e':
+        return ''.join(map(itemgetter(-1), matrix))
+    # 'w'
+    return ''.join(map(itemgetter(0), matrix))
+```
+
+Now that we have a dictionary of tiles and a function to extract edges, we can
+start matching them together based on their edges. If we count the number of
+matching sides for each tile, we can easily distinguish between three different
+kinds of tiles:
+
+- Corner tiles: the ones we are actually looking for. These will only have two
+  matching tiles, since two of their sides will compose the outer border of the
+  image.
+- Side tiles: tiles that are on an edge, but are not corner tiles. These will
+  match exactly 3 other tiles, since one side is on the outside border of the
+  image.
+- Center tiles: tiles that are not on an edge and will therefore have a tile
+  connected to each of their edges, matching exactly 4 other tiles.
+
+It's easy to notice the above with a simple drawing:
+
+```
++---+---+---+
+| 1 | 2 | 3 |
++---+---+---+   Corner tiles: 1, 3, 7, 9
+| 4 | 5 | 6 |   Side tiles  : 2, 4, 6, 9
++---+---+---+   Center tiles: 5
+| 7 | 8 | 9 |
++---+---+---+
+```
+
+In order to do the matching, we can look at every possible pair of tiles, and
+for each pair check if any two edges match. It's important to remember that
+tiles can be in any orientation and could even flipped. Trying to match each
+pair of edges for every couple of tiles we are already taking into account
+different orientations, but we also need to take into account flipping. We can
+do this by also checking if pairs of edges match when either one is flipped
+(i.e. the string representing it is reversed).
+
+The function we're going to write takes our `tiles` dictionary as only
+parameter, and spits out a list of corner IDs as result. To track the number of
+matches per tile, we'll use a [`defaultdict`][py-collections-defaultdict] of
+integers (which simplifies the addition of new items). In order to iterate over
+all possible pairs of different tiles we'll use the very handy
+[`combinations()`][py-itertools-combinations] from the
+[`itertools`][py-itertools] module.
+
+```python
+from collections import defaultdict
+from itertools import combinations
+
+def match_tiles(tiles):
+    matching_sides = defaultdict(int)
+    corners = []
+
+    # For every pair of distinct tiles
+    for id_a, id_b in combinations(tiles, 2):
+        a, b = tiles[id_a], tiles[id_b]
+
+        # For each possible pair of sides
+        for side_a in 'nsew':
+            for side_b in 'nsew':
+                # Extract the edges correspoinding to these sides
+                edge_a, edge_b = edge(a, side_a), edge(b, side_b)
+
+                # Check if they match
+                if edge_a == edge_b or edge_a == edge_b[::-1]:
+                    matching_sides[id_a] += 1
+                    matching_sides[id_b] += 1
+
+    # Find the corner tiles by checking tiles that only match two other tiles
+    for tid, n_sides in matching_sides.items():
+        if n_sides == 2:
+            corners.append(tid)
+
+    assert len(corners) == 4 # Sanity check
+    return corners
+```
+
+Now we can just call the above function and get our answer using
+[`math.prod()`][py-math-prod] to easily compute the product of the returned list
+of corner IDs:
+
+```python
+corners = match_tiles(tiles)
+ans = prod(corners)
+print('Part 1:', ans)
+```
+
+Well, that was easy. Now comes the fun part...
+
+### Part 2
+
+For this second part we actually need to reconstruct the whole image. This means
+solving the jigsaw puzzle of tiles, rotating and flipping each one of them until
+all of them match together.
+
+After all tiles are matched, we need to strip away their outermost edges (the
+ones that we used to match them together). The resulting tiles will be 8x8, and
+will constitute the final image. Once we have the final image, we need to find
+and count the number of times a specific pattern appears.
+
+The pattern we need to count is the one of a "sea monster":
+
+```
+                  #
+#    ##    ##    ###
+ #  #  #  #  #  #
+```
+
+Each `#` in the pattern must match a `#` in the image, while spaces can be
+ignored. Important detail: we don't know which way the final image should be
+oriented/flipped. We must check each orientation of each side until we find the
+right one containing sea monsters.
+
+After counting the number of sea monsters in the final image, we need to
+calculate the "water roughness" of the sea, which corresponds to the number of
+`#` that are *not* part of any sea monster.
+
+This is not a simple task, or actually. Well, it's not complicated either, it's
+just a really tedious process. We need to master the art of tile manipulation in
+order to go through all the steps needed to recompose the image without
+mistakes, which are pretty easy to make in such a scenario.
+
+The first thing to notice is that we cannot really say which corner tile should
+go where since the tiles are arbitrarily rotated/flipped. It's not a problem
+though, we can really just pick any of the corner tiles we found earlier, and
+then start matching one tile after the other matching one edge at a time.
+
+We'll start by picking an arbitrary top left corner tile, and then rotate it
+until the two matching sides are on the right (east) and bottom (south). This
+way, the tile will be in the correct position, and we can start attaching tiles
+to either of the two edges. In order to know how many times we need to rotate
+the top left tile we need to first know which on which sides we matched it.
+Let's modify the `match_tiles()` function defined in part 1 to also return the
+matching sides for the corner tiles, the only real change is turning the
+`matching_sides` into dictionary a `defaultdict` of strings instead of integers.
+
+```python
+def match_tiles(tiles):
+    matching_sides = defaultdict(str) # changed
+    corners = {}                      # changed
+
+    for id_a, id_b in combinations(tiles, 2):
+        a, b = tiles[id_a], tiles[id_b]
+
+        for side_a in 'nsew':
+            for side_b in 'nsew':
+                edge_a, edge_b = edge(a, side_a), edge(b, side_b)
+
+                if edge_a == edge_b or edge_a == edge_b[::-1]:
+                    matching_sides[id_a] += side_a  # changed
+                    matching_sides[id_b] += side_b  # changed
+
+    for tid, sides in matching_sides.items():
+        if len(sides) == 2:      # changed
+            corners[tid] = sides # changed
+
+    assert len(corners) == 4
+    return corners
+
+corners = match_tiles(tiles)
+# Something like: {1453: 'nw', 2897: 'nw', 1439: 'se', 2477: 'sw'}
+```
+
+In order to rotate a tile 90 degrees, we can write a simple helper function.
+Rotating 90 degrees clockwise can be done by iterating over each column from the
+bottom and turning it into a string, appending it to a new tile as a row.
+
+```python
+# A A A    C B A
+# B B B -> C B A
+# C C C    C B A
+
+def rotate90(tile):
+    new = []
+    for c in range(len(tile[0])):
+        new_row = ''
+        for row in tile[::-1]: # rows in reverse order
+            new_row += row[c]
+        new.append(new_row)
+
+    return new
+```
+
+The above can then be simplified using [`str.join`][py-str-join] and a
+[generator expression][py-generator-expr]:
+
+```python
+def rotate90(tile):
+    new = []
+    for c in range(len(tile[0])):
+        new_row = ''.join(row[c] for row in tile)[::-1]
+        new.append(new_row)
+    return new
+```
+
+And even more exploiting the [`zip()`][py-builtin-zip] function along with
+[unpacking][py-unpacking] as a way to easily iterate over all characters of each
+row at once:
+
+```python
+def rotate90(matrix):
+    return tuple(''.join(reversed(x)) for x in zip(*matrix))
+```
+
+Now let's take an arbitrary top-left corner, and rotate it until the two
+matching edges are south and east (we technically could already have one that is
+correctly oriented (e.g. `1439` in the code above), but we want to write a
+general solution.
+
+```python
+top_left_id, matching_sides = corners.popitem()
+top_left = tiles[top_left_id]
+
+if matching_sides in ('ne', 'en'):   # North & East edges match other tiles, rotate 90 degrees clockwise
+    top_left = rotate90(top_left)
+elif matching_sides in ('nw', 'wn'): # North & West edges match other tiles, rotate 180 degrees clockwise
+    top_left = rotate90(rotate90(top_left))
+elif matching_sides in ('sw', 'ws'): # South & West edges match other tiles, rotate 270 degrees clockwise
+    top_left = rotate90(rotate90(rotate90(top_left)))
+```
+
+We could have also written specific functions to rotate a tile more than 90
+degrees, but this is the only time we'll need to do more than one 90 degree
+rotation at once, so it's no issue.
+
+Now the top-left corner tile is oriented in the right direction, and we can
+start thinking about matching other tiles on its east and south edges.
+
+
+Let's calculate the dimension (in tiles) the final image (yes, we already know
+it should be 12x12 tiles, but let's not "cheat" and determine it from the input
+instead). Since the image is a square, we can calculate the square root of the
+number of tiles to know its dimension. The [power operator][py-power] (`**`) in
+Python can be used to compute roots by providing exponents smaller than `1`.
+
+```python
+image_dimension = int(len(tiles) ** 0.5)
+```
+
+Now onto the real task: building the image. First and foremost, in order to find
+a tile to match one edge of the top-left corner (or to match any other tile
+really), we must have a way of rotating and flipping tiles in each of the
+*eight* possible arrangements:
+
+```python
+A X   B A   X B   X X
+B X   X X   X A   A B
+
+B X   X X   X A   A B
+A X   B A   X A   X X
+```
+
+We already wrote `rotate90()`, now we only need a function to flip a tile.
+Well... flipping vertically is really just reversing the `tuple`/`list`
+representing a tile, and this can just be done through [slicing][py-slice]
+(`[::-1]`). To compute all the possible arrangements of a tile we can just
+rotate it around, then flip it, and rotate it around again. Let's write a couple
+of generator functions for this. It's always satisfying to find an use case for
+the [`yeild from`][py-yield-from] syntax.
+
+```python
+def orientations(tile):
+    yield tile
+    for _ in range(3):
+        tile = rotate90(tile)
+        yield tile
+
+def arrangements(tile):
+    yield from orientations(tile)
+    yield from orientations(tile[::-1])
+```
+
+Now we can write a function that finds a matching tile given a tile, a set of
+tiles to choose from, and the two desired sides to match. We can use the
+previously written `edge()` function to extract the first edge from the tile we
+want to match, then iterate over each one of the tiles in the given set,
+arranging them in every possible way, extracting the second edge each time,
+until we find a match.
+
+```python
+def matching_tile(tile, tiles, side_a, side_b):
+    prev_side = edge(tile, side_a)
+
+    # Iterate over all possible tiles
+    for other_id, other in tiles.items():
+        if tile is other:
+            continue
+
+        # Arrange second tile in any possible way
+        for other in arrangements(other):
+            # Until the two sides match
+            if prev_side == edge(other, side_b):
+                tiles.pop(other_id)
+                return other
+
+# matching_tile(x, tiles, 'e', 'w') -> tile whose west edge matches x's east edge
+```
+
+The tile returned by the above function will already be oriented and flipped in
+the correct way. This function also pops the matched tile out of the given
+dictionary of tiles, so that we don't even need to worry about it.
+
+Now that we have a way of matching arbitrary tiles, we can write a function
+which finds all matching tiles of an entire row of the image. It's pretty simple
+using the above function. We'll take the first row tile as parameter and then
+keep matching tiles on the east edge of the last one. I'll write this as a
+generator function to make it lighter since we'll only need to iterate over the
+tiles of a row once (we'll see why later).
+
+```python
+def matching_row(prev, tiles, tiles_per_row):
+    yield prev
+    for _ in range(tiles_per_row - 1):
+        tile = matching_tile(prev, tiles, 'e', 'w')
+        prev = tile
+        yield prev
+```
+
+Now, as we should remember, each tile of the final image needs to be stripped of
+its outermost edges after being correctly placed. We'll get from 10x10 tiles to
+8x8 tiles. Let's write yet another helper function to "strip" the edges of a
+tile. It's quite straightforward: take every row except the first and last, and
+again for each row take all characters except the first the last. It's really
+only one line of code using a [list comprehension][py-list-comprehension]:
+
+```python
+def strip_edges(tile):
+    return [row[1:-1] for row in tile[1:-1]]
+```
+
+Now we can actually start building the image: we'll start from the top left
+corner, and keep adding rows using `matching_row()` until tiles run out. Each
+tile of each row will be passed through `strip_edges()`, builting a completely
+new row of stripped tiles (and this is why we only need to iterate over the rows
+returned by `matching_row()` once.
+
+After matching and stripping all tiles of a row, we can "join" them together
+into 8 rows of the final image using [`zip()`][py-builtin-zip] plus
+[unpacking][py-unpacking] again to concatenate each i-th row of each tile into a
+single big row of the final image using `str.join`.
+
+```python
+def build_image(top_left_tile, tiles, image_dimension):
+    # Start from the top left
+    first = top_left_tile
+    image = []
+
+    while 1:
+        # Get a row of matching tiles
+        image_row = matching_row(first, tiles, image_dimension)
+        # Strip the outermost edges from each of them
+        image_row = map(strip_edges, image_row)
+        # Add together each row of the tiles into a single big row, and add it to the final image
+        image.extend(map(''.join, zip(*image_row)))
+
+        # Do this until tiles run out
+        if not tiles:
+            break
+
+        # Match the first tile of the next row, which is south of the first tile of the current row
+        first = matching_tile(first, tiles, 's', 'n')
+
+    return image
+```
+
+Woah, almost there. We can finally build the image!
+
+```python
+# Remove to-left tile from the tiles to match first. We need to do this since
+# our `top_left` is the result of rotations, hence it will no longer be equal to
+# the one in the `tiles` dictionary.
+tiles.pop(top_left_id)
+
+image = build_image(top_left, tiles, image_dimension)
+```
+
+The "only" thing left to do is trying all possible `arrangements()` of the image
+and check if we can find any monsters. Let's write the last function of today's
+puzzle: a function which takes the image and a pattern as input, and returns the
+number of times that pattern was matched.
+
+To do this we can first find all characters of the pattern which are `#`, and
+build a set of "deltas" from the top left corner of the pattern. Then, iterate
+over each cell of the image and try matching the entire pattern considering that
+cell as the top-left cell of the pattern.
+
+To convert a pattern into deltas we can just iterate through it using
+`enumerate()` and construct a list:
+
+```python
+deltas = []
+for r, row in enumerate(pattern):
+    for c, cell in enumerate(row):
+        if cell == '#':
+            deltas.append((r, c))
+```
+
+Consider for example the monster pattern:
+
+```
+            1111111111
+  01234567890123456789
+0                   #
+1 #    ##    ##    ###
+2 #  #  #  #  #  #
+```
+
+The result would be the following (yeah we could even hardcode this, but where's
+the fun in that?).
+
+```python
+[(0, 18), (1, 0), (1, 5), (1, 6), (1, 11), (1, 12), (1, 17), (1, 18), (1, 19), (2, 1), (2, 4), (2, 7), (2, 10), (2, 13), (2, 16)]
+```
+
+Now to try counting the matches of the pattern on the image, taking advantage of
+the [`all()`][py-builtin-all] function (one of my favorite built-ins):
+
+```python
+pattern_h, pattern_w = len(pattern), len(pattern[0])
+image_sz = len(image)
+
+n = 0
+for r in range(image_sz - pattern_h):
+    for c in range(image_sz - pattern_w):
+        if all(image[r + dr][c + dc] == '#' for dr, dc in deltas):
+            n += 1
+```
+
+Putting everything we said together, and also testing al possible arrangements
+of the image, this is the resulting function:
+
+```python
+def count_pattern(image, pattern):
+    pattern_h, pattern_w = len(pattern), len(pattern[0])
+    image_sz = len(image)
+    deltas = []
+
+    for r, row in enumerate(pattern):
+        for c, cell in enumerate(row):
+            if cell == '#':
+                deltas.append((r, c))
+
+    for img in arrangements(image):
+        n = 0
+        for r in range(image_sz - pattern_h):
+            for c in range(image_sz - pattern_w):
+                if all(img[r + dr][c + dc] == '#' for dr, dc in deltas):
+                    n += 1
+
+        if n != 0:
+            return n
+```
+
+The number of `#` characters can be counted with a simple combination of
+[`sum()`][py-builtin-sum] plus [`str.count()`][py-str-count].
+
+```python
+MONSTER_PATTERN = (
+    '                  # ',
+    '#    ##    ##    ###',
+    ' #  #  #  #  #  #   '
+)
+
+monster_cells = sum(row.count('#') for row in MONSTER_PATTERN)
+water_cells   = sum(row.count('#') for row in image)
+n_monsters    = count_pattern(image, MONSTER_PATTERN)
+roughness     = water_cells - n_monsters * monster_cells
+
+print('Part 2:', roughness)
+```
+
+We can now ***finally*** get our second star and hopefully also something for
+the headache. Jeez, I've got mixed feelings about this one.
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -3889,6 +4458,7 @@ What a nice puzzle!
 [d15]: #day-15---rambunctious-recitation
 [d16]: #day-16---ticket-translation
 [d17]: #day-17---conway-cubes
+[d20]: #day-20---jurassic-jigsaw
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -3907,6 +4477,7 @@ What a nice puzzle!
 [d15-problem]: https://adventofcode.com/2020/day/15
 [d16-problem]: https://adventofcode.com/2020/day/16
 [d17-problem]: https://adventofcode.com/2020/day/17
+[d20-problem]: https://adventofcode.com/2020/day/20
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
@@ -3924,6 +4495,7 @@ What a nice puzzle!
 [d15-solution]: solutions/day15.py
 [d16-solution]: solutions/day16.py
 [d17-solution]: solutions/day17.py
+[d20-solution]: solutions/day20.py
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
@@ -3941,7 +4513,10 @@ What a nice puzzle!
 [py-format-string]:           https://docs.python.org/3/library/string.html#formatstrings
 [py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
 [py-lambda]:                  https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
+[py-list-comprehension]:      https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions
+[py-power]:                   https://docs.python.org/3/reference/expressions.html#the-power-operator
 [py-raw-string]:              https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
+[py-slice]:                   https://docs.python.org/3/library/functions.html?highlight=slice#slice
 [py-unpacking]:               https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 [py-yield-from]:              https://docs.python.org/3.9/whatsnew/3.3.html#pep-380
 [py-list-count]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
@@ -3952,6 +4527,7 @@ What a nice puzzle!
 [py-set-union-u]:             https://docs.python.org/3/library/stdtypes.html#frozenset.union_update
 [py-str-count]:               https://docs.python.org/3/library/stdtypes.html#str.count
 [py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigit
+[py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
 [py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
 [py-str-replace]:             https://docs.python.org/3/library/stdtypes.html#str.replace
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
@@ -3980,6 +4556,7 @@ What a nice puzzle!
 [py-itertools]:               https://docs.python.org/3/library/itertools.html
 [py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
 [py-itertools-product]:       https://docs.python.org/3/library/itertools.html#itertools.product
+[py-itertools-combinations]:  https://docs.python.org/3/library/itertools.html#itertools.combinations
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-cache]:         https://docs.python.org/3/library/functools.html#functools.cache
 [py-functools-lru-cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
