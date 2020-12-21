@@ -4434,6 +4434,33 @@ print('Part 2:', roughness)
 We can now ***finally*** get our second star and hopefully also something for
 the headache. Jeez, I've got mixed feelings about this one.
 
+### Reflections
+
+While the solution I adopted and explained above is nothing short of a
+bruteforce approach, it is still really fast on such a "small" input (144
+tiles), and I decided to keep it that way without overcomplicating it just for a
+minimal performance gain.
+
+In any case, it's worth mentioning that we can do better: when making the
+initial matches between tiles we could keep the information of which tiles match
+which, and then instead of looking for one tile at a time in all the left tiles,
+use this information to limit our search for a specific matching tile to at most
+4 other tiles (one per side).
+
+This would basically mean building and making good use of an
+[undirected graph][wiki-undirected-graph] of matches (using a simple
+dictionary), where tiles are vertexes and edges mean "matching". It's pretty
+similar to what we are already doint in the first function we wrote called
+`match_tiles()`, we would only need to also remember the IDs of the matches for
+each matched side.
+
+Applying this approach would solve the second part of the problem in
+[linear time][wiki-linear-time] (proportional to the number of tiles), although
+it would result in a little bit more complicated program to implement. However
+for the first part, finding all the matches for each tile would still take
+[quadratic time][wiki-polynomial-time], and therefore the final solution would
+not still be *O*(*n<sup>2</sup>*) overall.
+
 
 Day 21 - Allergen Assessment
 ----------------------------
@@ -4863,6 +4890,7 @@ vegan as the name obviously implies).
 [wiki-set-intersection]:    https://en.wikipedia.org/wiki/Intersection_(set_theory)
 [wiki-set-union]:           https://en.wikipedia.org/wiki/Union_(set_theory)
 [wiki-sum-range]:           https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
+[wiki-undirected-graph]:    https://en.wikipedia.org/wiki/Graph_(discrete_mathematics)#Graph
 [wiki-vector]:              https://en.wikipedia.org/wiki/Euclidean_vector
 [wiki-vm]:                  https://en.wikipedia.org/wiki/Virtual_machine
 
