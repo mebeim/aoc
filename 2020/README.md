@@ -24,6 +24,7 @@ Table of Contents
 - *Day 18 - TODO*
 - *Day 19 - TODO*
 - [Day 20 - Jurassic Jigsaw][d20]
+- [Day 21 - Allergen Assessment][d21]
 
 Day 1 - Report Repair
 ---------------------
@@ -4433,6 +4434,239 @@ print('Part 2:', roughness)
 We can now ***finally*** get our second star and hopefully also something for
 the headache. Jeez, I've got mixed feelings about this one.
 
+
+Day 21 - Allergen Assessment
+----------------------------
+
+[Problem statement][d21-problem] — [Complete solution][d21-solution] — [Back to top][top]
+
+### Part 1
+
+We are given a menu of recipes, one per line: each recipe consists of a list of
+ingredients and a list of allergens. Each allergen is contained in exactly one
+ingredient amongst *all* ingredients of the menu (that is, there is a global
+1-to-1 association between allergens and ingredients). While allergens are
+listed in English, ingredient names are in an unknown language, so we cannot
+simply deduce which allergen may be contained in which ingredient simply by its
+name.
+
+We know that each recipe contains at least the listed allergens, but it could
+also contain more allergens which are not explicitly listed. Given our input, we
+must determine which ingredients are safe and definitely *don't* contain
+allergens, and count the number of times any of those ingredients appears in the
+menu.
+
+Our task is not obvious, but we can understand it better through an example.
+Suppose we're at an Italian restaurant, we don't know Italian, and we're
+presented with the following menu:
+
+```
+stoccafisso maionese aceto origano (contains dairy, fish)
+riso maionese tofu patate (contains dairy)
+stoccafisso tofu (contains soy)
+stoccafisso maionese patate (contains fish)
+```
+
+By looking at the above recipes (pretty strange Italian restaurant by the way,
+never seen such dishes to be honest!), we can see that the first contains at
+least two allergens: `dairy` and `fish`, so we know that `aceto` could contain
+either one of those allergens. If we look at the other recipes, we can't see
+`aceto` anywhere, even though the second dish contains `dairy` and the fourth
+dish contains `fish`.
+
+Remember that there is a 1-to-1 association between allergens and ingredients,
+so if `aceto` was the ingredient containing `dairy`, we should see `aceto` it in
+every dish which contains `dairy`. The same reasoning goes for `fish`. Since we
+see two other plates with `dairy` or `fish`, but none of them has `aceto` as an
+ingredient, we can conclude that `aceto` can be neither of those, and does not
+contain any allergen.
+
+Applying the same reasoning to all the ingredients of the above menu, we can
+come to the conclusion that none of `aceto`, `origano`, `riso` and `patate`
+contain allergens. Counting the occurrences of those, the answer would be `5`.
+
+We can apply the above reasoning to each ingredient of the real menu to find out
+which ingredients don't contain allergens.
+
+Let's start with input parsing. We could use a regex, but the recipe format is
+simple enough: for each line of input we'll first separate ingredients and
+allergens by removing the trailing closed parentheses and newlines and splitting
+on the string `" (contains "`. Then, we'll split both the ingredient and the
+allergens into a `list` and build a `set` out of each list. The reason for using
+a `set` will be clear soon.
+
+In order to solve the problem, we need to keep a set of "possible" allergens
+for each ingredient, and we also need to keep track of which recipes contain a
+given allergen. We'll do this by creating two dicrionaries:
+`{ingregdient: set_of_allergens}` and `{allergen: list_of_recipes}`. To
+simplify the creation of new entries we can use two
+[`defaultdict`][py-collections-defaultdict]. We'll write a function to parse the
+input and extract all this information:
+
+```python
+def parse_input(fin):
+    recipes = []
+    possible_allers = defaultdict(set)
+    recipes_with    = defaultdict(list)
+
+    for i, line in enumerate(fin):
+        ingredients, allergens = line.rstrip(')\n').split(' (contains ')
+
+        ingredients = set(ingredients.split())
+        allergens   = set(allergens.split(', '))
+        recipes.append(ingredients)
+
+        for aller in allergens:
+            recipes_with[aller].append(i)
+
+        for ingr in ingredients:
+            possible_allers[ingr] |= allergens
+
+    return recipes, possible_allers, recipes_with
+
+fin = open(...)
+recipes, possible_allers, recipes_with = parse_input(fin)
+```
+
+Now `possible_allers[ingr]` contains the set of possible allergens for the
+ingredient `ingr`, and `recipes_with[aller]` contains a list of indexes of
+recipes containing the allergen `aller`.
+
+Perfect, we just need to apply the above reasoning to find safe ingredients. For
+each ingredient we'll check all its possible allergens: if any of the recipes
+containing such allergen does not include the ingredient we are checking, then
+we can safely exclude the allergen from the set of possible allergens for the
+ingredient.
+
+```python
+def safe_ingredients(recipes, possible_allers, recipes_with):
+    safe = []
+
+    for ingr, possible in possible_allers.items():
+        possible   = possible_allers[ingr]
+        impossible = set()
+
+        for aller in possible:
+            for i in recipes_with[aller]:
+                if ingr not in recipes[i]:
+                    impossible.add(aller)
+                    break
+
+        # Difference between sets: remove all the items of `impossible` from `possible`
+        possible -= impossible
+
+        # If no possible allergens are left, the ingredient does not contain allergens
+        if not possible:
+            safe.append(ingr)
+
+    return safe
+
+safe = safe_ingredients(recipes, possible_allers, recipes_with)
+```
+
+We can simplify the innermost `for` loop above using [`any()`][py-builtin-any],
+and replacing the `for` with a simple [generator expression][py-generator-expr],
+since all it's doing is checking if the ingredient `ingr` is in any of the
+recipes containing the allergen `aller`, stopping at the first negative match:
+
+```python
+def safe_ingredients(recipes, possible_allers, recipes_with):
+# ... unchanged ...
+        for aller in possible:
+            if any(ingr not in recipes[i] for i in recipes_with[aller]):
+                impossible.add(aller)
+# ... unchanged ...
+```
+
+Now that we have a list of ingredients with no allergens, we can just count the
+number of times each of them appears in the menu, summing up each count. To do
+this easily we can use [`sum()`][py-builtin-sum]:
+
+```python
+tot = 0
+for ingr in no_allergens:
+    tot += sum(ingr in r for r in recipes)
+```
+
+We can actually also compress the outer `for` into `sum()`:
+
+```python
+tot = sum(ingr in r for r in recipes for ingr in no_allergens)
+print('Part 1:' tot)
+```
+
+Hope you are not allergic to `peanuts`, it would be a shame if you couldn't
+taste the delicious `tjbngs` with `jrhvk`! Typical Advent of Code recipe.
+
+### Part 2
+
+For the second part of today's puzzle, for each allergen we need to determine
+the ingredient wihch contains it. Our answer must be a comma separated list of
+ingredient names, sorted alphabetically by their allergen.
+
+We need to do something very similar to what we did for
+[day 16 part 2](#part-2-15). It's the exact same algorithm, just with a
+different associated meaning. First, remove all empty sets from our dictionary
+of possible allergens:
+
+```python
+for ingr in safe:
+    del possible_allers[ingr]
+```
+
+Now we'll write a function to simplify the sets of possible allergens for each
+ingredient down to a single allergen per ingredient:
+
+1. Start with a set of possible allergens per ingredient (`possible_allers`).
+2. Find a set with only one allergen left: assign that allergen to the
+   ingredient associated with the set, then remove the set from our dictionary.
+3. Cycle through all the other sets and remove the matched allergen from each
+   of them.
+4. Check if all the sets are empty: if so, we assigned all allergens to an
+   ingredient and we are done. If not, go back to step 2.
+
+Using our innate ability to translate English sentences into Python code, we
+come up with this function:
+
+```python
+def simplify(possible_allers):
+    assigned = {}
+
+    while possible_allers:
+        for ingr, possible in possible_allers.items():
+            if len(possible) == 1:
+                break
+
+        aller = possible.pop()
+        assigned[aller] = ingr
+        del possible_allers[ingr]
+
+        for ingr, possible in possible_allers.items():
+            if aller in possible:
+                possible.remove(aller)
+
+    return assigned
+```
+
+All we have to do now is get the assignments calling this function and then sort
+them according to the requirements. We need to sort the assignments in
+alphabetical order according to the allergen name. To do this, we can sort the
+keys of the `assigned` dictionary returned by the above function using
+[`sorted()`][py-builtin-sorted] and then `map()` each key (allergen) into its
+value (ingredient). Finally, [`join()`][py-str-join] the values together
+separating them with commas (`,`).
+
+```python
+assigned = simplify(possible_allers)
+lst = ','.join(map(assigned.get, sorted(assigned)))
+
+print('Part 2:', lst)
+```
+
+You may not be able to enjoy `tjbngs` if you're allergic to `peanuts`, but you
+can simply go with the `mlqnfs` as a `peanut`-free alternative (which is also
+vegan as the name obviously implies).
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -4459,6 +4693,7 @@ the headache. Jeez, I've got mixed feelings about this one.
 [d16]: #day-16---ticket-translation
 [d17]: #day-17---conway-cubes
 [d20]: #day-20---jurassic-jigsaw
+[d21]: #day-21---allergen-assessment
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -4478,6 +4713,7 @@ the headache. Jeez, I've got mixed feelings about this one.
 [d16-problem]: https://adventofcode.com/2020/day/16
 [d17-problem]: https://adventofcode.com/2020/day/17
 [d20-problem]: https://adventofcode.com/2020/day/20
+[d21-problem]: https://adventofcode.com/2020/day/21
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
@@ -4496,6 +4732,7 @@ the headache. Jeez, I've got mixed feelings about this one.
 [d16-solution]: solutions/day16.py
 [d17-solution]: solutions/day17.py
 [d20-solution]: solutions/day20.py
+[d21-solution]: solutions/day21.py
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
