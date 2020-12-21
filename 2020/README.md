@@ -2673,27 +2673,28 @@ built-in [`pow()`][py-builtin-pow]. Support for calculation of the modular
 inverse has only been added in Python 3.8, so if you have an earlier version you
 will have to do this by hand, using (a simplification of) the
 [extended Euclidean algorithm][algo-extended-euclidean]. Again, this is not the
-simplest algorithm to explain, but nonetheless I've implemented this in
-[my solution][d13-alternative], so you can check that out if you want, or just
-let Google be your friend.
+simplest algorithm to explain, but nonetheless I've implemented this in a
+comment of [my solution][d13-alternative], so you can check that out if you
+want... or maybe just let Google be your friend.
 
-We could simplify the calculation of `P` above using a simple
-[`functools.reduce()`][py-functools-reduce] with
-[`operator.mul()`][py-operator-mul] plus a [`lambda`][py-lambda] to extract the
-moduli from the equations:
+We could simplify the calculation of `P` above using
+[`math.prod()`][py-math-prod] (Python >= 3.8) with the handy
+[`operator.itemgetter()`][py-operator-itemgetter] to extract the moduli from the
+equations:
+
+```python
+from math import prod
+from operator import itemgetter
+
+P = prod(itemgetter(1), equations)
+```
+
+... or with [`functools.reduce()`][py-functools-reduce] plus
+[`operator.mul()`][py-operator-mul]:
 
 ```python
 from functools import reduce
 from operator import mul
-
-P = reduce(mul, map(lambda e: e[1], equations))
-```
-
-Or even better also using [`operator.itemgetter()`][py-operator-itemgetter]:
-
-```python
-from functools import reduce
-from operator import mul, itemgetter
 
 P = reduce(mul, map(itemgetter(1), equations))
 ```
