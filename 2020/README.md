@@ -21,7 +21,7 @@ Table of Contents
 - [Day 15 - Rambunctious Recitation][d15]
 - [Day 16 - Ticket Translation][d16]
 - [Day 17 - Conway Cubes][d17]
-- *Day 18 - TODO*
+- [Day 18 - Operation Order][d18]
 - *Day 19 - TODO*
 - [Day 20 - Jurassic Jigsaw][d20]
 - [Day 21 - Allergen Assessment][d21]
@@ -3869,6 +3869,355 @@ print('Part 2:', total_alive)
 What a nice puzzle!
 
 
+Day 18 - Operation Order
+------------------------
+
+[Problem statement][d18-problem] — [Complete solution][d18-solution] — [Back to top][top]
+
+### Part 1
+
+Today's problem is about math, *but* a slightly different math than the one we
+are used to!
+
+The assignment is really simple: we are given a list of mathematical expressions
+which only use natural numbers, parentheses (`()`), addition (`+`) and
+multiplication (`*`). We need to evaluate each of the expressions giving the
+same precedence to multiplication and addition. Parentheses are the only thing
+that establishes precedence of operations. Once the results of all expressions
+are calculated, we need to compute their sum.
+
+You may have already noticed that ignoring the precedence of multiplication
+(`*`) over addition (`+`) does not make this problem solvable with a simple
+[`eval()`][py-builtin-eval]. While in normal math something like `1 + 2 * 3`
+evaluates to `7`, ignoring the precedence of `*` over `+` the result is `9`
+instead, because we first compute `1 + 2 = 3` and then `3 * 3 = 9`.
+
+Since there is no precedence between operators, it's easy to solve an expression
+which does not contain parentheses: just scan the expression and execute each
+operation as soon as you encounter it, keeping the result in an accumulator.
+Let's start getting to that point, and we'll see how to take into account
+parentheses later.
+
+First of all, let's write a very simple [tokenizer][wiki-lexical-analysis] to
+extract numbers, parentheses and operators from each expression, and construct a
+list of "tokens" that we'll use later for the actual evaluation.
+
+Our expressions are pretty simple: we can use a single
+[regular expression][misc-regexp] to match all tokens at once. We want to match:
+numbers (`\d+`), parentheses (`(`, `)`) and operators (`+`, `*`), so a simple
+pipe operator and a character class (`[]`) will suffice. We'll use
+[`re.findall()`][py-re-findall] to extract all tokens at once.
+
+```python
+import re
+
+def tokenize(expr):
+    return re.findall(r'\d+|[+*()]', expr)
+
+# tokenize('(1 + 2) * 3') -> ['(', '1', '+', '2', ')', '*', '3']
+```
+
+Now that we have tokens we can start by writing a simple evaluation function to
+calculate the value of an expression without parentheses. For simplicity, before
+passing the `list` returned by `tokenize()`, we'll turn it into a
+[`deque`][py-collections-deque], so that we can just pop tokens from the start
+of the `deque` without having to worry about indexing or iterating. For the
+operations, we can import [`add`][py-operator-add] and [`mul`][py-operator-mul]
+from the [`operator`][py-operator] module.
+
+Our algorithm will do the following:
+
+- Start with an `accumulator` initialized to `0`, and an operation `op`
+  initialized to `add`.
+- While we still have tokens, pop one at a time:
+  - If the token is a number, convert it to `int`, then perform the operation
+    stored in `op` between the `accumulator` and the value we just obtained,
+    storing the result in `accumulator`.
+  - If the token is a `+`, change `op` to `add`.
+  - If the token is a `*`, change `op` to `mul`.
+- Return the `accumulator` which now contains the result of the expression.
+
+To check if a token is a number (of one or more decimal digits) we can use
+[`str.isdigit()`][py-str-isdigit]. Here's the code:
+
+```python
+def evaluate(tokens):
+    accumulator = 0
+    op = add
+
+    while tokens:
+        tok = tokens.popleft()
+
+        if tok.isdigit():
+            val = int(tok)
+            accumulator = op(accumulator, val)
+        elif tok == '+':
+            op = add
+        elif tok == '*':
+            op = mul
+
+    return accumulator
+```
+
+Now we also need to account for parentheses. If we think about it for a second,
+a sub-expression enclosed in parentheses is not different from a normal
+expression. Whenever we encounter an open parenthesis (`(`) we can make a
+recursive call to our function and let it calculate the value of the
+sub-expression, then perform the needed operation like we do for normal numbers.
+Whenever we encounter a closed parenthesis (`)`) we can just assume that we need
+to return a value to the caller because we were called to solve a
+sub-expression.
+
+In terms of code, this translates into two additional `elif` branches:
+
+```python
+def evaluate(tokens):
+    accumulator = 0
+    op = add
+
+    while tokens:
+        tok = tokens.popleft()
+
+        if tok.isdigit():
+            val = int(tok)
+            accumulator = op(accumulator, val)
+        elif tok == '+':
+            op = add
+        elif tok == '*':
+            op = mul
+        elif tok == '(':
+            val = evaluate(tokens)
+            accumulator = op(accumulator, val)
+        elif tok == ')':
+            break
+
+    return accumulator
+```
+
+Now we can use our tokenizer to turn each expression in the input into a list of
+tokens, then turn it into a `deque` and finally pass it to the `evaluate()`
+function we just wrote. We can use [`map()`][py-builtin-map] to conveniently
+tokenize all input lines in one go.
+
+```python
+fin = open(...)
+exprs = map(tokenize, fin)
+
+total = 0
+for expr in exprs:
+    total += evaluate(deque(expr))
+```
+
+The above loop can be further simplified with the help of
+[`sum()`][py-builtin-sum] down to a single line:
+
+```python
+exprs = map(tokenize, fin)
+total = sum(map(evaluate, map(deque, exprs)))
+
+print('Part 1:', total)
+```
+
+And sure enough we get a ridicolously high number which is our solution.
+
+### Part 2
+
+For the second part of the problem, we still need to calculate the sum of all
+the results of the input expressions, but this time we want `+` to have
+precedence over `*`. That's right, it's exactly the opposite you would normally
+do to solve an expression. For example, now `1 * 2 + 3` evaluates to `5`,
+because we first need to compute `2 + 3 = 5`, and then `1 * 5 = 5`.
+
+Okay, this isn't that simple anymore. There are different ways to solve the
+problem, and three main approaches that I know of (of which we're going to use
+the third):
+
+1. The textbook approach: building a simple expression evaluator using the
+   [Shunting-yard algorithm][wiki-shunting-yard] to turn the expressions from
+   [infix notation][wiki-infix-notation] to
+   [postfix notation][wiki-postfix-notation] (also called reverse-polish
+   notation), which makes them very easy to evaluate using a simple stack later.
+
+   This is the most complex yet most general approach, which can be used to
+   calculate almost any kind of mathematical expression, using any order of
+   precedence for the operators. I'm not going to use it here, but I've
+   nonetheless written an alternative solution which does exactly this just for
+   fun. You can find it [**here**][d18-alternative-1] if you are interested.
+
+2. The hacker's approach: exploit the ability of defining Python classes with
+   customized methods for basic operators such as `+` and `*`.
+
+   Build a custom class `K` implementing an [`__add__`][py-object-add] method
+   which actually computes the product, and a [`__mul__`][py-object-mul] method
+   which computes the sum. Then, replace each number `N` in the expression with
+   an instantiation of the class (`K(N)`) and swap each `+` with a `*` (and
+   vice-versa). Finally, let Python take care of operator precedence and
+   evaluate the whole thing using `eval()`, which will give precedence to `*`,
+   which will in turn be treated as a `+` by our custom class. This can also be
+   applied to part 1 swapping each `*` with a `-` and implementing a custom
+   [`__sub__`][py-object-sub] operator.
+
+   This is a... pretty interesting approach which I've seen used by a lot of
+   people on the daily Reddit solution thread, but it feels a little bit like
+   cheating. Nonetheless, you guessed it: I've implemented this too because it
+   was just too fun of an idea (and also really the simplest solution in terms
+   of actual code). You can find this solution [**here**][d18-alternative-2] if
+   you are interested.
+
+3. The "smart" solution: realize that we can apply the
+   [distributive property][wiki-distributive-property] to solve everything in a
+   single scan, similarly to what we did for part 1. This is the approach I'll
+   be using and describing now.
+
+Let's again think for a moment about what we should do if we had to evaluate the
+an expression without parentheses. We have an expression that is only composed
+of additions and multiplications, and additions have precedence over
+multiplications, for example:
+
+```
+1 * 2 * 3 + 4    (should evaluate to 3 * 7 = 21)
+```
+
+It seems pretty clear that if it weren't for the `+` in there, we could still
+use the same approach as we did before. Just continue multiplying values
+together accumulating the resulting value. A problem however rises when we
+encounter an addition: we must stop blindly multiplying and solve that first
+before continuing.
+
+If we find a way to "pre-calculate" all additions and replace them with their
+result, then we can just calculate the product of everything. This seems
+reasonable, but isn't *that simple*, as it involves scanning the entire
+expression back and forth.
+
+However, we can take advantage of the
+[distributive property][wiki-distributive-property] of multiplication. In
+"normal" math, we can *distribute* a multiplication over multiple terms of a sum
+if those terms are enclosed in parentheses:
+
+```
+2 * (3 + 4 + 5) = (2 * 3) + (2 * 4) + (2 * 5) = 24
+```
+
+In our case, since the addition has precedence over the multiplication, we can
+also do the same thing even when the terms of the sum are *not* enclosed in
+parentheses:
+
+```
+2 * 3 + 4 + 5 = (2 * 3) + (2 * 4) + (2 * 5) = 24
+```
+
+If we have more terms to multiply before encountering a series of sums, the
+result is similar:
+
+```
+  2 * 3 * 4 + 5 = (2 * 3 * 4) + (2 * 3 * 5) =
+=   6   * 4 + 5 = (  6   * 4) + (  6   * 5) = 54
+```
+
+We can perform distribution of all the multiplications by keeping a "multiplier"
+value and use it to multiply every value we encounter in our way, adding the
+result into an accumulator. Updating this multiplier value in a smart way will
+get us to the solution.
+
+The algorithm is the following:
+
+- Start with `multiplier = 1` and `accumulator = 0`.
+- While we still have tokens, pop one at a time:
+  - If the token is a number, multiply it with the `multiplier` and add the
+    result to the `accumulator`.
+  - If the token is a `*`, set the `multiplier` to the value of the
+    `accumulator`, and reset the `accumulator` to `0`.
+  - If the token is a `+`, simply ignore it.
+- Return the `accumulator` which contains the result of the expression.
+
+Doing this, we are "pausing" multiplication unless we encounter `*` operators,
+updating the `multiplier` in the meantime. This effectively distributes the
+multiplication over every single operand of any addition, even at the beginning
+when we start with `multiplier = 1` (which does nothing).
+
+To make it simpler to understand, here's an example:
+
+```
+Expression to evaluate: 2 * 3 + 1 * 5 * 6 + 1 + 3   (expected result: 400)
+
+TOKEN   MULT   ACC   Operation performed
+         1      0
+  2      1      2    ACC += 2 * 1
+  *      2      0    MULT = ACC; ACC = 0
+  3      2      6    ACC += 3 * 2
+  +      2      6
+  1      2      8    ACC += 1 * 2
+  *      8      0    MULT = ACC; ACC = 0
+  5      8     40    ACC += 5 * 8
+  *     40      0    MULT = ACC; ACC = 0
+  6     40    240    ACC += 6 * 40
+  +     40    240
+  1     40    280    ACC += 1 * 40
+  +     40    280
+  3     40    400    ACC += 3 * 40
+```
+
+Turning the above algorithm into Python code, we have:
+
+```python
+def evaluate2(tokens):
+    multiplier  = 1
+    accumulator = 0
+
+    while tokens:
+        tok = tokens.popleft()
+
+        if tok.isdigit():
+            val = int(tok)
+            accumulator += val * multiplier
+        elif tok == '*':
+            multiplier  = accumulator
+            accumulator = 0
+
+    return accumulator
+```
+
+Now to also account for sub-expressions inside parentheses (`()`) we can do the
+exact same thing we did for part 1: do a recursive call when we encounter an
+open parenthesis, and return immediately when we encounter a closed one.
+
+```python
+def evaluate2(tokens):
+    multiplier  = 1
+    accumulator = 0
+
+    while tokens:
+        tok = tokens.popleft()
+
+        if tok.isdigit():
+            val = int(tok)
+            accumulator += val * multiplier
+        elif tok == '*':
+            multiplier  = accumulator
+            accumulator = 0
+        elif tok == '(':
+            val = evaluate2(tokens)
+            accumulator += val * multiplier
+        elif tok == ')':
+            break
+
+    return accumulator
+```
+
+Sweet as pie. We can now calculate the solution again exactly how we did for
+part 1:
+
+```python
+total = sum(map(evaluate2, map(deque, exprs)))
+print('Part 2:', total)
+```
+
+If we want, we can further simplify this turning the two functions for part 1
+and part 2 into a single one, deciding which strategy to apply using an
+additional argument and a couple more `if` statements. This is what I did in my
+complete solution for today's problem.
+
+
 Day 20 - Jurassic Jigsaw
 ------------------------
 
@@ -4727,6 +5076,7 @@ vegan as the name obviously implies).
 [d15]: #day-15---rambunctious-recitation
 [d16]: #day-16---ticket-translation
 [d17]: #day-17---conway-cubes
+[d18]: #day-18---operation-order
 [d20]: #day-20---jurassic-jigsaw
 [d21]: #day-21---allergen-assessment
 
@@ -4747,6 +5097,7 @@ vegan as the name obviously implies).
 [d15-problem]: https://adventofcode.com/2020/day/15
 [d16-problem]: https://adventofcode.com/2020/day/16
 [d17-problem]: https://adventofcode.com/2020/day/17
+[d18-problem]: https://adventofcode.com/2020/day/18
 [d20-problem]: https://adventofcode.com/2020/day/20
 [d21-problem]: https://adventofcode.com/2020/day/21
 [d01-solution]: solutions/day01.py
@@ -4766,6 +5117,7 @@ vegan as the name obviously implies).
 [d15-solution]: solutions/day15.py
 [d16-solution]: solutions/day16.py
 [d17-solution]: solutions/day17.py
+[d18-solution]: solutions/day18.py
 [d20-solution]: solutions/day20.py
 [d21-solution]: solutions/day21.py
 
@@ -4773,6 +5125,8 @@ vegan as the name obviously implies).
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
 [d12-alternative]:     misc/day12/complex.py
 [d13-alternative]:     misc/day13/modular_arithmetic.py
+[d18-alternative-1]:   misc/day18/shunting_yard.py
+[d18-alternative-2]:   misc/day18/hack.py
 
 [2019-d05]:             https://github.com/mebeim/aoc/blob/master/2019/README.md#day-5---sunny-with-a-chance-of-asteroids
 [2019-vm]:              https://github.com/mebeim/aoc/blob/master/2019/lib/intcode.py#L283
@@ -4807,11 +5161,15 @@ vegan as the name obviously implies).
 [py-str-strip]:               https://docs.python.org/3/library/stdtypes.html#str.strip
 [py-str-rstrip]:              https://docs.python.org/3/library/stdtypes.html#str.rstrip
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
-[py-object-init]:             https://docs.python.org/3/reference/datamodel.html#object.__init__
+[py-object-add]:              https://docs.python.org/3/reference/datamodel.html#object.__add__
 [py-object-contains]:         https://docs.python.org/3/reference/datamodel.html#object.__contains__
+[py-object-init]:             https://docs.python.org/3/reference/datamodel.html#object.__init__
+[py-object-mul]:              https://docs.python.org/3/reference/datamodel.html#object.__mul__
+[py-object-sub]:              https://docs.python.org/3/reference/datamodel.html#object.__sub__
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-any]:             https://docs.python.org/3/library/functions.html#any
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
+[py-builtin-eval]:            https://docs.python.org/3/library/functions.html#eval
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
@@ -4840,6 +5198,8 @@ vegan as the name obviously implies).
 [py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
 [py-math-lcm]:                https://docs.python.org/3/library/math.html#math.lcm
 [py-math-prod]:               https://docs.python.org/3/library/math.html#math.prod
+[py-operator]:                https://docs.python.org/3/library/operator.html
+[py-operator-add]:            https://docs.python.org/3/library/operator.html#operator.add
 [py-operator-mul]:            https://docs.python.org/3/library/operator.html#operator.mul
 [py-operator-itemgetter]:     https://docs.python.org/3/library/operator.html#operator.itemgetter
 [py-re]:                      https://docs.python.org/3/library/re.html
@@ -4854,45 +5214,50 @@ vegan as the name obviously implies).
 [algo-binsrc]:             https://en.wikipedia.org/wiki/Binary_search_algorithm
 [algo-wall-follower]:      https://en.wikipedia.org/wiki/Maze_solving_algorithm#Wall_follower
 
-[wiki-2d-rotation]:         https://en.wikipedia.org/wiki/Rotations_and_reflections_in_two_dimensions
-[wiki-bitmask]:             https://en.wikipedia.org/wiki/Mask_(computing)
-[wiki-bitwise-and]:         https://en.wikipedia.org/wiki/Bitwise_operation#AND
-[wiki-bitwise-or]:          https://en.wikipedia.org/wiki/Bitwise_operation#OR
-[wiki-cartesian-coords]:    https://en.wikipedia.org/wiki/Cartesian_coordinate_system
-[wiki-cellular-automaton]:  https://en.wikipedia.org/wiki/Cellular_automaton
-[wiki-chinese-remainder]:   https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Statement
-[wiki-closure]:             https://en.wikipedia.org/wiki/Closure_(computer_programming)
-[wiki-complex-numbers]:     https://en.wikipedia.org/wiki/Complex_number
-[wiki-complex-rotation]:    https://en.wikipedia.org/wiki/Rotation_(mathematics)#Complex_numbers:~:text=This%20can%20be%20rotated%20through%20an%20angle
-[wiki-coprime]:             https://en.wikipedia.org/wiki/Coprime_integers
-[wiki-coprime-set]:         https://en.wikipedia.org/wiki/Coprime_integers#Coprimality_in_sets
-[wiki-cpython]:             https://en.wikipedia.org/wiki/CPython
-[wiki-dag]:                 https://en.wikipedia.org/wiki/Directed_acyclic_graph
-[wiki-dynamic-programming]: https://en.wikipedia.org/wiki/Dynamic_programming
-[wiki-euclidean-division]:  https://en.wikipedia.org/wiki/Euclidean_division
-[wiki-exponential-time]:    https://en.wikipedia.org/wiki/Time_complexity#Exponential_time
-[wiki-functional-prog]:     https://en.wikipedia.org/wiki/Functional_programming
-[wiki-hypercube]:           https://en.wikipedia.org/wiki/Hypercube
-[wiki-jit]:                 https://en.wikipedia.org/wiki/Just-in-time_compilation
-[wiki-john-horton-conway]:  https://en.wikipedia.org/wiki/John_Horton_Conway
-[wiki-lcm]:                 https://en.wikipedia.org/wiki/Least_common_multiple
-[wiki-linear-time]:         https://en.wikipedia.org/wiki/Time_complexity#Linear_time
-[wiki-manhattan-dist]:      https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
-[wiki-memoization]:         https://en.wikipedia.org/wiki/Memoization
-[wiki-modular-arithmetic]:  https://en.wikipedia.org/wiki/Modular_arithmetic
-[wiki-modular-congruence]:  https://en.wikipedia.org/wiki/Modular_arithmetic#Congruence
-[wiki-modular-inverse]:     https://en.wikipedia.org/wiki/Modular_multiplicative_inverse
-[wiki-plane]:               https://en.wikipedia.org/wiki/Plane_(geometry)
-[wiki-polynomial-time]:     https://en.wikipedia.org/wiki/Time_complexity#Polynomial_time
-[wiki-reduction]:           https://en.wikipedia.org/wiki/Reduction_Operator
-[wiki-rubiks-cube]:         https://en.wikipedia.org/wiki/Rubik%27s_Cube
-[wiki-running-total]:       https://en.wikipedia.org/wiki/Running_total
-[wiki-set-intersection]:    https://en.wikipedia.org/wiki/Intersection_(set_theory)
-[wiki-set-union]:           https://en.wikipedia.org/wiki/Union_(set_theory)
-[wiki-sum-range]:           https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
-[wiki-undirected-graph]:    https://en.wikipedia.org/wiki/Graph_(discrete_mathematics)#Graph
-[wiki-vector]:              https://en.wikipedia.org/wiki/Euclidean_vector
-[wiki-vm]:                  https://en.wikipedia.org/wiki/Virtual_machine
+[wiki-2d-rotation]:           https://en.wikipedia.org/wiki/Rotations_and_reflections_in_two_dimensions
+[wiki-bitmask]:               https://en.wikipedia.org/wiki/Mask_(computing)
+[wiki-bitwise-and]:           https://en.wikipedia.org/wiki/Bitwise_operation#AND
+[wiki-bitwise-or]:            https://en.wikipedia.org/wiki/Bitwise_operation#OR
+[wiki-cartesian-coords]:      https://en.wikipedia.org/wiki/Cartesian_coordinate_system
+[wiki-cellular-automaton]:    https://en.wikipedia.org/wiki/Cellular_automaton
+[wiki-chinese-remainder]:     https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Statement
+[wiki-closure]:               https://en.wikipedia.org/wiki/Closure_(computer_programming)
+[wiki-complex-numbers]:       https://en.wikipedia.org/wiki/Complex_number
+[wiki-complex-rotation]:      https://en.wikipedia.org/wiki/Rotation_(mathematics)#Complex_numbers:~:text=This%20can%20be%20rotated%20through%20an%20angle
+[wiki-coprime]:               https://en.wikipedia.org/wiki/Coprime_integers
+[wiki-coprime-set]:           https://en.wikipedia.org/wiki/Coprime_integers#Coprimality_in_sets
+[wiki-cpython]:               https://en.wikipedia.org/wiki/CPython
+[wiki-dag]:                   https://en.wikipedia.org/wiki/Directed_acyclic_graph
+[wiki-distributive-property]: https://en.wikipedia.org/wiki/Distributive_property
+[wiki-dynamic-programming]:   https://en.wikipedia.org/wiki/Dynamic_programming
+[wiki-euclidean-division]:    https://en.wikipedia.org/wiki/Euclidean_division
+[wiki-exponential-time]:      https://en.wikipedia.org/wiki/Time_complexity#Exponential_time
+[wiki-functional-prog]:       https://en.wikipedia.org/wiki/Functional_programming
+[wiki-hypercube]:             https://en.wikipedia.org/wiki/Hypercube
+[wiki-jit]:                   https://en.wikipedia.org/wiki/Just-in-time_compilation
+[wiki-john-horton-conway]:    https://en.wikipedia.org/wiki/John_Horton_Conway
+[wiki-infix-notation]:        https://en.wikipedia.org/wiki/Infix_notation
+[wiki-lcm]:                   https://en.wikipedia.org/wiki/Least_common_multiple
+[wiki-lexical-analysis]:      https://en.wikipedia.org/wiki/Lexical_analysis
+[wiki-linear-time]:           https://en.wikipedia.org/wiki/Time_complexity#Linear_time
+[wiki-manhattan-dist]:        https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
+[wiki-memoization]:           https://en.wikipedia.org/wiki/Memoization
+[wiki-modular-arithmetic]:    https://en.wikipedia.org/wiki/Modular_arithmetic
+[wiki-modular-congruence]:    https://en.wikipedia.org/wiki/Modular_arithmetic#Congruence
+[wiki-modular-inverse]:       https://en.wikipedia.org/wiki/Modular_multiplicative_inverse
+[wiki-plane]:                 https://en.wikipedia.org/wiki/Plane_(geometry)
+[wiki-polynomial-time]:       https://en.wikipedia.org/wiki/Time_complexity#Polynomial_time
+[wiki-postfix-notation]:      https://en.wikipedia.org/wiki/Reverse_Polish_notation
+[wiki-reduction]:             https://en.wikipedia.org/wiki/Reduction_Operator
+[wiki-rubiks-cube]:           https://en.wikipedia.org/wiki/Rubik%27s_Cube
+[wiki-running-total]:         https://en.wikipedia.org/wiki/Running_total
+[wiki-set-intersection]:      https://en.wikipedia.org/wiki/Intersection_(set_theory)
+[wiki-set-union]:             https://en.wikipedia.org/wiki/Union_(set_theory)
+[wiki-shunting-yard]:         https://en.wikipedia.org/wiki/Shunting-yard_algorithm
+[wiki-sum-range]:             https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
+[wiki-undirected-graph]:      https://en.wikipedia.org/wiki/Graph_(discrete_mathematics)#Graph
+[wiki-vector]:                https://en.wikipedia.org/wiki/Euclidean_vector
+[wiki-vm]:                    https://en.wikipedia.org/wiki/Virtual_machine
 
 [misc-aoc-bingo]: https://www.reddit.com/r/adventofcode/comments/k3q7tr/
 [misc-man1-tr]:   https://man7.org/linux/man-pages/man1/tr.1.html
