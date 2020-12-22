@@ -25,6 +25,7 @@ Table of Contents
 - *Day 19 - TODO*
 - [Day 20 - Jurassic Jigsaw][d20]
 - [Day 21 - Allergen Assessment][d21]
+- [Day 22 - Crab Combat][d22]
 
 Day 1 - Report Repair
 ---------------------
@@ -5051,6 +5052,193 @@ You may not be able to enjoy `tjbngs` if you're allergic to `peanuts`, but you
 can simply go with the `mlqnfs` as a `peanut`-free alternative (which is also
 vegan as the name obviously implies).
 
+
+Day 22 - Crab Combat
+--------------------
+
+[Problem statement][d22-problem] — [Complete solution][d22-solution] — [Back to top][top]
+
+### Part 1
+
+Today we've got to emulate a two-player card game. Cards are positive integer
+numbers, and the rules of the game are pretty straightforward:
+
+- Each player starts with their own deck of cards.
+- Then, each turn:
+  - Both players draw the top card of their deck.
+  - The player who drew the higher-valued card wins the round and keeps both
+    cards, inserting them at the bottom of their deck, their card first.
+  - If either player is left with no cards, the game ends and the winner is the
+    player with all the cards. Otherwise the game keeps going.
+
+We need to determine the score of the winner, which is calculated as the sum of
+the product of each card with its position from the bottom of the deck (the last
+card's position is 1).
+
+As usual, let's get input parsing out of the way. Cards are given one by line
+for each player, with an empty newline between the two decks, and a seemingly
+unneeded "heading" line before the list of cards of each player. We can split
+the entire input on a double newline (`\n\n`), then split again both parts into
+separate lines using [`str.splitlines()`][py-str-splitlines], throwing away the
+first line of each part. We can do this in a rather compact way with the help of
+[`map()`][py-builtin-map].
+
+```python
+deck1, deck2 = map(str.splitlines, fin.read().split('\n\n'))
+```
+
+We'll end up with two lists of strings representing the decks of player 1 and
+player 2 which we can easily `map()` again into lists of `int`. However, since
+the game involves continuously moving cards around from the top to the bottom of
+the decks, we should avoid using `list` to represent decks, since popping the
+first element from a `list` takes [linear time][wiki-linear-time] proportional
+to the length of the list. A [`deque`][py-collections-deque] is the perfect data
+structure, supporting fast removal and insertion of elements on both ends.
+
+```python
+deck1 = deque(map(int, deck1[1:]))
+deck2 = deque(map(int, deck2[1:]))
+```
+
+Now let's actually write the code to play this game. We'll create a simple
+function which does nothing more than following the rules outlined in the
+problem statement. Each turn we'll [`.popleft()`][py-deque-popleft] the first
+card of each deck, then compare the two and [`.extend()`][py-deque-extend] the
+winner's deck with both cards (in the right order). It's not clear what happens
+should the two cards have the same value, so we'll just assume that's impossible
+(we can [`assert`][py-assert] that this never happens just to be sure).
+
+```python
+def play(deck1, deck2):
+    while deck1 and deck2:
+        c1, c2 = deck1.popleft(), deck2.popleft()
+
+        if c1 > c2:
+            deck1.extend((c1, c2))
+        else:
+            deck2.extend((c2, c1))
+
+    return deck1 if deck1 else deck2
+```
+
+The function we just wrote returns the final deck of the winner (using a
+[conditional expression][py-conditional-expression]), now let's write another
+function to calculate the winner's score (spoiler: we are writing a function
+just because we'll need it again for part 2).
+
+For each card in the winner's deck, start from the bottom and multiply it by its
+position (from the bottom), summing up every value. To reverse the deck, since
+we are dealing with a `deque` and `deque` objects do not support
+[slicing][py-slice], we cannot simply use `[::-1]`, we need to resort to the
+built-in [`reversed()`][py-builtin-reversed] function. Once the deck is
+reversed, we can then use [`enumerate`][py-builtin-enumerate] counting from `1`
+to iterate over both the values and their positions.
+
+```python
+def score(deck):
+    tot = 0
+    for pos, card in enumerate(reversed(deck), 1):
+        tot += card * pos
+    return tot
+```
+
+As always, a simple loop that is only summing up values can be simplified down
+to a single line using [`sum()`][py-builtin-sum]:
+
+```python
+def score(deck):
+    return sum(p * c for p, c in enumerate(reversed(deck), 1))
+```
+
+All that's left to do is use the functions we defined to simulate the game and
+get our answer:
+
+```python
+winner_deck  = play(deck1.copy(), deck2.copy())
+winner_score = score(winner_deck)
+
+print('Part 1:', winner_score)
+```
+
+### Part 2
+
+Now the rules change, and the game becomes *recursive*. Oh no, we'll need to
+write another recursive function!
+
+The new rules to apply each turn are the following:
+
+- Before each turn, avoid entering an infinite loop by checking the current
+  decks. If the current decks have ever been seen before in this game with the
+  same length and the exact same cards in the same order, stop playing: player 1
+  automatically wins.
+- Both players draw the top card of their deck.
+- If for both players the value of the drawn card is less than or equal to the
+  number of remaining cards in deck, the winner of the round is determined by
+  playing a new game. Take a number of cards equal to the drawn card from the
+  top of each deck, and start a new sub-game to determine the winner of this
+  round.
+- Otherwise (one or both cards have values higher than the number of cards left
+  in the corresponding deck) play normally. The player who drew the
+  higher-valued card wins the round and keeps both cards, inserting them at the
+  bottom of their deck, their card first.
+- If either player is left with no cards, the game ends and the winner is the
+  player with all the cards. Otherwise the game keeps going.
+
+There does not seem much to think about, all we need to do is follow the rules
+again, creating a new function to play the game recursively.
+
+In order to check for the first rule above, we can use a simple `set` to keep
+track of seen decks. Before each turn, we'll check if the current pair of decks
+is in the set, and stop declaring player 1 the winner if that's the case.
+Otherwise, we'll turn the current decks into a pair of `tuple` and add them to
+the set of seen decks.
+
+For the recursive part, all we need to do each turn is again apply the rules
+literally: draw two cards and check if they both have values higher than the
+length of the two decks. If so, cut the decks by temporarily turning them into
+lists (`deque` objects do not support slicing) and do a recursive call to
+determine the winner. Otherwise, the winner is the one who drew the
+higher-valued card.
+
+Since we now also need to know who won (and not only the winner's deck), we'll
+return two values from our recursive function: the winner (`1` or `2`) and its
+deck, ignoring the deck in the case of a recursive call.
+
+```python
+def recursive_play(deck1, deck2):
+    seen = set()
+
+    while deck1 and deck2:
+        k = (tuple(deck1), tuple(deck2))
+        if k in seen:
+            return 1, deck1
+
+        seen.add(k)
+        c1, c2 = deck1.popleft(), deck2.popleft()
+
+        if len(deck1) >= c1 and len(deck2) >= c2:
+            sub1, sub2 = list(deck1)[:c1], list(deck2)[:c2]
+            winner, _ = recursive_play(deque(sub1), deque(sub2))
+        else:
+            winner = 1 if c1 > c2 else 2
+
+        if winner == 1:
+            deck1.extend((c1, c2))
+        else:
+            deck2.extend((c2, c1))
+
+    return (1, deck1) if deck1 else (2, deck2)
+```
+
+Done, now let's call the function and [call it a day][misc-call-day]:
+
+```python
+_, winner_deck = recursive_play(deck1, deck2)
+winner_score   = score(winner_deck)
+
+print('Part 2:', winner_score)
+```
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -5079,6 +5267,7 @@ vegan as the name obviously implies).
 [d18]: #day-18---operation-order
 [d20]: #day-20---jurassic-jigsaw
 [d21]: #day-21---allergen-assessment
+[d22]: #day-22---crab-combat
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -5100,6 +5289,8 @@ vegan as the name obviously implies).
 [d18-problem]: https://adventofcode.com/2020/day/18
 [d20-problem]: https://adventofcode.com/2020/day/20
 [d21-problem]: https://adventofcode.com/2020/day/21
+[d22-problem]: https://adventofcode.com/2020/day/22
+
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
@@ -5120,6 +5311,7 @@ vegan as the name obviously implies).
 [d18-solution]: solutions/day18.py
 [d20-solution]: solutions/day20.py
 [d21-solution]: solutions/day21.py
+[d22-solution]: solutions/day22.py
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
@@ -5134,7 +5326,9 @@ vegan as the name obviously implies).
 
 [utils-selective-cache]: https://github.com/mebeim/aoc/blob/bd28a12be5444126dc531e8594181e0275424ee8/utils/decorators.py#L21
 
+[py-assert]:                  https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement
 [py-complex]:                 https://docs.python.org/3/library/stdtypes.html#numeric-types-int-float-complex
+[py-conditional-expression]:  https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-dict-comprehension]:      https://www.python.org/dev/peps/pep-0274/
 [py-format-string]:           https://docs.python.org/3/library/string.html#formatstrings
 [py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
@@ -5145,6 +5339,7 @@ vegan as the name obviously implies).
 [py-slice]:                   https://docs.python.org/3/library/functions.html?highlight=slice#slice
 [py-unpacking]:               https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 [py-yield-from]:              https://docs.python.org/3.9/whatsnew/3.3.html#pep-380
+
 [py-list-count]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-set]:                     https://docs.python.org/3/library/stdtypes.html#set
 [py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
@@ -5176,6 +5371,7 @@ vegan as the name obviously implies).
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
 [py-builtin-pow]:             https://docs.python.org/3/library/functions.html#pow
 [py-builtin-range]:           https://docs.python.org/3/library/functions.html#range
+[py-builtin-reversed]:        https://docs.python.org/3/library/functions.html#reversed
 [py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
@@ -5183,6 +5379,8 @@ vegan as the name obviously implies).
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
 [py-copy]:                    https://docs.python.org/3/library/copy.html
 [py-copy-deepcopy]:           https://docs.python.org/3/library/copy.html#copy.deepcopy
+[py-deque-popleft]:           https://docs.python.org/3/library/collections.html#collections.deque.popleft
+[py-deque-extend]:            https://docs.python.org/3/library/collections.html#collections.deque.extend
 [py-itertools]:               https://docs.python.org/3/library/itertools.html
 [py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
 [py-itertools-product]:       https://docs.python.org/3/library/itertools.html#itertools.product
@@ -5224,6 +5422,7 @@ vegan as the name obviously implies).
 [wiki-closure]:               https://en.wikipedia.org/wiki/Closure_(computer_programming)
 [wiki-complex-numbers]:       https://en.wikipedia.org/wiki/Complex_number
 [wiki-complex-rotation]:      https://en.wikipedia.org/wiki/Rotation_(mathematics)#Complex_numbers:~:text=This%20can%20be%20rotated%20through%20an%20angle
+[wiki-constant-time]:         https://en.wikipedia.org/wiki/Time_complexity#Constant_time
 [wiki-coprime]:               https://en.wikipedia.org/wiki/Coprime_integers
 [wiki-coprime-set]:           https://en.wikipedia.org/wiki/Coprime_integers#Coprimality_in_sets
 [wiki-cpython]:               https://en.wikipedia.org/wiki/CPython
@@ -5260,6 +5459,7 @@ vegan as the name obviously implies).
 [wiki-vm]:                    https://en.wikipedia.org/wiki/Virtual_machine
 
 [misc-aoc-bingo]: https://www.reddit.com/r/adventofcode/comments/k3q7tr/
+[misc-call-day]:  https://dictionary.cambridge.org/dictionary/english/call-it-a-day
 [misc-man1-tr]:   https://man7.org/linux/man-pages/man1/tr.1.html
 [misc-pypy]:      https://www.pypy.org/
 [misc-regexp]:    https://www.regular-expressions.info/
