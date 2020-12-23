@@ -5160,6 +5160,9 @@ winner_score = score(winner_deck)
 print('Part 1:', winner_score)
 ```
 
+Note: we're passing a `.copy()` here just because we'll need to re-use the same
+decks for part 2.
+
 ### Part 2
 
 Now the rules change, and the game becomes *recursive*. Oh no, we'll need to
@@ -5196,38 +5199,39 @@ the set of seen decks.
 For the recursive part, all we need to do each turn is again apply the rules
 literally: draw two cards and check if they both have values higher than the
 length of the two decks. If so, cut the decks by temporarily turning them into
-lists (`deque` objects do not support slicing) and do a recursive call to
-determine the winner. Otherwise, the winner is the one who drew the
-higher-valued card.
+tuples or lists (`deque` objects do not support slicing) and do a recursive call
+to determine the winner of the round. Otherwise, the winner of the round is the
+one who drew the higher-valued card.
 
 Since we now also need to know who won (and not only the winner's deck), we'll
-return two values from our recursive function: the winner (`1` or `2`) and its
-deck, ignoring the deck in the case of a recursive call.
+return two values from our recursive function: the winner and its deck, ignoring
+the deck in the case of a recursive call. To identify the winner we'll simply
+return `True` in case player 1 wins and `Fales` otherwise.
 
 ```python
 def recursive_play(deck1, deck2):
     seen = set()
 
     while deck1 and deck2:
-        k = (tuple(deck1), tuple(deck2))
-        if k in seen:
-            return 1, deck1
+        key = tuple(deck1), tuple(deck2)
+        if key in seen:
+            return True, deck1
 
-        seen.add(k)
+        seen.add(key)
         c1, c2 = deck1.popleft(), deck2.popleft()
 
         if len(deck1) >= c1 and len(deck2) >= c2:
-            sub1, sub2 = list(deck1)[:c1], list(deck2)[:c2]
-            winner, _ = recursive_play(deque(sub1), deque(sub2))
+            sub1, sub2 = tuple(deck1)[:c1], tuple(deck2)[:c2]
+            p1win, _ = recursive_play(deque(sub1), deque(sub2))
         else:
-            winner = 1 if c1 > c2 else 2
+            p1win = c1 > c2
 
-        if winner == 1:
+        if p1win:
             deck1.extend((c1, c2))
         else:
             deck2.extend((c2, c1))
 
-    return (1, deck1) if deck1 else (2, deck2)
+    return (True, deck1) if deck1 else (False, deck2)
 ```
 
 Done, now let's call the function and [call it a day][misc-call-day]:

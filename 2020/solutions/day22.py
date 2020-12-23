@@ -21,25 +21,25 @@ def recursive_play(deck1, deck2):
 	seen = set()
 
 	while deck1 and deck2:
-		k = (tuple(deck1), tuple(deck2))
-		if k in seen:
-			return 1, deck1
+		key = tuple(deck1), tuple(deck2)
+		if key in seen:
+			return True, deck1
 
-		seen.add(k)
+		seen.add(key)
 		c1, c2 = deck1.popleft(), deck2.popleft()
 
 		if len(deck1) >= c1 and len(deck2) >= c2:
-			sub1, sub2 = list(deck1)[:c1], list(deck2)[:c2]
-			winner, _ = recursive_play(deque(sub1), deque(sub2))
+			sub1, sub2 = tuple(deck1)[:c1], tuple(deck2)[:c2]
+			p1win, _ = recursive_play(deque(sub1), deque(sub2))
 		else:
-			winner = 1 if c1 > c2 else 2
+			p1win = c1 > c2
 
-		if winner == 1:
+		if p1win:
 			deck1.extend((c1, c2))
 		else:
 			deck2.extend((c2, c1))
 
-	return (1, deck1) if deck1 else (2, deck2)
+	return (True, deck1) if deck1 else (False, deck2)
 
 
 advent.setup(2020, 22)
