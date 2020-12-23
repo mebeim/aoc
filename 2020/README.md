@@ -26,6 +26,7 @@ Table of Contents
 - [Day 20 - Jurassic Jigsaw][d20]
 - [Day 21 - Allergen Assessment][d21]
 - [Day 22 - Crab Combat][d22]
+- [Day 23 - Crab Cups][d23]
 
 Day 1 - Report Repair
 ---------------------
@@ -5243,6 +5244,397 @@ winner_score   = score(winner_deck)
 print('Part 2:', winner_score)
 ```
 
+
+Day 23 - Crab Cups
+------------------
+
+[Problem statement][d23-problem] — [Complete solution][d23-solution] — [Back to top][top]
+
+### Part 1
+
+Another game with numbers, how cool! This time we'll be playing with cups. We
+have 10 cups labeled with values from 1 to 9 in a specific order (our puzzle
+input). These cups are arranged *in a circle*, that is, after the last cup we
+find the first one again. We are going to shuffle them according to a set of
+precise rules.
+
+We start with the first cup in our input list as the "current" cup. Each round,
+the following actions are performed to move cups around:
+
+- Pick up (removing them from the circle) the 3 cups right after the current
+  one.
+- Take the value of the current cup and subtract 1 from it. Keep subtracting 1
+  until the value is not amongst the values of the 3 cups we picked up. Whenever
+  the value goes below the minimum value amongst all cups, set it to the maximum
+  value.
+- Find the cup with the value we just calculated, and place the 3 cups we picked
+  up earlier right after it, in the same order in which they were picked up.
+- Select the cup right after the current one as the new current.
+
+After performing the above actions for 100 rounds, we need to find the cup with
+value 1, and concatenate all the values of the other cups after it, in order.
+This will be the answer for part 1.
+
+Hopefully the explanation is clear enough, but let's look at a small example of
+5 rounds anyway. This is the same as the one provided in the problem statement
+linked above, with input `389125467`, just rearranged in a way I find easier to
+understand. The current cup is surrounded by parentheses `( )`, and the 3 picked
+up cups are surrounded by square brackets `[ ]`.
+
+```
+Round 1:  (3) [8   9   1]  2   5   4   6   7
+               \_______/     ↑
+                    └────────┘
+
+Round 2:   3  (2) [8   9   1]  5   4   6   7
+                   \_______/                 ↑
+                       └─────────────────────┘
+
+Round 3:   3   2  (5) [4   6   7]  8   9   1
+             ↑         \_______/
+             └─────────────┘
+
+Round 4:   3]  4   6   7   2   5  (8) [9   1
+       ..._/             ↑             \_____...
+                         └─────────────────┘
+
+Round 5:  (4) [6   7   9]  1   3   2   5   8
+               \_______/         ↑
+                   └─────────────┘
+
+Final:     4   1   3   6   7   9   2   5   8
+Values after 1: 3 6 7 9 2 5 8 4
+```
+
+As you can see from above, moving the 3 picked up cups in round 1 is simple
+enough, we take `3 - 1 = 2`, so we place the cups after cup `2`. In the second
+round though we have `2 - 1 = 1`, and `1` is amongst the cups we picked up, so
+we subtract 1 wrapping back up to 9, which is *still* in the picked-up cups, we
+do this two more times and end up with `7` which is not amongst the picked up
+cups, so we place them after cup `7`.
+
+Parsing our input today couldn't be simpler, just [`map()`][py-builtin-map] the
+digits of the only line of input into integers:
+
+```python
+orig = tuple(map(int, fin.readline().rstrip()))
+```
+
+We keep the original list in a `tuple` because we'll need it later for part 2.
+
+Since we need to continuously remove and insert elements, and we are dealing
+with a cyclic list, we can use a [`deque`][py-collections-deque] to hold the
+values of the cups. We highly prefer a `deque` over a `list` because it supports
+fast insertion and deletions, while inserting and deleting elements from a list
+costs proportionally to the length of the list.
+
+A `deque` can be easily "rotated" through [`.rotate()`][py-deque-rotate]. If we
+keep our current cup always at the first spot in the `deque`, we can just use
+`.rotate()` to reposition the cups whenever we need to pop some out or add them
+back in. All the "rotations" we need to make are to the right, so the numbers
+passed to `.rotate()` will have to be negative since this method rotates to the
+left.
+
+The operations to perform in a round can be easily translated in terms of
+[`.popleft()`][py-deque-popleft], `.rotate()` and
+[`.appendleft()`][py-deque-appendleft] (or
+[`.extendleft()`][py-deque-extendleft]):
+
+- Looking at the current cup value simply means checking at `[0]`.
+- Picking 3 cups up after the current means `.rotate(-1)` then `.popleft()` 3
+  times.
+- Inserting the 3 cups back means `.rotate(-dest - 1)` then `.appendleft()` 3
+  times (or just `.extendleft()`).
+
+Let's write a function to play the game given a `deque` of cups. All we need to
+do is apply the rules, translating them to operations on the `deque` as
+explained above.
+
+```python
+def play(cups, n_moves):
+    mincup, maxcup = min(cups), max(cups)
+
+    for move in range(n_moves):
+        cur = cups[0]
+
+        # Pick up 3 cups after the current
+        cups.rotate(-1)
+        picked = [cups.popleft() for _ in range(3)]
+
+        # Select the destination cup value, after which we'll insert the 3 picked cups
+        dst = cur - 1
+        while dst in picked or dst < mincup:
+            if dst < mincup:
+                dst = maxcup
+            else:
+                dst -= 1
+
+        # Find the position of the destination cup and rotate the deque so that we are right after it
+        pos = cups.index(dst) + 1
+        cups.rotate(-pos)
+        # Insert the 3 picked up cups there (extendleft inserts backwards so we need to reverse them [::-1])
+        cups.extendleft(picked[::-1])
+        # Go back to where we were, so that the next current cup is at position 0
+        cups.rotate(pos)
+
+    # Move right at the cup with value 1
+    cups.rotate(1)
+    pos = cups.index(1)
+    cups.rotate(-pos)
+
+    # Discard cup 1 and concatenate the values of all subsequent cups to get the answer
+    cups.popleft()
+    return ''.join(map(str, cups))
+
+```
+
+The above loop which adjust the "destination" value according to the rules can
+be simplified using [conditional expressions][py-conditional-expression]:
+
+```python
+        dst = maxcup if cur == mincup else cur - 1
+        while dst in picked_vals:
+            dst = maxcup if dst == mincup else dst - 1
+```
+
+If we also start the values from `0` instead of `1` we can simplify the formula
+a little bit, but let's keep it this way to keep the calculation of the final
+value simple.
+
+Now we just need to call the function with the appropriate parameters:
+
+```python
+cups = deque(orig)
+ans  = play(cups)
+
+print('Part 1:', ans)
+```
+
+That was simple enough. Onto part 2!
+
+### Part 2
+
+Now we are told that we need to add *some more* cups... precisely, all cups
+valued from 10 to 1000000 (1 million). We also need to play the game for 10
+million rounds instead of 100. After the last round, we need to multiply
+together the values of the two cups right next to (after) the cup with value 1.
+
+Well... needless to say, we can't use a `deque` anymore. Shifting around 1
+million elements is quite slow; doing it 10 million times is just impossible (it
+would take ages). There are two main problems with our part 1 approach:
+
+1. Finding the index of a cup through `.index()` means scanning the entire
+   `deque`. This is way too slow on a large `deque`, and we need to do it every
+   single round. We need this operation to be as fast as possible, taking
+   [constant time][wiki-constant-time] instead of
+   [linear time][wiki-linear-time].
+2. Rotating around using `.rotate()` also takes linear time in the worst case
+   (i.e. rotate of the entire length of the deque). We also need this operation
+   to be performed in constant time if we want to solve this before the
+   [heat death of the universe][wiki-heat-death-universe].
+
+The two above points weren't really noticeable with only 100 rounds with 10
+items, since the operation is nearly instantaneous with such small numbers, but
+become a huge problem when the number of elements increases.
+
+Say hello to [linked lists][wiki-linked-list], the most beautiful data structure
+ever invented! In particular, we'll be building and using a
+[doubly-linked][wiki-doubly-linked-list] circular list to make the above issues
+disappear. We'll see how shortly, first, let's define a `class` for a linked
+list entry.
+
+In Python, the concept of an explicit "pointer" does not exist, so we don't have
+"conventional" linked lists out of the box, since we cannot not explicitly point
+to values. However, one can implicitly point to a value by wrapping it inside an
+instance of a "wrapper" `class` and taking a reference to that instance.
+Instancing a class and assigning it to a variable merely means keeping a
+reference to the instance of the class, which is akin to keeping a "pointer" to
+the instance.
+
+We can create a wrapper class for doubly-linked list entries in the following
+way:
+
+```python
+class Cup:
+    def __init__(self, value):
+        self.value = value # actual value
+        self.prev  = None  # pointer to previous Cup (left)
+        self.next  = None  # pointer to next Cup (right)
+```
+
+Our list of cups will be a doubly-linked list of `Cup` instances, where each cup
+has a `prev` pointing to the previous cup, and `next` pointing to the next one.
+The last cup's `next` pointer will point to the first, and the first cup's
+`prev` pointer will point to the last, making this also a *circular* list.
+
+Keeping cups in a doubly-linked list removes the problem of having to shift
+everything around just to remove and insert an arbitrary chunk of cups:
+
+- To remove some cups from the list, we only need to update the pointers of two
+  cups: the one before them and the one after them. We can simply update the
+  `next` pointer of the former and the `prev` pointer of the latter to point to
+  each other, effectively removing all references to the removed cups from the
+  rest of the list.
+- To add some cups back into the list between two other cups, we also only need
+  to update two pointers: the `next` pointer of the cup before the insertion
+  point, and the `prev` pointer of the cup after the insertion point.
+
+Here's a bonus Unicode-art diagram to visualize the removal of elements (and
+also addition if you read it from the bottom):
+
+```
+   ┌──────────────────────────────────────────────────────────────────────────┐
+   │                                                                          ↓
+┌──────┬───┬──────┐    ┌──────┬───┬──────┐    ┌──────┬───┬──────┐    ┌──────┬───┬──────┐
+| prev | A | next |<──>| prev | B | next |<──>| prev | C | next |<──>| prev | D | next |
+└──────┴───┴──────┘    └──────┴───┴──────┘    └──────┴───┴──────┘    └──────┴───┴──────┘
+         ↑                                                                         │
+         └─────────────────────────────────────────────────────────────────────────┘
+
+   ┌──────────────────────────────────────────────────────────────────────────┐
+   │                                                                          ↓
+┌──────┬───┬──────┐                                                  ┌──────┬───┬──────┐
+| prev | A | next |<────────────────────────────────────────────────>| prev | D | next |
+└──────┴───┴──────┘                                                  └──────┴───┴──────┘
+         ↑                                                                         │
+         └─────────────────────────────────────────────────────────────────────────┘
+```
+
+The second problem, finding the index of a cup given its value, now turned into
+finding a `Cup` instance given a value, as we don't have indexes anymore. Since
+the only thing we need is a way to get the corresponding `Cup` instance from a
+given value, we can use a dictionary `{value: cup}`, or better even just a
+simple `list` indexing using values, since our values are just integers from 1
+to 1 million.
+
+Let's write a function to build our linked list of 1 million cups, and while we
+do so, store a reference to each instance into a list where the index is the
+value of the cup. We can use [`itertools.chain()`][py-itertools-chain] to
+conveniently iterate over the first 10 cups from our input followed by a
+`range()` of values from `10` to `1000000`.
+
+```python
+from itertools import chain
+
+def build_list(starting_values):
+    cups   = [None] * (1000000 + 1) # cups[value] == Cup instance with that value
+    values = chain(starting_values, range(10, 1000000 + 1))
+
+    # Instantiate the first Cup right away to connect it to the next one
+    first  = next(values)
+    cups[first] = Cup(first)
+    first = cups[first]
+    prev = first
+
+    # Create all Cup instances while also connecting each instance to the previous
+    for value in values:
+        cur = cups[value] = Cup(value)
+        cur.prev = prev
+        prev.next = cur
+        prev = cur
+
+    # Finally connect the last to the first
+    cur.next = first
+
+    return first, cups
+```
+
+Now we can write a new `play()` function to actually play the game. There isn't
+really much more to say except what I explained above, so I'll let the code
+mainly speak for itself, with the help of some comments.
+
+```python
+def play(cur, cups, moves):
+    maxcup = len(cups) - 1
+
+    for _ in range(moves):
+        # Picu up 3 cups
+        first  = cur.next
+        mid    = first.next
+        last   = mid.next
+        picked = (first.value, mid.value, last.value)
+
+        # Remove them from the list
+        cur.next = last.next
+        cur.next.prev = cur
+
+        # Select the destination cup value, after which we'll insert the 3 picked cups
+        dst = maxcup if cur.value == 1 else cur.value - 1
+        while dst in picked:
+            dst = maxcup if dst == 1 else dst - 1
+
+        # Get the corresponding cup from its value
+        dst = cups[dst]
+        # Insert the picked cups right after it
+        first.prev = dst
+        last.next  = dst.next
+        dst.next.prev = last
+        dst.next      = first
+
+        # Advance the current cup
+        cur = cur.next
+```
+
+Lastly, let's build the linked list and the map `value -> Cup` and pass it to
+the above function to simulate 10 million rounds of the game:
+
+```python
+first, cups = build_list(orig)
+play(first, cups, 10000000)
+```
+
+The answer will just be the product of the values of the two cups after the cup
+with value `1`:
+
+```python
+ans = cups[1].next.value * cups[1].next.next.value
+print('Part 2:', ans)
+```
+
+With minor modifications, we can make the `build_list()` more generic to create
+a linked list of an arbitrary number of cups
+
+```python
+def build_list(values, n=None):
+    n = (n if n else len(values)) + 1
+    cups = [None] * n
+    values = chain(values, range(len(values) + 1, n))
+    # ... rest of the is unchanged
+```
+
+Then we can use our new `play()` function to also solve part 1, discarding the
+previous suboptimal solution. The only thing that we'll need to change is the
+calculation of the final value, sine we'll have to iterate over the list
+manually.
+
+```python
+first, cups = build_list(orig)
+play(first, cups, 100)
+
+ans = ''
+c = cups[1].next
+while c != cups[1]:
+    ans += str(c.value)
+    c = c.next
+
+print('Part 1:', ans)
+```
+
+### Reflections
+
+Today is a terrible day for our poor Python. As an interpreted language, it
+suffers *a lot* from the lack of a primitive linked list type. Having to wrap
+everything in classes really slows things down. Today, on my machine I get an
+execution time of roughly 3.1s using [PyPy][misc-pypy] 7.3.3 (Python 3.7.9) and
+13.5s using [CPython][wiki-cpython] 3.9.
+
+We *mayyybe* could improve performance using a different kind of wrapper to
+create our linked list nodes, for example lists of 3 elements or similar, but
+the ugliness of having to write stuff like `cur[1]` instead of `cur.next` all
+over the place is a real deal-breaker for me. Overall, what really affects
+performance is the slowness of indexing and/or accessing properties of Python
+objects which is an intrinsic downside of the language.
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -5272,6 +5664,7 @@ print('Part 2:', winner_score)
 [d20]: #day-20---jurassic-jigsaw
 [d21]: #day-21---allergen-assessment
 [d22]: #day-22---crab-combat
+[d23]: #day-23---crab-cups
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -5294,6 +5687,7 @@ print('Part 2:', winner_score)
 [d20-problem]: https://adventofcode.com/2020/day/20
 [d21-problem]: https://adventofcode.com/2020/day/21
 [d22-problem]: https://adventofcode.com/2020/day/22
+[d23-problem]: https://adventofcode.com/2020/day/23
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -5316,6 +5710,7 @@ print('Part 2:', winner_score)
 [d20-solution]: solutions/day20.py
 [d21-solution]: solutions/day21.py
 [d22-solution]: solutions/day22.py
+[d23-solution]: solutions/day23.py
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
@@ -5383,9 +5778,13 @@ print('Part 2:', winner_score)
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
 [py-copy]:                    https://docs.python.org/3/library/copy.html
 [py-copy-deepcopy]:           https://docs.python.org/3/library/copy.html#copy.deepcopy
-[py-deque-popleft]:           https://docs.python.org/3/library/collections.html#collections.deque.popleft
+[py-deque-appendleft]:        https://docs.python.org/3/library/collections.html#collections.deque.appendleft
 [py-deque-extend]:            https://docs.python.org/3/library/collections.html#collections.deque.extend
+[py-deque-extendleft]:        https://docs.python.org/3/library/collections.html#collections.deque.extendleft
+[py-deque-popleft]:           https://docs.python.org/3/library/collections.html#collections.deque.popleft
+[py-deque-rotate]:            https://docs.python.org/3/library/collections.html#collections.deque.rotate
 [py-itertools]:               https://docs.python.org/3/library/itertools.html
+[py-itertools-chain]:         https://docs.python.org/3/library/itertools.html#itertools.chain
 [py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
 [py-itertools-product]:       https://docs.python.org/3/library/itertools.html#itertools.product
 [py-itertools-combinations]:  https://docs.python.org/3/library/itertools.html#itertools.combinations
@@ -5436,12 +5835,15 @@ print('Part 2:', winner_score)
 [wiki-euclidean-division]:    https://en.wikipedia.org/wiki/Euclidean_division
 [wiki-exponential-time]:      https://en.wikipedia.org/wiki/Time_complexity#Exponential_time
 [wiki-functional-prog]:       https://en.wikipedia.org/wiki/Functional_programming
+[wiki-heat-death-universe]:   https://en.wikipedia.org/wiki/Heat_death_of_the_universe
 [wiki-hypercube]:             https://en.wikipedia.org/wiki/Hypercube
+[wiki-infix-notation]:        https://en.wikipedia.org/wiki/Infix_notation
 [wiki-jit]:                   https://en.wikipedia.org/wiki/Just-in-time_compilation
 [wiki-john-horton-conway]:    https://en.wikipedia.org/wiki/John_Horton_Conway
-[wiki-infix-notation]:        https://en.wikipedia.org/wiki/Infix_notation
 [wiki-lcm]:                   https://en.wikipedia.org/wiki/Least_common_multiple
 [wiki-lexical-analysis]:      https://en.wikipedia.org/wiki/Lexical_analysis
+[wiki-linked-list]:           https://en.wikipedia.org/wiki/Linked_list
+[wiki-doubly-linked-list]:    https://en.wikipedia.org/wiki/Doubly_linked_list
 [wiki-linear-time]:           https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-manhattan-dist]:        https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
 [wiki-memoization]:           https://en.wikipedia.org/wiki/Memoization
