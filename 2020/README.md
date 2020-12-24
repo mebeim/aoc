@@ -3614,48 +3614,67 @@ The next thing to do is define a function which can count how many cells are
 alive around a given cell (given its coordinates). Well, simple enough: it's
 almost the same thing we did in [day 11][d11] part 1. We'll vary each coordinate
 `c` in the range `[c+1, c-1]` and count how many of the coordinates we generate
-is in our `cube`. We don't need to do any bound checking since we don't actually
-have bounds. Doing `coords in cube` is enough to check if a cell at `coords` is
-alive.
+are in our `cube`. We don't need to do any bound checking since we don't
+actually have bounds. Doing `coords in cube` is enough to check if a cell at
+`coords` is alive.
+
+We'll actually split this in two functions, creating a small generator function
+to get the neighbor coordinates, which we'll also use later. For performance
+purposes, along eith neighbor coordinates we'll also return the given
+coordinates theirselves; we will check later with a single `if` whether we also
+need them or not, rather than checking every single coordinate in the nested
+loops, which would be a lot slower.
 
 ```python
-def alive_neighbors(cube, x, y, z):
-    alive = 0
+def neighbors(x, y, z):
     for xx in range(x - 1, x + 2):
         for yy in range(y - 1, y + 2):
             for zz in range(z - 1, z + 2):
-                # Avoid checking the same cell as the one with the given coordinates
-                if xx != x or yy != y or zz != z:
-                    if (xx, yy, zz) in cube:
-                        alive += 1
+                yield xx, yy, zz
+
+def alive_neighbors(cube, coords):
+    alive = 0
+    for n in neighbors(*coords):
+        if n in cube:
+            alive += 1
+
+    # Just subtract 1 here if we also counted the given coordinates, since we
+    # don't filter them out in neighbors()
+    if coords in cube:
+        alive -= 1
+
     return alive
 ```
 
-We can simplify the above nested loops with the help of
-[`itertools.product()`][py-itertools-product]:
+We can simplify the nested loops in the above `neighbors` function with the help
+of [`itertools.product()`][py-itertools-product], using the pretty cool
+"generator delegation" sytax [`yield from`][py-yield-from]:
 
 ```python
 from itertools import product
 
-def alive_neighbors(cube, x, y, z):
-    alive = 0
-    for coords in product(range(x-1, x+2), range(y-1, y+2), range(z-1, z+2)):
-        if coords in cube:
-            alive += 1
+def neighbors(x, y, z):
+    yield from product(range(x-1, x+2), range(y-1, y+2), range(z-1, z+2))
+```
 
-    # Avoid the checking in the above loop and just subtract 1 if we counted the given cell
-    if (x, y, z) in cube:
-        alive -= 1
+The `alive_neighbors()` function can also be simplified using
+[`sum()`][py-builtin-sum] along with a
+[generator expression][py-generator-expr], since all it's doing is counting the
+number of times the condition `n in cube` is `True`:
 
+```python
+def alive_neighbors(cube, coords):
+    alive  = sum(p in cube for p in neighbors(*coords))
+    alive -= coords in cube
     return alive
 ```
 
 Now we need to evolve the cells. The cells in our `cube` are enclosed in a
 limited cube in space. We want to iterate over each cell of said cube. In
 addition to this, as we noticed earlier, each generation there's also a
-possibility that this limited cube "expands" or even moves around. Any of the
-cells that are adjacent to the faces of the cube could potentially become alive
-if there are exactly 3 alive cells nearby on a face.
+possibility that this limited cube "expands" or even moves around, because dead
+neighbors which are not considered in our set can come to life if they are near
+enough alive cells.
 
 For example, in an analogous 2D situation (sorry, can't really do 3D ASCII-art):
 
@@ -3669,94 +3688,64 @@ For example, in an analogous 2D situation (sorry, can't really do 3D ASCII-art):
 . . . . .      . . . . .
 ```
 
-To determine the bounds of our limited cube, we need to check the minimum and
-maximum of each dimension (`x`, `y`, `z`) of all the coordinates we have. In
-order to do this, we can use [`max()`][py-builtin-max] plus `map()` to extract a
-given coordinate from each point. Since we also want to check around the cube,
-we'll subtract `1` from each minimum coordinate and add `1` to each maximum
-coordinate (actually `2` since we'll iterate using [`range()`][py-builtin-range]
-which stops one earlier).
+This means that each generation, in addition to checking all the cells in our
+`cube`, we also need to check their neighbors. To determine the neighbors of all
+the cells we can simply iterate over all the coordinates and call the
+`neighbors()` function we just wrote for each of them: this time the fact that
+the function also returns the given coordinates is useful. Since there's a high
+chance of having cells close to each other, and therefore considering the same
+neighbors more than once, to avoid wasting time we'll filter all duplicate
+coordinates out using a `set()`.
 
 ```python
-def bounds(cube):
-    lox = min(map(lambda p: p[0], cube)) - 1 # minimum x coordinate minus 1
-    loy = min(map(lambda p: p[1], cube)) - 1 # minimum y coordinate minus 1
-    loz = min(map(lambda p: p[2], cube)) - 1 # minimum z coordinate minus 1
-    hix = max(map(lambda p: p[0], cube)) + 2 # maximum x coordinate plus 2
-    hiy = max(map(lambda p: p[1], cube)) + 2 # maximum y coordinate plus 2
-    hiz = max(map(lambda p: p[2], cube)) + 2 # maximum z coordinate plus 2
-    return range(lox, hix), range(loy, hiy), range(loz, hiz)
+def all_neighbors(cube):
+    return set(n for p in cube for n in neighbors(*p))
 ```
 
-We can also use [`operator.itemgetter()`][py-operator-itemgetter] to simplify
-the above:
-
-```python
-def bounds(cube):
-    lox = min(map(itemgetter(0), cube)) - 1
-    # ...
-```
-
-Now that we figured this out, all we have to do is iterate over all possible
-coordinates from `(minx-1, miny-1, minz-1)` to `(maxx+1, maxy+1, maxz+1)` and
-apply the rules. Let's write a function for this:
-
-```python
-def evolve(cube):
-    new = set()
-    rangex, rangey, rangez = bounds(cube)
-
-    for x in rangex:
-        for y in rangey:
-            for z in rangez:
-                alive = alive_neighbors(cube, x, y, z)
-
-                if (x, y, z) in cube:
-                    if alive == 2 or alive == 3:
-                        # alive cell stays alive only if exactly 2 or 3 neighbors are alive
-                        new.add((x, y, z))
-                elif alive == 3:
-                    # dead cell becomes alive only if exactly 3 neighbors are alive
-                    new.add((x, y, z))
-
-    return new
-```
-
-Hmm... That's kind of ugly. Those `3` ranges we return are the perfect use case
-for `itertools.product()`, so let's simplify:
+Now that we figured this out, all we have to do is iterate over all the
+coordinates returned from `all_neighbors()`, and check the evolution rules each
+time.
 
 ```python
 def evolve(cube):
     new = set()
 
-    for coords in product(*bounds(cube)):
-        # coords is (x, y, z)
-        alive = alive_neighbors(cube, *coords)
+    for p in all_neighbors(cube):
+        alive = alive_neighbors(cube, p)
 
-        # Simplified conditions from above
-        if (coords in cube and alive in (2, 3)) or alive == 3:
-            new.add(coords)
+        if p in cube:
+            if alive == 2 or alive == 3:
+                # alive cell stays alive only if exactly 2 or 3 neighbors are alive
+                new.add(p)
+        elif alive == 3:
+            # dead cell becomes alive only if exactly 3 neighbors are alive
+            new.add(p)
 
     return new
 ```
 
-That's nice. We can even turn the `bounds()` function into a generator for added
-coolness (and speed):
+The checks for evolving a cell can be simplified a lot by noticing that cells
+which have 3 alive neighbors will become (or stay) alive regardless of their
+previous state, while cells that are already alive will also stay alive if they
+have exactly 2 neighbors:
 
 ```python
-def bounds(cube):
-    for i in range(3):
-        lo = min(map(itemgetter(i), cube)) - 1
-        hi = min(map(itemgetter(i), cube)) + 2
-        yield range(lo, hi)
+def evolve(cube):
+    new = set()
+
+    for p in all_neighbors(cube):
+        alive = alive_neighbors(cube, p)
+
+        if alive == 3 or (alive == 2 and p in cube):
+            new.add(p)
+
+    return new
 ```
 
-Beautiful! The `evolve()` code above needs no change.
-
-Now that we have all we need, we can finally start simulating. We want to
-simulate 6 generations, then stop and count alive cells: since our `cube` is
-just a set of coordinates of alive cells, we can simply take its size after the
-final evolution.
+Beautiful! Now that we have all we need, we can finally start simulating. We
+want to simulate 6 generations, then stop and count alive cells. Since our
+`cube` is just a set of coordinates of alive cells, to count the final number of
+alive cells we can simply take its `len()` after the last evolution.
 
 ```python
 for _ in range(6):
@@ -3773,81 +3762,43 @@ Well, that was nice! Onto the second part.
 For this second part... nothing changes, except that we now have *four*
 dimensions.
 
-Oh no! All the code we wrote works with 3 dimensions, do we need to rewrite
-everything? Well, not quite. We can make the functions a little bit more
-general, adding the number of dimensions as parameter. The code of each function
-stays almost the same, we only need to apply minor changes.
+Oh no! The code we wrote works with 3 dimensions, do we need to rewrite
+everything? Well, not quite, the only function that would need to be updated is
+`neighbors()`, since it takes exactly 3 arguments. We can make a small change to
+generalize it to work with any dimension.
 
-To count alive neighbors, we would need to take an additional parameter `w` for
-the fourth dimension. Let's make it general, taking a tuple of `coords` instead.
-For each coordinate `c` we will create a tuple `(c - 1, c, c + 1)`, then pass
-all those tuples to `itertools.product()` (we could even do this using
-`range()`, but for only three values we won't really see any difference).
+To generate neighbor coordinates, we would need to take an additional parameter
+`w` for the fourth dimension, but since we want this to be general, taking a
+tuple of `coords` instead is the way to go. For each coordinate `c` we will
+create a tuple `(c - 1, c, c + 1)`, then pass all those tuples to
+[`itertools.product()`][py-itertools-products] (we could even do this using
+[`range()`][py-builtin-range], but for only three values we won't really see any
+difference).
+
+The new general function is literally just one more line than before:
 
 ```python
-def alive_neighbors(cube, coords):
-    alive  = 0
+def neighbors(coords):
     ranges = ((c - 1, c, c + 1) for c in coords)
-
-    for coords2 in product(*ranges):
-        if coords2 in cube:
-            alive += 1
-
-    if coords in cube:
-        alive -= 1
-
-    return alive
+    yield from product(*ranges)
 ```
 
-The loop we are doing can really just be simplified down to a single `sum()`.
-Additionally, since booleans can be summed to integers acting as `0` or `1`, we
-can also remove the `if coords in cube` and just directly do a subtraction
-instead.
+We also need to remove the [unpacking operator][py-unpacking] (`*`) when calling
+the new `neighbor()` function since now it can take the entire tuple as one
+argument:
 
 ```python
 def alive_neighbors(cube, coords):
-    ranges = ((c - 1, c, c + 1) for c in coords)
-    alive  = sum(p in cube for p in product(*ranges))
+    alive  = sum(p in cube for p in neighbors(coords)) # changed *coords to coords
     alive -= coords in cube
     return alive
+
+def all_neighbors(cube):
+    return set(n for p in cube for n in neighbors(p)) # changed *p to p
 ```
 
-To determine the bounds of our cube (which is now an
-[hypercube][wiki-hypercube]), we can make `bounds()` more general and just
-accept the number of dimensions as parameter:
-
-```python
-def bounds(cube, n_dims):
-    for i in range(n_dims):
-        lo = min(map(itemgetter(i), cube)) - 1
-        hi = max(map(itemgetter(i), cube)) + 2
-        yield range(lo, hi)
-```
-
-Finally, we'll also pass the number of dimensions to `evolve()`, in order to be
-able to pass it to `bounds()`:
-
-```python
-def evolve(cube, n_dims):
-    new = set()
-
-    for coord in product(*bounds(cube, n_dims)):
-        alive = alive_neighbors(cube, coord)
-
-        if (coord in cube and alive in (2, 3)) or alive == 3:
-            new.add(coord)
-
-    return new
-```
-
-The loop for part 1 now becomes:
-
-```python
-for _ in range(6):
-    cube = evolve(cube, 3)
-```
-
-And for part 2 all we have to do is create another cube with an additional
+The solution for part 1 stays the same since we did not touch `evolve()`, while
+for part 2 all we have to do is create another cube with an additional
 coordinate set to `0` for all initial points:
 
 ```python
@@ -3859,11 +3810,11 @@ for x, row in enumerate(grid):
             hypercube.add((x, y, 0, 0))
 ```
 
-Finally we can simulate again passing `n_dims=4` and get our answer:
+And then simply simulate again:
 
 ```python
 for _ in range(6):
-    hypercube = evolve(hypercube, 4)
+    hypercube = evolve(hypercube)
 
 total_alive = len(hypercube)
 print('Part 2:', total_alive)
