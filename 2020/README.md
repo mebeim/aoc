@@ -22,11 +22,12 @@ Table of Contents
 - [Day 16 - Ticket Translation][d16]
 - [Day 17 - Conway Cubes][d17]
 - [Day 18 - Operation Order][d18]
-- *Day 19 - TODO*
+- *Day 19 - TODO (work in progress)*
 - [Day 20 - Jurassic Jigsaw][d20]
 - [Day 21 - Allergen Assessment][d21]
 - [Day 22 - Crab Combat][d22]
 - [Day 23 - Crab Cups][d23]
+- [Day 24 - Lobby Layout][d24]
 
 Day 1 - Report Repair
 ---------------------
@@ -5635,6 +5636,283 @@ over the place is a real deal-breaker for me. Overall, what really affects
 performance is the slowness of indexing and/or accessing properties of Python
 objects which is an intrinsic downside of the language.
 
+
+Day 24 - Lobby Layout
+---------------------
+
+[Problem statement][d24-problem] — [Complete solution][d24-solution] — [Back to top][top]
+
+### Part 1
+
+Today we have to navigate through an [*hexagonal grid*][wiki-hexgrid], how cool!
+
+We have a room with a hexagonally-tiled floor. All the tiles of the floor have
+one black side and one white side, and they are initially all placed with the
+white side facing up. We need to flip specific tiles according to a list of
+directions.
+
+Each entry in our list of direction is a string consisting of multiple moves
+concatenated together: each move can be either `e`, `se`, `sw`, `w`, `nw`, or
+`ne`. There is no space between two moves, as it's not needed to identify the
+moves. Each string of moves in our lists represents the steps to make to arrive
+to the tile we need to flip, always starting from the same reference tile.
+
+We need to determine how many tiles will have the black side up after flipping
+all the tiles following the directions.
+
+Not that difficult of a problem, all we need is a decent coordinate system to
+uniquely identify the position of a tile relative to the reference tile.
+
+Even though it might seem that we can move in more than two directions, we
+really are not. Even dealing with a hexagonal grid, we are still in a
+2-dimensional space, so each tile's position can be uniquely identified by
+exactly two integer coordinates `(x, y)`. If we concentrate enough, we can
+actually look at tiles as if they were arranged in rows and (slightly slanted)
+columns.
+
+Here's how we can represent tile coordinates (bear with me on this one,
+ASCII-art hexagonal tiles are really only pretty when drawn in the perpendicular
+orientation, unfortunately):
+
+```
+       / \     / \     / \     / \     / \     /#\
+     /     \ /     \ /     \ /     \ /     \ /#####\
+    | -1,-1 |  0,-1 |  1,-1 |  2,-1 |  3,-1 |#######|
+    |       |       |       |       |       |#######|
+   / \     / \     / \     / \     / \     /#\#####/ \
+ /     \ /     \ /     \ /     \ /     \ /#####\#/     \
+| -1,0  |  0,0  |  1,0  |  2,0  |  3,0  |#######|  6,0  |
+|       |  REF  |       |       |       |#######|       |
+ \     / \     / \     / \     / \     /#\#####/ \     /
+   \ /     \ /     \ /     \ /     \ /#####\#/     \ /
+    |  0,1  |  1,1  |  2,1  |  3,1  |#######|  5,1  |
+    |       |       |       |       |#######|       |
+   / \     / \     / \     / \     /#\#####/ \     / \
+ /     \ /     \ /     \ /     \ /#####\#/     \ /     \
+|  0,2  |  1,2  |  2,2  |  3,2  |#######|  5,2  |  6,2  |
+|       |       |       |       |#######|       |       |
+ \     / \     / \     / \     / \#####/ \     / \     /
+   \ /     \ /     \ /     \ /     \#/     \ /    \ /
+```
+
+In the above representation rows are clearly visible, and I've highlighted the
+column `y=4` filling it with `#`. The reference cell is at `(0,0)` and marked
+with `REF`.
+
+A movement *east* or *west* using such a coordinate system is nothing special,
+we stay on same row, and just need to change the `x` coordinate. However, a
+north or south movement could either change one coordinate only or both
+coordinates, depending on the direction. Moving *south west* only changes `y`,
+while moving or *south east* changes both `x` and `y`! Similarly, moving
+*north east* changes only `y`, while moving *north west* changes both `x` and
+`y`!
+
+Now that we have a clear coordinate system to follow, we can start working.
+Let's write a function which, given a list of moves, "walks" the hexagonal grid
+and returns the coordinates of the final cell relative to the reference cell. In
+order to do this, a global dictionary representing the deltas to apply to each
+coordinate comes in handy, and lets us avoid writing 6 different `if/elif`
+branches.
+
+```python
+MOVEMAP = {
+    'e' : ( 1,  0),
+    'w' : (-1,  0),
+    'se': ( 1,  1),
+    'sw': ( 0,  1),
+    'ne': ( 0, -1),
+    'nw': (-1, -1)
+}
+
+def walk(moves):
+    x, y = 0, 0
+
+    for move in moves:
+        dx, dy = MOVEMAP[move]
+        x += dx
+        y += dy
+
+    return x, y
+```
+
+That was straightforward. Now all that's left to do is parse the input
+directions and apply them.
+
+In order to split each string of directions into a list of moves, we can use a
+simple [regular expression][misc-regex] consisting of only 6 alternatives
+separated by pipes (`|`):
+
+```python
+import re
+
+rexp = re.compile(r'e|w|se|sw|ne|nw')
+```
+
+Applying [`.findall()`][py-re-findall] on a line of input using the above regexp
+will return a list of moves to follow to get to the wanted tile to flip.
+
+The code we're going to write from now on is very similar to the one we wrote
+for [day 17][d17]: the only thing we care about a specific point of our grid, is
+if that point is a black tile or not. To keep track of this information, all we
+need is a set of coordinates representing black tiles.
+
+Initially, the set will be empty. Then, for each line of input, we'll parse it
+into a list of directions and pass it through `walk()` to get the final
+coordinates of the tile to flip. Finally, to "flip" the tile we'll simply add
+the coordinates to our set *if and only if* they aren't in the set already
+(meaning the tile is being flipped from white to black side), or remove them if
+they *are* already in the set (meaning the tile is being flipped from black to
+white side).
+
+```python
+grid = set() # coords of tiles with black side up
+
+for line in fin:
+    moves = rexp.findall(line)
+    p = walk(moves)
+
+    if p in grid:
+        grid.remove(p)
+    else:
+        grid.add(p)
+```
+
+All that's left to do is "calculate" the number of black tiles in our set:
+
+```python
+n_black = len(grid)
+print('Part 1:', n_black)
+```
+
+### Part 2
+
+For the second part of the puzzle, now the hexagonal grid of tiles becomes... a
+[cellular automaton][wiki-cellular-automaton] because why not!?
+
+We should already know the drill, it's the third time we are dealing with a
+cellular automaton this year (the other two being [day 11][d11] and
+[day 17][d17]). The rules to evolve each tile based on its color and the state
+of the 6 adjacent tiles are simple:
+
+- Any black tile with 0 or more than 2 black tiles immediately adjacent to it
+  is flipped to white.
+- Any white tile with exactly 2 black tiles immediately adjacent to it is
+  flipped to black.
+
+We need to "evolve" our hexagonal grid of tiles for 100 generations, then count
+the final number of tiles with the black side facing up.
+
+Let's write a function to calculate the number of adjacent black tiles given our
+set and a pair of coordinates. This should be a pretty simple task: step one
+unit forward in each possible direction and check that point.
+
+```python
+def black_adjacent(grid, x, y):
+    deltas = ((1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1))
+
+    tot = 0
+    for dx, dy in deltas:
+        if (x + dx, y + dy) in grid:
+            tot += 1
+
+    return tot
+```
+
+We can simplify the above loop using [`sum()`][py-builtin-sum] and a
+[generator expression][py-generator-expr], since all it's doing is counting the
+number of adjacent points that are in `grid` (and therefore correspond to a
+black tile):
+
+```python
+def black_adjacent(grid, x, y):
+    deltas = ((1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1))
+    return sum((x + dx, y + dy) in grid for dx, dy in deltas)
+```
+
+Now, like for day 17, it's important to consider that when "evolving" our tiles,
+our set of black tiles can actually "expand" outwards. If a tile that is outside
+of the bounds of our current grid (i.e. one or both its coordinates are 1
+lower/higher than the minimum/maximum that we have for that coordinate) is
+adjacent to exactly 2 black tiles, it will flip from white to black. For this
+reason, when evolving the grid, we need to also check the outside borders. We
+will do this in exactly the same way we did in [day 17][d17], by writing a
+`bounds()` function that, given our `grid`, calculates the minimum and maximum
+values for each coordinate, and returns two ranges that we can then use to
+iterate on.
+
+To iterate over each element of the set, which is a `tuple` of two integers, and
+calculate the minimum and maximum of each coordinate, we can first
+[`map()`][py-builtin-map] each tuple using
+[`itemgetter()`][py-operator-itemgetter] to extract one of the coordinates, and
+then use [`min()`][py-builtin-min] or [`max()`][py-builtin-max] to calculate the
+minimum/maximum of that coordinate over all points.
+
+```python
+from operator import itemgetter
+
+def bounds(grid):
+    lox = min(map(itemgetter(0), grid)) - 1 # minimum x coordinate minus 1
+    loy = min(map(itemgetter(1), grid)) - 1 # minimum y coordinate minus 1
+    hix = max(map(itemgetter(0), grid)) + 2 # maximum x coordinate plus 2
+    hiy = max(map(itemgetter(1), grid)) + 2 # maximum y coordinate plus 2
+    return range(lox, hix), range(loy, hiy)
+```
+
+Now to evolve the grid calculating the new set of coordinates of black tiles we
+will simply iterate through all possible points in the "rectangle" from
+`(lox, loy)` to `(hix, hiy)` and check each of them. This is the equivalent of
+writing two nested `for` loops:
+
+```python
+range_x, range_y = bounds(grid)
+
+for x in range_x:
+    for y in range_y:
+        p = (x, y)
+        # ...
+```
+
+However, we can use [`itertools.product()`][py-itertools-product] to
+conveniently do all of the above in a single line:
+
+```python
+from itertools import product
+
+for p in product(*bounds(grid)):
+    # ...
+```
+
+All we need to do to evolve our `grid` is iterate over all possible points and
+calculate the number of adjacent black tiles, then follow the rules to determine
+whether the tile at the current position will stay (or turn) black.
+
+```python
+def evolve(grid):
+    new = set()
+
+    for p in product(*bounds(grid)):
+        n = black_adjacent(grid, *p)
+
+        if p in grid and not (n == 0 or n > 2):
+            new.add(p)
+        elif p not in grid and n == 2:
+            new.add(p)
+
+    return new
+```
+
+A simple `for` loop is all that's left to do:
+
+```python
+for _ in range(100):
+	grid = evolve(grid)
+
+n_black = len(grid)
+print('Part 2:', n_black)
+```
+
+I don't know about you, but I find hexagonal tilings quite satisfying.
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -5665,6 +5943,7 @@ objects which is an intrinsic downside of the language.
 [d21]: #day-21---allergen-assessment
 [d22]: #day-22---crab-combat
 [d23]: #day-23---crab-cups
+[d24]: #day-24---lobby-layout
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -5688,6 +5967,7 @@ objects which is an intrinsic downside of the language.
 [d21-problem]: https://adventofcode.com/2020/day/21
 [d22-problem]: https://adventofcode.com/2020/day/22
 [d23-problem]: https://adventofcode.com/2020/day/23
+[d24-problem]: https://adventofcode.com/2020/day/24
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -5711,6 +5991,7 @@ objects which is an intrinsic downside of the language.
 [d21-solution]: solutions/day21.py
 [d22-solution]: solutions/day22.py
 [d23-solution]: solutions/day23.py
+[d24-solution]: solutions/day24.py
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
@@ -5768,6 +6049,7 @@ objects which is an intrinsic downside of the language.
 [py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
+[py-builtin-min]:             https://docs.python.org/3/library/functions.html#min
 [py-builtin-pow]:             https://docs.python.org/3/library/functions.html#pow
 [py-builtin-range]:           https://docs.python.org/3/library/functions.html#range
 [py-builtin-reversed]:        https://docs.python.org/3/library/functions.html#reversed
@@ -5836,6 +6118,7 @@ objects which is an intrinsic downside of the language.
 [wiki-exponential-time]:      https://en.wikipedia.org/wiki/Time_complexity#Exponential_time
 [wiki-functional-prog]:       https://en.wikipedia.org/wiki/Functional_programming
 [wiki-heat-death-universe]:   https://en.wikipedia.org/wiki/Heat_death_of_the_universe
+[wiki-hexgrid]:               https://en.wikipedia.org/wiki/Hexagonal_tiling
 [wiki-hypercube]:             https://en.wikipedia.org/wiki/Hypercube
 [wiki-infix-notation]:        https://en.wikipedia.org/wiki/Infix_notation
 [wiki-jit]:                   https://en.wikipedia.org/wiki/Just-in-time_compilation
