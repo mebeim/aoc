@@ -5345,7 +5345,7 @@ be simplified using [conditional expressions][py-conditional-expression]:
 
 ```python
         dst = maxcup if cur == mincup else cur - 1
-        while dst in picked_vals:
+        while dst in picked:
             dst = maxcup if dst == mincup else dst - 1
 ```
 
@@ -5605,11 +5605,12 @@ directions.
 Each entry in our list of direction is a string consisting of multiple moves
 concatenated together: each move can be either `e`, `se`, `sw`, `w`, `nw`, or
 `ne`. There is no space between two moves, as it's not needed to identify the
-moves. Each string of moves in our lists represents the steps to make to arrive
+moves. Each string of moves in our list represents the steps to make to arrive
 to the tile we need to flip, always starting from the same reference tile.
 
 We need to determine how many tiles will have the black side up after flipping
-all the tiles following the directions.
+in order all the tiles following the directions. *Note that* we could also end
+up flipping the same tile more than once.
 
 Not that difficult of a problem, all we need is a decent coordinate system to
 uniquely identify the position of a tile relative to the reference tile.
@@ -5632,7 +5633,7 @@ orientation, unfortunately):
     |       |       |       |       |       |#######|
    / \     / \     / \     / \     / \     /#\#####/ \
  /     \ /     \ /     \ /     \ /     \ /#####\#/     \
-| -1,0  |  0,0  |  1,0  |  2,0  |  3,0  |#######|  6,0  |
+| -1,0  |  0,0  |  1,0  |  2,0  |  3,0  |#######|  5,0  |
 |       |  REF  |       |       |       |#######|       |
  \     / \     / \     / \     / \     /#\#####/ \     /
    \ /     \ /     \ /     \ /     \ /#####\#/     \ /
@@ -5643,7 +5644,7 @@ orientation, unfortunately):
 |  0,2  |  1,2  |  2,2  |  3,2  |#######|  5,2  |  6,2  |
 |       |       |       |       |#######|       |       |
  \     / \     / \     / \     / \#####/ \     / \     /
-   \ /     \ /     \ /     \ /     \#/     \ /    \ /
+   \ /     \ /     \ /     \ /     \#/     \ /     \ /
 ```
 
 In the above representation rows are clearly visible, and I've highlighted the
@@ -5690,7 +5691,7 @@ That was straightforward. Now all that's left to do is parse the input
 directions and apply them.
 
 In order to split each string of directions into a list of moves, we can use a
-simple [regular expression][misc-regex] consisting of only 6 alternatives
+simple [regular expression][misc-regexp] consisting of only 6 alternatives
 separated by pipes (`|`):
 
 ```python
@@ -5700,7 +5701,8 @@ rexp = re.compile(r'e|w|se|sw|ne|nw')
 ```
 
 Applying [`.findall()`][py-re-findall] on a line of input using the above regexp
-will return a list of moves to follow to get to the wanted tile to flip.
+will will split each time one of the alternatives matches and return a list of
+moves to follow to get to the wanted tile to flip.
 
 The code we're going to write from now on is very similar to the one we wrote
 for [day 17][d17]: the only thing we care about a specific point of our grid, is
@@ -5841,7 +5843,7 @@ A simple `for` loop is all that's left to do:
 
 ```python
 for _ in range(100):
-	grid = evolve(grid)
+    grid = evolve(grid)
 
 n_black = len(grid)
 print('Part 2:', n_black)
