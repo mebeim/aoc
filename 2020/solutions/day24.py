@@ -2,8 +2,6 @@
 
 from utils import advent
 import re
-from itertools import product
-from operator import itemgetter
 
 MOVEMAP = {
 	'e' : ( 1,  0),
@@ -28,22 +26,17 @@ def black_adjacent(grid, x, y):
 	deltas = ((1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1))
 	return sum((x + dx, y + dy) in grid for dx, dy in deltas)
 
-def bounds(grid):
-	lox = min(map(itemgetter(0), grid)) - 1
-	loy = min(map(itemgetter(1), grid)) - 1
-	hix = max(map(itemgetter(0), grid)) + 2
-	hiy = max(map(itemgetter(1), grid)) + 2
-	return range(lox, hix), range(loy, hiy)
+def all_neighbors(grid):
+	deltas = ((1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1))
+	return set((x + dx, y + dy) for x, y in grid for dx, dy in deltas)
 
 def evolve(grid):
 	new = set()
 
-	for p in product(*bounds(grid)):
+	for p in all_neighbors(grid):
 		n = black_adjacent(grid, *p)
 
-		if p in grid and not (n == 0 or n > 2):
-			new.add(p)
-		elif p not in grid and n == 2:
+		if n == 2 or (n == 1 and p in grid):
 			new.add(p)
 
 	return new

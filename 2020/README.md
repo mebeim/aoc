@@ -5830,72 +5830,57 @@ def black_adjacent(grid, x, y):
 ```
 
 Now, like for day 17, it's important to consider that when "evolving" our tiles,
-our set of black tiles can actually "expand" outwards. If a tile that is outside
-of the bounds of our current grid (i.e. one or both its coordinates are 1
-lower/higher than the minimum/maximum that we have for that coordinate) is
-adjacent to exactly 2 black tiles, it will flip from white to black. For this
-reason, when evolving the grid, we need to also check the outside borders. We
-will do this in exactly the same way we did in [day 17][d17], by writing a
-`bounds()` function that, given our `grid`, calculates the minimum and maximum
-values for each coordinate, and returns two ranges that we can then use to
-iterate on.
+our set of black tiles can actually "expand" outwards. If a tile that is not
+black (and therefore not in our `grid`) is adjacent to exactly 2 black tiles, it
+will be flipped and become black. For this reason, when evolving the grid, we
+need to also check all tiles surrounding the ones we already have, even if they
+are not in our `grid` set. We will do this using a function very similar to the
+above, which will just generate a set of all neighbors of all tiles in our
+`grid`. This is as simple as iterating over every point in `grid` and adding
+each possible delta to it. We return a set because we want to avoid wasting time
+checking tiles at the same coordinates more than once.
 
-To iterate over each element of the set, which is a `tuple` of two integers, and
-calculate the minimum and maximum of each coordinate, we can first
-[`map()`][py-builtin-map] each tuple using
-[`itemgetter()`][py-operator-itemgetter] to extract one of the coordinates, and
-then use [`min()`][py-builtin-min] or [`max()`][py-builtin-max] to calculate the
-minimum/maximum of that coordinate over all points.
 
 ```python
-from operator import itemgetter
-
-def bounds(grid):
-    lox = min(map(itemgetter(0), grid)) - 1 # minimum x coordinate minus 1
-    loy = min(map(itemgetter(1), grid)) - 1 # minimum y coordinate minus 1
-    hix = max(map(itemgetter(0), grid)) + 2 # maximum x coordinate plus 2
-    hiy = max(map(itemgetter(1), grid)) + 2 # maximum y coordinate plus 2
-    return range(lox, hix), range(loy, hiy)
+def all_neighbors(grid):
+    deltas = ((1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1))
+    return set((x + dx, y + dy) for x, y in grid for dx, dy in deltas)
 ```
 
-Now to evolve the grid calculating the new set of coordinates of black tiles we
-will simply iterate through all possible points in the "rectangle" from
-`(lox, loy)` to `(hix, hiy)` and check each of them. This is the equivalent of
-writing two nested `for` loops:
-
-```python
-range_x, range_y = bounds(grid)
-
-for x in range_x:
-    for y in range_y:
-        p = (x, y)
-        # ...
-```
-
-However, we can use [`itertools.product()`][py-itertools-product] to
-conveniently do all of the above in a single line:
-
-```python
-from itertools import product
-
-for p in product(*bounds(grid)):
-    # ...
-```
-
-All we need to do to evolve our `grid` is iterate over all possible points and
-calculate the number of adjacent black tiles, then follow the rules to determine
-whether the tile at the current position will stay (or turn) black.
+All we need to do to evolve our `grid` is iterate over all the coordinates
+returned by the above function and calculate the number of adjacent black tiles
+for each one, then follow the rules to determine whether the tile at a given
+coordinate will stay (or turn) black.
 
 ```python
 def evolve(grid):
     new = set()
 
-    for p in product(*bounds(grid)):
+    for p in all_neighbors(grid):
         n = black_adjacent(grid, *p)
 
         if p in grid and not (n == 0 or n > 2):
             new.add(p)
         elif p not in grid and n == 2:
+            new.add(p)
+
+    return new
+```
+
+The above checks, which are a literal translation of thegiven rules into logical
+formulas, can be simplified a lot noticing two things: if the number of black
+adjacent tiles is `2`, the current tile will be black regardless of its previous
+state, otherwise, if its previous state was black, the tile can also keep being
+black if the number of adjacent black tiles is exactly `1`.
+
+```python
+def evolve(grid):
+    new = set()
+
+    for p in all_neighbors(grid):
+        n = black_adjacent(grid, *p)
+
+        if n == 2 or (n == 1 and p in grid):
             new.add(p)
 
     return new
@@ -6049,7 +6034,6 @@ I don't know about you, but I find hexagonal tilings quite satisfying.
 [py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
-[py-builtin-min]:             https://docs.python.org/3/library/functions.html#min
 [py-builtin-pow]:             https://docs.python.org/3/library/functions.html#pow
 [py-builtin-range]:           https://docs.python.org/3/library/functions.html#range
 [py-builtin-reversed]:        https://docs.python.org/3/library/functions.html#reversed
