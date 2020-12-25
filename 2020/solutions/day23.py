@@ -1,58 +1,37 @@
 #!/usr/bin/env python3
 
 from utils import advent
-from itertools import chain
 
-class Cup:
-	__slots__ = ('value', 'prev', 'next')
+def build_list(cups, n=None):
+	next_cup = [None] * len(cups)
 
-	def __init__(self, value):
-		self.value = value
-		self.prev  = None
-		self.next  = None
+	for prev, cur in zip(cups, cups[1:]):
+		next_cup[prev] = cur
 
-def build_list(values, n=None):
-	n = (n if n else len(values)) + 1
-	cups = [None] * n
-	values = chain(values, range(len(values) + 1, n))
+	if n is not None:
+		next_cup += list(range(len(cups) + 1, n + 1))
 
-	first = next(values)
-	cups[first] = Cup(first)
-	first = cups[first]
-	prev = first
+	next_cup.append(cups[0])
+	return next_cup
 
-	for value in values:
-		cur = cups[value] = Cup(value)
-		cur.prev = prev
-		prev.next = cur
-		prev = cur
+def play(cur, next_cup, n_rounds):
+	max_cup = len(next_cup) - 1
 
-	cur.next = first
-	return first, cups
+	for _ in range(n_rounds):
+		first  = next_cup[cur]
+		mid    = next_cup[first]
+		last   = next_cup[mid]
+		picked = (first, mid, last)
 
-def play(cur, cups, moves):
-	maxcup = len(cups) - 1
+		next_cup[cur] = next_cup[last]
 
-	for _ in range(moves):
-		first  = cur.next
-		mid    = first.next
-		last   = mid.next
-		picked = (first.value, mid.value, last.value)
-
-		cur.next = last.next
-		cur.next.prev = cur
-
-		dst = maxcup if cur.value == 1 else cur.value - 1
+		dst = max_cup if cur == 1 else cur - 1
 		while dst in picked:
-			dst = maxcup if dst == 1 else dst - 1
+			dst = max_cup if dst == 1 else dst - 1
 
-		dst = cups[dst]
-		first.prev = dst
-		last.next  = dst.next
-		dst.next.prev = last
-		dst.next      = first
-
-		cur = cur.next
+		next_cup[last] = next_cup[dst]
+		next_cup[dst]  = first
+		cur = next_cup[cur]
 
 
 advent.setup(2020, 23)
@@ -60,20 +39,20 @@ advent.setup(2020, 23)
 fin = advent.get_input()
 orig = tuple(map(int, fin.readline().rstrip()))
 
-first, cups = build_list(orig)
-play(first, cups, 100)
+next_cup = build_list(orig)
+play(orig[0], next_cup, 100)
 
 ans = ''
-c = cups[1].next
-while c != cups[1]:
-	ans += str(c.value)
-	c = c.next
+cur = next_cup[1]
+while cur != 1:
+	ans += str(cur)
+	cur = next_cup[cur]
 
 advent.print_answer(1, ans)
 
 
-first, cups = build_list(orig, n=1000000)
-play(first, cups, 10000000)
-ans = cups[1].next.value * cups[1].next.next.value
+next_cup = build_list(orig, 1000000)
+play(orig[0], next_cup, 10000000)
+ans = next_cup[1] * next_cup[next_cup[1]]
 
 advent.print_answer(2, ans)

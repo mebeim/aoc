@@ -5391,10 +5391,8 @@ items, since the operation is nearly instantaneous with such small numbers, but
 become a huge problem when the number of elements increases.
 
 Say hello to [linked lists][wiki-linked-list], the most beautiful data structure
-ever invented! In particular, we'll be building and using a
-[doubly-linked][wiki-doubly-linked-list] circular list to make the above issues
-disappear. We'll see how shortly, first, let's define a `class` for a linked
-list entry.
+ever invented! In particular, we'll be building and using a circular linked list
+to make the above issues disappear. We'll see how shortly.
 
 In Python, the concept of an explicit "pointer" does not exist, so we don't have
 "conventional" linked lists out of the box, since we cannot not explicitly point
@@ -5404,92 +5402,83 @@ Instancing a class and assigning it to a variable merely means keeping a
 reference to the instance of the class, which is akin to keeping a "pointer" to
 the instance.
 
-We can create a wrapper class for doubly-linked list entries in the following
-way:
+We can create a wrapper class for linked list nodes in the following way:
 
 ```python
-class Cup:
+class Node:
     def __init__(self, value):
-        self.value = value # actual value
-        self.prev  = None  # pointer to previous Cup (left)
-        self.next  = None  # pointer to next Cup (right)
+        self.value = value # actual value of this node
+        self.next  = None  # pointer to next Node of the linked list
 ```
 
-Our list of cups will be a doubly-linked list of `Cup` instances, where each cup
-has a `prev` pointing to the previous cup, and `next` pointing to the next one.
-The last cup's `next` pointer will point to the first, and the first cup's
-`prev` pointer will point to the last, making this also a *circular* list.
+However, since we have to play for *10 million* rounds, we might want to find a
+little bit more efficient way of representing a linked list. This is because,
+unlickily for us, accessing attributes of an object is one of the slowest
+primitive operations in Python, so before going on, let's see if we can do
+better.
 
-Keeping cups in a doubly-linked list removes the problem of having to shift
-everything around just to remove and insert an arbitrary chunk of cups:
+Thankfully, we can, as it just so happens that in our case the cups (and
+therefore the nodes of our linked list) will assume all values from 1 to 1
+million. Therefore all we need to keep track of the `next` of a given cup is
+just a big list of integers, let's call it `next_cup`, storing at index `i` the
+value of the cup after the cup with value `i`. That is, `next_cup[i]` is the
+the cup which follows cup `i`.
 
-- To remove some cups from the list, we only need to update the pointers of two
-  cups: the one before them and the one after them. We can simply update the
-  `next` pointer of the former and the `prev` pointer of the latter to point to
-  each other, effectively removing all references to the removed cups from the
-  rest of the list.
-- To add some cups back into the list between two other cups, we also only need
-  to update two pointers: the `next` pointer of the cup before the insertion
-  point, and the `prev` pointer of the cup after the insertion point.
+This `next_cup` list will have 1 million plus 1 elements, and will be initialize
+according to the initial 9 values we have as input plus another 999991 values
+from 10 to 1000000. We add that 1 additional element in the list because we
+don't want to worry about calculating the correct indexes, and adding one more
+element while ignoring `next_cup[0]` makes us able just use cup values as
+indexes. Finally, the last entry of the list will be the value of the first cup
+in our input, making the 1-millionth cup have the first one as "next", therefore
+making our linked list also *circular*.
 
-Here's a bonus Unicode-art diagram to visualize the removal of elements (and
-also addition if you read it from the bottom):
+Keeping cups in a linked list removes the problem of having to shift everything
+around just to remove and insert an arbitrary contiguous chunks of cups:
+
+- To remove cups from the list, we only need to update *one* value, the "next"
+  of the cup right before the first cup we remove, replacing it with the value
+  of the "next" of the last cup we remove.
+- To insert cups back into the list between two other cups, we only need to
+  update *two* values: the "next" of the cup before the insertion point (setting
+  it to the value of the first inserted cup), and the "next" of the last
+  inserted cup (setting it to the value of the cup after the insertion point.
+
+Here's a bonus ASCII-art diagram to visualize the removal of elements (and also
+insertion if you read it from the bottom up) from a linked list:
 
 ```
-   ┌──────────────────────────────────────────────────────────────────────────┐
-   │                                                                          ↓
-┌──────┬───┬──────┐    ┌──────┬───┬──────┐    ┌──────┬───┬──────┐    ┌──────┬───┬──────┐
-| prev | A | next |<──>| prev | B | next |<──>| prev | C | next |<──>| prev | D | next |
-└──────┴───┴──────┘    └──────┴───┴──────┘    └──────┴───┴──────┘    └──────┴───┴──────┘
-         ↑                                                                         │
-         └─────────────────────────────────────────────────────────────────────────┘
++---+------+    +---+------+    +---+------+    +---+------+    +---+------+
+| A | next |--->| B | next |--->| C | next |--->| D | next |--->| E | next |--+
++---+------+    +---+------+    +---+------+    +---+------+    +---+------+  |
+  ^                                                                           |
+  +---------------------------------------------------------------------------+
 
-   ┌──────────────────────────────────────────────────────────────────────────┐
-   │                                                                          ↓
-┌──────┬───┬──────┐                                                  ┌──────┬───┬──────┐
-| prev | A | next |<────────────────────────────────────────────────>| prev | D | next |
-└──────┴───┴──────┘                                                  └──────┴───┴──────┘
-         ↑                                                                         │
-         └─────────────────────────────────────────────────────────────────────────┘
++---+------+                                                    +---+------+
+| A | next |--------------------------------------------------->| E | next |--+
++---+------+                                                    +---+------+  |
+  ^                                                                           |
+  +---------------------------------------------------------------------------+
 ```
 
-The second problem, finding the index of a cup given its value, now turned into
-finding a `Cup` instance given a value, as we don't have indexes anymore. Since
-the only thing we need is a way to get the corresponding `Cup` instance from a
-given value, we can use a dictionary `{value: cup}`, or better even just a
-simple `list` indexing using values, since our values are just integers from 1
-to 1 million.
-
-Let's write a function to build our linked list of 1 million cups, and while we
-do so, store a reference to each instance into a list where the index is the
-value of the cup. We can use [`itertools.chain()`][py-itertools-chain] to
-conveniently iterate over the first 10 cups from our input followed by a
-`range()` of values from `10` to `1000000`.
+The first 9 cups will just be linked one to the other from left to right, we can
+use [`zip()`][py-builtin-zip] to iterate over a pair of consecutive cups and set
+up the "next" of each. Then, we'll add the values from 10 to 1 million (in
+order, since they are initially sorted this way, and finally add the first value
+of our original list at the end of the list, so that the "next" cup of the last
+one is the first (effectively making the list circular).
 
 ```python
-from itertools import chain
+def build_list(cups):
+    next_cup = [0] * len(cups)
 
-def build_list(starting_values):
-    cups   = [None] * (1000000 + 1) # cups[value] == Cup instance with that value
-    values = chain(starting_values, range(10, 1000000 + 1))
+    for prev, cur in zip(cups, cups[1:]):
+        next_cup[prev] = cur
 
-    # Instantiate the first Cup right away to connect it to the next one
-    first  = next(values)
-    cups[first] = Cup(first)
-    first = cups[first]
-    prev = first
+    next_cup += list(range(len(cups) + 1, 1000000 + 1))
+    next_cup.append(cups[0])
 
-    # Create all Cup instances while also connecting each instance to the previous
-    for value in values:
-        cur = cups[value] = Cup(value)
-        cur.prev = prev
-        prev.next = cur
-        prev = cur
-
-    # Finally connect the last to the first
-    cur.next = first
-
-    return first, cups
+    return next_cup
 ```
 
 Now we can write a new `play()` function to actually play the game. There isn't
@@ -5497,50 +5486,45 @@ really much more to say except what I explained above, so I'll let the code
 mainly speak for itself, with the help of some comments.
 
 ```python
-def play(cur, cups, moves):
-    maxcup = len(cups) - 1
+def play(cur, next_cup, n_rounds):
+    max_cup = len(next_cup) - 1
 
-    for _ in range(moves):
-        # Picu up 3 cups
-        first  = cur.next
-        mid    = first.next
-        last   = mid.next
-        picked = (first.value, mid.value, last.value)
+    for _ in range(n_rounds):
+        # Pick up 3 cups
+        first  = next_cup[cur]
+        mid    = next_cup[first]
+        last   = next_cup[mid]
+        picked = (first, mid, last)
 
         # Remove them from the list
-        cur.next = last.next
-        cur.next.prev = cur
+        next_cup[cur] = next_cup[last]
 
-        # Select the destination cup value, after which we'll insert the 3 picked cups
-        dst = maxcup if cur.value == 1 else cur.value - 1
+        # Select the destination cup value, after which we'll insert the 3 picked-up cups
+        dst = max_cup if cur == 1 else cur - 1
         while dst in picked:
-            dst = maxcup if dst == 1 else dst - 1
+            dst = max_cup if dst == 1 else dst - 1
 
-        # Get the corresponding cup from its value
-        dst = cups[dst]
         # Insert the picked cups right after it
-        first.prev = dst
-        last.next  = dst.next
-        dst.next.prev = last
-        dst.next      = first
+        next_cup[last] = next_cup[dst]
+        next_cup[dst]  = first
 
-        # Advance the current cup
-        cur = cur.next
+        # Advance to the next cup after the current
+        cur = next_cup[cur]
 ```
 
-Lastly, let's build the linked list and the map `value -> Cup` and pass it to
-the above function to simulate 10 million rounds of the game:
+Lastly, let's build the linked list and pass it to the above function to
+simulate 10 million rounds of the game:
 
 ```python
-first, cups = build_list(orig)
-play(first, cups, 10000000)
+next_cup = build_list(orig, 1000000)
+play(orig[0], next_cup, 10000000)
 ```
 
 The answer will just be the product of the values of the two cups after the cup
 with value `1`:
 
 ```python
-ans = cups[1].next.value * cups[1].next.next.value
+ans = next_cup[1] * next_cup[next_cup[1]]
 print('Part 2:', ans)
 ```
 
@@ -5548,45 +5532,50 @@ With minor modifications, we can make the `build_list()` more generic to create
 a linked list of an arbitrary number of cups
 
 ```python
-def build_list(values, n=None):
-    n = (n if n else len(values)) + 1
-    cups = [None] * n
-    values = chain(values, range(len(values) + 1, n))
-    # ... rest of the is unchanged
+def build_list(cups, n=None):
+    next_cup = [None] * len(cups)
+
+    for prev, cur in zip(cups, cups[1:]):
+        next_cup[prev] = cur
+
+    if n is not None:
+        next_cup += list(range(len(cups) + 1, n + 1))
+
+    next_cup.append(cups[0])
+    return next_cup
 ```
 
 Then we can use our new `play()` function to also solve part 1, discarding the
 previous suboptimal solution. The only thing that we'll need to change is the
-calculation of the final value, sine we'll have to iterate over the list
+calculation of the final value, since we'll have to iterate over the list
 manually.
 
 ```python
-first, cups = build_list(orig)
-play(first, cups, 100)
+next_cup = build_list(orig)
+play(orig[0], next_cup, 100)
 
 ans = ''
-c = cups[1].next
-while c != cups[1]:
-    ans += str(c.value)
-    c = c.next
+cur = next_cup[1]
+while cur != 1:
+    ans += str(cur)
+    cur = next_cup[cur]
 
 print('Part 1:', ans)
 ```
 
 ### Reflections
 
-Today is a terrible day for our poor Python. As an interpreted language, it
-suffers *a lot* from the lack of a primitive linked list type. Having to wrap
-everything in classes really slows things down. Today, on my machine I get an
-execution time of roughly 3.1s using [PyPy][misc-pypy] 7.3.3 (Python 3.7.9) and
-13.5s using [CPython][wiki-cpython] 3.9.
+Today is kind of a bad day for our poor Python. The solution isn't really as
+fast as I'd like it to be. On my machine I get a total execution time of roughly
+2s with [PyPy][misc-pypy] 7.3.3 (Python 3.7.9) and 7s with
+[CPython][wiki-cpython] 3.9 using a big `list` to keep track of the "next" of
+each node (like I explained in the part 2 solution above), and of course even
+worse times using classes instead.
 
-We *mayyybe* could improve performance using a different kind of wrapper to
-create our linked list nodes, for example lists of 3 elements or similar, but
-the ugliness of having to write stuff like `cur[1]` instead of `cur.next` all
-over the place is a real deal-breaker for me. Overall, what really affects
-performance is the slowness of indexing and/or accessing properties of Python
-objects which is an intrinsic downside of the language.
+Overall, what really affects performance is the slowness of indexing and/or
+accessing properties of Python objects which is a downside intrinsic in the
+language itself. As an interpreted language, it seems to suffer a lot from the
+lack of a primitive linked list type.
 
 
 Day 24 - Lobby Layout
@@ -6308,7 +6297,6 @@ journey for this year is over. Merry Christmas!
 [wiki-lcm]:                   https://en.wikipedia.org/wiki/Least_common_multiple
 [wiki-lexical-analysis]:      https://en.wikipedia.org/wiki/Lexical_analysis
 [wiki-linked-list]:           https://en.wikipedia.org/wiki/Linked_list
-[wiki-doubly-linked-list]:    https://en.wikipedia.org/wiki/Doubly_linked_list
 [wiki-linear-time]:           https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-manhattan-dist]:        https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
 [wiki-memoization]:           https://en.wikipedia.org/wiki/Memoization
