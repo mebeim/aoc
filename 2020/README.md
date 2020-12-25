@@ -28,6 +28,7 @@ Table of Contents
 - [Day 22 - Crab Combat][d22]
 - [Day 23 - Crab Cups][d23]
 - [Day 24 - Lobby Layout][d24]
+- [Day 25 - Combo Breaker][d25]
 
 Day 1 - Report Repair
 ---------------------
@@ -5851,6 +5852,151 @@ print('Part 2:', n_black)
 
 I don't know about you, but I find hexagonal tilings quite satisfying.
 
+
+Day 25 - Combo Breaker
+----------------------
+
+[Problem statement][d25-problem] — [Complete solution][d25-solution] — [Back to top][top]
+
+The last puzzle of this year's Advent of Code is a pretty simple one, dealing
+once again with [modular arithmetic][wiki-modular-arithmetic].
+
+We need to crack the secret keys exchanged in a handshake between two devices.
+The handshake involves *transforming* numbers given a according to the following
+transformation, which takes two numbers as input: the number we want to transform,
+called *"subject number"*, and a *"loop size"*.
+
+- Start with a value of `1`, then perform the following operation a number of
+  times equal to the *loop size*:
+  - Multiply the value by the *subject number*.
+  - Set the value to itself modulo `20201227`.
+- The result is the value after performing the above two steps *loop size*
+  times.
+
+Each device initially sends a public key to the other. We are able to intercept
+both of them (our puzzle input). We know that those public keys are the result
+of transforming the number `7` using a *secret*, unknown loop size (different
+for each device). Then, each device calculates a *secret key* by transforming
+(always according to the above) the other device's public key using their own
+secret loop size.
+
+We need to figure out the secret key based on either one of the two public keys,
+by first finding the loop size used to calculate one of the two public keys, and
+then use it to transform the other public key.
+
+It's easy to notice by writing it down as a simple `for` loop in really any
+programming language (or even in pseudocode on paper), that the above
+"transformation" is nothing more than the
+[modular exponentiation][wiki-modular-exp] of a given number (the "subject
+number") to the power of *x* (the "loop size") modulo *20201227*.
+
+Let *A* and *B* be the two public keys given as our input. We want to find
+either one of two unknown values *a* and *b* such that *7<sup>a</sup>* mod
+*20201227* = *A* and *7<sup>b</sup>* mod *20201227* = *B*. In other words, we
+want to compute the [discrete logarithm][wiki-discrete-log] modulus *20201227*
+of either *A* or *B* to base *7*.
+
+There are known algorithms for computing the discrete logarithm of a number
+given a modulus and a base. If you want, you can scroll right to the solution
+below, but first I would like to give some background information on what is
+actually happening here. Some [modular arithmetic][wiki-modular-arithmetic]
+knowledge would be useful to understand what I'm going to explain, but I'll try
+to be as clear as possible either way.
+
+What was described in the problem statement in a rather verbose manner is an
+algorithm best known as [Diffie-Hellman key exchange][wiki-diffie-hellman]. This
+algorithm allows two parties to securely compute the same secret key, using the
+pre-established common base *g* and modulus *p*, and exchanging each other's
+public keys over an insecure channel. In the above explanation *p = 20201227*
+(which must be a prime number, and indeed it is), and *g = 7* (which must be a
+[primitive root][wiki-primitive-root] modulo *p*). As we just said, the
+described "transformation" of a number is nothing more than a modular
+exponentiation, which is the fundamental modular transformation that the
+Diffie-Hellman key exchange algorithm is based upon.
+
+We can rewrite the problem statement as follows:
+
+> Given the public base *g = 7*, the public modulo *p = 20201227*, and the two
+> public keys *A* and *B* (obtained as *A = g<sup>a</sup>* mod *p*,
+> *B = g<sup>b</sup>* mod *p*), calculate the secret key *s* = *A<sup>b</sup>*
+> mod *p* = *B<sup>a</sup>* mod *p*.
+
+The Diffie-Hellman key exchange algorithm works because since
+*A ≡ g<sup>a</sup>* (mod *p*) and *B ≡ g<sup>b</sup>* (mod *p*), we have
+*s ≡ A<sup>b</sup>* ≡ *B<sup>a</sup>* ≡ *g<sup>ab</sup>* (mod *p*), no matter
+the values chosen for the two secret exponents *a* and *b*.
+
+When intercepting the public keys exchanged between the two devices, we are
+performing what is known as [eavesdropping][wiki-eavesdropping]. We then want to
+use the obtained information (the public keys), knowing the already public
+information (*p* and *g*). The Diffie-Hellman key exchange is a secure algorithm
+whose primary purpose is *exactly* to be resistant against such an attack,
+**given that "good enough" values for *p*, *a* and *b* are chosen** (as
+explained towards the end of the "Cryptographic explanation" section of the
+wikipedia article I linked about it).
+
+The resistance of the Diffie-Hellman key exchange against an attempt to discover
+the computed common private key comes from the fact that, in order to do so, one
+must be able to solve the [discrete logarithm][wiki-discrete-log] modulo *p* of
+*A* to base *g*. In simple terms: no efficient method exists to compute the
+discrete logarithm when *g* (and therefore *p*) are effectively chosen to be
+large enough, as there is no known "general" algorithm with a reasonable
+[time complexity][wiki-time-complexity] to compute the discrete logarithm. For
+large enough values of *p* (hundreds of digits), it is impossible to compute the
+discrete logarithm in a humanly reasonable amount of time. As it turns out,
+the numbers chosen for today's puzzle are very far from being cryptographically
+secure. In fact, they are extremely small, and make the solution very easily
+computable even using just pen and paper.
+
+**Back to the problem now.**
+
+The most commonly known algorithm for computing the discrete logarithm is the
+[baby-step giant-step algorithm][wiki-bsgs]. I will not get into the details of
+the algorithm, as its demonstration (and therefore understanding) requires a
+decent background of modular algebra. Nonetheless, countless implementations
+both in actual code and in pseudo-code are available online through a simple
+Google search.
+
+Here's my Python implementation of the baby-step giant-step algorithm I'm going
+to use. Note that it does *not* always exist a solution for the discrete
+logarithm, and that `p` must be prime for the following to work.
+
+```python
+def bsgs(base, n, p):
+    m     = ceil(sqrt(p))
+    table = {pow(base, i, p): i for i in range(m)}
+    inv   = pow(base, (p - 2) * m, p) # base^(-m) mod p == base^(m*(p-2)) assuming p is prime
+    res   = None
+
+    for i in range(m):
+        y = (n * pow(inv, i, p)) % p
+        if y in table:
+            res = i * m + table[y]
+            break
+
+    return res
+```
+
+Aaand... that's basically it, now we can easily calculate the private exponent
+(`a`) of either party by using baby-step giant-step to compute the discrete
+logarithm (base `7` modulo `20201227`) of one of the public keys (`A`), and then
+compute the secret key by modular exponentiation (modulo `20201227`) of the
+other key (`B`) to the power of `a`. It literally takes more time to say it than
+to write it.
+
+```python
+fin = open(...)
+
+A, B = map(int, fin)
+a    = bsgs(7, A, 20201227)
+key  = pow(B, a, 20201227)
+
+print('Part 1:', key)
+```
+
+As usual, there is no part 2 for the 25th day of Advent of Code, so our magical
+journey for this year is over. Merry Christmas!
+
 ---
 
 *Copyright &copy; 2020 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -5882,6 +6028,7 @@ I don't know about you, but I find hexagonal tilings quite satisfying.
 [d22]: #day-22---crab-combat
 [d23]: #day-23---crab-cups
 [d24]: #day-24---lobby-layout
+[d25]: #day-25---combo-breaker
 
 [d01-problem]: https://adventofcode.com/2020/day/1
 [d02-problem]: https://adventofcode.com/2020/day/2
@@ -5906,6 +6053,7 @@ I don't know about you, but I find hexagonal tilings quite satisfying.
 [d22-problem]: https://adventofcode.com/2020/day/22
 [d23-problem]: https://adventofcode.com/2020/day/23
 [d24-problem]: https://adventofcode.com/2020/day/24
+[d25-problem]: https://adventofcode.com/2020/day/25
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -5930,6 +6078,7 @@ I don't know about you, but I find hexagonal tilings quite satisfying.
 [d22-solution]: solutions/day22.py
 [d23-solution]: solutions/day23.py
 [d24-solution]: solutions/day24.py
+[d25-solution]: solutions/day25.py
 
 [d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
@@ -6038,6 +6187,7 @@ I don't know about you, but I find hexagonal tilings quite satisfying.
 [wiki-bitmask]:               https://en.wikipedia.org/wiki/Mask_(computing)
 [wiki-bitwise-and]:           https://en.wikipedia.org/wiki/Bitwise_operation#AND
 [wiki-bitwise-or]:            https://en.wikipedia.org/wiki/Bitwise_operation#OR
+[wiki-bsgs]:                  https://en.wikipedia.org/wiki/Baby-step_giant-step
 [wiki-cartesian-coords]:      https://en.wikipedia.org/wiki/Cartesian_coordinate_system
 [wiki-cellular-automaton]:    https://en.wikipedia.org/wiki/Cellular_automaton
 [wiki-chinese-remainder]:     https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Statement
@@ -6049,7 +6199,9 @@ I don't know about you, but I find hexagonal tilings quite satisfying.
 [wiki-coprime-set]:           https://en.wikipedia.org/wiki/Coprime_integers#Coprimality_in_sets
 [wiki-cpython]:               https://en.wikipedia.org/wiki/CPython
 [wiki-dag]:                   https://en.wikipedia.org/wiki/Directed_acyclic_graph
+[wiki-diffie-hellman]:        https://en.wikipedia.org/wiki/Diffie%E2%80%93Hellman_key_exchange
 [wiki-distributive-property]: https://en.wikipedia.org/wiki/Distributive_property
+[wiki-discrete-log]:          https://en.wikipedia.org/wiki/Discrete_logarithm
 [wiki-dynamic-programming]:   https://en.wikipedia.org/wiki/Dynamic_programming
 [wiki-euclidean-division]:    https://en.wikipedia.org/wiki/Euclidean_division
 [wiki-exponential-time]:      https://en.wikipedia.org/wiki/Time_complexity#Exponential_time
@@ -6067,12 +6219,15 @@ I don't know about you, but I find hexagonal tilings quite satisfying.
 [wiki-linear-time]:           https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-manhattan-dist]:        https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
 [wiki-memoization]:           https://en.wikipedia.org/wiki/Memoization
+[wiki-eavesdropping]:         https://en.wikipedia.org/wiki/Eavesdropping
 [wiki-modular-arithmetic]:    https://en.wikipedia.org/wiki/Modular_arithmetic
 [wiki-modular-congruence]:    https://en.wikipedia.org/wiki/Modular_arithmetic#Congruence
+[wiki-modular-exp]:           https://en.wikipedia.org/wiki/Modular_exponentiation
 [wiki-modular-inverse]:       https://en.wikipedia.org/wiki/Modular_multiplicative_inverse
 [wiki-plane]:                 https://en.wikipedia.org/wiki/Plane_(geometry)
 [wiki-polynomial-time]:       https://en.wikipedia.org/wiki/Time_complexity#Polynomial_time
 [wiki-postfix-notation]:      https://en.wikipedia.org/wiki/Reverse_Polish_notation
+[wiki-primitive-root]:        https://en.wikipedia.org/wiki/Primitive_root_modulo_n
 [wiki-reduction]:             https://en.wikipedia.org/wiki/Reduction_Operator
 [wiki-rubiks-cube]:           https://en.wikipedia.org/wiki/Rubik%27s_Cube
 [wiki-running-total]:         https://en.wikipedia.org/wiki/Running_total
@@ -6080,6 +6235,7 @@ I don't know about you, but I find hexagonal tilings quite satisfying.
 [wiki-set-union]:             https://en.wikipedia.org/wiki/Union_(set_theory)
 [wiki-shunting-yard]:         https://en.wikipedia.org/wiki/Shunting-yard_algorithm
 [wiki-sum-range]:             https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
+[wiki-time-complexity]:       https://en.wikipedia.org/wiki/Time_complexity
 [wiki-undirected-graph]:      https://en.wikipedia.org/wiki/Graph_(discrete_mathematics)#Graph
 [wiki-vector]:                https://en.wikipedia.org/wiki/Euclidean_vector
 [wiki-vm]:                    https://en.wikipedia.org/wiki/Virtual_machine
