@@ -5884,15 +5884,99 @@ We need to figure out the secret key based on either one of the two public keys,
 by first finding the loop size used to calculate one of the two public keys, and
 then use it to transform the other public key.
 
-It's easy to notice by writing it down as a simple `for` loop in really any
-programming language (or even in pseudocode on paper), that the above
-"transformation" is nothing more than the
-[modular exponentiation][wiki-modular-exp] of a given number (the "subject
-number") to the power of *x* (the "loop size") modulo *20201227*.
+There are two mai solutions to today's problem. One is a simple and very
+straightforward bruteforce approach, while the other is a faster and more
+general purely mathematical solution. I ended up implementing the latter when
+initially solving the problem, but I nonetheless will explain both of them in
+detail.
+
+### Bruteforce solution
+
+We will follow the given directions to implement the "transformation" that is
+described by the problem statement one step at a time, in order to find the
+secret "loop size" of one of the two devices. To do so, we'll start from `1` and
+then keep multiplying by `7` and doing modulo `20201227` until we find a value
+equal to one of the two public keys. That value will be secret "loop size" of
+one of the the two devices.
+
+```python
+fin = open(...)
+A, B = map(int, fin)
+
+x = 1
+v = 7
+while v != A and v != B:
+    v = (v * 7) % 20201227
+    x += 1
+```
+
+It's easy to notice by looking at the above loop that the "transformation" we
+are applying is nothing more than the [modular exponentiation][wiki-modular-exp]
+of a given number (the "subject number", in the above case `7`) to the power of
+*x* (the "loop size") modulo *20201227*. Python can actually do modular
+exponentiation using [`pow()`][py-builtin-pow] passing a third argument (the
+modulus, so we could also have written something like this:
+
+```python
+x = 1
+v = 7
+while v != A and v != B:
+    x += 1
+    v = pow(7, x, 20201227)
+```
+
+However it must be noted that this is a lot slower. This is because we are
+calling `pow()` every single time, which does the full exponentiation for us,
+while in the above "manual" solution we do one single arbitrarily large
+exponentiation *one step at a time*, stopping when needed. This is not really a
+big issue since Python uses a fast exponentiation algorithm to do this
+calculation, called [exponentiation by squaring][wiki-binary-exponentiation],
+but it's slower nonetheless since we cannot just supply a big number to `pow()`
+and make it "stop" when we want (we need to call it once for each attempt).
+
+Either way, regardless of the method we use, once the loop is finished and we
+have found a value for `x`, depending on whether we have found a match for the
+public key `A` or `B`, we can then use that value to apply the transformation to
+the other public key and calculate the secret key as the problem statement
+explains:
+
+```python
+if v == A:
+    # x is the "loop size" of the device with public key A
+    secret_key = pow(B, x, 20201227)
+else:
+    # x is the "loop size" of the device with public key B
+    secret_key = pow(A, x, 20201227)
+
+print('Part 1:', secret_key)
+```
+
+Or more consicely using a [conditional expression][py-conditional-expression]:
+
+```python
+secret_key = pow(B if v == A else A, x, 20201227)
+print('Part 1:', secret_key)
+```
+
+This is probably what most people did, and it's a prefectly valid solution which
+does not really require any background knowledge. I implemented it
+[**here**][d25-alternative] for reference.
+
+This solution is however quite slow, a lot slower than the optimal solution, and
+also really boring! So let me go ahead and explain the *real* solution to this
+problem.
+
+### Purely mathematical solution
+
+As we said in the previous section, it's easy to notice by writing it down as a
+simple loop in really any programming language (or even in pseudocode on paper),
+that the above "transformation" is nothing more than the [modular
+exponentiation][wiki-modular-exp] of a given number (the "subject number") to
+the power of *x* (the "loop size") modulo *20201227*.
 
 Let *A* and *B* be the two public keys given as our input. We want to find
 either one of two unknown values *a* and *b* such that *7<sup>a</sup>* mod
-*20201227* = *A* and *7<sup>b</sup>* mod *20201227* = *B*. In other words, we
+*20201227* = *A* or *7<sup>b</sup>* mod *20201227* = *B*. In other words, we
 want to compute the [discrete logarithm][wiki-discrete-log] modulus *20201227*
 of either *A* or *B* to base *7*.
 
@@ -5929,26 +6013,34 @@ the values chosen for the two secret exponents *a* and *b*.
 When intercepting the public keys exchanged between the two devices, we are
 performing what is known as [eavesdropping][wiki-eavesdropping]. We then want to
 use the obtained information (the public keys), knowing the already public
-information (*p* and *g*). The Diffie-Hellman key exchange is a secure algorithm
-whose primary purpose is *exactly* to be resistant against such an attack,
-**given that "good enough" values for *p*, *a* and *b* are chosen** (as
-explained towards the end of the "Cryptographic explanation" section of the
-wikipedia article I linked about it).
+information (*p* and *g*). What we are really being asked is in fact just
+*"please crack this Diffie-Hellman key exchange and find the shared secret key
+given two [sniffed][wiki-sniffing] public keys"*.
 
-The resistance of the Diffie-Hellman key exchange against an attempt to discover
-the computed common private key comes from the fact that, in order to do so, one
-must be able to solve the [discrete logarithm][wiki-discrete-log] modulo *p* of
-*A* to base *g*. In simple terms: no efficient method exists to compute the
-discrete logarithm when *g* (and therefore *p*) are effectively chosen to be
-large enough, as there is no known "general" algorithm with a reasonable
+The Diffie-Hellman key exchange is a secure algorithm whose primary purpose is
+*exactly* to be resistant against such an attack, **given that "good enough"
+values for *p*, *a* and *b* are chosen** (as explained towards the end of the
+"Cryptographic explanation" section of the wikipedia article). The resistance of
+the Diffie-Hellman key exchange against an attempt to discover the computed
+common secret key comes from the fact that, in order to do so, one must be able
+to solve the [discrete logarithm][wiki-discrete-log] modulo *p* of *A* to base
+*g*.
+
+To put it in simple terms: no efficient method exists to compute the discrete
+logarithm of a given number when *g* (and therefore *p*) are effectively chosen
+to be large enough, as there is no known "general" algorithm with a reasonable
 [time complexity][wiki-time-complexity] to compute the discrete logarithm. For
-large enough values of *p* (hundreds of digits), it is impossible to compute the
-discrete logarithm in a humanly reasonable amount of time. As it turns out,
-the numbers chosen for today's puzzle are very far from being cryptographically
-secure. In fact, they are extremely small, and make the solution very easily
-computable even using just pen and paper.
+large enough values of *p* (hundreds of digits), it is therefore humanly
+impossible to compute the discrete logarithm (and by that I mean that no
+existing computer could solve the problem in less than thosands of years).
 
 **Back to the problem now.**
+
+As it turns out, the numbers chosen for today's puzzle are very far from being
+cryptographically secure. In fact, they are extremely small, and make the
+solution very easily computable with the right algorithm even using just pen and
+paper (I should know this very well because this was one of the exercises given
+in the "foundamentals of network security" course at my university).
 
 The most commonly known algorithm for computing the discrete logarithm is the
 [baby-step giant-step algorithm][wiki-bsgs]. I will not get into the details of
@@ -6086,7 +6178,7 @@ journey for this year is over. Merry Christmas!
 [d13-alternative]:     misc/day13/modular_arithmetic.py
 [d18-alternative-1]:   misc/day18/shunting_yard.py
 [d18-alternative-2]:   misc/day18/hack.py
-
+[d25-alternative]:     misc/day25/brute.py
 [2019-d05]:             https://github.com/mebeim/aoc/blob/master/2019/README.md#day-5---sunny-with-a-chance-of-asteroids
 [2019-vm]:              https://github.com/mebeim/aoc/blob/master/2019/lib/intcode.py#L283
 [2019-d16-reflections]: https://github.com/mebeim/aoc/blob/master/2019/README.md#reflections-1
@@ -6184,6 +6276,7 @@ journey for this year is over. Merry Christmas!
 [algo-wall-follower]:      https://en.wikipedia.org/wiki/Maze_solving_algorithm#Wall_follower
 
 [wiki-2d-rotation]:           https://en.wikipedia.org/wiki/Rotations_and_reflections_in_two_dimensions
+[wiki-binary-exponentiation]: https://en.wikipedia.org/wiki/Exponentiation_by_squaring
 [wiki-bitmask]:               https://en.wikipedia.org/wiki/Mask_(computing)
 [wiki-bitwise-and]:           https://en.wikipedia.org/wiki/Bitwise_operation#AND
 [wiki-bitwise-or]:            https://en.wikipedia.org/wiki/Bitwise_operation#OR
@@ -6234,6 +6327,7 @@ journey for this year is over. Merry Christmas!
 [wiki-set-intersection]:      https://en.wikipedia.org/wiki/Intersection_(set_theory)
 [wiki-set-union]:             https://en.wikipedia.org/wiki/Union_(set_theory)
 [wiki-shunting-yard]:         https://en.wikipedia.org/wiki/Shunting-yard_algorithm
+[wiki-sniffing]:              https://en.wikipedia.org/wiki/Sniffing_attack
 [wiki-sum-range]:             https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
 [wiki-time-complexity]:       https://en.wikipedia.org/wiki/Time_complexity
 [wiki-undirected-graph]:      https://en.wikipedia.org/wiki/Graph_(discrete_mathematics)#Graph

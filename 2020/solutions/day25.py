@@ -5,7 +5,8 @@ from math import ceil, sqrt
 
 def bsgs(base, n, p):
 	'''Calculate the discrete logarithm modulo p of n to the given base, using
-	the baby-step giant-step algorithm. Note: p must be prime.
+	the baby-step giant-step algorithm. Note: p must be prime, n must be a
+	primitive root modulo p.
 	'''
 
 	m     = ceil(sqrt(p))
