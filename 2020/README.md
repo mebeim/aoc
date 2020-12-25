@@ -22,7 +22,7 @@ Table of Contents
 - [Day 16 - Ticket Translation][d16]
 - [Day 17 - Conway Cubes][d17]
 - [Day 18 - Operation Order][d18]
-- *Day 19 - TODO (work in progress)*
+- [Day 19 - Monster Messages][d19]
 - [Day 20 - Jurassic Jigsaw][d20]
 - [Day 21 - Allergen Assessment][d21]
 - [Day 22 - Crab Combat][d22]
@@ -2437,11 +2437,13 @@ We can see that `t=8` is the solution, because we satisfy the input constraints
 listed above. In the above table, `X` marks the time at which each bus will
 match our constraints.
 
-There are two approaches to solving this problem: one is simpler, with a
-combination of math and bruteforce, the second one is purely mathematical and
-involves modular arithmetic. While the first is simpler to explain in practice,
-I'll explain both step by step, since I cannot pick a favorite and really enjoy
-both approaches.
+There are two approaches to solving this problem:
+[the first one](#part-2---simple-approach) is simpler, with a combination of
+math and bruteforce,
+[the second one](#part-2---purely-mathematical-approach) is purely mathematical
+and involves modular arithmetic. While the first is simpler to explain in
+practice, I'll explain both step by step, since I cannot pick a favorite and
+really enjoy both approaches.
 
 ### Part 2 - Simple approach
 
@@ -3772,7 +3774,7 @@ To generate neighbor coordinates, we would need to take an additional parameter
 `w` for the fourth dimension, but since we want this to be general, taking a
 tuple of `coords` instead is the way to go. For each coordinate `c` we will
 create a tuple `(c - 1, c, c + 1)`, then pass all those tuples to
-[`itertools.product()`][py-itertools-products] (we could even do this using
+[`itertools.product()`][py-itertools-product] (we could even do this using
 [`range()`][py-builtin-range], but for only three values we won't really see any
 difference).
 
@@ -4171,6 +4173,497 @@ If we want, we can further simplify this turning the two functions for part 1
 and part 2 into a single one, deciding which strategy to apply using an
 additional argument and a couple more `if` statements. This is what I did in my
 complete solution for today's problem.
+
+
+Day 19 - Monster Messages
+-------------------------
+
+[Problem statement][d19-problem] — [Complete solution][d19-solution] — [Back to top][top]
+
+### Part 1
+
+Do you like regular expressions? I really do, the art of writing regular
+expressions to automate simple tasks is really useful when programming and
+processing data. Today's problem is about regular *and not-so-regular*
+expressions.
+
+Let's get straight to the point. Our input is split in two parts by an empty
+line: the second part is a list of messages that are strings which are only
+composed of the letters `a` and `b`, and which we need to match according to the
+list of rules defined in the first part of the input.
+
+The rules are as follows (each uppercase letter here represent a rule ID, which
+is a number uniquely identifying a rule):
+
+1. `X: A B C ...` - match one or more rules in the exact given order.
+2. `X: A B | C D` - match either the first list of rules in the given order, or
+   the second one (always in the given order).
+3. `X: "a"` or `X: "b"` - match the character `a` or `b` respectively.
+
+Our task is to figure out how many of the messages are matched by the rule `0`.
+The messages need to be matched entirely, that is, we need to match every single
+character of a message for it to be considered as matched.
+
+To give an example, suppose we have the following rules:
+
+```
+0: 1 2 | 2 3
+1: "a"
+2: "b"
+3: 2 1
+```
+
+The first option of rule `0` here means *"match rule `1` followed by rule `2`"*.
+If we look at those, this translates to *"match `a` followed by `b`"*, so rule
+`0` would match the message `ab`.
+
+The second option of rule `0` means *"match rule `2` followed by rule `3`"*, and
+if we look at rule `3` it means *"match rule `2` followed by rule `1`"*. Rules
+`1` and `2` match `a` and `b` respectively, therefore this second option of rule
+`0` means *"match `a` followed by `b` followed by `a`"*. Hence, rule `0` would
+also match the message `aba`.
+
+Any other message (e.g. `a`, `aa`, `bb`, `abb`, `abab`, etc.) would not be
+matched by rule `0`.
+
+The input we are given looks very much like a huge
+[regular expressions][misc-regexp] that has been parsed into some kind of
+[tree][wiki-tree] of rules. This is
+**assuming that there are no cycles in the given rules** (e.g. `1: 2 1`), which
+is true for our input.
+
+If we draw a diagram of the above example, we get the following:
+
+```
+      (0)
+     /   \
+    /     \
+(1  2)    (1  3)
+ |  |      |   \
+ a  b      a    \
+                (2  1)
+                 |  |
+                 b  a
+```
+
+Now it's simple to see the tree, and even simpler to see which strings can be
+matched by the rule.
+
+As I mentioned earlier, it looks like this has something to do with regular
+expressions. Indeed, following the rules outlined by the input is equivalent to
+matching a huge regular expression which only uses capture
+[groups][misc-regexp-group] (i.e. parentheses `()`) and
+[alternations][misc-regexp-pipe] (i.e. pipes `|`). Turning the above example
+into a regular expression using only those two special operators is simple
+enough: `^(ab|aba)$`. The `^` and `$` are [anchors][misc-regexp-pipe] used to
+match the start and the end of the string respectively (writing just `(ab|aba)`
+would match something like `abab` or `xyzabcd`).
+
+If we find a nice way to turn the tree of rules we have into a regular
+expression, we can then just let [`re.match()`][py-re-match] match the messages
+and to do the job for us.
+
+First of all, let's parse the input into a tree structure. We can use a simple
+dictionary for this, where each key is the ID of a rule, containing either a
+list of tuples (the various options) or a single character to match
+(`'a'` or `'b'`).
+
+Input parsing is kind of convoluted, so let's write a function for it. We'll
+iterate over the input line by line, stopping when we encounter the empty line
+which separates rules and messages. For each line we'll get the rule ID and its
+content, splitting on `: `. Then, if the rule contains a `"`, we'll simply
+extract the character to match from it, otherwise we'll split the rule again on
+`|` to get a list of options, then [`map()`][py-builtin-map] each option
+(consisting of multiple rule IDs) into a `tuple` of `int`, storing all the in a
+list. Finally, we'll store everything into a dictionary, which will have the
+form `{rule_id: [(id1, id2, ...), (id3, id4, ...), ...]}` (and for the final
+rules `{rule_id: 'a'}`).
+
+```python
+def parse_input(fin):
+    rules = {}
+
+    for line in map(str.rstrip, fin):
+        if not line:
+            break
+
+        rule_id, options = line.split(': ')
+        rule_id = int(rule_id)
+
+        if '"' in options:
+            rule = options[1:-1]
+        else:
+            rule = []
+            for option in options.split('|'):
+                rule.append(tuple(map(int, option.split())))
+
+        rules[rule_id] = rule
+
+    return rules
+```
+
+[Cool, cool, cool, cool, coool][misc-cool]. Now to the actual program: in order
+to turn the whole tree of rules into a regular expression, we'll write a
+recursive solution. If we think about it for one second, it's quite simple:
+
+1. If a rule is a "final" rule, that is `rules[rule_id]` is a string (`'a'` or
+   `'b'`), then the corresponding regular expression is just the rule itself.
+2. Otherwise, the regular expression we need to compose is a capturing group
+   `(...)` of multiple options separated by `|`, where each options is the
+   concatenation of the regular expressions of each of the rules in the option.
+
+Applying the above idea, it's only a matter of [joining][py-str-join] strings in
+the right way:
+
+```python
+def build_regexp(rules, rule=0):
+    rule = rules[rule]
+    if type(rule) is str:
+        return rule
+
+    options = []
+    for option in rule:
+        option = ''
+        for sub_rule in option:
+            option += build_regexp(rules, rule)
+        options.append(option)
+
+    return '(' + '|'.join(options) + ')'
+```
+
+We can further simplify the inner loop above using a
+[generator expression][py-generator-expr]:
+
+```python
+    # ...
+    options = []
+    for option in rule:
+        option = ''.join(build_regexp(rules, r) for r in option)
+        options.append(option)
+    # ...
+```
+
+We could also go further and compress the entire block of code above into a
+single line, but let's stop here before it becomes unreadable (ok, fine, you
+really wanna know? Here you go:
+`options = map(''.join, (map(partial(build_regexp, rules), o) for o in rule))`).
+
+Now we can finally parse the input file to build the `rules` tree, then use it
+to build and [`compile()`][py-re-compile] a regular expression (adding the two
+anchors `^` and `$` to only match whole strings), and then use that expression
+to [`match()`][py-re-match] every single message.
+
+```python
+import re
+
+fin   = open(...)
+rules = parse_input(fin)
+rexp  = re.compile('^' + build_regexp(rules) + '$')
+valid = 0
+
+for msg in map(str.rstrip, fin):
+    if rexp.match(msg):
+        valid += 1
+```
+
+Well, that's just a "if x then increment" kind of loop, we can really turn it
+into a single line using [`sum()`][py-builtin-sum] and
+[`map()`][py-builtin-map]. We need to convert matches to `True` or `False`
+though, as `re.match()` returns a `match` object if the match is successful: we
+can simply use [`bool()`][py-builtin-bool] for that.
+
+```python
+valid = sum(map(bool, map(rexp.match, map(str.rstrip, fin))))
+print('Part 1:', valid)
+```
+
+### Part 2
+
+The task is the same as part 1, but we need to modify two of the rules we have.
+In particular, rule `8` becomes `8: 42 | 42 8`, and rule `11` becomes
+`11: 42 31 | 42 11 31`.
+
+Whelp, now we've got a problem! Remember when in part 1 I said:
+***"assuming that there are no cycles in the given rules"***? Well, that's not
+the case anymore now! The two new rules do actually include cycles! So we cannot
+simply generate a regular expression out of them using our previous function.
+
+There are three main alternative solutions here:
+
+1. [The "hacky" solution](#part-2---hacky-solution): still solve this using
+   Python's regular expressions only, in a way similar to what we did for the
+   first part. This can be done because it's actually possible to turn the two
+   new recursive rules into (rather ugly) regular expressions after noticing a
+   couple of properties. This is not the solution I've used, but it's
+   nonetheless funny enough that I wrote an alternative solution using this
+   approach, which you can find [**here**][d19-alternative].
+
+2. [The "real" solution](#part-2---real-solution): write a matching function
+   capable of matching messages given a tree of rules. This is basically like
+   building a limited expression engine capable of handling a very limited
+   subset of regular expressions *plus* recursive rules. 3. This is the most
+   optimal and general solution, which is the one I linked as the complete clean
+   solution for today's problem.
+
+3. The "lazy" solution: use a third party regular expression library/engine
+   which is capable of handling recursive rules (like the 3rd party
+   [`regex`][misc-regex-module] module).
+
+I will now explain both alternative 1 and 2 in detail, while I will not discuss
+this solution 3 as it's just not interesting to me. Feel free to skip to your
+favorite using the above links.
+
+### Part 2 - Hacky solution
+
+We can understand the high-level meaning of the new rules by taking them apart.
+Let's look at them in detail:
+
+- `8: 42 | 42 8`: this means that rule `8` can either directly translate to rule
+  `42`, or to rule `42` followed by rule `8` again. To make it simpler to
+  understand, let's imagine that rule `42` is just `"a"`. In such case, rule `8`
+  would be equivalent to: `8: "a" | "a" 8`, meaning that we can match one `a`
+  followed by an arbitrary amount of `a`, or in other words *one or more `a`*.
+
+  This rule *can* actually be expressed through a regular expression using the
+  `+` operator: convert whatever rule `42` is into its regexp, then simply wrap
+  it in parentheses `()` and add a `+`, like this: `(<rule_42_regexp>)+`.
+
+- `11: 42 31 | 42 11 31`: this... is not as simple. Translating it again using
+  letters to make it easier it becomes: `11: "a" "b" | "a" 11 "b"`. This is
+  *similar* to the previous rule, except that in the second option the recursion
+  happens in the middle of `a` and `b`. This means "match `ab`, or `a` and `b`
+  with something in the middle", where that "something in the middle" is again
+  either `ab` or `a` and `b` with something in the middle... What this ends up
+  translating to is:
+  *"match one or more `a` followed by **the same amount** of `b`"*.
+
+  This rule is a bit of a problem! Regular expressions are not powerful enough
+  to count and *remember* the number of previously matched characters. However,
+  we can get around the issue by abusing the fact that we are in reality only
+  dealing with a limited set of messages, of which we know the maximum possible
+  length. We can therefore translate rule `42` and rule `31` into their
+  respective regexps, then construct a big capture group with a sequence of
+  pipe-delimited options with a number of repetitions from 1 up to half the
+  maximum length of a message.
+
+  For example (using `a` for rule `42` and `b` for rule `31` for simplicity), if
+  our maximum message length was 16 characters, we could translate rule `11`
+  into the following regexp:
+
+  ```
+  (ab|aabb|aaabbb|aaaabbbb|aaaaabbbbb|aaaaaabbbbbb|aaaaaaabbbbbbb|aaaaaaaabbbbbbbb)
+  ```
+
+  Or a little bit more concisely, using curly brackets `{}` for
+  [repetition][misc-regexp-repetition]:
+
+  ```
+  (a{1}b{1}|a{2}b{2}|a{3}b{3}|a{4}b{4}|a{5}b{5}|a{6}b{6}|a{7}b{7}|a{8}b{8})
+  ```
+
+We'll create a new function copying the `build_regexp()` function we wrote for
+part 1, adding the two special cases mentioned above for rules `8` and `11`. For
+rule `8`, we'll simply build the regexp for rule `42` and then wrap it around
+parentheses adding a `+`. For rule `11`, we'll build the regexps for rule `42`
+and `31`, then build a huge capture group joining together every possible number
+of repetitions from 1 to 40 (our maximum message length seems to be 80). We'll
+use [`str.format()`][py-str-format] for this.
+
+```python
+
+def build_regexp_special(rules, rule=0):
+    if rule == 8:
+        return '(' + build_regexp_special(rules, 42) + ')+'
+
+    if rule == 11:
+        a = build_regexp_special(rules, 42)
+        b = build_regexp_special(rules, 31)
+
+        options = []
+        for n in range(1, 40):
+            options.append('{a}{{{n}}}{b}{{{n}}}'.format(a=a, b=b, n=n))
+
+        return '(' + '|'.join(options) + ')'
+
+    rule = rules[rule]
+    if type(rule) is str:
+        return rule
+
+    options = []
+    for option in rule:
+        option = ''.join(build_regexp_special(rules, r) for r in option)
+        options.append(option)
+
+    return '(' + '|'.join(options) + ')'
+```
+
+The above function will generate a rather long and extremely complex regular
+expression (75869 characters for my input!), so Python's regular expression
+engine will not exactly be thrilled to run it... and indeed it will be very slow
+when matching. In any case, it's fun and also probably the "simplest" solution
+to write using vanilla Python 3.
+
+Now we can do the exact same thing we did in part 1, building, compiling and
+then using the new regexp. We can actually also check each message for both part
+1 and part 2 regular expressions in the same loop.
+
+```python
+rules  = parse_input(fin)
+rexp1  = re.compile('^' + build_regexp(rules) + '$')
+rexp2  = re.compile('^' + build_regexp_special(rules) + '$')
+valid1 = 0
+valid2 = 0
+
+for msg in map(str.rstrip, fin):
+    if rexp1.match(msg):
+        valid1 += 1
+    if rexp2.match(msg):
+        valid2 += 1
+
+print('Part 1:', valid1)
+print('Part 2:', valid2)
+```
+
+You can find a complete solution using this approach
+[**here**][d19-alternative], but as I said this is not the one I ended up using,
+so let's continue on with the *real* solution.
+
+### Part 2 - Real solution
+
+We need to stop taking shortcuts and build a real matching function. How can we
+do it? A straightforward way to define such a function would be to take 4
+parameters: the tree of rules, the string to match, the current rule and an
+index in the string to start matching from. As per the return value, it will be
+a list of indexes from which the matching should continue.
+
+As I explained at the very beginning of [part 1](#part-1-18), we have three main
+kind of rules which at this point we should already be familiar with. Let's
+analyze them further and see how each of them can be translated if we want to
+write such a matching function.
+
+1. `X: "a"` or `X: "b"` - this is the simplest kind of rule: match a single
+   character literally. If the type of the rule we are matching is a string,
+   we'll simply return either 1 or zero indexes: the current index plus 1 if the
+   character matches, and an empty list otherwise.
+
+2. `X: A B C ...` - a rule which only consiste of a single option of multiple
+   other rules to match in order. We'll need to make one recursive call for each
+   rule in the option, starting to match from the current index we have, and
+   accumulating all possible indexes where to continue from for each recursive
+   vall, passing them on to the next one, then return those.
+
+   As an example, assume we want to match the rule `X: A B C` and we are called
+   with index `1`. We will make the following recursive calls, in order
+   (omitting the first two arguments which are always the same for simplicity):
+
+   - `match(A, 1)`: assume this returns `[2]`. We can then continue matching
+     rule `B` from index `2`.
+   - `match(B, 2)`: assume this returns `[3, 4, 7]`. We can now continue
+     matching rule `C`, but be careful, we need to try and continue matching
+     from all possible indexes returned, so we'll make one call for each:
+     - `match(C, 3) -> [5]`
+     - `match(C, 4) -> []` (matching failed)
+     - `match(C, 7) -> [8, 11]`
+
+   Finally, the result we would return is `[5, 8, 11]`, indicating we can
+   continue matching from any of those indexes of the string onward.
+
+3. `X: A B | C D` - this is actually the same as the previous case, but since we
+   have multiple options we'll have to do the same thing one time per option,
+   accumulating all indexes returned by each of the options. We can just use a
+   `for` loop for this. Actually, we can simply "join" this and the previous
+   case together and use a loop regardless, given that the rule tree we build
+   will have a list of options (tuples of other rules) regardless.
+
+Putting the above in terms of code, with the help of some comments, we have:
+
+```python
+def match(rules, string, rule=0, index=0):
+    # If we are past the end of the string, we can't match anything anymore
+    if index >= len(string):
+        return []
+
+    # If the current rule is a simple character, match that literally
+    rule = rules[rule]
+    if type(rule) is str:
+        # If it matches, advance 1 and return this information to the caller
+        if string[index] == rule:
+            return [index + 1]
+        # Otherwise fail, we cannot continue matching
+        return []
+
+    # If we get here, we are in the case `X: A B | C D`
+    matches = []
+
+    # For each option
+    for option in rule:
+        # Start matching from the current position
+        sub_matches = [index]
+
+        # For any rule of this option
+        for sub_rule in option:
+            # Get all resulting positions after matching this rule from any of the
+            # possible positions we have so far.
+            new_matches = []
+            for idx in sub_matches:
+                new_matches += match(rules, string, sub_rule, idx)
+
+            # Keep the new positions and continue with the next rule, trying to match all of them
+            sub_matches = new_matches
+
+        # Collect all possible matches for the current option and add them to the final result
+        matches += sub_matches
+
+    # Return all possible final indexes after matching this rule
+    return matches
+```
+
+The function we just wrote is a general solution which is also capable of
+correctly handling recursive rules. We cannot fall into infinite recursion from
+recursive rules because a rule can either (1) not match, returning an empty list
+(in this case we'll stop there), or (2) match and *advance* the current index
+returning one or more indexes (greater than the current). If a recursive rule
+keeps matching, we'll advance each time and eventually reach the end of the
+string, stopping if we get past it.
+
+Now how do we check if a message is a positive match? Simple, just call the
+above function and see if any of the returned indexes is *exactly* equal to the
+length of the message: this means that at least one path of rules in the tree
+matched all characters of the message, and returned the length of the entire
+message after matching the last index.
+
+We can use the above function to solve both parts (this is what I do in my
+complete solution linked [at the beginning][d19] of today's walkthrough). The
+only thing we need to do first is make sure that we build two different rule
+trees, manually modifying rule `8` and `11` of the second one replacing them
+with the new ones given in the problem statement. We can do this easily using
+[`deepcopy()`][py-copy-deepcopy] to clone the initial rules, and then modify
+those two.
+
+```python
+from copy import deepcopy
+
+fin = open(...)
+
+rules1 = parse_input(fin)
+rules2 = deepcopy(rules1)
+rules2[8]  = [(42,), (42, 8)]
+rules2[11] = [(42, 31), (42, 11, 31)]
+valid1 = 0
+valid2 = 0
+
+for msg in map(str.rstrip, fin):
+    if len(msg) in match(rules1, msg):
+        valid1 += 1
+    if len(msg) in match(rules2, msg):
+        valid2 += 1
+
+print('Part 1:', valid1)
+print('Part 2:', valid2)
+```
+
+You will still like regular expressions after today right? Right? I never
+stopped loving them... I mean... as long as they are *simple enough!*
 
 
 Day 20 - Jurassic Jigsaw
@@ -6104,6 +6597,7 @@ journey for this year is over. Merry Christmas!
 [d16]: #day-16---ticket-translation
 [d17]: #day-17---conway-cubes
 [d18]: #day-18---operation-order
+[d19]: #day-19---monster-messages
 [d20]: #day-20---jurassic-jigsaw
 [d21]: #day-21---allergen-assessment
 [d22]: #day-22---crab-combat
@@ -6129,6 +6623,7 @@ journey for this year is over. Merry Christmas!
 [d16-problem]: https://adventofcode.com/2020/day/16
 [d17-problem]: https://adventofcode.com/2020/day/17
 [d18-problem]: https://adventofcode.com/2020/day/18
+[d19-problem]: https://adventofcode.com/2020/day/19
 [d20-problem]: https://adventofcode.com/2020/day/20
 [d21-problem]: https://adventofcode.com/2020/day/21
 [d22-problem]: https://adventofcode.com/2020/day/22
@@ -6154,6 +6649,7 @@ journey for this year is over. Merry Christmas!
 [d16-solution]: solutions/day16.py
 [d17-solution]: solutions/day17.py
 [d18-solution]: solutions/day18.py
+[d19-solution]: solutions/day19.py
 [d20-solution]: solutions/day20.py
 [d21-solution]: solutions/day21.py
 [d22-solution]: solutions/day22.py
@@ -6161,13 +6657,14 @@ journey for this year is over. Merry Christmas!
 [d24-solution]: solutions/day24.py
 [d25-solution]: solutions/day25.py
 
-[d08-vm]:              https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
-[d08-better-solution]: https://www.reddit.com/r/adventofcode/comments/k8zdx3
-[d12-alternative]:     misc/day12/complex.py
-[d13-alternative]:     misc/day13/modular_arithmetic.py
-[d18-alternative-1]:   misc/day18/shunting_yard.py
-[d18-alternative-2]:   misc/day18/hack.py
-[d25-alternative]:     misc/day25/brute.py
+[d08-vm]:               https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
+[d08-better-solution]:  https://www.reddit.com/r/adventofcode/comments/k8zdx3
+[d12-alternative]:      misc/day12/complex.py
+[d13-alternative]:      misc/day13/modular_arithmetic.py
+[d18-alternative-1]:    misc/day18/shunting_yard.py
+[d18-alternative-2]:    misc/day18/hack.py
+[d19-alternative]:      misc/day19/regexp_hack.py
+[d25-alternative]:      misc/day25/brute.py
 [2019-d05]:             https://github.com/mebeim/aoc/blob/master/2019/README.md#day-5---sunny-with-a-chance-of-asteroids
 [2019-vm]:              https://github.com/mebeim/aoc/blob/master/2019/lib/intcode.py#L283
 [2019-d16-reflections]: https://github.com/mebeim/aoc/blob/master/2019/README.md#reflections-1
@@ -6188,29 +6685,9 @@ journey for this year is over. Merry Christmas!
 [py-unpacking]:               https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 [py-yield-from]:              https://docs.python.org/3.9/whatsnew/3.3.html#pep-380
 
-[py-list-count]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
-[py-set]:                     https://docs.python.org/3/library/stdtypes.html#set
-[py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
-[py-set-intersection-u]:      https://docs.python.org/3/library/stdtypes.html#frozenset.intersection_update
-[py-set-union]:               https://docs.python.org/3/library/stdtypes.html#frozenset.union
-[py-set-union-u]:             https://docs.python.org/3/library/stdtypes.html#frozenset.union_update
-[py-str-count]:               https://docs.python.org/3/library/stdtypes.html#str.count
-[py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigit
-[py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
-[py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
-[py-str-replace]:             https://docs.python.org/3/library/stdtypes.html#str.replace
-[py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
-[py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
-[py-str-strip]:               https://docs.python.org/3/library/stdtypes.html#str.strip
-[py-str-rstrip]:              https://docs.python.org/3/library/stdtypes.html#str.rstrip
-[py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
-[py-object-add]:              https://docs.python.org/3/reference/datamodel.html#object.__add__
-[py-object-contains]:         https://docs.python.org/3/reference/datamodel.html#object.__contains__
-[py-object-init]:             https://docs.python.org/3/reference/datamodel.html#object.__init__
-[py-object-mul]:              https://docs.python.org/3/reference/datamodel.html#object.__mul__
-[py-object-sub]:              https://docs.python.org/3/reference/datamodel.html#object.__sub__
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-any]:             https://docs.python.org/3/library/functions.html#any
+[py-builtin-bool]:            https://docs.python.org/3/library/functions.html#bool
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-eval]:            https://docs.python.org/3/library/functions.html#eval
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
@@ -6232,28 +6709,52 @@ journey for this year is over. Merry Christmas!
 [py-deque-extendleft]:        https://docs.python.org/3/library/collections.html#collections.deque.extendleft
 [py-deque-popleft]:           https://docs.python.org/3/library/collections.html#collections.deque.popleft
 [py-deque-rotate]:            https://docs.python.org/3/library/collections.html#collections.deque.rotate
-[py-itertools]:               https://docs.python.org/3/library/itertools.html
-[py-itertools-chain]:         https://docs.python.org/3/library/itertools.html#itertools.chain
-[py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
-[py-itertools-product]:       https://docs.python.org/3/library/itertools.html#itertools.product
-[py-itertools-combinations]:  https://docs.python.org/3/library/itertools.html#itertools.combinations
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-cache]:         https://docs.python.org/3/library/functools.html#functools.cache
 [py-functools-lru-cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
 [py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
 [py-functools-reduce]:        https://docs.python.org/3/library/functools.html#functools.reduce
+[py-itertools]:               https://docs.python.org/3/library/itertools.html
+[py-itertools-chain]:         https://docs.python.org/3/library/itertools.html#itertools.chain
+[py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
+[py-itertools-product]:       https://docs.python.org/3/library/itertools.html#itertools.product
+[py-itertools-combinations]:  https://docs.python.org/3/library/itertools.html#itertools.combinations
+[py-list-count]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-math]:                    https://docs.python.org/3/library/math.html
 [py-math-inf]:                https://docs.python.org/3/library/math.html#math.inf
 [py-math-ceil]:               https://docs.python.org/3/library/math.html#math.ceil
 [py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
 [py-math-lcm]:                https://docs.python.org/3/library/math.html#math.lcm
 [py-math-prod]:               https://docs.python.org/3/library/math.html#math.prod
+[py-object-add]:              https://docs.python.org/3/reference/datamodel.html#object.__add__
+[py-object-contains]:         https://docs.python.org/3/reference/datamodel.html#object.__contains__
+[py-object-init]:             https://docs.python.org/3/reference/datamodel.html#object.__init__
+[py-object-mul]:              https://docs.python.org/3/reference/datamodel.html#object.__mul__
+[py-object-sub]:              https://docs.python.org/3/reference/datamodel.html#object.__sub__
 [py-operator]:                https://docs.python.org/3/library/operator.html
 [py-operator-add]:            https://docs.python.org/3/library/operator.html#operator.add
 [py-operator-mul]:            https://docs.python.org/3/library/operator.html#operator.mul
 [py-operator-itemgetter]:     https://docs.python.org/3/library/operator.html#operator.itemgetter
 [py-re]:                      https://docs.python.org/3/library/re.html
+[py-re-compile]:              https://docs.python.org/3/library/re.html#re.compile
 [py-re-findall]:              https://docs.python.org/3/library/re.html#re.findall
+[py-re-match]:                https://docs.python.org/3/library/re.html#re.match
+[py-set]:                     https://docs.python.org/3/library/stdtypes.html#set
+[py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
+[py-set-intersection-u]:      https://docs.python.org/3/library/stdtypes.html#frozenset.intersection_update
+[py-set-union]:               https://docs.python.org/3/library/stdtypes.html#frozenset.union
+[py-set-union-u]:             https://docs.python.org/3/library/stdtypes.html#frozenset.union_update
+[py-str-count]:               https://docs.python.org/3/library/stdtypes.html#str.count
+[py-str-format]:              https://docs.python.org/3/library/stdtypes.html#str.format
+[py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigit
+[py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
+[py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
+[py-str-replace]:             https://docs.python.org/3/library/stdtypes.html#str.replace
+[py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
+[py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
+[py-str-strip]:               https://docs.python.org/3/library/stdtypes.html#str.strip
+[py-str-rstrip]:              https://docs.python.org/3/library/stdtypes.html#str.rstrip
+[py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 
 [algo-manhattan]:          https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
 [algo-dijkstra]:           https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
@@ -6318,13 +6819,20 @@ journey for this year is over. Merry Christmas!
 [wiki-sniffing]:              https://en.wikipedia.org/wiki/Sniffing_attack
 [wiki-sum-range]:             https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
 [wiki-time-complexity]:       https://en.wikipedia.org/wiki/Time_complexity
+[wiki-tree]:                  https://en.wikipedia.org/wiki/Tree_(data_structure)
 [wiki-undirected-graph]:      https://en.wikipedia.org/wiki/Graph_(discrete_mathematics)#Graph
 [wiki-vector]:                https://en.wikipedia.org/wiki/Euclidean_vector
 [wiki-vm]:                    https://en.wikipedia.org/wiki/Virtual_machine
 
-[misc-aoc-bingo]: https://www.reddit.com/r/adventofcode/comments/k3q7tr/
-[misc-call-day]:  https://dictionary.cambridge.org/dictionary/english/call-it-a-day
-[misc-man1-tr]:   https://man7.org/linux/man-pages/man1/tr.1.html
-[misc-pypy]:      https://www.pypy.org/
-[misc-regexp]:    https://www.regular-expressions.info/
-[misc-van-eck]:   https://oeis.org/A181391
+[misc-aoc-bingo]:         https://www.reddit.com/r/adventofcode/comments/k3q7tr/
+[misc-call-day]:          https://dictionary.cambridge.org/dictionary/english/call-it-a-day
+[misc-cool]:              https://www.youtube.com/watch?v=zDcbpFimUc8
+[misc-man1-tr]:           https://man7.org/linux/man-pages/man1/tr.1.html
+[misc-pypy]:              https://www.pypy.org/
+[misc-regex-module]:      https://pypi.org/project/regex/
+[misc-regexp]:            https://www.regular-expressions.info/
+[misc-regexp-anchors]:    https://www.regular-expressions.info/anchors.html
+[misc-regexp-group]:      https://www.regular-expressions.info/brackets.html
+[misc-regexp-pipe]:       https://www.regular-expressions.info/alternation.html
+[misc-regexp-repetition]: https://www.regular-expressions.info/repeat.html
+[misc-van-eck]:           https://oeis.org/A181391
