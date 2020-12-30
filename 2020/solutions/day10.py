@@ -22,8 +22,7 @@ def arrangements(nums, i):
 advent.setup(2020, 10)
 fin = advent.get_input()
 
-nums = map(int, fin.readlines())
-nums = sorted(nums)
+nums = sorted(map(int, fin))
 dist1, dist3 = 1, 1
 
 for cur, nxt in zip(nums, nums[1:]):
