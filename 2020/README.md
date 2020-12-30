@@ -1578,10 +1578,10 @@ Day 10 - Adapter Array
 First part of today's puzzle feels more like a reading comprehension test than
 an actual programming puzzle.
 
-Long story short: we are given a list of numbers and we were told (with a
+Long story short: we are given a list of numbers and we are told (with a
 reeeeally long explanation) that these numbers respect a certain rule: when
-sorted, the difference between any pair of consecutive numbers is always
-between at least 1 and at most 3.
+sorted, the difference between any pair of consecutive numbers is always between
+at least 1 and at most 3.
 
 We want to count how many of these numbers have a difference of (A) exactly 1
 and (B) exactly 3. The answer we must give is the product of these two counts.
@@ -1591,8 +1591,7 @@ scan it starting from the second number. Let's do the sorting right away using
 the built-in [`sorted()`][py-builtin-sorted] function:
 
 ```python
-nums = map(int, fin.readlines())
-nums = sorted(nums)
+nums = sorted(map(int, fin))
 ```
 
 Then, we can cycle through the numbers and check each of them against its
@@ -1646,7 +1645,7 @@ adding `0` at the start and `9` at the end):
 Something like `(0) 1 6 (9)` or `(0) 6 (9)` wouldn't be valid since the rule
 does not hold for all numbers in the sequence.
 
-Our list is kind of long, and we are told that the solution is inthe order of
+Our list is kind of long, and we are told that the solution is in the order of
 trillions, so we can't really use bruteforce testing all possible subsets of
 numbers. This problem can be solved using
 [dynamic programming][wiki-dynamic-programming].
@@ -1801,7 +1800,7 @@ Indeed, we could solve this annoying problem in multiple ways:
 
 3. For a general, reusable solution: create a custom more generic
    `selective_cache()` decorator which takes the names of specific arguments to
-   use as keys for memoization. This solution a lot cooler, but it obviously
+   use as keys for memoization. This solution is a lot cooler, but it obviously
    requires some fairly higher level of engineering.
 
    Nonetheless, I've [implemented this decorator][utils-selective-cache] in my
@@ -3553,8 +3552,8 @@ generation to the next:
 - If a cell is alive (`#`) and exactly 2 or 3 of its neighbors are alive (`#`),
   the cell *stays alive*, otherwise it dies (`.`).
 
-In 3D space, "neighbors" of a cell means any of the 26 other cells where any of
-their coordinates differ by at most 1. That is, the entire 3x3 cube of cells
+In 3D space, "neighbors" of a cell means any of the 26 other cells for which any
+of the coordinates differs by at most 1. That is, the entire 3x3 cube of cells
 centered at the coordinates of the cell, except the cell itself. You can also
 see this as the 26 pieces surrounding the core of a
 [Rubik's cube][wiki-rubiks-cube].
@@ -3580,9 +3579,9 @@ it looks.
 After all, we do not really care how cells are arranged. The only thing we care
 about is being able to tell if a given point `(x, y, z)` in space represents a
 cell that is alive or not. In other words, we only want to keep track of the
-points in space that represent alive cells; we can consider anything else dead.
+coordinates which represent alive cells, and we can consider anything else dead.
 
-To do this, we can simply use a `set` of coordinates. Our initial `grid`
+To do this, we can only need a `set` of coordinates. Our initial `grid`
 represents a small portion of the plane at `z=0`, so for each `(x, y)` we'll add
 the coordinates `(x, y, 0)` to our set if `grid[x][y]` is alive (`#`). I'll use
 [`enumerate()`][py-builtin-enumerate] to iterate over the grid.
@@ -3608,7 +3607,7 @@ actually have bounds. Doing `coords in cube` is enough to check if a cell at
 
 We'll actually split this in two functions, creating a small generator function
 to get the neighbor coordinates, which we'll also use later. For performance
-purposes, along eith neighbor coordinates we'll also return the given
+purposes, along with neighbor coordinates we'll also return the given
 coordinates theirselves; we will check later with a single `if` whether we also
 need them or not, rather than checking every single coordinate in the nested
 loops, which would be a lot slower.
@@ -4212,7 +4211,7 @@ Any other message (e.g. `a`, `aa`, `bb`, `abb`, `abab`, etc.) would not be
 matched by rule `0`.
 
 The input we are given looks very much like a huge
-[regular expressions][misc-regexp] that has been parsed into some kind of
+[regular expression][misc-regexp] which has been parsed into some kind of
 [tree][wiki-tree] of rules. This is
 **assuming that there are no cycles in the given rules** (e.g. `1: 2 1`), which
 is true for our input.
@@ -4242,11 +4241,11 @@ matching a huge regular expression which only uses capture
 into a regular expression using only those two special operators is simple
 enough: `^(ab|aba)$`. The `^` and `$` are [anchors][misc-regexp-pipe] used to
 match the start and the end of the string respectively (writing just `(ab|aba)`
-would match something like `abab` or `xyzabcd`).
+would match anything starting with `ab` or `aba`).
 
 If we find a nice way to turn the tree of rules we have into a regular
 expression, we can then just let [`re.match()`][py-re-match] match the messages
-and to do the job for us.
+and do the job for us.
 
 First of all, let's parse the input into a tree structure. We can use a simple
 dictionary for this, where each key is the ID of a rule, containing either a
@@ -4259,10 +4258,10 @@ which separates rules and messages. For each line we'll get the rule ID and its
 content, splitting on `: `. Then, if the rule contains a `"`, we'll simply
 extract the character to match from it, otherwise we'll split the rule again on
 `|` to get a list of options, then [`map()`][py-builtin-map] each option
-(consisting of multiple rule IDs) into a `tuple` of `int`, storing all the in a
-list. Finally, we'll store everything into a dictionary, which will have the
-form `{rule_id: [(id1, id2, ...), (id3, id4, ...), ...]}` (and for the final
-rules `{rule_id: 'a'}`).
+(consisting of multiple rule IDs) into a `tuple` of `int`, storing all the
+tuples in a list. Finally, we'll store everything into a dictionary, which will
+have the form `{rule_id: [(id1, id2, ...), (id3, id4, ...), ...]}` (and for the
+final rules `{rule_id: 'a'}`).
 
 ```python
 def parse_input(fin):
@@ -4386,7 +4385,7 @@ There are three main alternative solutions here:
 2. [The "real" solution](#part-2---real-solution): write a matching function
    capable of matching messages given a tree of rules. This is basically like
    building a limited expression engine capable of handling a very limited
-   subset of regular expressions *plus* recursive rules. 3. This is the most
+   subset of regular expressions *plus* recursive rules. This is the most
    optimal and general solution, which is the one I linked as the complete clean
    solution for today's problem.
 
@@ -4986,12 +4985,12 @@ a tile to match one edge of the top-left corner (or to match any other tile
 really), we must have a way of rotating and flipping tiles in each of the
 *eight* possible arrangements:
 
-```python
+```
 A X   B A   X B   X X
 B X   X X   X A   A B
 
 B X   X X   X A   A B
-A X   B A   X A   X X
+A X   B A   X B   X X
 ```
 
 We already wrote `rotate90()`, now we only need a function to flip a tile.
@@ -5170,7 +5169,7 @@ for r in range(image_sz - pattern_h):
             n += 1
 ```
 
-Putting everything we said together, and also testing al possible arrangements
+Putting everything we said together, and also testing all possible arrangements
 of the image, this is the resulting function:
 
 ```python
@@ -5232,7 +5231,7 @@ use this information to limit our search for a specific matching tile to at most
 This would basically mean building and making good use of an
 [undirected graph][wiki-undirected-graph] of matches (using a simple
 dictionary), where tiles are vertexes and edges mean "matching". It's pretty
-similar to what we are already doint in the first function we wrote called
+similar to what we are already doing in the first function we wrote called
 `match_tiles()`, we would only need to also remember the IDs of the matches for
 each matched side.
 
@@ -5241,7 +5240,7 @@ Applying this approach would solve the second part of the problem in
 it would result in a little bit more complicated program to implement. However
 for the first part, finding all the matches for each tile would still take
 [quadratic time][wiki-polynomial-time], and therefore the final solution would
-not still be *O*(*n<sup>2</sup>*) overall.
+still be *O*(*n<sup>2</sup>*) overall.
 
 
 Day 21 - Allergen Assessment
@@ -6169,21 +6168,22 @@ rexp = re.compile(r'e|w|se|sw|ne|nw')
 ```
 
 Applying [`.findall()`][py-re-findall] on a line of input using the above regexp
-will will split each time one of the alternatives matches and return a list of
-moves to follow to get to the wanted tile to flip.
+will split each time one of the alternatives matches and return a list of moves
+to follow to get to the wanted tile to flip.
 
 The code we're going to write from now on is very similar to the one we wrote
-for [day 17][d17]: the only thing we care about a specific point of our grid, is
-if that point is a black tile or not. To keep track of this information, all we
-need is a set of coordinates representing black tiles.
+for [day 17][d17]: the only thing we care about a specific coordinate of our
+grid, is if that coordinate represents a black tile or not. To keep track of
+this information, all we need is a set of coordinates representing black tiles,
+assuming any coordinate that is not in the set represents a white tile.
 
-Initially, the set will be empty. Then, for each line of input, we'll parse it
-into a list of directions and pass it through `walk()` to get the final
-coordinates of the tile to flip. Finally, to "flip" the tile we'll simply add
-the coordinates to our set *if and only if* they aren't in the set already
-(meaning the tile is being flipped from white to black side), or remove them if
-they *are* already in the set (meaning the tile is being flipped from black to
-white side).
+Initially, the set will be empty. Then we'll parse each line of input into a
+list of directions using the previously written regexp and pass it through
+`walk()` to get the final coordinates of the tile to flip. Finally, to "flip"
+the tile we'll simply add the coordinates to our set *if and only if* they
+aren't in the set already (meaning the tile is being flipped from white to black
+side), or remove them if they *are* already in the set (meaning the tile is
+being flipped from black to white side).
 
 ```python
 grid = set() # coords of tiles with black side up
@@ -6208,7 +6208,7 @@ print('Part 1:', n_black)
 ### Part 2
 
 For the second part of the puzzle, now the hexagonal grid of tiles becomes... a
-[cellular automaton][wiki-cellular-automaton] because why not!?
+[cellular automaton][wiki-cellular-automaton], because why not!?
 
 We should already know the drill, it's the third time we are dealing with a
 cellular automaton this year (the other two being [day 11][d11] and
@@ -6288,7 +6288,7 @@ def evolve(grid):
     return new
 ```
 
-The above checks, which are a literal translation of thegiven rules into logical
+The above checks, which are a literal translation of the given rules into logical
 formulas, can be simplified a lot noticing two things: if the number of black
 adjacent tiles is `2`, the current tile will be black regardless of its previous
 state, otherwise, if its previous state was black, the tile can also keep being
@@ -6363,8 +6363,8 @@ We will follow the given directions to implement the "transformation" that is
 described by the problem statement one step at a time, in order to find the
 secret "loop size" of one of the two devices. To do so, we'll start from `1` and
 then keep multiplying by `7` and doing modulo `20201227` until we find a value
-equal to one of the two public keys. That value will be secret "loop size" of
-one of the the two devices.
+equal to one of the two public keys. That value will be the secret "loop size"
+of one of the the two devices.
 
 ```python
 fin = open(...)
@@ -6382,7 +6382,7 @@ are applying is nothing more than the [modular exponentiation][wiki-modular-exp]
 of a given number (the "subject number", in the above case `7`) to the power of
 *x* (the "loop size") modulo *20201227*. Python can actually do modular
 exponentiation using [`pow()`][py-builtin-pow] passing a third argument (the
-modulus, so we could also have written something like this:
+modulus), so we could also have written something like this:
 
 ```python
 x = 1
@@ -6516,9 +6516,9 @@ decent background of modular algebra. Nonetheless, countless implementations
 both in actual code and in pseudo-code are available online through a simple
 Google search.
 
-Here's my Python implementation of the baby-step giant-step algorithm I'm going
-to use. Note that it does *not* always exist a solution for the discrete
-logarithm, and that `p` must be prime for the following to work.
+Here's my Python implementation of the baby-step giant-step algorithm. Note that
+the discrete logarithm does *not* always have a solution, and that `p` must be
+prime for the following to work.
 
 ```python
 def bsgs(base, n, p):
