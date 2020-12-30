@@ -6273,16 +6273,17 @@ def all_neighbors(grid):
     return set((x + dx, y + dy) for x, y in grid for dx, dy in deltas)
 ```
 
-All we need to do to evolve our `grid` is iterate over all the coordinates
-returned by the above function and calculate the number of adjacent black tiles
-for each one, then follow the rules to determine whether the tile at a given
-coordinate will stay (or turn) black.
+All we need to do to evolve our `grid` is iterate over all the current
+coordinates plus all the coordinates returned by the above function (we can
+simply calculate the union of the two sets using `|`). For each tile, we'll
+calculate the number of adjacent black tiles, and follow the rules to determine
+whether it should stay (or turn) black.
 
 ```python
 def evolve(grid):
     new = set()
 
-    for p in all_neighbors(grid):
+    for p in grid | all_neighbors(grid):
         n = black_adjacent(grid, *p)
 
         if p in grid and not (n == 0 or n > 2):
@@ -6293,17 +6294,17 @@ def evolve(grid):
     return new
 ```
 
-The above checks, which are a literal translation of the given rules into logical
-formulas, can be simplified a lot noticing two things: if the number of black
-adjacent tiles is `2`, the current tile will be black regardless of its previous
-state, otherwise, if its previous state was black, the tile can also keep being
-black if the number of adjacent black tiles is exactly `1`.
+The above checks, which are a literal translation of the given rules into
+logical formulas, can be simplified a lot noticing two things: if the number of
+black adjacent tiles is `2`, the current tile will be black regardless of its
+previous state, otherwise, if its previous state was black, the tile can also
+keep being black if the number of adjacent black tiles is exactly `1`.
 
 ```python
 def evolve(grid):
     new = set()
 
-    for p in all_neighbors(grid):
+    for p in grid | all_neighbors(grid):
         n = black_adjacent(grid, *p)
 
         if n == 2 or (n == 1 and p in grid):
@@ -6312,7 +6313,21 @@ def evolve(grid):
     return new
 ```
 
-A simple `for` loop is all that's left to do:
+Finally, we can notice one more detail to make an additional simplification: as
+per the rules, black tiles with no adjacent black tiles will always be flipped
+to white. This means that no tile whose coordinates aren't already included in
+the set returned by `all_neighbors()` will have the chance of staying black, as
+this function returns all coordinates of tiles which have at least one adjacent
+black tile. Therefore, we can simply avoid calculating the union between `grid`
+and `all_neighbors(...)` and only consider the latter.
+
+```python
+    # ... unchanged ...
+    for p in all_neighbors(grid):
+    # ... unchanged ...
+```
+
+A `for` loop to eveolve the grid 100 times is all that's left to do:
 
 ```python
 for _ in range(100):
