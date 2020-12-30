@@ -5952,8 +5952,9 @@ def build_list(cups):
     for prev, cur in zip(cups, cups[1:]):
         next_cup[prev] = cur
 
-    next_cup += list(range(len(cups) + 1, 1000000 + 1))
-    next_cup.append(cups[0])
+    next_cup[cups[-1]] = len(next_cup)
+    next_cup += list(range(len(next_cup) + 1, 1000000 + 2))
+    next_cup[n] = cups[0]
 
     return next_cup
 ```
@@ -6010,15 +6011,19 @@ a linked list of an arbitrary number of cups
 
 ```python
 def build_list(cups, n=None):
-    next_cup = [None] * len(cups)
+    initial_sz = max(cups) + 1
+    next_cup   = [None] * initial_sz
 
     for prev, cur in zip(cups, cups[1:]):
         next_cup[prev] = cur
 
-    if n is not None:
-        next_cup += list(range(len(cups) + 1, n + 1))
+    if n is None:
+        next_cup[cups[-1]] = cups[0]
+    else:
+        next_cup += list(range(initial_sz + 1, n + 2))
+        next_cup[n] = cups[0]
+        next_cup[cups[-1]] = initial_sz
 
-    next_cup.append(cups[0])
     return next_cup
 ```
 
