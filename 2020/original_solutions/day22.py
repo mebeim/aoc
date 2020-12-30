@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from utils.all import *
-from lib.vm import VM, VMRuntimeError
 
 advent.setup(2020, 22)
 fin = advent.get_input()

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from utils.all import *
-from lib.vm import VM, VMRuntimeError
 
 LEFT, RIGHT = 0, 1
 NORTH, SOUTH, EAST, WEST = 'NSEW'

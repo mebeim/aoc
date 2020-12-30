@@ -1221,7 +1221,7 @@ track of the visited nodes for part 1. Up to you to figure out how, if you want.
 Day 8 - Handheld Halting
 ------------------------
 
-[Problem statement][d08-problem] — [Complete solution][d08-solution] ([current VM][d08-vm]) — [Back to top][top]
+[Problem statement][d08-problem] — [Complete solution][d08-solution] — [Back to top][top]
 
 ### Part 1
 
@@ -1243,11 +1243,11 @@ loop. We need to detect when that happens, stopping the first time we try to
 execute an already seen instruction (before *executing* it). The solution is
 the accumulator value after stopping.
 
-**NOTE**: I'll try to create a simpler VM implementation than my last year's
-[`IntcodeVM`][2019-vm]. Since the VM implementation will likely change and I
-will keep updating the same file, I'll just link to the exact version of the
-code at the time of writing, containing the current VM implementation, which
-we'll be writing ritht now. You can find the link above.
+Since the VM implementation will likely change and I will keep updating the same
+file, I'll just link to the exact version of the code at the time of writing,
+containing the current VM implementation, which we'll be writing ritht now. You
+can find the link above.
+*A posteriori note: this turned out to be the only VM puzzle this year.*
 
 Let's start! We need our VM to have at least three fundamental properties:
 
@@ -1332,36 +1332,21 @@ one of which (`nop`) we'll outright ignore.
                 self.running = False
                 break
 
-            # If somehow the program counter gets outside vm.prog bounds we cannot continue
-            if not (0 <= self.pc < self.prog_len):
-                raise VMRuntimeError('bad program counter')
-
             steps -= 1
 ```
 
-That `VMRuntimeError` is a custom `Exception` which I'll `raise` when things go
-bad. It will help debugging if placed in the correct places when the code gets
-more complicated. It's defined like this for now:
+Now let's actually solve the problem! We can finally put our `VM` to good use.
+To detect when an instruction is executed again, we can save the values of the
+program counter (`vm.pc`) in a [`set`][py-set], since the program counter
+uniquely identifies an instruction in the whole program, and stop if we ever get
+a value that was already seen.
 
 ```python
-class VMRuntimeError(Exception):
-    pass
-```
-
-Now let's actually solve the problem! We can finally `import` our `VM` and put
-it to good use. To detect when an instruction is executed again, we can save the
-values of the program counter (`vm.pc`) in a [`set`][py-set], since the program
-counter uniquely identifies an instruction in the whole program, and stop if we
-ever get a value that was already seen.
-
-```python
-from lib.vm import VM
-
-fin = open(...)
+fin    = open(...)
 source = fin.read()
-vm = VM(source)
+vm     = VM(source)
+seen   = set()
 
-seen = set()
 while vm.pc not in seen:
     seen.add(vm.pc)
     vm.run(1)
@@ -1385,8 +1370,7 @@ better solution than bruteforcing, see [this Reddit thread][d08-better-solution]
 if you are curious. However, the complexity of the code needed to implement such
 a solution would most likely just outweigh its benefits. A dead-simple
 bruteforce approach on such a small program is nearly instantaneous in any case
-(on my machine where one execution of the program takes less than 300
-microseconds).
+(on my machine one execution of the program takes less than 300 microseconds).
 
 Anyway, where were we? Ah yes, testing all instructions: each time we try
 executing the code we'll either end up in an infinite loop again (which can be
@@ -1427,6 +1411,7 @@ print('Part 2:', vm.acc)
 Sweet! Hopefully the code we wrote is robust and simple enough to allow for easy
 modifications in the next days. Assuming things will not get very weird... I
 hope not.
+*A posteriori note: this turned out to be the only VM puzzle this year.*
 
 
 Day 9 - Encoding Error
@@ -6657,7 +6642,6 @@ journey for this year is over. Merry Christmas!
 [d24-solution]: solutions/day24.py
 [d25-solution]: solutions/day25.py
 
-[d08-vm]:               https://github.com/mebeim/aoc/blob/4d718c58358c406b650d69e259fff7c5c2a6e94c/2020/lib/vm.py
 [d08-better-solution]:  https://www.reddit.com/r/adventofcode/comments/k8zdx3
 [d12-alternative]:      misc/day12/complex.py
 [d13-alternative]:      misc/day13/modular_arithmetic.py
