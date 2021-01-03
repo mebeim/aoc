@@ -758,7 +758,7 @@ the sets. You guessed it: `map()` it again, this time computing `len(set(g))`
 for every group `g`, and [`sum()`][py-builtin-sum] everything up. We could
 either use a single `map()` with a `lambda g: len(set(g))`, or a double `map()`
 first for `set`, then for `len`. The latter is fastest, because it's less Python
-code.
+code and more optimized built-in magic.
 
 ```python
 n_any_yes = sum(map(len, map(set, groups)))
@@ -873,80 +873,50 @@ that to `a`. The actual analogous method for the `&=` operator is
 The above code already gives us the answer, and we could stop there, but today I
 want to go a little bit further.
 
-Notice that we are applying the same operation to all the elements of a
-sequence, accumulating the result into a single variable? This technique is
-called [reduction][wiki-reduction], and it's one of the most useful operations
-in functional programming. Granted, Python isn't really a functional language,
-but to some extent it can be treated as such.
-
-The body of the above loop can be shortened into a single line taking advantage
-of the very cool [`reduce()`][py-functools-reduce] function from the
-[`functools`][py-functools] module. This function takes a function, an iterable
-and an optional initializer (if not supplied, the first element of the iterable
-is used). It starts with `res = initializer`, and then for each element of the
-iterable does `res = function(res, element)`, finally returning `res`. This
-means that if we supply [`set.intersection`][py-set-intersection] as function,
-and our `groups` as iterable, the body of the above loop can be rewritten in one
-line.
+We are applying the same operation (that is, intersection) to all the elements
+of each group. The final result is the intersection of multiple sets. As it
+turns out, [`set.intersection()`][py-set-intersection] can take an arbitrary
+amount of sets as parameters, and calculate the intersection of all of them. The
+body of the above loop can be shortened into a single line taking advantage of
+this, passing all sets in a `group` to `set.intersection()` through
+[unpacking][py-unpacking]:
 
 ```python
 from functools import reduce
 
 n_all_yes = 0
-for group in groups:
-    n_all_yes += len(reduce(set.intersection, group))
+for g in groups:
+    n_all_yes += len(set.intersection(*g))
 ```
 
 Huh, now we are using a loop just to sum values. Wonder if there is a function
-that does that for us. Yep, `sum()`. The `map()` feng shui never ends! The above
-can just be simplified into:
+that does that for us. Yep, [`sum()`][py-builtin-sum]. The above can just be
+simplified into a single line using `sum()` and a
+[generator expression][py-generator-expr], giving us the following final form:
 
 ```python
-n_all_yes = sum(map(lambda g: len(reduce(set.intersection, g)), groups))
-```
-
-We can make this a little bit readable using
-[`functools.partial()`][py-functools-partial] to fix the first argument of
-`reduce` to `set.intersection`, trasforming it into a function that only takes
-one argument (an iterable) and returns the intersection of all the items in the
-iterable.
-
-```python
-from functools import reduce, partial
-
-intersect = partial(reduce, set.intersection)
-n_all_yes = sum(map(len, map(intersect, groups)))
-
+n_all_yes = sum(len(set.intersection(*g)) for g in groups)
 print('Part 2:', n_all_yes)
 ```
 
 ### One last stretch
 
-We can re-use the same technique of part 2 for part 1 too. The only difference
-is that for part 1 we need to calcualte the [union][wiki-set-union] of the sets
-of answers (using [`set.union`][py-set-union]). To iterate over the `groups` two
+We can apply the same technique of part 2 to part 1 too. The only difference is
+that for part 1 we need to calcualte the [union][wiki-set-union] of the sets of
+answers (using [`set.union()`][py-set-union]). To iterate over the `groups` two
 times, we'll now need to turn them into `tuple`s of `tuple`s. After that, we can
-apply the same dance of `sum()` + `map()` + `reduce()` for both parts.
+apply the same dance of `sum()` + generator for both parts.
 
 ```python
-from functools import reduce, partial
-
 raw_groups = fin.read().split('\n\n')
-
 groups = tuple(map(lambda g: tuple(map(set, g.splitlines())), raw_groups))
-
-# Or equivalent, "abusing" partial():
-map_to_sets = partial(map, set)
-groups = tuple(map(tuple, map(map_to_sets, map(str.splitlines, raw_groups))))
 ```
 
 Finally:
 
 ```python
-unionize  = partial(reduce, set.union)
-intersect = partial(reduce, set.intersection)
-n_any_yes = sum(map(len, map(unionize, groups)))
-n_all_yes = sum(map(len, map(intersect, groups)))
+n_any_yes = sum(len(set.union(*g)) for g in groups)
+n_all_yes = sum(len(set.intersection(*g)) for g in groups)
 ```
 
 We now have a quite elegant functional Python solution!
@@ -6859,7 +6829,6 @@ journey for this year is over. Merry Christmas!
 [wiki-polynomial-time]:       https://en.wikipedia.org/wiki/Time_complexity#Polynomial_time
 [wiki-postfix-notation]:      https://en.wikipedia.org/wiki/Reverse_Polish_notation
 [wiki-primitive-root]:        https://en.wikipedia.org/wiki/Primitive_root_modulo_n
-[wiki-reduction]:             https://en.wikipedia.org/wiki/Reduction_Operator
 [wiki-rubiks-cube]:           https://en.wikipedia.org/wiki/Rubik%27s_Cube
 [wiki-running-total]:         https://en.wikipedia.org/wiki/Running_total
 [wiki-set-intersection]:      https://en.wikipedia.org/wiki/Intersection_(set_theory)
