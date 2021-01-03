@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from utils import advent
+from collections import Counter
 import re
 
 MOVEMAP = {
@@ -22,24 +23,10 @@ def walk(moves):
 
 	return x, y
 
-def black_adjacent(grid, x, y):
-	deltas = ((1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1))
-	return sum((x + dx, y + dy) in grid for dx, dy in deltas)
-
-def all_neighbors(grid):
-	deltas = ((1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1))
-	return set((x + dx, y + dy) for x, y in grid for dx, dy in deltas)
-
 def evolve(grid):
-	new = set()
-
-	for p in all_neighbors(grid):
-		n = black_adjacent(grid, *p)
-
-		if n == 2 or (n == 1 and p in grid):
-			new.add(p)
-
-	return new
+	deltas = ((1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1))
+	near = Counter((x + dx, y + dy) for x, y in grid for dx, dy in deltas)
+	return set(p for p, n in near.items() if n == 2 or n == 1 and p in grid)
 
 
 advent.setup(2020, 24)

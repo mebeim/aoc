@@ -6228,64 +6228,94 @@ of the 6 adjacent tiles are simple:
 We need to "evolve" our hexagonal grid of tiles for 100 generations, then count
 the final number of tiles with the black side facing up.
 
-Let's write a function to calculate the number of adjacent black tiles given our
-set and a pair of coordinates. This should be a pretty simple task: step one
-unit forward in each possible direction and check that point.
+I usually avoid using complex one-liners. Today feels to good to not simplify
+everything down into a couple of lines of code though. I'll limit myself and try
+to explain each step in the best way I can.
 
-```python
-def black_adjacent(grid, x, y):
-    deltas = ((1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1))
+Like for [day 17][d17], it's important to consider that when "evolving" our
+tiles, our set of black tiles can actually "expand" outwards. If a tile that is
+not black (and therefore not in our `grid`) is adjacent to exactly 2 black
+tiles, it will be flipped and will become black. For this reason, when evolving
+the grid, we need to also check all tiles surrounding the ones we already have,
+even if they are not in our `grid` set.
 
-    tot = 0
-    for dx, dy in deltas:
-        if (x + dx, y + dy) in grid:
-            tot += 1
-
-    return tot
-```
-
-We can simplify the above loop using [`sum()`][py-builtin-sum] and a
-[generator expression][py-generator-expr], since all it's doing is counting the
-number of adjacent points that are in `grid` (and therefore correspond to a
-black tile):
-
-```python
-def black_adjacent(grid, x, y):
-    deltas = ((1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1))
-    return sum((x + dx, y + dy) in grid for dx, dy in deltas)
-```
-
-Now, like for day 17, it's important to consider that when "evolving" our tiles,
-our set of black tiles can actually "expand" outwards. If a tile that is not
-black (and therefore not in our `grid`) is adjacent to exactly 2 black tiles, it
-will be flipped and become black. For this reason, when evolving the grid, we
-need to also check all tiles surrounding the ones we already have, even if they
-are not in our `grid` set. We will do this using a function very similar to the
-above, which will just generate a set of all neighbors of all tiles in our
-`grid`. This is as simple as iterating over every point in `grid` and adding
-each possible delta to it. We return a set because we want to avoid wasting time
-checking tiles at the same coordinates more than once.
-
+We can compute all coordinates that we need to check using a generator function
+which iterates over all adjacent coordinates of any coordinate in our `grid`.
+This is as simple as iterating over every point in `grid` and adding each
+possible "delta" to it (that is, stepping one unit forward in each possible
+direction).
 
 ```python
 def all_neighbors(grid):
     deltas = ((1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1))
-    return set((x + dx, y + dy) for x, y in grid for dx, dy in deltas)
+
+    for x, y in grid:
+        for dx, dy in delta:
+            yield (x + dx, y + dy)
 ```
 
-All we need to do to evolve our `grid` is iterate over all the current
-coordinates plus all the coordinates returned by the above function (we can
-simply calculate the union of the two sets using `|`). For each tile, we'll
-calculate the number of adjacent black tiles, and follow the rules to determine
-whether it should stay (or turn) black.
+Simple enough. The coordinates we need to check to evolve the grid should be the
+ones already in `grid` plus all the neighbors returned by the above function.
+However, as per the rules, black tiles with no adjacent black tiles will always
+be flipped to white. This means that no tile whose coordinates aren't already
+included in the ones yielded by `all_neighbors()` will have the chance of
+staying black, as this function generates all the coordinates of tiles which
+have at least one adjacent black tile. We can therefore only consider the ones
+returned by the above function as candidates for our "new" grid after evolving
+one generation.
+
+We now also need to count the number of adjacent black tiles for each tile. The
+above generator function could actually `yield` the same coordinates multiple
+times. For example, if a tile at `(x, y)` has 4 adjacent black tiles, then for
+each one of those we will compute the same `(x, y)`, and we'll end up yielding 4
+copies of the same coordinate.
+
+This means that the above function, with a minor modification, can already tell
+us both (1) all the coordinates of the tiles we should check and (2) how many
+adjacent black tiles does each one of them have. We can do this by simply
+counting duplicate coordinates.
+
+Here's a new function which does just that, using a
+[`defaultdict`][py-collections-defaultdict] to count the number of times we see
+the same coordinate:
+
+```python
+from collections import defaultdict
+
+def all_neighbors(grid):
+    deltas = ((1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1))
+    counts = defaultdict(int)
+
+    for x, y in grid:
+        for dx, dy in deltas:
+            counts[x + dx, y + dy] += 1
+
+    return counts
+```
+
+Counting duplicate elements in an iterable sequence can actually be done using a
+[`Counter`][py-collections-counter] object from the
+[`collections`][py-collections] module, which takes an iterable as parameter and
+returns a dictionary of the form `{element: count}`. Combining this with a
+[generator expression][py-generator-expr] to compress the two above `for` loops
+into a single line, the result is the following:
+
+```python
+def all_neighbors(grid):
+    deltas = ((1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1))
+    return Counter((x + dx, y + dy) for x, y in grid for dx, dy in deltas)
+```
+
+All we need to do to evolve our `grid` now is iterate over all the coordinates
+and counts in the dictionary returned by the above function, following the rules
+on the number of adjacent black tiles to determine whether each tile should stay
+(or turn) black.
 
 ```python
 def evolve(grid):
     new = set()
 
-    for p in grid | all_neighbors(grid):
-        n = black_adjacent(grid, *p)
-
+    for p, n in all_neighbors(grid).items():
         if p in grid and not (n == 0 or n > 2):
             new.add(p)
         elif p not in grid and n == 2:
@@ -6297,34 +6327,47 @@ def evolve(grid):
 The above checks, which are a literal translation of the given rules into
 logical formulas, can be simplified a lot noticing two things: if the number of
 black adjacent tiles is `2`, the current tile will be black regardless of its
-previous state, otherwise, if its previous state was black, the tile can also
+previous state; otherwise, if its previous state was black, the tile can also
 keep being black if the number of adjacent black tiles is exactly `1`.
 
 ```python
 def evolve(grid):
     new = set()
 
-    for p in grid | all_neighbors(grid):
-        n = black_adjacent(grid, *p)
-
+    for p, n in all_neighbors(grid).items():
         if n == 2 or (n == 1 and p in grid):
             new.add(p)
 
     return new
 ```
 
-Finally, we can notice one more detail to make an additional simplification: as
-per the rules, black tiles with no adjacent black tiles will always be flipped
-to white. This means that no tile whose coordinates aren't already included in
-the set returned by `all_neighbors()` will have the chance of staying black, as
-this function returns all coordinates of tiles which have at least one adjacent
-black tile. Therefore, we can simply avoid calculating the union between `grid`
-and `all_neighbors(...)` and only consider the latter.
+Since we extract the `.items()` from the `Counter` returned by `all_neighbors()`
+right away, we can just incorporate that into the function itself:
 
 ```python
-    # ... unchanged ...
-    for p in all_neighbors(grid):
-    # ... unchanged ...
+def all_neighbors(grid):
+    deltas = ((1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1))
+    return Counter((x + dx, y + dy) for x, y in grid for dx, dy in deltas).items()
+```
+
+Secondly, since all we are doing in `evolve()` is constructing a set of new
+coordinates filtering the ones returned by `all_neighbors()` based on a
+condition, we can even simplify `evolve` down to a single line using a generator
+expression with an additional `if` condition:
+
+```python
+def evolve(grid):
+    return set(p for p, n in all_neighbors(grid) if n == 2 or (n == 1 and p in grid))
+```
+
+Finally, since we just wrote two "one-liner" functions, let's just merge them
+together as they are not needed anywhere else:
+
+```python
+def evolve(grid):
+    deltas = ((1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1))
+    near = Counter((x + dx, y + dy) for x, y in grid for dx, dy in deltas)
+    return set(p for p, n in near.items() if n == 2 or n == 1 and p in grid)
 ```
 
 A `for` loop to eveolve the grid 100 times is all that's left to do:
@@ -6704,6 +6747,8 @@ journey for this year is over. Merry Christmas!
 [py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
+[py-collections]:             https://docs.python.org/3/library/collections.html
+[py-collections-counter]:     https://docs.python.org/3/library/collections.html#collections.Counter
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
 [py-copy]:                    https://docs.python.org/3/library/copy.html
