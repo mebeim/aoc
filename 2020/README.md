@@ -6012,7 +6012,7 @@ a linked list of an arbitrary number of cups
 ```python
 def build_list(cups, n=None):
     initial_sz = max(cups) + 1
-    next_cup   = [None] * initial_sz
+    next_cup   = [0] * initial_sz
 
     for prev, cur in zip(cups, cups[1:]):
         next_cup[prev] = cur
@@ -6049,15 +6049,15 @@ print('Part 1:', ans)
 
 Today is kind of a bad day for our poor Python. The solution isn't really as
 fast as I'd like it to be. On my machine I get a total execution time of roughly
-2s with [PyPy][misc-pypy] 7.3.3 (Python 3.7.9) and 7s with
-[CPython][wiki-cpython] 3.9 using a big `list` to keep track of the "next" of
-each node (like I explained in the part 2 solution above), and of course even
-worse times using classes instead.
+7s with [CPython][wiki-cpython] 3.9 using a big `list` to keep track of the
+"next" of each node (like I explained in the part 2 solution above), and of
+course even worse times using classes instead. However, [PyPy][misc-pypy] 7.3.3
+(Python 3.7.9) comes to the rescue as always and obliterates CPython again with
+its optimized list operations, taking a little less than 700ms for both parts.
 
-Overall, what really affects performance is the slowness of indexing and/or
-accessing properties of Python objects which is a downside intrinsic in the
-language itself. As an interpreted language, it seems to suffer a lot from the
-lack of a primitive linked list type.
+Overall, what really affects performance in CPython is the slowness of indexing
+and/or accessing properties of Python objects which apparently is a downside
+intrinsic in the implementation. Sad.
 
 
 Day 24 - Lobby Layout

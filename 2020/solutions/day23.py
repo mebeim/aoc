@@ -4,7 +4,7 @@ from utils import advent
 
 def build_list(cups, n=None):
 	initial_sz = max(cups) + 1
-	next_cup   = [None] * initial_sz
+	next_cup   = [0] * initial_sz
 
 	for prev, cur in zip(cups, cups[1:]):
 		next_cup[prev] = cur
