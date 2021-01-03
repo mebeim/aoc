@@ -5860,7 +5860,7 @@ class Node:
 
 However, since we have to play for *10 million* rounds, we might want to find a
 little bit more efficient way of representing a linked list. This is because,
-unlickily for us, accessing attributes of an object is one of the slowest
+unluckily for us, accessing attributes of an object is one of the slowest
 primitive operations in Python, so before going on, let's see if we can do
 better.
 
@@ -6362,9 +6362,9 @@ The last puzzle of this year's Advent of Code is a pretty simple one, dealing
 once again with [modular arithmetic][wiki-modular-arithmetic].
 
 We need to crack the secret keys exchanged in a handshake between two devices.
-The handshake involves *transforming* numbers given a according to the following
-transformation, which takes two numbers as input: the number we want to transform,
-called *"subject number"*, and a *"loop size"*.
+The handshake involves *transforming* numbers according to the following
+transformation, which takes two numbers as input: the number we want to
+transform, called *"subject number"*, and a *"loop size"*.
 
 - Start with a value of `1`, then perform the following operation a number of
   times equal to the *loop size*:
@@ -6384,7 +6384,7 @@ We need to figure out the secret key based on either one of the two public keys,
 by first finding the loop size used to calculate one of the two public keys, and
 then use it to transform the other public key.
 
-There are two mai solutions to today's problem. One is a simple and very
+There are two main solutions to today's problem. One is a simple and very
 straightforward bruteforce approach, while the other is a faster and more
 general purely mathematical solution. I ended up implementing the latter when
 initially solving the problem, but I nonetheless will explain both of them in
@@ -6489,7 +6489,7 @@ to be as clear as possible either way.
 
 What was described in the problem statement in a rather verbose manner is an
 algorithm best known as [Diffie-Hellman key exchange][wiki-diffie-hellman]. This
-algorithm allows two parties to securely compute the same secret key, using the
+algorithm allows two parties to securely compute the same secret key, using a
 pre-established common base *g* and modulus *p*, and exchanging each other's
 public keys over an insecure channel. In the above explanation *p = 20201227*
 (which must be a prime number, and indeed it is), and *g = 7* (which must be a
@@ -6532,7 +6532,7 @@ to be large enough, as there is no known "general" algorithm with a reasonable
 [time complexity][wiki-time-complexity] to compute the discrete logarithm. For
 large enough values of *p* (hundreds of digits), it is therefore humanly
 impossible to compute the discrete logarithm (and by that I mean that no
-existing computer could solve the problem in less than thosands of years).
+existing computer could solve the problem in less than thousands of years).
 
 **Back to the problem now.**
 
