@@ -57,7 +57,7 @@ compls  = set()
 for x in numbers:
     y = 2020 - x
 
-    if y in compls:
+    if x in compls:
         ans = x * y
         break
 
@@ -5788,8 +5788,8 @@ def play(cups, n_moves):
 
 ```
 
-The above loop which adjust the "destination" value according to the rules can
-be simplified using [conditional expressions][py-conditional-expression]:
+The above loop adjusts the "destination" value according to the rules can be
+simplified using [conditional expressions][py-conditional-expression]:
 
 ```python
         dst = maxcup if cur == mincup else cur - 1
@@ -5805,7 +5805,7 @@ Now we just need to call the function with the appropriate parameters:
 
 ```python
 cups = deque(orig)
-ans  = play(cups)
+ans  = play(cups, 100)
 
 print('Part 1:', ans)
 ```
@@ -5817,7 +5817,7 @@ That was simple enough. Onto part 2!
 Now we are told that we need to add *some more* cups... precisely, all cups
 valued from 10 to 1000000 (1 million). We also need to play the game for 10
 million rounds instead of 100. After the last round, we need to multiply
-together the values of the two cups right next to (after) the cup with value 1.
+together the values of the two cups right after the cup with value 1.
 
 Well... needless to say, we can't use a `deque` anymore. Shifting around 1
 million elements is quite slow; doing it 10 million times is just impossible (it
@@ -5875,13 +5875,13 @@ This `next_cup` list will have 1 million plus 1 elements, and will be initialize
 according to the initial 9 values we have as input plus another 999991 values
 from 10 to 1000000. We add that 1 additional element in the list because we
 don't want to worry about calculating the correct indexes, and adding one more
-element while ignoring `next_cup[0]` makes us able just use cup values as
+element while ignoring `next_cup[0]` makes us able to just use cup values as
 indexes. Finally, the last entry of the list will be the value of the first cup
 in our input, making the 1-millionth cup have the first one as "next", therefore
 making our linked list also *circular*.
 
 Keeping cups in a linked list removes the problem of having to shift everything
-around just to remove and insert an arbitrary contiguous chunks of cups:
+around just to remove and insert an arbitrary contiguous chunk of cups:
 
 - To remove cups from the list, we only need to update *one* value, the "next"
   of the cup right before the first cup we remove, replacing it with the value
@@ -6026,7 +6026,7 @@ course even worse times using classes instead. However, [PyPy][misc-pypy] 7.3.3
 its optimized list operations, taking a little less than 700ms for both parts.
 
 Overall, what really affects performance in CPython is the slowness of indexing
-and/or accessing properties of Python objects which apparently is a downside
+and/or accessing properties of Python objects, which apparently is a downside
 intrinsic in the implementation. Sad.
 
 
