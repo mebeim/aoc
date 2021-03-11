@@ -1551,32 +1551,31 @@ an actual programming puzzle.
 Long story short: we are given a list of numbers and we are told (with a
 reeeeally long explanation) that these numbers respect a certain rule: when
 sorted, the difference between any pair of consecutive numbers is always between
-at least 1 and at most 3.
+at least 1 and at most 3. We are also told that we need to start our sequence
+with a `0` (which is not in our input) and end it with the maximum value we have
+plus 3.
 
-We want to count how many of these numbers have a difference of (A) exactly 1
-and (B) exactly 3. The answer we must give is the product of these two counts.
+After doing this, we want to count how many pairs of any two numbers have a
+difference of (A) exactly 1 and (B) exactly 3. The answer we must give is the
+product of these two counts.
 
 Looks pretty simple: in order to do this we can sort the input sequence and then
 scan it starting from the second number. Let's do the sorting right away using
-the built-in [`sorted()`][py-builtin-sorted] function:
+the built-in [`sorted()`][py-builtin-sorted] function, and also add the two
+initial and final numbers:
 
 ```python
 nums = sorted(map(int, fin))
+nums = [0] + nums + [max(nums) + 3]
 ```
 
 Then, we can cycle through the numbers and check each of them against its
-successor to see if their difference is `1` or `3`. Beware though: the first
-time we find a match (for distance 1 and 3) it means we actually have *two*
-numbers matching. After that, each match only discovers one new number at a
-time. This means that we need to add 1 to both counters. I do this by
-initializing them to `1`.
-
-To iterate over pairs of consecutive numbers we can take advantage of the
-[`zip()`][py-builtin-zip] function passing `nums, nums[1:]` as arguments. The
-checks are straightforward.
+successor to see if their difference is `1` or `3`. To iterate over pairs of
+consecutive numbers we can take advantage of the [`zip()`][py-builtin-zip]
+function passing `nums, nums[1:]` as arguments. The checks are straightforward.
 
 ```python
-dist1, dist3 = 1, 1
+dist1 = dist3 = 0
 
 for cur, nxt in zip(nums, nums[1:]):
     delta = nxt - cur
@@ -1598,8 +1597,6 @@ print('Part 1:', ans)
 
 The problem turns into a real puzzle: we need to count
 *how many different subsets* of our numbers satisfy the rule defined in part 1.
-We also need to start each sequence with a `0` (which is not in our input) and
-end it with the maximum value we have plus 3.
 
 As an example, if our numbers were `1 2 3 6`, we could build 4 different
 sequences that respect the above rule using a subset of the numbers (always
@@ -1619,12 +1616,6 @@ Our list is kind of long, and we are told that the solution is in the order of
 trillions, so we can't really use bruteforce testing all possible subsets of
 numbers. This problem can be solved using
 [dynamic programming][wiki-dynamic-programming].
-
-Let's start by adding `0` and `max + 3` to our list, since we always need those:
-
-```python
-nums = [0] + nums + [max(nums) + 3]
-```
 
 Remember that our numbers are still sorted. For each number, we have the
 possibility to chose betwee 1 and 3 successors. For example if we have

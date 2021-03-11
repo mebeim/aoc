@@ -23,7 +23,8 @@ advent.setup(2020, 10)
 fin = advent.get_input()
 
 nums = sorted(map(int, fin))
-dist1, dist3 = 1, 1
+nums = [0] + nums + [max(nums) + 3]
+dist1 = dist3 = 0
 
 for cur, nxt in zip(nums, nums[1:]):
     delta = nxt - cur
@@ -36,8 +37,5 @@ for cur, nxt in zip(nums, nums[1:]):
 ans = dist1 * dist3
 advent.print_answer(1, ans)
 
-
-nums = [0] + nums + [max(nums) + 3]
 total = arrangements(nums, 0)
-
 advent.print_answer(2, total)
