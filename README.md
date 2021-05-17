@@ -69,9 +69,6 @@ they are a good and fun way to see how I code, and they can be uploaded as soon
 as the leaderboard for the day is complete, as I often don't have time to
 rewrite them more cleanly right away.</sup>
 
-If you enjoy what I'm doing and would like to say "thanks", you can
-[buy me a drink here][paypal-donate-btn].
-
 
 Contributing
 ------------
