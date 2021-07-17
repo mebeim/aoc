@@ -1618,7 +1618,7 @@ numbers. This problem can be solved using
 [dynamic programming][wiki-dynamic-programming].
 
 Remember that our numbers are still sorted. For each number, we have the
-possibility to chose betwee 1 and 3 successors. For example if we have
+possibility to choose betwee 1 and 3 successors. For example if we have
 `(0) 1 2 3 ...`, after choosing `0` (forced choice), we could take any of
 `1 2 3`, and those would constitute three different solutions. On the other hand
 if we have `(0) 2 3` we only have two choices, and in the extreme case of
@@ -1660,10 +1660,10 @@ also uses an exponential amount of space, will never work. For my input I have
 
 The thing to notice to make this work is that we do not actually *need* to make
 all those calls: that would be akin to bruteforcing the solution. Most of the
-times, our recursive call will end up being called with the same `i`, therefore
-calculating the same value multiple times. If we [memoize][wiki-memoization] the
-results (just like we did to optimize [day 7][d07] part 2) we can save an
-*enormous* amount of work.
+times, our recursive function will end up being called with the same `i`,
+therefore calculating the same value multiple times. If we
+[memoize][wiki-memoization] the results (just like we did to optimize
+[day 7][d07] part 2) we can save an *enormous* amount of work.
 
 In order to do this using the [`functools.lru_cache`][py-functools-lru-cache]
 decorator, since we want to only memoize based on the index `i`, we can remove
@@ -1728,8 +1728,8 @@ Indeed, we could solve this annoying problem in multiple ways:
     problem, and probably what I'll keep doing when possible.
 
     However, note that as mentioned above this is not a general solution at all,
-    since calling `possible_solutions()` multiple times from the outside just
-    creates new copies of `real_fn()`, which *don't* share the same cache.
+    since calling `func()` multiple times from the outside just creates new
+    copies of `real_func()`, which *don't* share the same cache.
 
 2. If we need to do multiple external calls, we can do *almost the same* thing
    as above, returning the entire function instead, and then use *that*
@@ -2298,7 +2298,7 @@ raw     = fin.readline().strip().split(',') # will be reused in part 2
 periods = map(int, filter(lambda x: x != 'x', raw))
 ```
 
-For each bus, we can to calculate the amount of time that we would need to wait
+For each bus, we want to calculate the amount of time that we would need to wait
 at the sea port before catching it. If one bus has period `p`, and we arrive at
 `arrival`, this means the bus will have already done `arrival // p` complete
 rounds of its route before our arrival. If `arrival` is exactly a multiple of
@@ -2459,7 +2459,7 @@ steps. Indeed, from now on, those times will only align every `6` steps: at
 In order for the two departure times to "align" again, since one is advancing
 `2` minutes each time and the other `3` minutes each time, we need to advance
 exactly a number of minutes equal to the [least common multiple][wiki-lcm]
-between the two, whch is `6`.
+of the two, whch is `6`.
 
 I'll use an horizontal representation to show this for a longer period of time:
 
@@ -3150,8 +3150,8 @@ CPython. That's better. The last smart trick we can apply is avoiding indexing
 `last_seen` two times. Each loop we first check `if last_seen[prev]` and then do
 `last_seen[prev]` again in the calculation. We can avoid this exploiting the
 fact that `last_seen` is initialized to `0`. If we just calculate
-`cur = prev_turn - last_seen[prev]` right away, then if the number was already
-seen we'll have `last_seen[prev]` and therefore `cur == prev_turn`.
+`cur = prev_turn - last_seen[prev]` right away, then if the number wasn't
+already seen we'll have `last_seen[prev] == 0` and therefore `cur == prev_turn`.
 
 ```python
 def play(nums, n_turns):
@@ -3732,7 +3732,7 @@ def neighbors(coords):
 ```
 
 We also need to remove the [unpacking operator][py-unpacking] (`*`) when calling
-the new `neighbor()` function since now it can take the entire tuple as one
+the new `neighbors()` function since now it can take the entire tuple as one
 argument:
 
 ```python
@@ -3977,12 +3977,12 @@ of additions and multiplications, and additions have precedence over
 multiplications, for example:
 
 ```
-1 * 2 * 3 + 4    (should evaluate to 3 * 7 = 21)
+1 * 2 * 3 + 4    (should evaluate to 2 * 7 = 21)
 ```
 
 It seems pretty clear that if it weren't for the `+` in there, we could still
 use the same approach as we did before. Just continue multiplying values
-together accumulating the resulting value. A problem however rises when we
+together accumulating the resulting value. A problem however arises when we
 encounter an addition: we must stop blindly multiplying and solve that first
 before continuing.
 
@@ -4152,7 +4152,7 @@ character of a message for it to be considered as matched.
 To give an example, suppose we have the following rules:
 
 ```
-0: 1 2 | 2 3
+0: 1 2 | 1 3
 1: "a"
 2: "b"
 3: 2 1
@@ -4162,7 +4162,7 @@ The first option of rule `0` here means *"match rule `1` followed by rule `2`"*.
 If we look at those, this translates to *"match `a` followed by `b`"*, so rule
 `0` would match the message `ab`.
 
-The second option of rule `0` means *"match rule `2` followed by rule `3`"*, and
+The second option of rule `0` means *"match rule `1` followed by rule `3`"*, and
 if we look at rule `3` it means *"match rule `2` followed by rule `1`"*. Rules
 `1` and `2` match `a` and `b` respectively, therefore this second option of rule
 `0` means *"match `a` followed by `b` followed by `a`"*. Hence, rule `0` would
@@ -4355,7 +4355,7 @@ There are three main alternative solutions here:
    [`regex`][misc-regex-module] module).
 
 I will now explain both alternative 1 and 2 in detail, while I will not discuss
-this solution 3 as it's just not interesting to me. Feel free to skip to your
+the third solution as I don't find it interesting. Feel free to skip to your
 favorite using the above links.
 
 ### Part 2 - Hacky solution
@@ -4491,11 +4491,11 @@ write such a matching function.
    we'll simply return either 1 or zero indexes: the current index plus 1 if the
    character matches, and an empty list otherwise.
 
-2. `X: A B C ...` - a rule which only consiste of a single option of multiple
+2. `X: A B C ...` - a rule which only consists of a single option of multiple
    other rules to match in order. We'll need to make one recursive call for each
    rule in the option, starting to match from the current index we have, and
    accumulating all possible indexes where to continue from for each recursive
-   vall, passing them on to the next one, then return those.
+   call, passing them on to the next one, then return those.
 
    As an example, assume we want to match the rule `X: A B C` and we are called
    with index `1`. We will make the following recursive calls, in order
@@ -4836,7 +4836,7 @@ to either of the two edges. In order to know how many times we need to rotate
 the top left tile we need to first know which on which sides we matched it.
 Let's modify the `match_tiles()` function defined in part 1 to also return the
 matching sides for the corner tiles, the only real change is turning the
-`matching_sides` into dictionary a `defaultdict` of strings instead of integers.
+`matching_sides` dictionary into a `defaultdict` of strings instead of integers.
 
 ```python
 def match_tiles(tiles):
@@ -5034,7 +5034,7 @@ def strip_edges(tile):
 
 Now we can actually start building the image: we'll start from the top left
 corner, and keep adding rows using `matching_row()` until tiles run out. Each
-tile of each row will be passed through `strip_edges()`, builting a completely
+tile of each row will be passed through `strip_edges()`, building a completely
 new row of stripped tiles (and this is why we only need to iterate over the rows
 returned by `matching_row()` once).
 
@@ -5244,7 +5244,7 @@ either one of those allergens. If we look at the other recipes, we can't see
 dish contains `fish`.
 
 Remember that there is a 1-to-1 association between allergens and ingredients,
-so if `aceto` was the ingredient containing `dairy`, we should see `aceto` it in
+so if `aceto` was the ingredient containing `dairy`, we should see `aceto` in
 every dish which contains `dairy`. The same reasoning goes for `fish`. Since we
 see two other plates with `dairy` or `fish`, but none of them has `aceto` as an
 ingredient, we can conclude that `aceto` can contain neither of those, and does
@@ -5272,8 +5272,8 @@ a `set` will be clear soon.
 In order to solve the problem, we need to keep a set of "possible" allergens
 for each ingredient, and we also need to keep track of which recipes contain a
 given allergen. We'll do this by creating two dicrionaries:
-`{ingregdient: set_of_allergens}` and `{allergen: list_of_recipes}`. To
-simplify the creation of new entries we can use two
+`{ingredient: set_of_allergens}` and `{allergen: list_of_recipes}`. To simplify
+the creation of new entries we can use two
 [`defaultdict`][py-collections-defaultdict]. We'll write a function to parse the
 input and extract all this information:
 
@@ -5317,7 +5317,6 @@ def safe_ingredients(recipes, possible_allers, recipes_with):
     safe = []
 
     for ingr, possible in possible_allers.items():
-        possible   = possible_allers[ingr]
         impossible = set()
 
         for aller in possible:
@@ -5862,14 +5861,14 @@ just a big list of integers, let's call it `next_cup`, storing at index `i` the
 value of the cup after the cup with value `i`. That is, `next_cup[i]` is the
 the cup which follows cup `i`.
 
-This `next_cup` list will have 1 million plus 1 elements, and will be initialize
-according to the initial 9 values we have as input plus another 999991 values
-from 10 to 1000000. We add that 1 additional element in the list because we
-don't want to worry about calculating the correct indexes, and adding one more
-element while ignoring `next_cup[0]` makes us able to just use cup values as
-indexes. Finally, the last entry of the list will be the value of the first cup
-in our input, making the 1-millionth cup have the first one as "next", therefore
-making our linked list also *circular*.
+This `next_cup` list will have 1 million plus 1 elements, and will be
+initialized according to the initial 9 values we have as input plus another
+999991 values from 10 to 1000000. We add that 1 additional element in the list
+because we don't want to worry about calculating the correct indexes, and adding
+one more element while ignoring `next_cup[0]` makes us able to just use cup
+values as indexes. Finally, the last entry of the list will be the value of the
+first cup in our input, making the 1-millionth cup have the first one as "next",
+therefore making our linked list also *circular*.
 
 Keeping cups in a linked list removes the problem of having to shift everything
 around just to remove and insert an arbitrary contiguous chunk of cups:
