@@ -27,8 +27,8 @@ solving the first). Advent of Code is created by [Eric Wastl][aoc-eric], and is
 donate to him [here][aoc-support]. If you want to hang out with other fellow
 coders, discuss about puzzles and solutions, or just have a look around, you can
 join the official subreddit: [r/adventofcode][aoc-reddit], or the unofficial IRC
-channel: `##adventofcode` on `irc.freenode.com`, where you can also find me at
-the right time of the year.
+channel: `#adventofcode` on `irc.libera.chat`, where you can also find me at the
+right time of the year.
 
 
 About this repo
