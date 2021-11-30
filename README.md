@@ -94,7 +94,7 @@ license, which you can find in the file
 
 ---
 
-*Copyright &copy; 2020 Marco Bonelli.*
+*Copyright &copy; 2018-2021 Marco Bonelli.*
 
 
 [2020-wal]: 2020/README.md
