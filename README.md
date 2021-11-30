@@ -5,8 +5,10 @@ Personal repository of [Advent of Code](#about-advent-of-code) solutions.
 
 ### Quick links
 
-- **Advent of Code 2020:  [walkthrough][2020-wal],
-  [clean][2020-sol] / [original][2020-ori] solutions**,
+- **Advent of Code 2021:  [walkthrough][2020-wal],
+  [clean][2020-sol] / [original][2020-ori] solutions**
+- Advent of Code 2020:  [walkthrough][2020-wal],
+  [clean][2020-sol] / [original][2020-ori] solutions,
   [full leaderboard][2020-lea]
 - Advent of Code 2019: [walkthrough][2019-wal],
   [clean][2019-sol] / [original][2019-ori] solutions,
