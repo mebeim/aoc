@@ -39,9 +39,8 @@ how many couples of (overlapping) triplets are there where the second triplet
 has an higher sum than the first one. For example, in `1 2 3 4` the triplet
 `2 3 4` has higher sum than the previous triplet `1 2 3`.
 
-We could write a one liner again, but that'd be annoyingly ugly. Let's actually
-use a loop this time. We can use `zip` again to group the numbers in triplets
-and then `map()` with `sum` to convert the triplets into their sum:
+Let's just write a simple loop: we can use `zip` again to group the numbers in
+triplets and then `map()` with `sum` to convert the triplets into their sum.
 
 ```python
 tot  = 0
@@ -51,13 +50,20 @@ for cur in map(sum, zip(nums, nums[1:], nums[2:])):
     if cur > prev:
         tot += 1
     prev = cur
-
-print('Part 2:', tot)
 ```
 
-The trick `prev = float('inf')` makes `prev` the highest possible Python number
-so that we don't have to write a special case for the first element in the
-`for`.
+Ok, can we do better though? Yes we can. Consider the numbers `a b c d`: the
+first triplet would sum up to `a+b+c`, while the second one to `b+c+d`. We want
+to know if `a+b+c < b+c+d`. If we simplify the expression, we see that
+`a+b+c < b+c+d` becomes `a < d` after removing `b+c` from both sides. Nice, we
+can simply check `a` and `d`: that is, pairs of numbers 4 positions apart. Thus,
+the second part can be solved exactly as the first one, only changing a single
+character in the code:
+
+```python
+tot = sum(b > a for a, b in zip(nums, nums[3:])) # changed nums[1:] -> nums[3:]
+print('Part 2:', tot)
+```
 
 Well, well, well. Welcome to Advent of Code 2021!
 
