@@ -5,8 +5,8 @@ Personal repository of [Advent of Code](#about-advent-of-code) solutions.
 
 ### Quick links
 
-- **Advent of Code 2021:  [walkthrough][2020-wal],
-  [clean][2020-sol] / [original][2020-ori] solutions**
+- **Advent of Code 2021:  [walkthrough][2021-wal],
+  [clean][2021-sol] / [original][2021-ori] solutions**
 - Advent of Code 2020:  [walkthrough][2020-wal],
   [clean][2020-sol] / [original][2020-ori] solutions,
   [full leaderboard][2020-lea]
@@ -96,6 +96,10 @@ license, which you can find in the file
 
 *Copyright &copy; 2018-2021 Marco Bonelli.*
 
+
+[2021-wal]: 2021/README.md
+[2021-sol]: 2021/solutions
+[2021-ori]: 2021/original_solutions
 
 [2020-wal]: 2020/README.md
 [2020-sol]: 2020/solutions
