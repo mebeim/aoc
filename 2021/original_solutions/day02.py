@@ -23,10 +23,6 @@ for i, l in enumerate(lines):
 		f += b
 		dd += a * b
 
-for r, row in enumerate(mat):
-	for c, cell in enumerate(row):
-		pass
-
 ans = f * d
 
 advent.print_answer(1, ans)
