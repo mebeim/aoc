@@ -118,28 +118,28 @@ change meaning. `down X`/`up X` now increase/decrease our *aim* by `X`, while
 increase the depth by the current aim multiplied by `X`.
 
 Nothing absurd. We can actually integrate this in the same loop we just wrote,
-by creating two new variables for the aim and the new depth. Other than that,
-it's just additions and multiplications.
+by creating two new variables for the aim and the new depth. Since the aim is
+actually updated exactly like the original depth, we can also cheap out on
+variables and just add one ([thanks @NimVek for noticing][misc-issue-11]). Other
+than that, it's just additions and multiplications.
 
 ```python
-aim = horiz = depth1 = depth2 = 0
+aim = horiz = depth = 0
 
 for line in fin:
     cmd, x = line.split()
     x = int(x)
 
     if cmd == 'down':
-        depth1 += x
-        aim    += x
+        aim += x
     elif cmd == 'up':
-        depth1 -= x
-        aim    -= x
+        aim -= x
     else:
-        horiz  += x
-        depth2 += aim * x
+        horiz += x
+        depth += aim * x
 
-answer1 = horiz * depth1
-answer2 = horiz * depth2
+answer1 = horiz * aim
+answer2 = horiz * depth
 
 print('Part 1:', answer1)
 print('Part 2:', answer1)
@@ -644,3 +644,4 @@ a bingo game simulation is pretty fun!
 [wiki-bingo]: https://en.wikipedia.org/wiki/Bingo_(American_version)
 
 [misc-aoc-bingo]: https://www.reddit.com/r/adventofcode/comments/k3q7tr/
+[misc-issue-11]:  https://github.com/mebeim/aoc/issues/11
