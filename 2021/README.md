@@ -7,6 +7,8 @@ Table of Contents
 - [Day 1 - Sonar Sweep][d01]
 - [Day 2 - Dive!][d02]
 - [Day 3 - Binary Diagnostic][d03]
+- [Day 4 - Giant Squid][d04]
+
 
 Day 1 - Sonar Sweep
 -------------------
@@ -376,6 +378,230 @@ reasonably concise while still being Pythonic and easy enough to explain. My
 is a literal dumpster fire in comparison, oof! And you? What beautiful piece of
 code did you write today?
 
+
+Day 4 - Giant Squid
+-------------------
+
+[Problem statement][d04-problem] — [Complete solution][d04-solution] — [Back to top][top]
+
+### Part 1
+
+Today we play [American bingo][wiki-bingo] (not to be confused with
+[Advent of Code bingo][misc-aoc-bingo]). As you probably already know, bingo is
+a relatively boring game which works like this:
+
+1. Each player starts with one or more 5x5 bingo cards with 25 random numbers
+   written on them.
+2. The game host draws one number at a time from a box and calls it out. Every
+   player marks the number on their cards.
+3. The first player to mark an entire row or column of one of their cards wins.
+
+In today's puzzle we are given a list of drawn numbers and some cards. Our first
+task is to determine which of those cards would be the first winning card
+according to the drawn numbers. The winning card has a "score" (this is not a
+standard bingo rule, in bingo cards don't have scores), which is calculated
+summing up all the remaining unmarked numbers on the card and multiplying this
+sum by the number which was marked last.
+
+How do we parse our input? We have various sections delimited by empty lines
+(i.e. two consecutive line feeds `\n`). The first row contains the drawn numbers
+separated by commas, so let's get them with a classic [`.split()`][py-str-split]
+plus [`map()`][py-builtin-map]:
+
+```python
+fin   = open(...)
+drawn = map(int, fin.readline().split(','))
+```
+
+Now we can `.split()` the remaining input on empty lines (`\n\n`) and parse each
+piece into a matrix. We can also do this using `map()` after writing an
+appropriate function to transform a raw section of lines into a matrix: for each
+section, first split it again into lines (we can also do this through
+[`.splitlines()`][py-str-splitlines]), then split lines on whitespace and
+convert each piece to `int`:
+
+```python
+def into_matrix(raw):
+    lines = raw.strip().splitlines()
+    res = []
+    for l in lines:
+        res.append(list(map(int, l.split())))
+    return res
+
+cards = list(map(into_matrix, fin.read().split('\n\n')))
+```
+
+We can further simplify the above `for` loop into a
+[generator expression][py-generator-expr] since it is merely constructing a
+`list`:
+
+```python
+def into_matrix(raw):
+    lines = raw.strip().splitlines()
+    return list(list(map(int, l.split())) for l in lines)
+```
+
+It seems obvious that we need a way to identify marked numbers. Since the final
+score does not depend on them (except the last one), we can replace marked
+numbers with `-1` in the cards.
+
+Now how can we find out if a certain card wins? Simply scan through each row and
+column of the card counting the occurrences of `-1`: if any row/col has 5 of
+them, the card just won. We can use [`sum()`][py-builtin-sum] and `map()` to
+easily do this given a card. Let's writa a function:
+
+```python
+def check_win(card):
+    # Any row containing -1 five times?
+    for row in card:
+        if sum(x == -1 for x in row) == 5:
+            return True
+
+    # Any column containing -1 five times?
+    for c in range(len(card[0])):
+        if sum(row[c] == -1 for row in card) == 5:
+            return True
+
+    return False
+```
+
+Can we optimize the above function? Yes, we'll do it soon, first let's write yet
+another function to mark a number on a card. Since we potentially need to modify
+the contents of a cell in the board, we'll need to iterate over each cell while
+keeping track of row and column indexes, so that we can do `card[r][c] = -1` to
+mark the cell if the number matches. The [`enumerate()`][py-builtin-enumerate]
+built-in function comes in handy. Finally, since all we do is mark numbers, this
+function might as well also directly tell us if the number we marked made the
+given board win, and we can call `check_win()` for that.
+
+```python
+def mark(card, number):
+    for r, row in enumerate(card):
+        for c, cell in enumerate(row):
+            if cell == number:
+                card[r][c] = -1
+                return check_win(card, row, c)
+    return False
+```
+
+You might have noticed that `check_win()` iterates over the entire card every
+time. Since when we find a number we automatically know its row and column, we
+can skip checking any other row and column and make our function way simpler by
+passing the indices of the marked cell:
+
+```python
+def check_win(card, r, c):
+    # Row
+    if sum(x == -1 for x in card[r]) == 5:
+        return True
+
+    # Column
+    if sum(row[c] == -1 for row in card) == 5:
+        return True
+
+    return False
+```
+
+We could even directly pass the `row` since we already have it available in
+`mark()`:
+
+```python
+def check_win(card, row, c):
+    if sum(x == -1 for x in row) == 5:
+        return True
+    if sum(r[c] == -1 for r in card) == 5:
+        return True
+    return False
+```
+
+The last function we'll write today will calculate the score of a winning card
+as defined by the puzzle rules. Not much to be said, just sum up all numbers
+which are not `-1` and multiply by the last marked number:
+
+```python
+def winner_score(card, last_number):
+    unmarked_tot = 0
+
+    for row in card:
+        for x in row:
+            if x == -1:
+                unmarked_tot += 1
+
+    return unmarked_tot * last_number
+```
+
+The above inner loop can be simplified through a [`filter()`][py-builtin-filter]
+to skip every `-1` plus a `sum()` to sum the remaining numbers:
+
+```python
+def winner_score(card, last_number):
+    unmarked_tot = 0
+
+    for row in card:
+        unmarked_tot += sum(filter(lambda x: x != -1, row))
+
+    return unmarked_tot * last_number
+```
+
+Since all we do in the loop now is a sum, we can also wimplify that:
+
+```python
+def winner_score(card, last_number):
+    unmarked_tot = sum(sum(filter(lambda x: x != -1, row)) for row in card)
+    return unmarked_tot * last_number
+```
+
+We have all we need. Now it's only a matter of iterating over all the drawn
+numbers and checking them one by one:
+
+```python
+for number in drawn:
+    for card in cards:
+        win = mark(card, number):
+        if win:
+            score = winner_score(card, number)
+            break
+
+    if win:
+        break
+
+print('Part 1:', score)
+```
+
+### Part 2
+
+Simply enough, now we want to know the score of the *last* card to win according
+to the drawn numbers. We can simply keep track of who won by removing winning
+cards from our list of cards (i.e. setting them to `None`) and keep track of the
+number of winners. We can integrate all this in the same loop we just wrote for
+part 1:
+
+```python
+n_cards = len(cards)
+n_won   = 0
+
+for number in drawn:
+    for i, card in enumerate(cards):
+        if card is None:
+            continue
+
+        if mark(card, number):
+            n_won += 1
+
+            if n_won == 1:
+                first_winner_score = winner_score(cards[i], number)
+            elif n_won == n_cards:
+                last_winner_score = winner_score(cards[i], number)
+
+            cards[i] = None
+
+print('Part 1:', first_winner_score)
+print('Part 2:', last_winner_score)
+```
+
+Not a big fun of bingo, it's kind of a boring game to be honest. However, coding
+a bingo game simulation is pretty fun!
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -386,14 +612,17 @@ code did you write today?
 [d01]: #day-1---sonar-sweep
 [d02]: #day-2---dive
 [d03]: #day-3---binary-diagnostic
+[d04]: #day-4---giant-squid
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
 [d03-problem]: https://adventofcode.com/2021/day/3
+[d04-problem]: https://adventofcode.com/2021/day/4
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
+[d04-solution]: solutions/day04.py
 
 [d03-orginal]: original_solutions/day03.py
 
@@ -402,6 +631,7 @@ code did you write today?
 [py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
 
 [py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
+[py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
@@ -409,3 +639,8 @@ code did you write today?
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
+[py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
+
+[wiki-bingo]: https://en.wikipedia.org/wiki/Bingo_(American_version)
+
+[misc-aoc-bingo]: https://www.reddit.com/r/adventofcode/comments/k3q7tr/
