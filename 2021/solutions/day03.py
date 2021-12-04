@@ -22,12 +22,12 @@ def most_common_bits(nums, n_bits):
 def filter_numbers(nums, n_bits, predicate):
 	for shift in range(n_bits - 1, -1, -1):
 		bit  = predicate(nums, shift)
-		nums = set(filter(lambda n: (n >> shift) & 1 == bit, nums))
+		nums = tuple(filter(lambda n: (n >> shift) & 1 == bit, nums))
 
 		if len(nums) == 1:
 			break
 
-	return nums.pop()
+	return nums[0]
 
 
 advent.setup(2021, 3)

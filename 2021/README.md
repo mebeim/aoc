@@ -296,25 +296,23 @@ different MSB. Then look at the second MSB, and so on... we'll keep filtering
 until our set only contains one number.
 
 ```python
-nums = set(nums)
-
 # From MSB (shift = n_bits - 1) to LSB (shift = 0)
 for shift in range(n_bits - 1, -1, -1):
     # Get the most common bit at this shift
     bit  = most_common_bit(nums, shift)
-    keep = set()
+    keep = list()
 
     # Only keep numbers that have this bit set at this shift
     for n in nums:
         if (n >> shift) & 1 == bit:
-            keep.add(n)
+            keep.append(n)
 
     nums = keep
     if len(nums) == 1:
         break
 
 # Now we should only have one number left
-only_one_left = nums.pop()
+only_one_left = nums[0]
 ```
 
 Yeah... Python's reverse range notation is kind of awkward.
@@ -328,12 +326,12 @@ wrap everything into a function to re-use it later while we're at it:
 def filter_numbers(nums, n_bits):
     for shift in range(n_bits - 1, -1, -1):
         bit  = most_common_bit(nums, shift)
-        nums = set(filter(lambda n: (n >> shift) & 1 == bit, nums))
+        nums = tuple(filter(lambda n: (n >> shift) & 1 == bit, nums))
 
         if len(nums) == 1:
             break
 
-    return nums.pop()
+    return nums[0]
 ```
 
 Okay, we have the first of the two magic numbers we needed. Now we have to do
@@ -349,12 +347,12 @@ def least_common_bit(nums, shift):
 def filter_numbers(nums, n_bits, predicate):
     for shift in range(n_bits - 1, -1, -1):
         bit  = predicate(nums, shift)
-        nums = set(filter(lambda n: (n >> shift) & 1 == bit, nums))
+        nums = tuple(filter(lambda n: (n >> shift) & 1 == bit, nums))
 
         if len(nums) == 1:
             break
 
-    return nums.pop()
+    return nums[0]
 ```
 
 We can now call `filter_numbers()` two times with the two different functions
