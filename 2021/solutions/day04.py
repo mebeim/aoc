@@ -26,7 +26,9 @@ def winner_score(card, last_number):
 	return unmarked_tot * last_number
 
 
-fin     = advent.get_input()
+advent.setup(2021, 4)
+fin = advent.get_input()
+
 drawn   = map(int, fin.readline().split(','))
 cards   = list(map(into_matrix, fin.read().split('\n\n')))
 n_cards = len(cards)
@@ -41,9 +43,9 @@ for number in drawn:
 			n_won += 1
 
 			if n_won == 1:
-				first_winner_score = winner_score(cards[i], number)
+				first_winner_score = winner_score(card, number)
 			elif n_won == n_cards:
-				last_winner_score = winner_score(cards[i], number)
+				last_winner_score = winner_score(card, number)
 
 			cards[i] = None
 
