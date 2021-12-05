@@ -8,6 +8,7 @@ Table of Contents
 - [Day 2 - Dive!][d02]
 - [Day 3 - Binary Diagnostic][d03]
 - [Day 4 - Giant Squid][d04]
+- [Day 5 - Hydrothermal Venture][d05]
 
 
 Day 1 - Sonar Sweep
@@ -600,6 +601,298 @@ print('Part 2:', last_winner_score)
 Not a big fun of bingo, it's kind of a boring game to be honest. However, coding
 a bingo game simulation is pretty fun!
 
+
+Day 5 - Hydrothermal Venture
+----------------------------
+
+[Problem statement][d05-problem] — [Complete solution][d05-solution] — [Back to top][top]
+
+### Part 1
+
+Lines on the [Cartesian plane][wiki-cartesian-coords]... familiar with those? I
+hope so. Today we are "drawing" a bunch of them: we have a list of pairs of 2D
+coordinates in the form `ax,ay -> bx,by`. Each pair represents a line going from
+point `(ax, ay)` to point `(bx, by)` (actually a line segment, since lines are
+infinite). We are dealing with an indefinitely large 2D rectangular grid of
+equally spced points, so we only need to consider integer coordinates.
+
+For now we need to consider only pairs of points which make horizontal or
+vertical lines, ignoring other pairs. We are asked to determine the total number
+of points where two or more lines overlap.
+
+Let's parse the pairs of points that make the lines from our input. It's just a
+question of splitting each line on `->`, then splitting again each piece on `,`
+and converting the numbers to `int`. We can use [`map()`][py-builtin-map] after
+splitting on commas to convert both coordinates to integer at once.
+
+```python
+lines = []
+
+for raw_line in fin:
+    a, b = raw_line.split('->')
+    ax, ay = map(int, a.split(','))
+    bx, by = map(int, b.split(','))
+    lines.append((ax, ay, bx, by))
+```
+
+The simplest solution now is to actually "draw" these lines and then count the
+intersections: for each horizontal line, go through all the integer points that
+compose it, and mark them on the grid. Let's write a
+[generator function][py-generator-function] which, given the coordinates of the
+starting and ending point of a line segment, yields all the coordinates of the
+points on the line (ends included).
+
+We have two possible scenarios:
+
+1. Vertical lines: fixed `x` (`ax == bx`) and varying `y`. In this case we can
+   have `ay > by` or `by > ay`: we can simply use `min()`[py-builtin-min] and
+   `max()`[py-builtin-max] to always go from the lowest to the highest `y`
+   coordinate.
+2. Horizontal lines: fixed `y` (`ay == by`) and varying `x`. Again, we can
+   either have `ax > bx` or `bx > ax`: same logic as the previous case.
+
+```python
+def horiz(ax, ay, bx, by):
+    if ax == bx:
+        for y in range(min(ay, by), max(ay, by) + 1):
+            yield ax, y
+    elif ay == by:
+        for x in range(min(ax, bx), max(ax, bx) + 1):
+            yield x, ay
+
+    # Ignore anything else that is no an horizontal or vertical line, if we
+    # don't return anything the generator will just stop immediately.
+```
+
+Since all we are doing in the above `for` loops is `yield` pairs of numbers, we
+could actually use `yield from` instead. To repeat the fixed coordinate we can
+use [`itertools.repeat()`][py-itertools-repeat]. Then, [`zip()`][py-builtin-zip]
+together the repeating coordinate with the `range()` to get pairs of
+coordinates, and `yield from` those:
+
+```python
+from itertools import repeat
+
+def horiz(ax, ay, bx, by):
+    if ax == bx:
+        yield from zip(repeat(ax), range(min(ay, by), max(ay, by) + 1))
+    elif ay == by:
+        yield from zip(range(min(ax, bx), max(ax, bx) + 1), repeat(ay))
+
+# horiz(1, 1, 1, 4) -> (1, 1), (1, 2), (1, 3), (1, 4)
+```
+
+Since we want to detect intersections, we can start with a grid filled with
+counters, all starting at `0`. Then, each time we pass on a point, increment its
+counter. This way, when we finish drawing all the lines, we can easily count the
+number of points with a counter higher than `1` to get the total number of
+intersections.
+
+Ideally we would want to do something like this:
+
+```python
+# Initialize grid as all zeroes...
+
+for ax, ay, bx, by in lines:
+    for x, y in horiz(ax, ay, bx, by):
+        grid[x][y] += 1
+```
+
+How big should our grid be, though? If we want to represent our grid as a matrix
+(i.e. list of lists) we will have to calculate its dimensions first. We could do
+that, but there's a simpler solution: use a dictionary as a *sparse matrix*, by
+indexing it with a tuple of coordinates (`d[x, y]`). This way, we don't have to
+worry about going out of bounds, and we will only store the needed counters.
+
+
+```python
+space = {}
+
+for ax, ay, bx, by in lines:
+    for x, y in horiz(ax, ay, bx, by):
+        if (x, y) not in space:
+            space[x, y] = 0
+        space[x, y] += 1
+```
+
+The [`defaultdict`][py-collections-defaultdict] comes in handy to avoid that
+annoying check and initialization to zero for every single number:
+`defaultdict(int)` is a dictionary which when accessed with a key that is not
+present automatically inserts it calling `int()` to get the initial value
+(`int()` without any argument returns `0`).
+
+```python
+space = defaultdict(int)
+
+for line in lines:
+    for x, y in horiz(*line):
+        space[x, y] += 1
+```
+
+The star (`*`) operator in `horiz(*line)` performs
+[argument unpacking][py-unpacking] passing the four elements in `line` as four
+separate arguments to `horiz`.
+
+We could also avoid splitting the coordinate into two variables and just use
+one:
+
+```python
+for line in lines:
+    for p in horiz(*line):
+        space[p] += 1
+```
+
+All that's left to do is count all the points where lines overlap, that is all
+points `(x, y)` where `space[x, y] > 1`. We can do this with
+[`sum()`][py-builtin-sum] plus a [generator expression][py-generator-expr]:
+
+```python
+overlapping = sum(x > 1 for x in space.values())
+print('Part 1:', overlapping)
+```
+
+### Part 2
+
+For part 2 the goal does not change: find the total number of overlapping
+points. However, now we also have to consider diagonal lines. We are guaranteed
+by the input format that our diagonal lines can only have a slope of `1`, i.e.
+they always form 45 degree angles with the Cartesian plane axes. This simplifies
+things a lot over the more general case where you can have any possible slope,
+since in such case we would be unsure about how to handle integer coordinates.
+
+We can do the same as before. Just create a function which generates all points
+on a diagonal line. We have to be careful though: in order to do this, we need
+to take into account the direction and the orientation of the lines. If we don't
+want to become insane thinking about how to correctly iterate over the
+coordinates to generate the points, we need to abstract this complexity away.
+
+We can have four possibilities:
+
+```none
+a       b            b       a
+ ↘...    ↖...    ...↗    ...↙
+ .↘..    .↖..    ..↗.    ..↙.
+ ..↘.    ..↖.    .↗..    .↙..
+ ...↘    ...↖    ↗...    ↙...
+     b       a  a       b
+```
+
+In any case, regardless of the values of the coordinates of `ax, ay, bx, by`, we
+always want to go from `ax` to `bx` and from `ay` to `by`. In case `ax < bx` we
+need to step *up* in steps of `+1` from `ax` to `bx`, and in case `ax > bx` we
+need to step *down* in steps of `-1` from `ax` to `bx`. The same reasoning goes
+for the `y` coordinate.
+
+Let's write an `autorange()` generator function which does exactly this: takes
+two integers, and regardless of their values iterates from the first up/down to
+the second in increments of `+1` or `-1` (as needed):
+
+```python
+def autorange(a, b):
+    '''Go from a to b in steps of +/-1 regardless if a > b or b > a'''
+    if a > b:
+        yield from range(a, b - 1, -1)
+    yield from range(a, b + 1)
+```
+
+Applying the above function to both the `x` and `y` coordinates of our pairs of
+points will give us exactly what we want. Let's write a function to generate
+points for diagonal lines:
+
+```python
+def diag(ax, ay, bx, by):
+    if ax != bx and ay != by:
+        yield from zip(autorange(ax, bx), autorange(ay, by))
+
+    # Ignore anything else that is not a diagonal line, if we don't return
+    # anything the generator will just stop immediately.
+```
+
+We can also use our `autorange()` function to simplify `horiz()`, replacing the
+ranges with min/max:
+
+```python
+def horiz(ax, ay, bx, by):
+    if ax == bx:
+        yield from zip(repeat(ax), autorange(ay, by))
+    elif ay == by:
+        yield from zip(autorange(ax, bx), repeat(ay))
+```
+
+All that's left to do for part 2 is increment the counters for all points on
+horizontal lines and re-count the overlapping points again:
+
+```python
+for line in lines:
+    for p in diag(*line):
+        space[p] += 1
+
+overlapping = sum(x > 1 for x in space.values())
+print('Part 2:', overlapping)
+```
+
+### One last stretch
+
+We can make use of [`itertools.starmap()`][py-itertools-starmap] and
+[`itertools.chain()`][py-itertools-chain] to simplify the main `for` loops of
+our solution.
+
+- `starmap()` does the same job as `map()`, but unpacks the arguments to pass to
+   the mapping function first:
+
+   ```python
+   from itertools import starmap
+
+   def func(a, b, c):
+       return a + b + c
+
+   tuples = [(1, 2, 3), (4, 5, 6), range(7, 10)]
+   for x in starmap(func, tuples):
+       print(x, end=' ')
+
+   # Will print: 6 15 24
+   ```
+
+- `chain()` simply *chains* iterable objects together int one long generator:
+
+   ```python
+   from itertools import chain
+
+   for x in chain(range(1, 4), range(4, 7), (7, 8, 9)):
+       print(x, end=' ')
+
+   # Will print: 1 2 3 4 5 6 7 8 9
+   ```
+
+Applying `starmap()` we have:
+
+```python
+for points in starmap(diag, lines):
+    for p in points:
+        space[p] += 1
+```
+
+Coupling this with `chain()` we can compress the double `for` into a single one:
+
+```python
+for p in chain(starmap(horiz, lines)):
+    space[p] += 1
+
+overlapping = sum(x > 1 for x in space.values())
+print('Part 1:' overlapping)
+
+for p in chain(starmap(diag, lines)):
+    space[p] += 1
+
+overlapping = sum(x > 1 for x in space.values())
+print('Part 2:' overlapping)
+```
+
+This code is not necessarily better than the original in terms of performance.
+In fact, there's a chance this could even perform slightly worse. For such small
+inputs however there isn't much difference. A benchmark would be interesting:
+I'll leave that as an exercise to the reader.
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -611,35 +904,46 @@ a bingo game simulation is pretty fun!
 [d02]: #day-2---dive
 [d03]: #day-3---binary-diagnostic
 [d04]: #day-4---giant-squid
+[d05]: #day-5---hydrothermal-venture
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
 [d03-problem]: https://adventofcode.com/2021/day/3
 [d04-problem]: https://adventofcode.com/2021/day/4
+[d05-problem]: https://adventofcode.com/2021/day/5
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
 [d04-solution]: solutions/day04.py
+[d05-solution]: solutions/day05.py
 
 [d03-orginal]: original_solutions/day03.py
 
-
 [py-lambda]:                  https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
+[py-generator-function]:      https://wiki.python.org/moin/Generators
 [py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
+[py-unpacking]:               https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 
 [py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
+[py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
+[py-builtin-min]:             https://docs.python.org/3/library/functions.html#min
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
+[py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
+[py-itertools-repeat]:        https://docs.python.org/3/library/itertools.html#itertools.repeat
+[py-itertools-starmap]:       https://docs.python.org/3/library/itertools.html#itertools.starmap
+[py-itertools-chain]:         https://docs.python.org/3/library/itertools.html#itertools.chain
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 
-[wiki-bingo]: https://en.wikipedia.org/wiki/Bingo_(American_version)
+[wiki-bingo]:            https://en.wikipedia.org/wiki/Bingo_(American_version)
+[wiki-cartesian-coords]: https://en.wikipedia.org/wiki/Cartesian_coordinate_system
 
 [misc-aoc-bingo]: https://www.reddit.com/r/adventofcode/comments/k3q7tr/
 [misc-issue-11]:  https://github.com/mebeim/aoc/issues/11
