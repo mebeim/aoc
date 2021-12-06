@@ -1,7 +1,8 @@
 __all__ = [
 	'log', 'rlog', 'eprint', 'wait',
 	'dump_iterable', 'dump_dict', 'dump_char_matrix',
-	'get_ints', 'get_int_matrix', 'get_lines', 'get_char_matrix'
+	'get_ints', 'get_int_matrix', 'get_lines', 'get_char_matrix',
+	'autorange'
 ]
 
 import sys
@@ -146,3 +147,15 @@ def get_char_matrix(file, rstrip=True, lstrip=True, as_tuples=False):
 	if lstrip:
 		return kind(kind(l.lstrip()) for l in lines)
 	return kind(map(kind, lines))
+
+def autorange(start, end, step=1):
+	'''Range from start to end (included) in steps of +/- step regardless if
+	start > end or end > start.
+
+	autorange(1, 3) -> 1, 2, 3
+	autorange(3, 1) -> 3, 2, 1
+	autorange(10, 1, 2) -> 10, 8, 6, 4, 2
+	'''
+	if start > end:
+		yield from range(start, end - 1, -step)
+	yield from range(start, end + 1, step)
