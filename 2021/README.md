@@ -9,6 +9,7 @@ Table of Contents
 - [Day 3 - Binary Diagnostic][d03]
 - [Day 4 - Giant Squid][d04]
 - [Day 5 - Hydrothermal Venture][d05]
+- [Day 6 - Lanternfish][d06]
 
 
 Day 1 - Sonar Sweep
@@ -893,6 +894,148 @@ In fact, there's a chance this could even perform slightly worse. For such small
 inputs however there isn't much difference. A benchmark would be interesting:
 I'll leave that as an exercise to the reader.
 
+
+Day 6 - Lanternfish
+-------------------
+
+[Problem statement][d06-problem] — [Complete solution][d06-solution] — [Back to top][top]
+
+
+### Part 1
+
+Lanternfish. Amazing creatures, aren't they? I always found them fascinating.
+Today's puzzle asks us to track the evolution of a population of fish. We know
+each fish produces a new one each 7 days. We can interpret this as the fish
+having a "timer" of days left until reporoduction starting at 6 and going down
+to 0; once at 0, the next day the fish will give birth to a new one and reset
+its timer to 6.
+
+We are told that any newborn fish will initially start with a timer of 8
+(instead of 6), but after giving birth they will keep resetting it to 6. We are
+given a list of timer values: the initial timers of our population of fish at
+day zero. We want to know how many fish will be there on day 80.
+
+Quite simple problem, it seems. Getting our input is, as usual, just a matter of
+[`.split()`][py-str-split] plus [`map()`][py-builtin-map]:
+
+```python
+fin  = open(...)
+fish = list(map(int, fin.read().split(',')))
+```
+
+How can we evolve the fish? Well, simple: just follow the rules and simulate the
+80 days! Each day we'll create a new `list` of fish, and for each fish of the
+previous day we'll decrement its timer and check whether it's below `0`: if so,
+append two fish to the new list (one with timer ot `6` and one with timer of
+`8`); otherwise, just append the decremented value back.
+
+```python
+for _ in range(80):
+    newfish = list()
+
+    for timer in fish:
+        timer -= 1
+
+        if timer < 0:
+            newfish.append(8)
+            newfish.append(6)
+        else:
+            newfish.append(timer)
+
+    fish = newfish
+```
+
+Finally, `len()` will give us the answer:
+
+```python
+n = len(fish)
+print('Part 1:', n)
+```
+
+### Part 2
+
+Now we want to know how many fish will be there in **256 days**.
+
+Okay... can't we just change the limit of our `range()`? How many could there
+ever be? Taking a look at the example input which starts with *only 5 fish*, we
+are told that after 256 days there will be approximately *27 billion!* Our
+initial population consists of 300 fish... needless to say, we'll never be able
+to hold such a large list in memory, let alone iterate over it in a decent
+amount of time. We need to find a better solution.
+
+The rules are simple enough. Each fish that has the same timer value will behave
+exactly the same. If at day `0` there are 5 fish with a timer of `1`, the next
+day there will be exactly 5 fish with a timer of `0`, and the following day
+exactly 5 fish with a timer of `6` and 5 new fish with a timer of `8`. Noticing
+this, we can group fish by their timer value and batch the operation to make it
+a lot faster.
+
+A [`defaultdict`][py-collections-defaultdict] comes in handy for this purpose.
+The logic is exactly the same as the one used in part 1, only that this time
+we'll keep fish in a `defaultdict` of the form `{timer: number_of_fish}`.
+
+We can use this solution for part 1 too, so let's just write an evolution
+function to use two times. It will take a dictionary of fish and a number of
+days to simulate, and return the final state as a new dictionary plus the total
+count of fish (for convenience). The only thing that really changes from our
+initial list-based solution is that updating the new dictionary will be an
+operation of the form `newfish[timer] += n`, and to calculate the final total
+number of fish we'll need to [`sum()`][py-builtin-sum] up all the values in the
+dictionary.
+
+```python
+def evolve(fish, days):
+    for _ in range(days):
+        newfish = defaultdict(int)
+
+        for t, n in fish.items():
+            t -= 1
+
+            if t < 0:
+                newfish[6] += n
+                newfish[8] += n
+            else:
+                newfish[t] += n
+
+        fish = newfish
+
+    return fish, sum(fish.values())
+```
+
+To create the initial dictionary we can iterate over the input integers after
+parsig them with `.split()` + `map()`:
+
+```python
+timers = map(int, fin.read().split(','))
+fish   = defaultdict(int)
+
+for t in timers:
+    fish[t] += 1
+```
+
+The above operation of counting the number of occurrences of each distinct value
+in an iterable can be also done in a much more concise way using a
+[`Counter`][py-collections-counter] object from the
+[`collections`][py-collections] module, which given an iterable returns a
+dictionary-like object of the form `{value: num_of_occurrences}`.
+
+```python
+from collections import Counter
+fish = Counter(map(int, fin.read().split(',')))
+```
+
+Now we can use `evolve()` to get the answers for both part 1 and 2:
+
+```python
+fish, n1 = evolve(fish, 80)
+_   , n2 = evolve(fish, 256 - 80)
+
+print('Part 1:', n1)
+print('Part 2:', n2)
+```
+
+Really simple and enjoyable puzzle!
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -905,18 +1048,21 @@ I'll leave that as an exercise to the reader.
 [d03]: #day-3---binary-diagnostic
 [d04]: #day-4---giant-squid
 [d05]: #day-5---hydrothermal-venture
+[d06]: #day-6---lanternfish
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
 [d03-problem]: https://adventofcode.com/2021/day/3
 [d04-problem]: https://adventofcode.com/2021/day/4
 [d05-problem]: https://adventofcode.com/2021/day/5
+[d06-problem]: https://adventofcode.com/2021/day/6
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
 [d04-solution]: solutions/day04.py
 [d05-solution]: solutions/day05.py
+[d06-solution]: solutions/day06.py
 
 [d03-orginal]: original_solutions/day03.py
 
@@ -933,6 +1079,8 @@ I'll leave that as an exercise to the reader.
 [py-builtin-min]:             https://docs.python.org/3/library/functions.html#min
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
+[py-collections]:             https://docs.python.org/3/library/collections.html
+[py-collections-counter]:     https://docs.python.org/3/library/collections.html#collections.Counter
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
