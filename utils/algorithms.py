@@ -144,7 +144,7 @@ def grid_bfs_lru(grid, get_neighbors=neighbors4):
 	@lru_cache(MAX_CACHE_SIZE)
 	def wrapper(src, dst):
 		nonlocal grid, get_neighbors
-		return bfs_grid(grid, src, dst, get_neighbors)
+		return grid_bfs(grid, src, dst, get_neighbors)
 	return wrapper
 
 def dijkstra(G, src, dst, get_neighbors=None):
