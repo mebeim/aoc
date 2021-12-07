@@ -1219,18 +1219,18 @@ there are two differences:
 
 To summarize the above, the value of *X* we are looking for is very close to the
 average (i.e. the *mean*) of our input numbers. How close? Well, it could
-coincide, or it could be the [floor or ceil][wiki-floor-ceil] of the average.
-This has been discussed on AoC's reddit [in this post][d07-reddit-discussion]
-and also in the [daily solution megathread][d07-reddit-megathread] for today's
-problem. Unfortunately I'm not sure about an actual mathematical proof for this
-(let's just say I was definitely not the brightest student in my calculus
-class), but from mine and other fellow programmers' testing, it turns out to be
-true in practice.
+coincide, or it could be in the range of [+1/2, -1/2] from the mean. A pretty
+nice and extensive explanation has also been given by Reddit user
+[u/throwaway7824365346][d07-reddit-paper-author] in
+[this beautiful post][d07-reddit-paper] in the form of a short 4-pages paper
+signed *"CrashAndSideburns"*. This has also been discussed on AoC's subreddit
+[in this post][d07-reddit-discussion] and also in the
+[daily solution megathread][d07-reddit-megathread] for today's problem.
 
-We can calculate the floor of the average with a sum plus an integer division,
-then check whether the minimum value we want actually sits at this value or at
-the immediately next value. Let's write a function to do the sum for us given a
-value for *X*, using the triangular number formula:
+We can calculate the [floor][wiki-floor-ceil] of the average with a sum plus an
+integer division, then check whether the minimum value we want actually sits at
+this value or at the immediately next value. Let's write a function to do the
+sum for us given a value for *X*, using the triangular number formula:
 
 ```python
 def sum_distances(nums, x):
@@ -1281,10 +1281,12 @@ print('Part 2:', answer)
 [d06-solution]: solutions/day06.py
 [d07-solution]: solutions/day07.py
 
-[d03-orginal]:           original_solutions/day03.py
-[d07-orginal]:           original_solutions/day07.py
-[d07-reddit-discussion]: https://www.reddit.com/r/adventofcode/comments/rars4g/
-[d07-reddit-megathread]: https://www.reddit.com/rar7ty
+[d03-orginal]:             original_solutions/day03.py
+[d07-orginal]:             original_solutions/day07.py
+[d07-reddit-discussion]:   https://www.reddit.com/r/adventofcode/comments/rars4g/
+[d07-reddit-megathread]:   https://www.reddit.com/rar7ty
+[d07-reddit-paper]:        https://www.reddit.com/r/adventofcode/comments/rawxad
+[d07-reddit-paper-author]: https://www.reddit.com/user/throwaway7824365346/
 
 [py-lambda]:                  https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
 [py-generator-function]:      https://wiki.python.org/moin/Generators
