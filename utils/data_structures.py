@@ -38,11 +38,12 @@ class UnionFind:
 		'''Check if an element is in any of the sets of the UnionFind.'''
 		return el in self.elements
 
-	def __len__(self, el):
+	def __len__(self):
 		# Avoid ambiguity since it's not obvious whether len() should return
 		# the number of sets in the UF or the total number of elements in all
 		# sets of the UF.
-		raise NotImplementedError('len() not supported, use .size')
+		raise NotImplementedError('len() not supported, use .size to get the'
+			'number of disjoint sets present in this UnionFind') from None
 
 	def make_set(self, el):
 		'''Create a new set with el as the only member. Does nothing if el is
@@ -80,8 +81,8 @@ class UnionFind:
 		try:
 			ua = self.elements[a]
 			ub = self.elements[b]
-		except KeyError:
-			raise LookupError('one or both elements are not in the UnionFind')
+		except KeyError as e:
+			raise LookupError('element {!r} is not in the UnionFind'.format(e.args[0])) from None
 
 		ua = self._find(ua)
 		ub = self._find(ub)
@@ -108,8 +109,8 @@ class UnionFind:
 		'''Get the size of the set of elements of which el is a member.'''
 		try:
 			uel = self.elements[el]
-		except:
-			raise LookupError('element is not in the UnionFind')
+		except KeyError as e:
+			raise LookupError('element {!r} is not in the UnionFind'.format(e.args[0])) from None
 
 		return self._find(uel).size
 
@@ -118,8 +119,8 @@ class UnionFind:
 
 		try:
 			head = self.elements[el]
-		except:
-			raise LookupError('element is not in the UnionFind')
+		except KeyError as e:
+			raise LookupError('element {!r} is not in the UnionFind'.format(e.args[0])) from None
 
 		yield head.el
 		cur = head.next
