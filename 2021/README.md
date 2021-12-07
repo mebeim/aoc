@@ -10,6 +10,7 @@ Table of Contents
 - [Day 4 - Giant Squid][d04]
 - [Day 5 - Hydrothermal Venture][d05]
 - [Day 6 - Lanternfish][d06]
+- [Day 7 - The Treachery of Whales][d07]
 
 
 Day 1 - Sonar Sweep
@@ -1036,6 +1037,217 @@ print('Part 2:', n2)
 
 Really simple and enjoyable puzzle!
 
+
+Day 7 - The Treachery of Whales
+-------------------------------
+
+[Problem statement][d07-problem] — [Complete solution][d07-solution] — [Back to top][top]
+
+### Part 1
+
+Today's problem is a rather simple minimization problem, but the math behind it
+that gets us to a simple, non-bruteforce solution is not as simple to digest.
+
+We are given a list of numbers, and we are told that we need to find some
+integer *X* such that the sum of the absolute differences between *X* and each
+number is lowest. The value of such lowest sum is our answer.
+
+Visualizing the problem, this is like asking us to minimize the sum of the
+lengths of the following segments (from each `o` to the line denoted by `X`):
+
+```none
+  ^
+  |
+  |         o
+  |  o      |      o
+  |  |      |      |
+X +---------------------
+  |     |      |     |
+  |     |      |     o
+  |     o      |
+  |            o
+0 +
+```
+
+Of course, we could brute-force our way to the answer without thinking about it
+one more second, as I did in my [original solution][d07-orginal]. After all, a
+simple loop is enough to calculate the sum of differences for a given value of
+*X*:
+
+```python
+def distance_sum(numbers, x):
+    tot = 0
+    for n in numbers:
+        tot += abs(n - x)
+    return tot
+```
+
+... and another `for` loop over all the possible values is enough to find the
+minimum possible sum:
+
+```python
+best = float('inf')
+
+for n in range(min(numbers), max(numbers) + 1):
+    s = distance_sum(ints, x)
+
+    if s < best:
+        best = f
+```
+
+This is far from the optimal solution however. As it turns out, the best way to
+find *X* is to simply calculate the [median][wiki-median] of the input numbers.
+The median is the number which is higher than half the numbers and lower than
+the other half (excluding the median itself). In other words, after sorting all
+the numbers we have, the median is the number which sits right in the middle (in
+case we have an odd amount of numbers).
+
+To understand *why* the median, let's try to see what would happen in case we
+do *not* chose the median:
+
+Let's say that we have *N* numbers (*N* odd for simplicity) amongst with *X* is
+the median, and *S* is the sum of the absolute deviations of our numbers from
+*X*. Note that as per the definition of median, we have exactly *(N-1)/2*
+numbers above and below the median. Now, what happens if we deviate from *X*?
+
+- If we *increment* *X* by one, we are getting closer to exactly *(N-1)/2*
+  numbers (i.e. all the numbers above the median), so the absolute sum of
+  deviations (*S*) decreases by *(N-1)/2*. However, at the same time we are
+  getting farther away from *(N-1)/2* ***+ 1*** numbers (i.e. all the numbers
+  below the median, plus the median itself), so *S* also increases by
+  *(N-1)/2 + 1*. In the end, we have that as a result of incrementing *X* by 1,
+  *S* also increases by 1.
+
+- If we *decrement* *X* by one instead, the exact same thing happens. We are
+  getting closer to exactly *(N-1)/2* numbers (i.e. all the numbers below the
+  median), but again farther away from *(N-1)/2* ***+ 1*** numbers at the same
+  time (i.e. all the numbers above the median, plus the median itself). So as
+  a result of decrementing *X* by 1, *S* still increases by 1.
+
+No matter which direction we move, the median represents the point where we have
+the lowest possible absolute sum of deviations from our set of input numbers.
+This reasoning still holds when *N* is even, only that in such case we have two
+medians (i.e. two middle values), and we will have a wider range of possible
+values for *X*: all the numbers in the range of these two medians (ends
+included). [This post on Math StackExchange][misc-median-math-se] gives
+different explanations as well as mathematical proof of the above.
+
+Okay... enough with the thinking. How do we calculate the median? The most
+optimal way to do this would be to use a function similar to C++'s
+[`std::nth_element`][misc-cpp-nth-element]. This function is able to calculate
+the value of the Nth largest element of a sequence of numbers in [linear
+time][wiki-linear-time] i.e. *O(n)*, and does not need to sort the entire
+sequence of numbers. It is a modified version of [quicksort][algo-quicksort]
+where each step the search only proceeds on one of the two halves of the data to
+sort. [Here's a StackOverflow post][misc-cpp-nth-element-so] with some
+additional explanation about this algorithm.
+
+Unfortunately Python does not have any similar cool function to optimally find
+the Nth largest element of an iterable. Instead, if we
+[take a look in CPython's source code][misc-cpython-median-low] for
+[`statistics.median_low()`][py-statistics-median-low] from the standard library,
+we can see that the implementation simply sorts the input iterable and then
+indexes it right at the middle to get the median.
+
+Since we are dealing with a small amount of numbers, re-implementing
+`std::nth_element` in Python would simply be too slow. We are much better off
+sorting and indexing our input list once.
+
+So, coming to the actual code, all we need to do is parse the input with our
+usual [`.split()`][py-str-split] + [`map()`][py-builtin-map], find the median by
+sorting with [`.sort()`][py-list-sort] and then [`sum()`][py-builtin-sum] up all
+the [`abs`][py-builtin-abs]olute differences from the median. Woah, it literally
+takes ten times as long to explain it than to write it:
+
+```python
+nums = list(map(int, fin.readline().split(',')))
+nums.sort()
+
+median = nums[len(nums) // 2]
+answer = sum(abs(x - median) for x in nums)
+
+print('Part 1:', answer)
+```
+
+### Part 2
+
+For part 2 things get spicier. We need to do the same thing as before, but this
+time minimizing a different value. For each number *n*, the distance metric from
+our chosen *X* value now becomes the sum of all the integers from 1 up to
+*X - n*. We still need to sum up this distance metric for all the numbers we
+have after choosing *X*, and then answer with the lowest possible such sum.
+
+As an example, if we have three numbers `[1, 3, 10]` and we choose *X = 3* we
+have a distance from 1 equal to the sum of all the numbers from 1 to 2 (3 - 1),
+that is 2 + 3 = 5; then we have a distance from 10 equal to the sum of all the
+numbers from 1 to 7 (10 - 1) , equal to 1 + 2 + 3 + 4 + 5 + 6 + 7 = 28. The sum
+of these is 33, which is also the lowest possible sum of "distances" in this
+case.
+
+How can we easily calculate this distance metric for a given value of *X* and a
+given number *n*? We want to sum numbers from 1 to *|X - n|*. The sum of all the
+integers from 1 to *n* is given by the *nth*
+[triangular number][wiki-triangular-number], and it's equal to *n(n + 1)/2*, or
+*(n<sup>2</sup> + n) / 2*. We want to minimize the sum of
+*(n<sub>i</sub><sup>2</sup> + n<sub>i</sub>)/2* for each *n<sub>i</sub>* in our
+input numbers.
+
+Let's take a step back and simplify this a bit. What if our distance metric was
+merely *n<sup>2</sup>* instead? In such case, looking for a value which
+minimizes the sum of deviations from our given numbers is as simple as
+calculating the average of those numbers. Our problem looks awfully similar to a
+[linear least squares][wiki-linear-least-squares] approximation. In our case,
+there are two differences:
+
+1. We are not interested in a real 2D linear regression, but merely some sort of
+   *average*, as our problem is one dimensional. It can also be seen as looking
+   for a horizontal line in space which has the minimum sum of distances from
+   the given points (as seen in the example diagram in part 1). We don't care
+   about the slope of the line, we know that it is zero. All we care about is
+   its height (intercept of the y axis).
+2. While normal least squares approximation has the goal of minimizing the sum
+   of *n<sub>i</sub><sup>2</sup>* for each *n<sub>i</sub>*, in our case we need
+   to minimize *(n<sub>i</sub><sup>2</sup> + n<sub>i</sub>)/2* instead.
+   Minimizing *n<sub>i</sub><sup>2</sup>* or *n<sub>i</sub><sup>2</sup>/2* would
+   yield the same result as we are merely multiplying by a constant factor.
+   However, we also have an additional *n<sub>i</sub>/2* in our way. As it turns
+   out, this additional *n<sub>i</sub>/2* means that using the least squares
+   method is not exactly accurate for our goal, but it still gives us a very
+   good approximation of the value of *X* we want to find.
+
+To summarize the above, the value of *X* we are looking for is very close to the
+average (i.e. the *mean*) of our input numbers. How close? Well, it could
+coincide, or it could be the [floor or ceil][wiki-floor-ceil] of the average.
+This has been discussed on AoC's reddit [in this post][d07-reddit-discussion]
+and also in the [daily solution megathread][d07-reddit-megathread] for today's
+problem. Unfortunately I'm not sure about an actual mathematical proof for this
+(let's just say I was definitely not brightest student in my calculus class),
+but from mine and other fellow programmers' testing, it turns out to be true in
+practice.
+
+We can calculate the floor of the average with a sum plus an integer division,
+then check whether the minimum value we want actually sits at this value or at
+the immediately next value. Let's write a function to do the sum for us given a
+value for *X*, using the triangular number formula:
+
+```python
+def sum_distances(nums, x):
+    tot = 0
+    for n in nums:
+        delta = abs(n - x)
+        tot += (delta * (delta + 1)) // 2
+    return tot
+```
+
+Now all we have to do is take the mean and check:
+
+```python
+mean   = sum(nums) // len(nums)
+answer = min(sum_distances(nums, mean), sum_distances(nums, mean + 1))
+
+print('Part 2:', answer)
+```
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -1049,6 +1261,7 @@ Really simple and enjoyable puzzle!
 [d04]: #day-4---giant-squid
 [d05]: #day-5---hydrothermal-venture
 [d06]: #day-6---lanternfish
+[d07]: #day-7---the-treachery-of-whales
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -1056,6 +1269,7 @@ Really simple and enjoyable puzzle!
 [d04-problem]: https://adventofcode.com/2021/day/4
 [d05-problem]: https://adventofcode.com/2021/day/5
 [d06-problem]: https://adventofcode.com/2021/day/6
+[d07-problem]: https://adventofcode.com/2021/day/7
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -1063,14 +1277,19 @@ Really simple and enjoyable puzzle!
 [d04-solution]: solutions/day04.py
 [d05-solution]: solutions/day05.py
 [d06-solution]: solutions/day06.py
+[d07-solution]: solutions/day07.py
 
-[d03-orginal]: original_solutions/day03.py
+[d03-orginal]:           original_solutions/day03.py
+[d07-orginal]:           original_solutions/day07.py
+[d07-reddit-discussion]: https://www.reddit.com/r/adventofcode/comments/rars4g/
+[d07-reddit-megathread]: https://www.reddit.com/rar7ty
 
 [py-lambda]:                  https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
 [py-generator-function]:      https://wiki.python.org/moin/Generators
 [py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
 [py-unpacking]:               https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 
+[py-builtin-abs]:             https://docs.python.org/3/library/functions.html#abs
 [py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
@@ -1087,11 +1306,24 @@ Really simple and enjoyable puzzle!
 [py-itertools-repeat]:        https://docs.python.org/3/library/itertools.html#itertools.repeat
 [py-itertools-starmap]:       https://docs.python.org/3/library/itertools.html#itertools.starmap
 [py-itertools-chain]:         https://docs.python.org/3/library/itertools.html#itertools.chain
+[py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
+[py-statistics-median-low]:   https://docs.python.org/3/library/statistics.html#statistics.median_low
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 
-[wiki-bingo]:            https://en.wikipedia.org/wiki/Bingo_(American_version)
-[wiki-cartesian-coords]: https://en.wikipedia.org/wiki/Cartesian_coordinate_system
+[algo-quicksort]: https://en.wikipedia.org/wiki/Quicksort
 
-[misc-aoc-bingo]: https://www.reddit.com/r/adventofcode/comments/k3q7tr/
-[misc-issue-11]:  https://github.com/mebeim/aoc/issues/11
+[wiki-bingo]:                https://en.wikipedia.org/wiki/Bingo_(American_version)
+[wiki-cartesian-coords]:     https://en.wikipedia.org/wiki/Cartesian_coordinate_system
+[wiki-floor-ceil]:           https://en.wikipedia.org/wiki/Floor_and_ceiling_functions
+[wiki-linear-least-squares]: https://en.wikipedia.org/wiki/Linear_least_squares
+[wiki-linear-time]:          https://en.wikipedia.org/wiki/Time_complexity#Linear_time
+[wiki-median]:               https://en.wikipedia.org/wiki/Median
+[wiki-triangular-number]:    https://en.wikipedia.org/wiki/Triangular_number
+
+[misc-aoc-bingo]:            https://www.reddit.com/r/adventofcode/comments/k3q7tr/
+[misc-issue-11]:             https://github.com/mebeim/aoc/issues/11
+[misc-cpp-nth-element]:      https://en.cppreference.com/w/cpp/algorithm/nth_element
+[misc-cpp-nth-element-so]:   https://stackoverflow.com/q/29145520/3889449
+[misc-cpython-median-low]:   https://github.com/python/cpython/blob/ddbab69b6d44085564a9b5022b96b002a52b2f2b/Lib/statistics.py#L549-L568
+[misc-median-math-se]:       https://math.stackexchange.com/q/113270
