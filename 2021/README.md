@@ -1105,7 +1105,7 @@ case we have an odd amount of numbers).
 To understand *why* the median, let's try to see what would happen in case we
 do *not* chose the median:
 
-Let's say that we have *N* numbers (*N* odd for simplicity) amongst with *X* is
+Let's say that we have *N* numbers (*N* odd for simplicity) amongst which *X* is
 the median, and *S* is the sum of the absolute deviations of our numbers from
 *X*. Note that as per the definition of median, we have exactly *(N-1)/2*
 numbers above and below the median. Now, what happens if we deviate from *X*?
@@ -1138,12 +1138,12 @@ optimal way to do this would be to use a function similar to C++'s
 the value of the Nth largest element of a sequence of numbers in [linear
 time][wiki-linear-time] i.e. *O(n)*, and does not need to sort the entire
 sequence of numbers. It is a modified version of [quicksort][algo-quicksort]
-where each step the search only proceeds on one of the two halves of the data to
-sort. [Here's a StackOverflow post][misc-cpp-nth-element-so] with some
-additional explanation about this algorithm.
+where each step the search only proceeds on one of the two halves of the data.
+[Here's a StackOverflow post][misc-cpp-nth-element-so] with some additional
+explanation about this algorithm.
 
 Unfortunately Python does not have any similar cool function to optimally find
-the Nth largest element of an iterable. Instead, if we
+the n-th largest element of an iterable. Instead, if we
 [take a look in CPython's source code][misc-cpython-median-low] for
 [`statistics.median_low()`][py-statistics-median-low] from the standard library,
 we can see that the implementation simply sorts the input iterable and then
@@ -1181,39 +1181,41 @@ As an example, if we have three numbers `[1, 3, 10]` and we choose *X = 3* we
 have a distance from 1 equal to the sum of all the numbers from 1 to 2 (3 - 1),
 that is 2 + 3 = 5; then we have a distance from 10 equal to the sum of all the
 numbers from 1 to 7 (10 - 1) , equal to 1 + 2 + 3 + 4 + 5 + 6 + 7 = 28. The sum
-of these is 33, which is also the lowest possible sum of "distances" in this
-case.
+of these is 33.
 
 How can we easily calculate this distance metric for a given value of *X* and a
-given number *n*? We want to sum numbers from 1 to *|X - n|*. The sum of all the
-integers from 1 to *n* is given by the *nth*
+given number *n*? We want to sum numbers from 1 to *|n - X|*. The sum of all the
+integers from 1 up to a certain integer *n* (included) is given by the n-th
 [triangular number][wiki-triangular-number], and it's equal to *n(n + 1)/2*, or
-*(n<sup>2</sup> + n) / 2*. We want to minimize the sum of
-*(n<sub>i</sub><sup>2</sup> + n<sub>i</sub>)/2* for each *n<sub>i</sub>* in our
-input numbers.
+*(n<sup>2</sup> + n)/2*. We want to minimize the sum of
+*((n<sub>i</sub> - X)<sup>2</sup> + (n<sub>i</sub> - X))/2* for each
+*n<sub>i</sub>* in our input numbers.
 
 Let's take a step back and simplify this a bit. What if our distance metric was
-merely *n<sup>2</sup>* instead? In such case, looking for a value which
+merely *(n - X)<sup>2</sup>* instead? In such case, looking for a value which
 minimizes the sum of deviations from our given numbers is as simple as
 calculating the average of those numbers. Our problem looks awfully similar to a
 [linear least squares][wiki-linear-least-squares] approximation. In our case,
 there are two differences:
 
-1. We are not interested in a real 2D linear regression, but merely some sort of
+1. While normal least squares approximation has the goal of minimizing the sum
+   *∑(n<sub>i</sub> - X)<sup>2</sup>*, in our case we need to minimize
+   *∑((n<sub>i</sub> - X)<sup>2</sup>/2 + (n<sub>i</sub> - X)/2)* instead.
+   Finding an *X* which minimizes *∑(n<sub>i</sub> - X)<sup>2</sup>* or finding
+   an *X* which minimizes *∑(n<sub>i</sub> - X)<sup>2</sup>/2* would yield the
+   same result as we are merely multiplying the objective function to minimize
+   by a constant (the minimum changes, but its position doesn't). However, we
+   also have an additional *(n<sub>i</sub> - X)/2* in our way. As it turns out,
+   this additional linear term means that using the least squares method is not
+   exactly accurate for our goal, but it still gives us a very good
+   approximation of the value of *X* we want to find.
+
+2. We are not interested in a real 2D linear regression, but merely some sort of
    *average*, as our problem is one dimensional. It can also be seen as looking
-   for a horizontal line in space which has the minimum sum of distances from
-   the given points (as seen in the example diagram in part 1). We don't care
-   about the slope of the line, we know that it is zero. All we care about is
-   its height (intercept of the y axis).
-2. While normal least squares approximation has the goal of minimizing the sum
-   of *n<sub>i</sub><sup>2</sup>* for each *n<sub>i</sub>*, in our case we need
-   to minimize *(n<sub>i</sub><sup>2</sup> + n<sub>i</sub>)/2* instead.
-   Minimizing *n<sub>i</sub><sup>2</sup>* or *n<sub>i</sub><sup>2</sup>/2* would
-   yield the same result as we are merely multiplying by a constant factor.
-   However, we also have an additional *n<sub>i</sub>/2* in our way. As it turns
-   out, this additional *n<sub>i</sub>/2* means that using the least squares
-   method is not exactly accurate for our goal, but it still gives us a very
-   good approximation of the value of *X* we want to find.
+   for a horizontal line in space which has the minimum sum of squared distances
+   from the given points (as seen in the example diagram in part 1). We don't
+   care about the slope of the line, we know that it is zero. All we care about
+   is its height (intercept of the y axis).
 
 To summarize the above, the value of *X* we are looking for is very close to the
 average (i.e. the *mean*) of our input numbers. How close? Well, it could
@@ -1221,9 +1223,9 @@ coincide, or it could be the [floor or ceil][wiki-floor-ceil] of the average.
 This has been discussed on AoC's reddit [in this post][d07-reddit-discussion]
 and also in the [daily solution megathread][d07-reddit-megathread] for today's
 problem. Unfortunately I'm not sure about an actual mathematical proof for this
-(let's just say I was definitely not brightest student in my calculus class),
-but from mine and other fellow programmers' testing, it turns out to be true in
-practice.
+(let's just say I was definitely not the brightest student in my calculus
+class), but from mine and other fellow programmers' testing, it turns out to be
+true in practice.
 
 We can calculate the floor of the average with a sum plus an integer division,
 then check whether the minimum value we want actually sits at this value or at
