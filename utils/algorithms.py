@@ -4,7 +4,7 @@ __all__ = [
 	'grid_find_adjacent', 'graph_from_grid', 'grid_bfs', 'grid_bfs_lru',
 	'dijkstra', 'dijkstra_lru', 'dijkstra_path', 'dijkstra_path_lru',
 	'dijkstra_all', 'dijkstra_all_paths',
-	'bellman_ford',
+	'bellman_ford', 'kruskal',
 	'bisection', 'binary_search',
 	'knapsack'
 ]
@@ -14,6 +14,7 @@ from collections import deque, defaultdict
 from functools import lru_cache
 from bisect import bisect_left
 from math import inf as INFINITY
+from .data_structures import UnionFind
 
 # Maximum cache size used for memoization with lru_Cache
 MAX_CACHE_SIZE = 256 * 2**20 # 256Mi entries -> ~4GiB if one entry is 32 bytes
@@ -346,6 +347,35 @@ def bellman_ford(G, src):
 					raise Exception('Bellman-Ford on graph containing negative-weight cycles')
 
 	return distance, previous
+
+def kruskal(G):
+	'''Find the minimum spanning tree (or forest) of the *undirected* graph G
+	using Kruskal's algorithm.
+
+	G is a "graph dictionary": {src: [(dst, weight)]}.
+
+	Returns a new graph dictionary representing the minimum spannign tree.
+	'''
+	mst   = defaultdict(list)
+	uf    = UnionFind(G)
+	edges = sorted((w, a, b) for a, n in G.items() for b, w in n)
+
+	for w, a, b in edges:
+		ub = uf.find(b)
+
+		# Allow incomplete dict graphs where not all nodes are keys
+		if ub is None:
+			uf.add(b)
+			# No need to re-compute b's representative as it will be different
+			# from a's representative either way (uf.find(a) != None since a is
+			# guaranteed to be in uf).
+
+		if uf.find(a) != ub:
+			mst[a].append((b, w))
+			mst[b].append((a, w))
+			uf.union(a, b)
+
+	return mst
 
 def bisection(fn, y, lo=None, hi=None, tolerance=1e-9, upper=False):
 	'''Find a value x in the range [hi, lo] such that f(x) approximates y.
