@@ -11,6 +11,7 @@ Table of Contents
 - [Day 5 - Hydrothermal Venture][d05]
 - [Day 6 - Lanternfish][d06]
 - [Day 7 - The Treachery of Whales][d07]
+- [Day 8 - Seven Segment Search][d08]
 
 
 Day 1 - Sonar Sweep
@@ -1250,6 +1251,361 @@ answer = min(sum_distances(nums, mean), sum_distances(nums, mean + 1))
 print('Part 2:', answer)
 ```
 
+
+Day 8 - Seven Segment Search
+----------------------------
+
+[Problem statement][d08-problem] — [Complete solution][d08-solution] — [Back to top][top]
+
+### Part 1
+
+Today we're dealing with [seven-segment displays][wiki-seven-segment-display]!
+In order to identify the state of a digit in a seven-segment display, we use the
+letters from `a` to `g` to indicate the different segments. After assigning each
+letter to a specific segment, we are capable of identifying the number
+associated with the segment as a string of characters, each of which is a letter
+identifying a segment that is ON.
+
+For example, given the following mapping of letters to segments:
+
+```none
+ aaaaaa
+b      c
+b      c
+ dddddd
+e      f
+e      f
+ gggggg
+```
+
+We are able to identify the number `0` with the pattern `abcefg`, the number `1`
+with the pattern `cf`, the number `2` with `acdeg`, and so on:
+
+```none
+   0:        1:        2:       3:        4:
+ aaaaaa    ......    aaaaaa   aaaaaa    ......
+b      c  .      c  .      c .      c  b      c
+b      c  .      c  .      c .      c  b      c
+ ......    ......    dddddd   dddddd    dddddd
+e      f  .      f  e      . .      f  .      f
+e      f  .      f  e      . .      f  .      f
+ gggggg    ......    gggggg   gggggg    ......
+
+   5:        6:        7:        8:        9:
+ aaaaaa    aaaaaa    aaaaaa    aaaaaa    aaaaaa
+b      .  b      .  .      c  b      c  b      c
+b      .  b      .  .      c  b      c  b      c
+ dddddd    dddddd    ......    dddddd    dddddd
+.      f  e      f  .      f  e      f  .      f
+.      f  e      f  .      f  e      f  .      f
+ gggggg    gggggg    ......    gggggg    gggggg
+```
+
+Our input consists of lines of the following form:
+
+```none
+<pattern> <pattern> ... (10 times) | <pattern> <pattern> <pattern> <pattern>
+
+Example:
+acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab | cdfeb fcadb cdfeb cdbaf
+```
+
+The first 10 patterns are strings representing the 10 different unique ways in
+which each digit can light up to represent a number, while the last 4 (after the
+pipe `|`) represent a 4-digit number that we want to decode. The problem is that
+*we do not know the mapping between letters in the patterns and segments on the
+display!* For each line, the mapping is different, and we must deduce it through
+some kind of logic just by observing the 10 unique patterns printed in the first
+part of each line.
+
+For the first part of the problem, we want to merely count, amongst the second
+part of each line, how many times the digits `1`, `4`, `7` and `8` are
+represented. This should be rather easy: as the problem statement explains,
+those four digits are *the only digits* that have a unique number of segments
+ON to be represented. Indeed `1` has 2 segments ON, `4` has 4, `7` has 3 and `8`
+has all 7 segments ON.
+
+Let's get the input and parse it first. We'll extract the second part of each
+line (since right now that's all we care about) and count the lengths of the
+patterns it includes. We can simply [`.split()`][py-str-split] each line on the
+pipe `|`, then `.split()` again on whitespace to separate the four patterns.
+
+```python
+fin = open(...)
+
+for line in fin:
+    digits = line.split('|')[1]
+    digits = digits.split()
+```
+
+Now we can [`map()`][py-builtin-map] each digit pattern to its
+[`len()`][py-builtin-len], and then count the number of times we see the lengths
+we are looking for. We'll do this all in the same loop:
+
+```python
+to_count = {2, 4, 3, 7} # pattern lengths we want to count
+count    = 0
+
+for line in fin:
+    digits = line.split('|')[1]
+    digits = map(len, digits.split())
+
+    for pattern_length in digits:
+        if pattern_length in to_count:
+            count += 1
+```
+
+The inner `for` loop can be simplified into a `sum()` plus a
+[generator expression][py-generator-expr] as it is merely summing based on a
+condition:
+
+```python
+to_count = {2, 4, 3, 7}
+count    = 0
+
+for line in fin:
+    digits = line.split('|')[1]
+    digits = map(len, digits.split())
+    count += sum(pl in to_count for pl in digits)
+
+print('Part 1:', count)
+```
+
+### Part 2
+
+Now the problem gets more complicated. For each line of input, we need to
+actually understand the mapping used based on the given 10 unique patterns and
+then decode the 4-digit number. The sum of all the decoded numbers is our
+answer.
+
+Okay, first let's re-parse the input. As you may already have noticed, the
+patterns in our input have different orders each time they appear, even within
+the same line, for example:
+
+```none
+be cfbegad cbdgef fgaecd cgeb fdcge agebfd fecdb fabcd edb | fdgacbe cefdb cefbgd gcbe
+   ^^^^^^^                                                   ^^^^^^^
+```
+
+The two patterns highlighted above actually represent the same digit, but the
+letters are in different orders. Each letter only means that a particular
+segment is ON, so it makes sense that they can be given in any order, however if
+we want to match them between each other we will need to either convert them
+into some identifier. We could do this in different ways, but for our purpose
+transforming each of those strings into a [`frozenset`][py-frozenset] of letters
+will be the most helpful later on.
+
+We'll convert each pattern we encounter into a `frozenset` of letters, and also
+precalculate its length for later.
+
+```python
+for line in fin:
+    raw_patterns, raw_digits = map(str.split, line.split('|'))
+    patterns, digits = [], []
+
+    for p in raw_patterns:
+        patterns.append((frozenset(p), len(p)))
+
+    for d in raw_digits:
+        digits.append((frozenset(d), len(d)))
+```
+
+The two inner `for` loops we just wrote merely construct two lists, so we can
+reduce them into a `list(map(...))` expression, or better `tuple(map(...))`
+since we'll not need to modify their content. Using a
+[`lambda` expression][py-lambda] makes us able to easily construct the tuples of
+`(frozenset(p), len(p))` while using `map()`.
+
+```python
+for line in fin:
+    patterns, digits = map(str.split, line.split('|'))
+    patterns = tuple(map(lambda p: (frozenset(p), len(p)), patterns))
+    digits   = tuple(map(lambda p: (frozenset(p), len(p)), digits))
+
+    # ... do something ...
+```
+
+Now to the real problem: deducing which pattern corresponds to which digit and
+creating a mapping to decode the numbers. We'll write a `deduce_mapping()`
+function which takes the `petterns` extracted from each line of input as
+argument and returns pattern-to-digit mapping `p2d` of the form
+`{pattern: digit}`, to be used to decode our `digits` by simply doing
+`p2d[digit_pattern]`.
+
+First of all, we can make some easy deductions based only on the length of a
+pattern:
+
+1. If the pattern's length is any of `2 4 3 7`, we already know from part
+   1 that those lengths univocally correspond to the digits `1 4 7 8`
+   respectively.
+2. There are only 3 digits with 5 out of 7 segments ON, so if the pattern's
+   length is `5`, we know the digit can only be one of `2`, `3` or `5`.
+3. There are only 3 digits with 5 out of 7 segments ON, so if the pattern's
+   length is `6`, we know the digit can only be one of `0`, `6` or `9`.
+
+Let's start by calculating an initial incomplete mapping for the four digits
+with unique pattern lengths:
+
+```python
+def deduce_mapping(patterns):
+    # pattern to digit mapping
+    d2p = {}
+
+    for p, plen in patterns:
+        if plen == 2: # 1
+            d2p[1] = p
+        elif plen == 3: # 7
+            d2p[7] = p
+        elif plen == 4: # 4
+            d2p[4] = p
+        elif plen == 7: # 8
+            d2p[8] = p
+```
+
+Here's the first reason why I chose to use `frozenset`s to represent patterns:
+they are immutable, and thus hashable, therefore they can be used as dictionary
+keys (as we are doing above).
+
+Now we can further examine the unmapped patterns.
+
+```python
+    # ... continues from above ...
+
+    for p, plen in patterns:
+        if p in p2d:
+            # pattern already known
+            continue
+
+        if plen == 5:
+            # 2 or 3 or 5
+            pass
+        else:
+            # 0 or 6 or 9
+            pass
+
+    return p2d
+```
+
+Now we have two cases: in the first one we need to distinguish between `2`, `3`
+and `5`, while in the second one between `0`, `6` and `9`. To do this, we can
+use similarities between these and the four already known digits (refer to the
+ASCII art in part 1 and see for yourself):
+
+- To distinguish between `2`, `3` and `5`:
+
+  1. The digit `3` is the only one amongst those that has exactly 2 segments in
+     common with `1`: so if at this point the pattern we are looking at contains
+     the same letters contained in the pattern for `1`, we just found the
+     pattern for `3`.
+  2. Otherwise... `5` is the only one amongst `2` and `5` which has exactly 3 ON
+     segments in common with `4`, so if at this point the pattern we are looking
+     for contains 3 letters that are also contained in the pattern for `4`, we
+     just fount the pattern for `5`.
+  3. Otherwise... the pattern we are looking at is for the digit `2`.
+
+- To distinguish between `0`, `6` and `9`, the same logic can be used:
+
+  1. `9` is the only one to have 4 ON segments in common with `4`.
+  2. `6` is the only one to have 2 ON segments in common with `7`.
+  3. If none of the above two applies, we found the pattern for `0`.
+
+It's clear that we temporarily also need a reverse mapping `d2p` (digit to
+pattern) to do the above calculations. We can invert our mapping with a simple
+[dictionary comprehension][py-dict-comprehension] expression:
+
+```python
+d2p = {v: k for k, v in p2d.items()}
+```
+
+How do we check the number of common segments (i.e. letters) amongst two
+patterns? Here comes the second reason why I chose `frozenset`s: like normal
+`set`s, `frozenset`s in Python support
+[quick and easy intersection][py-set-intersection] through the binary `&`
+operator (or the `.intersection()` method). If we intersect two patterns (which
+are both `frozenset`s) we will get a `frozenset` only holding the letters in
+common between the two: we can then check the `len()` of that `frozenset` to
+see how many of them there are. This isn't in general the most optimal way of
+accomplishing such a task, but it's surely simple and concise. In our case where
+sets can contain at most 7 letters, this is perfectly doable.
+
+All that's left to do is apply the deduction rules outlined above using our
+`d2p` mapping and set intersections:
+
+```python
+def deduce_mapping(patterns):
+    # pattern to digit mapping
+    d2p = {}
+
+    for p, plen in patterns:
+        if plen == 2: # 1
+            d2p[1] = p
+        elif plen == 3: # 7
+            d2p[7] = p
+        elif plen == 4: # 4
+            d2p[4] = p
+        elif plen == 7: # 8
+            d2p[8] = p
+
+    # digit to pattern mapping
+    d2p = {v: k for k, v in p2d.items()}
+
+    for p, plen in patterns:
+        if p in p2d:
+            continue
+
+        if plen == 5:
+            # 2 or 3 or 5
+            if len(p & d2p[1]) == 2:
+                # 3 has 2 ON segments in common with 1
+                p2d[p] = 3
+            elif len(p & d2p[4]) == 3:
+                # 5 has 3 ON segments in common with 4
+                p2d[p] = 5
+            else:
+                p2d[p] = 2
+        else:
+            # 0 or 6 or 9
+            if len(p & d2p[4]) == 4:
+                # 9 has 4 ON segments in common with 4
+                p2d[p] = 9
+            elif len(p & d2p[7]) == 2:
+                # 6 has 2 ON segments in common with 7
+                p2d[p] = 6
+            else:
+                p2d[p] = 0
+
+    return p2d
+```
+
+Now that we have a function to deduce the pattern-to-digit mapping, we can use
+it in our main loop to calculate the mapping for every line of input and then
+use it to get the values of the digits we need. We'll also include the part 1
+calculation in our loop.
+
+```python
+total    = 0
+count    = 0
+to_count = {2, 4, 3, 7}
+
+for line in fin:
+    patterns, digits = map(str.split, line.split('|'))
+    patterns = tuple(map(lambda p: (frozenset(p), len(p)), patterns))
+    digits   = tuple(map(lambda p: (frozenset(p), len(p)), digits))
+
+    p2d = deduce_mapping(patterns)
+
+    count += sum(l in to_count for _, l in digits)
+    total += p2d[digits[0][0]] * 1000
+    total += p2d[digits[1][0]] * 100
+    total += p2d[digits[2][0]] * 10
+    total += p2d[digits[3][0]]
+
+print('Part 1:', count)
+print('Part 2:', total)
+```
+
+Nice! 16 stars and counting... oh yeah, I like powers of 2.
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -1264,6 +1620,7 @@ print('Part 2:', answer)
 [d05]: #day-5---hydrothermal-venture
 [d06]: #day-6---lanternfish
 [d07]: #day-7---the-treachery-of-whales
+[d08]: #day-8---seven-segment-search
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -1272,6 +1629,7 @@ print('Part 2:', answer)
 [d05-problem]: https://adventofcode.com/2021/day/5
 [d06-problem]: https://adventofcode.com/2021/day/6
 [d07-problem]: https://adventofcode.com/2021/day/7
+[d08-problem]: https://adventofcode.com/2021/day/8
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -1280,6 +1638,7 @@ print('Part 2:', answer)
 [d05-solution]: solutions/day05.py
 [d06-solution]: solutions/day06.py
 [d07-solution]: solutions/day07.py
+[d08-solution]: solutions/day08.py
 
 [d03-orginal]:             original_solutions/day03.py
 [d07-orginal]:             original_solutions/day07.py
@@ -1288,15 +1647,17 @@ print('Part 2:', answer)
 [d07-reddit-paper]:        https://www.reddit.com/r/adventofcode/comments/rawxad
 [d07-reddit-paper-author]: https://www.reddit.com/user/throwaway7824365346/
 
+[py-dict-comprehension]:      https://www.python.org/dev/peps/pep-0274/
 [py-lambda]:                  https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
 [py-generator-function]:      https://wiki.python.org/moin/Generators
 [py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
 [py-unpacking]:               https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 
 [py-builtin-abs]:             https://docs.python.org/3/library/functions.html#abs
-[py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
+[py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
+[py-builtin-len]:             https://docs.python.org/3/library/functions.html#len
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
 [py-builtin-min]:             https://docs.python.org/3/library/functions.html#min
@@ -1305,25 +1666,28 @@ print('Part 2:', answer)
 [py-collections]:             https://docs.python.org/3/library/collections.html
 [py-collections-counter]:     https://docs.python.org/3/library/collections.html#collections.Counter
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
+[py-frozenset]:               https://docs.python.org/3/library/stdtypes.html#frozenset
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
 [py-itertools-repeat]:        https://docs.python.org/3/library/itertools.html#itertools.repeat
 [py-itertools-starmap]:       https://docs.python.org/3/library/itertools.html#itertools.starmap
 [py-itertools-chain]:         https://docs.python.org/3/library/itertools.html#itertools.chain
 [py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
+[py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
 [py-statistics-median-low]:   https://docs.python.org/3/library/statistics.html#statistics.median_low
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 
 [algo-quicksort]: https://en.wikipedia.org/wiki/Quicksort
 
-[wiki-bingo]:                https://en.wikipedia.org/wiki/Bingo_(American_version)
-[wiki-cartesian-coords]:     https://en.wikipedia.org/wiki/Cartesian_coordinate_system
-[wiki-floor-ceil]:           https://en.wikipedia.org/wiki/Floor_and_ceiling_functions
-[wiki-linear-least-squares]: https://en.wikipedia.org/wiki/Linear_least_squares
-[wiki-linear-time]:          https://en.wikipedia.org/wiki/Time_complexity#Linear_time
-[wiki-median]:               https://en.wikipedia.org/wiki/Median
-[wiki-triangular-number]:    https://en.wikipedia.org/wiki/Triangular_number
+[wiki-bingo]:                 https://en.wikipedia.org/wiki/Bingo_(American_version)
+[wiki-cartesian-coords]:      https://en.wikipedia.org/wiki/Cartesian_coordinate_system
+[wiki-floor-ceil]:            https://en.wikipedia.org/wiki/Floor_and_ceiling_functions
+[wiki-linear-least-squares]:  https://en.wikipedia.org/wiki/Linear_least_squares
+[wiki-linear-time]:           https://en.wikipedia.org/wiki/Time_complexity#Linear_time
+[wiki-median]:                https://en.wikipedia.org/wiki/Median
+[wiki-seven-segment-display]: https://en.wikipedia.org/wiki/Seven-segment_display
+[wiki-triangular-number]:     https://en.wikipedia.org/wiki/Triangular_number
 
 [misc-aoc-bingo]:            https://www.reddit.com/r/adventofcode/comments/k3q7tr/
 [misc-issue-11]:             https://github.com/mebeim/aoc/issues/11
