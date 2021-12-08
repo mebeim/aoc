@@ -1315,8 +1315,7 @@ which each digit can light up to represent a number, while the last 4 (after the
 pipe `|`) represent a 4-digit number that we want to decode. The problem is that
 *we do not know the mapping between letters in the patterns and segments on the
 display!* For each line, the mapping is different, and we must deduce it through
-some kind of logic just by observing the 10 unique patterns printed in the first
-part of each line.
+some kind of logic just by observing those first 10 unique patterns.
 
 For the first part of the problem, we want to merely count, amongst the second
 part of each line, how many times the digits `1`, `4`, `7` and `8` are
@@ -1389,11 +1388,11 @@ be cfbegad cbdgef fgaecd cgeb fdcge agebfd fecdb fabcd edb | fdgacbe cefdb cefbg
 
 The two patterns highlighted above actually represent the same digit, but the
 letters are in different orders. Each letter only means that a particular
-segment is ON, so it makes sense that they can be given in any order, however if
-we want to match them between each other we will need to either convert them
-into some identifier. We could do this in different ways, but for our purpose
-transforming each of those strings into a [`frozenset`][py-frozenset] of letters
-will be the most helpful later on.
+segment is ON, the order does not matter, however if we want to match them
+between each other we will need to convert them into some identifier that is the
+same no matter the letter order. We could do this in different ways, but for our
+purpose transforming each of those strings into a [`frozenset`][py-frozenset] of
+letters will be the most helpful later on.
 
 We'll convert each pattern we encounter into a `frozenset` of letters, and also
 precalculate its length for later.
@@ -1428,7 +1427,7 @@ for line in fin:
 Now to the real problem: deducing which pattern corresponds to which digit and
 creating a mapping to decode the numbers. We'll write a `deduce_mapping()`
 function which takes the `petterns` extracted from each line of input as
-argument and returns pattern-to-digit mapping `p2d` of the form
+argument and returns a pattern-to-digit mapping `p2d` of the form
 `{pattern: digit}`, to be used to decode our `digits` by simply doing
 `p2d[digit_pattern]`.
 
@@ -1449,17 +1448,17 @@ with unique pattern lengths:
 ```python
 def deduce_mapping(patterns):
     # pattern to digit mapping
-    d2p = {}
+    p2d = {}
 
     for p, plen in patterns:
-        if plen == 2: # 1
-            d2p[1] = p
-        elif plen == 3: # 7
-            d2p[7] = p
-        elif plen == 4: # 4
-            d2p[4] = p
-        elif plen == 7: # 8
-            d2p[8] = p
+        if plen == 2:
+            p2d[p] = 1
+        elif plen == 3:
+            p2d[p] = 7
+        elif plen == 4:
+            p2d[p] = 4
+        elif plen == 7:
+            p2d[p] = 8
 ```
 
 Here's the first reason why I chose to use `frozenset`s to represent patterns:
@@ -1494,13 +1493,13 @@ ASCII art in part 1 and see for yourself):
 - To distinguish between `2`, `3` and `5`:
 
   1. The digit `3` is the only one amongst those that has exactly 2 segments in
-     common with `1`: so if at this point the pattern we are looking at contains
-     the same letters contained in the pattern for `1`, we just found the
+     common with `1`: so if at this point the pattern we are looking at has
+     exactly two letters in common with the pattern for `1`, we just found the
      pattern for `3`.
   2. Otherwise... `5` is the only one amongst `2` and `5` which has exactly 3 ON
      segments in common with `4`, so if at this point the pattern we are looking
-     for contains 3 letters that are also contained in the pattern for `4`, we
-     just fount the pattern for `5`.
+     at has exactly 3 letters in common with the pattern for `4`, we just fount
+     the pattern for `5`.
   3. Otherwise... the pattern we are looking at is for the digit `2`.
 
 - To distinguish between `0`, `6` and `9`, the same logic can be used:
@@ -1534,17 +1533,17 @@ All that's left to do is apply the deduction rules outlined above using our
 ```python
 def deduce_mapping(patterns):
     # pattern to digit mapping
-    d2p = {}
+    p2d = {}
 
     for p, plen in patterns:
-        if plen == 2: # 1
-            d2p[1] = p
-        elif plen == 3: # 7
-            d2p[7] = p
-        elif plen == 4: # 4
-            d2p[4] = p
-        elif plen == 7: # 8
-            d2p[8] = p
+        if plen == 2:
+            p2d[p] = 1
+        elif plen == 3:
+            p2d[p] = 7
+        elif plen == 4:
+            p2d[p] = 4
+        elif plen == 7:
+            p2d[p] = 8
 
     # digit to pattern mapping
     d2p = {v: k for k, v in p2d.items()}

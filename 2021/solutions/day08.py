@@ -4,21 +4,19 @@ from sys import last_type
 from utils import advent
 
 def deduce_mapping(patterns):
-	# pattern to digit mapping
-	p2d = {}
+	p2d = {} # pattern to digit
 
 	for p, plen in patterns:
-		if plen == 2: # 1
+		if plen == 2:
 			p2d[p] = 1
-		elif plen == 3: # 7
+		elif plen == 3:
 			p2d[p] = 7
-		elif plen == 4: # 4
+		elif plen == 4:
 			p2d[p] = 4
-		elif plen == 7: # 8
+		elif plen == 7:
 			p2d[p] = 8
 
-	# digit to pattern mapping
-	d2p = {v: k for k, v in p2d.items()}
+	d2p = {v: k for k, v in p2d.items()} # digit to pattern
 
 	for p, plen in patterns:
 		if p in p2d:
@@ -27,20 +25,16 @@ def deduce_mapping(patterns):
 		if plen == 5:
 			# 2 or 3 or 5
 			if len(p & d2p[1]) == 2:
-				# 3 has 2 ON segments in common with 1
 				p2d[p] = 3
 			elif len(p & d2p[4]) == 3:
-				# 5 has 3 ON segments in common with 4
 				p2d[p] = 5
 			else:
 				p2d[p] = 2
 		else:
 			# 0 or 6 or 9
 			if len(p & d2p[4]) == 4:
-				# 9 has 4 ON segments in common with 4
 				p2d[p] = 9
 			elif len(p & d2p[7]) == 2:
-				# 6 has 2 ON segments in common with 7
 				p2d[p] = 6
 			else:
 				p2d[p] = 0
