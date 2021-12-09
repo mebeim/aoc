@@ -1704,15 +1704,15 @@ Part one completed, let's move on to the real problem now!
 We are told that cells with value lower than `9` in the grid are isolated in
 "basins", which are groups of cells surrounded by walls of `9`. All cells that
 are not `9` can be seen as being connected together amongst the four directions.
-For example in the following grid we have four basins, highlighted with `#` on
+For example in the following grid we have four basins, highlighted with `.` on
 the right (do not get confused, cells are *not* connected diagonally):
 
 ```
-2199943210       ##999#####
-3987894921       #9###9#9##
-9856789892  -->  9#####9#9#
-8767896789       #####9###9
-9899965678       9#999#####
+2199943210       ..99943210  21999.....  2199943210  2199943210
+3987894921       .987894921  398789.9..  39...94921  3987894921
+9856789892  -->  9856789892  985678989.  9.....9892  9856789.92
+8767896789       8767896789  8767896789  .....96789  876789...9
+9899965678       9899965678  9899965678  9.99965678  98999.....
 ```
 
 We are asked to find the sizes of the 3 largest basins and multiply them
