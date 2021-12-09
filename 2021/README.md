@@ -12,6 +12,7 @@ Table of Contents
 - [Day 6 - Lanternfish][d06]
 - [Day 7 - The Treachery of Whales][d07]
 - [Day 8 - Seven Segment Search][d08]
+- [Day 9 - Smoke Basin][d09]
 
 
 Day 1 - Sonar Sweep
@@ -1605,6 +1606,185 @@ print('Part 2:', total)
 
 Nice! 16 stars and counting... oh yeah, I like powers of 2.
 
+
+Day 9 - Smoke Basin
+-------------------
+
+[Problem statement][d09-problem] — [Complete solution][d09-solution] — [Back to top][top]
+
+### Part 1
+
+First problem that has to do with graph theory of the year! We are given a grid
+of single-digit numbers, and we are told to find all the numbers in the grid
+which are lower than all of their neighbors. The neighbors of a number in the
+grid are defined as four numbers directly above, below, left and right. Once we
+find all the numbers that satisfy this criterion, we need to compute their sum,
+also adding 1 to the sum for each number (this +1 for each number honestly feels
+like a rule that was added to make you get a wrong solution, hehehe).
+
+Let's parse the input into a matrix (grid) of numbers. We can
+[`map()`][py-builtin-map] each character on each line of input into an `int`,
+and construct a `tuple` of `tuple`s with a
+[generator expression][py-generator-expr]:
+
+```python
+fin   = open(...)
+lines = map(str.rstrip, fin)
+grid  = tuple(tuple(map(int, row)) for row in lines)
+```
+
+The problem seems simple enough. Since we are gonna need it later too, let's
+write a [generator function][py-generator-function] that yields all the
+neighbors of a given grid cell given the grid and the cell's coordinates. For
+each possible delta of +/-1 in the two directions from the current cell
+coordinates, check if the coordinates plus the delta are in bounds of the grid,
+and if so `yield` them. We've written this function a bunch of times on last
+year's AoC too.
+
+```python
+def neighbors4(grid, r, c):
+    for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        rr, cc = (r + dr, c + dc)
+        if 0 <= rr < len(grid) and 0 <= cc < len(grid[rr]):
+            yield (rr, cc)
+```
+
+Since we merely need coordinates, we can just pass heigh and width of the grid
+as arguments and avoid calling `len()` every single time:
+
+```python
+def neighbors4(r, c, h, w):
+    for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        rr, cc = (r + dr, c + dc)
+        if 0 <= rr < w and 0 <= cc < h:
+            yield (rr, cc)
+```
+
+Now we can iterate over the entire grid and check every single cell for the
+property we are looking for. If all neighbors of a given cell are higher than
+the cell itself, we'll add the cell's value plus 1 to the total. The
+[`enumerate()`][py-builtin-enumerate] built-in comes in handy to get both the
+coordinates and the cell values at the same time.
+
+```python
+h, w  = len(grid), len(grid[0])
+total = 0
+
+for r, row in enumerate(grid):
+    for c, cell in enumerate(row):
+        ok = True
+        for nr, nc in neighbors4(r, c, h, w):
+            if grid[nr][nc] <= cell:
+                ok = False
+                break
+
+        if ok:
+            total += cell + 1
+```
+
+The innermost `for` loop is looking for any neighbor which does not respect the
+given constraint. This is the naïve way through which one would normally check
+if all values in an iterable respect a constraint. We're in Python though, and
+we have the amazing [`all()`][py-builtin-all] built-in that does exactly this
+for us!
+
+```python
+for r, row in enumerate(grid):
+    for c, cell in enumerate(row):
+        if all(grid[nr][nc] > cell for nr, nc in neighbors4(r, c, h, w)):
+            total += cell + 1
+
+print('Part 1:', total)
+```
+
+Part one completed, let's move on to the real problem now!
+
+### Part 2
+
+We are told that cells with value lower than `9` in the grid are isolated in
+"basins", which are groups of cells surrounded by walls of `9`. All cells that
+are not `9` can be seen as being connected together amongst the four directions.
+For example in the following grid we have four basins, highlighted with `#` on
+the right (do not get confused, cells are *not* connected diagonally):
+
+```
+2199943210       ##999#####
+3987894921       #9###9#9##
+9856789892  -->  9#####9#9#
+8767896789       #####9###9
+9899965678       9#999#####
+```
+
+We are asked to find the sizes of the 3 largest basins and multiply them
+together to get the answer.
+
+What the puzzle is basically asking us is to find the three largest
+[connected components][wiki-graph-component] in our grid.
+
+How can we find a single connected component? Or in other words, given the
+coordinates of a cell, how can we find the coordinates of all the cells
+reachable from this one? [Breadth-first search][algo-bfs] (BFS) is the simplest
+way: given a cell's coordinates, explore all the reachable cells using BFS,
+avoiding walls (`9`), and when the search stops return the set of visited
+coordinates. Let's write a function that does exactly this. The algorithm is
+plain and simple BFS, with the use of a [`deque`][py-collections-deque] as
+queue:
+
+```python
+def bfs(grid, r, c, h, w):
+    queue   = deque([(r, c)])
+    visited = set()
+
+    # while there are cells to visit
+    while queue:
+        # get the first one in the queue and visit it
+        rc = queue.popleft()
+        if rc in visited:
+            continue
+
+        visited.add(rc)
+
+        # for each neighbor of this cell
+        for nr, nc in neighbors4(*rc, h, w):
+            # if it's not a wall and it has not been visited already
+            if grid[nr][nc] != 9 and (nr, nc) not in visited:
+                # add it to the queue
+                queue.append((nr, nc))
+
+    return visited
+```
+
+To find *all* connected components, we can simply call the above `bfs()`
+function for every single cell, accumulating the set of visited cells to ignore
+already visited ones. Since all we care about is the size of such components,
+let's write a generator function which directly returns the sizes of the
+connected components.
+
+```python
+def connected_components_sizes(grid, h, w):
+    visited = set()
+
+    for r in range(h):
+        for c in range(w):
+            if grid[r][c] != 9 and (r, c) not in visited:
+                component = bfs(grid, r, c, h, w)
+                # remember we already visited all the cells of this component
+                visited |= component
+                yield len(component)
+```
+
+Now we can call the above function to get the sizes, and after getting them
+[`sorted()`][py-builtin-sorted] in descending order (`reverse=True`), get the
+first 3 and multiply them together to get our answer:
+
+```python
+sizes  = connected_components_sizes(grid, h, w)
+sizes  = sorted(sizes, reverse=True)
+answer = sizes[0] * sizes[1] * sizes[2]
+
+print('Part 2:', answer)
+```
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -1620,6 +1800,7 @@ Nice! 16 stars and counting... oh yeah, I like powers of 2.
 [d06]: #day-6---lanternfish
 [d07]: #day-7---the-treachery-of-whales
 [d08]: #day-8---seven-segment-search
+[d09]: #day-9---smoke-basin
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -1629,6 +1810,7 @@ Nice! 16 stars and counting... oh yeah, I like powers of 2.
 [d06-problem]: https://adventofcode.com/2021/day/6
 [d07-problem]: https://adventofcode.com/2021/day/7
 [d08-problem]: https://adventofcode.com/2021/day/8
+[d09-problem]: https://adventofcode.com/2021/day/9
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -1638,6 +1820,7 @@ Nice! 16 stars and counting... oh yeah, I like powers of 2.
 [d06-solution]: solutions/day06.py
 [d07-solution]: solutions/day07.py
 [d08-solution]: solutions/day08.py
+[d09-solution]: solutions/day09.py
 
 [d03-orginal]:             original_solutions/day03.py
 [d07-orginal]:             original_solutions/day07.py
@@ -1653,6 +1836,7 @@ Nice! 16 stars and counting... oh yeah, I like powers of 2.
 [py-unpacking]:               https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 
 [py-builtin-abs]:             https://docs.python.org/3/library/functions.html#abs
+[py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
@@ -1660,11 +1844,13 @@ Nice! 16 stars and counting... oh yeah, I like powers of 2.
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
 [py-builtin-min]:             https://docs.python.org/3/library/functions.html#min
+[py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
 [py-collections]:             https://docs.python.org/3/library/collections.html
 [py-collections-counter]:     https://docs.python.org/3/library/collections.html#collections.Counter
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
+[py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
 [py-frozenset]:               https://docs.python.org/3/library/stdtypes.html#frozenset
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
@@ -1677,11 +1863,13 @@ Nice! 16 stars and counting... oh yeah, I like powers of 2.
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 
+[algo-bfs]:       https://en.wikipedia.org/wiki/Breadth-first_search
 [algo-quicksort]: https://en.wikipedia.org/wiki/Quicksort
 
 [wiki-bingo]:                 https://en.wikipedia.org/wiki/Bingo_(American_version)
 [wiki-cartesian-coords]:      https://en.wikipedia.org/wiki/Cartesian_coordinate_system
 [wiki-floor-ceil]:            https://en.wikipedia.org/wiki/Floor_and_ceiling_functions
+[wiki-graph-component]:       https://en.wikipedia.org/wiki/Component_(graph_theory)
 [wiki-linear-least-squares]:  https://en.wikipedia.org/wiki/Linear_least_squares
 [wiki-linear-time]:           https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-median]:                https://en.wikipedia.org/wiki/Median
