@@ -1754,31 +1754,54 @@ def bfs(grid, r, c, h, w):
     return visited
 ```
 
-To find *all* connected components, we can simply call the above `bfs()`
+To find *all* connected components, we could simply call the above `bfs()`
 function for every single cell, accumulating the set of visited cells to ignore
-already visited ones. Since all we care about is the size of such components,
-let's write a generator function which directly returns the sizes of the
-connected components.
+them later. However, the problem statement gives an hint that can help us
+simplify the search for connected components:
 
-```python
-def connected_components_sizes(grid, h, w):
-    visited = set()
+> **A basin is all locations that eventually flow downward to a single low
+> point**. Therefore, every low point has a basin, although some basins are very
+> small. Locations of height 9 do not count as being in any basin, and **all
+> other locations will always be part of exactly one basin**.
 
-    for r in range(h):
-        for c in range(w):
-            if grid[r][c] != 9 and (r, c) not in visited:
-                component = bfs(grid, r, c, h, w)
-                # remember we already visited all the cells of this component
-                visited |= component
-                yield len(component)
+It seems that there is exactly one basin per low point, and one low point per
+basin. We already have the code to find low points from part 1, we can store all
+their coordinates in a list and use them later to start a BFS from each one of
+them, without having to worry about exploring the same basin (i.e. connected
+component) twice.
+
+Let's modify the code for part 1 first:
+
+```diff
++sinks = []
+
+ for r, row in enumerate(grid):
+     for c, cell in enumerate(row):
+         if all(grid[nr][nc] > cell for nr, nc in neighbors4(r, c, h, w)):
++            sinks.append((r, c))
+             total += cell + 1
 ```
 
-Now we can call the above function to get the sizes, and after getting them
+After modifying the above BFS function to just return the size of each
+component:
+
+```patch
+-def bfs(grid, r, c, h, w):
+-    queue   = deque([(r, c)])
++def component_size(grid, src, h, w):
++    queue   = deque([src])
+     ...
+-    return visited
++    return len(visited)
+```
+
+Now we can call the above function for each low point to get the sizes using
+`map()` plus a [`lambda`][py-lambda], and after getting them
 [`sorted()`][py-builtin-sorted] in descending order (`reverse=True`), get the
-first 3 and multiply them together to get our answer:
+first 3 sizes and multiply them together to get our answer:
 
 ```python
-sizes  = connected_components_sizes(grid, h, w)
+sizes  = map(lambda s: component_size(grid, s, h, w), sinks)
 sizes  = sorted(sizes, reverse=True)
 answer = sizes[0] * sizes[1] * sizes[2]
 
