@@ -13,6 +13,7 @@ Table of Contents
 - [Day 7 - The Treachery of Whales][d07]
 - [Day 8 - Seven Segment Search][d08]
 - [Day 9 - Smoke Basin][d09]
+- [Day 10 - Syntax Scoring][d10]
 
 
 Day 1 - Sonar Sweep
@@ -1808,6 +1809,168 @@ answer = sizes[0] * sizes[1] * sizes[2]
 print('Part 2:', answer)
 ```
 
+
+Day 10 - Syntax Scoring
+-------------------
+
+[Problem statement][d10-problem] — [Complete solution][d10-solution] — [Back to top][top]
+
+### Part 1
+
+Today we need to validate sequences of open and closed parentheses, and I love
+me some [Dyck Language][wiki-dyck-languge] validation first thing in the
+morning!
+
+We are given a bunch of lines consisting of only open and close parentheses of
+four different types: `([{<>}])`. We are then asked to evaluate each line to
+find out if it's "corrupted". A corrupted line is one where there is a syntax
+error consisting of a close parenthesis of the wrong kind. For example, in the
+string `[()<[]}]` the `}` which is closing the `<` is wrong and should be a `>`
+instead.
+
+Each kind of parenthesis has a different "syntax error score" when mismatched:
+an illegal `)` gives 3 points, `]` 57 points, `}` 1197 points, and `>` 25137
+points. We need to sum up all the scores of all corrupted lines, stopping at the
+first syntax error for each line.
+
+Let's define the scores as a global dictionary:
+
+```python
+SYNTAX_SCORE = {')': 3, ']': 57, '}': 1197, '>': 25137}
+```
+
+The least-powerful class of automata that can recognize a Dyck Language is the
+[pushdown automata][wiki-pushdown-automata]. We can write one ourselves to
+validate the strings:
+
+- For every character:
+  - If it's an open parenthesis, push the matching *close* parenthesis onto the
+    stack.
+  - If it's a close parenthesis, pop the last pushed parenthesis from the stack
+    and check if it's equal to the current character: if not, we have a syntax
+    error.
+
+To translate each open parenthesis in its close counterpart, we can make use of
+[`str.maketrans()`][py-str-maketrans] to build a translation table once, and
+then [`str.translate()`][py-str-translte] to use the table to translate the
+characters.
+
+```python
+TRANS_TABLE = str.maketrans('([{<', ')]}>')
+
+# '('.translate(TRANS_TABLE) -> ')'
+# '(([{[<'.translate(TRANS_TABLE) -> '))]}]>'
+```
+
+Let's write a function that takes a string of parentheses and scans it for the
+first syntax error. We'll use a [`deque`][py-collections-deque] as stack.
+Following the above algorithm, if we ever stop for a syntax error we'll simply
+return the score, otherwise we'll return `0`.
+
+```python
+def check(s):
+    stack = deque()
+
+    for c in s:
+        if c in '([{<':
+            stack.append(c.translate(TRANS_TABLE))
+        elif stack.pop() != c:
+            return SYNTAX_SCORE[c]
+
+    return 0
+```
+
+All that's left to do is call the function for each line of input and
+[`sum()`][py-builtin-sum] up all the values. We can use
+[`map()`][py-builtin-map] directly on the input file after stripping each line
+of trailing newlines (`\n`) with [`str.rstrip`][py-str-rstrip]:
+
+```python
+fin   = open(...)
+total = sum(map(check, map(str.rstrip, fin)))
+
+print('Part 1:', total)
+```
+
+### Part 2
+
+Now we are concerned about *unterminated* sequences of parentheses. Amongst
+those that are not corrupted, there are some sequences ending prematurely
+without closing all the parenthesis that were opened. We must find such
+sequences and calculate an "autocompletion score" for each one of them. Then,
+take the [median][wiki-median] of those scores.
+
+To calculate the "autocompletion score" we assign a value to each kind of close
+parenthesis. Starting with an initial score of zero, from the first to the last
+autocompleted close parenthesis, multiply the current score by 5, then add the
+current parenthesis value to the score.
+
+This time the values of parenthesis are given by the following dictionary:
+
+```python
+COMPL_SCORE = {')': 1, ']': 2, '}': 3, '>': 4}
+```
+
+The algorithm to use is almost unchanged. We still need to parse sequences using
+a stack, and we still need to prematurely stop on corrupted ones since we don't
+want to calculate an autocompletion score for those. We can modify our `check()`
+function to return two scores at once.
+
+Calculating the autocompletion score is simple: after we scanned all the
+characters in a sequence, check if we still have some left in the stack: if so,
+those are the ones that we should use to autocomplete the sequence. We can pop
+them one by one and calculate the score as described.
+
+
+The updated `check()` function is as follows:
+
+```python
+def check(s):
+    stack = deque()
+
+    for c in s:
+        if c in '([{<':
+            stack.append(c.translate(TRANS_TABLE))
+        elif stack.pop() != c:
+            return SYNTAX_SCORE[c], 0
+
+    score2 = 0
+    while stack:
+        score2 *= 5
+        score2 += COMPL_SCORE[stack.pop()]
+
+    return 0, score2
+```
+
+Our main prograrm changes shape. We won't be able to have `map()` one-liner for
+the first part anymore. Let's write a `for` loop instead, where we sum all
+syntax error scores and we save all autocompletion scores in a list:
+
+```python
+tot_syntax = 0
+autocompl_scores = []
+
+for l in map(str.rstrip, fin):
+    score1, score2 = check(l)
+    tot_syntax += score1
+
+    if score2 > 0:
+        autocompl_scores.append(score2)
+
+print('Part 1:', tot_syntax)
+```
+
+For the median, we'll simply sort `autocompl_scores` and take the middle value:
+
+```python
+autocompl_scores.sort()
+mid_autocompl = autocompl_scores[len(autocompl_scores) // 2]
+print('Part 2:', mid_autocompl)
+```
+
+Really nice puzzle. I used to love dealing with pushdown automata when studying
+for my "Formal languages and compilers" University course.
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -1824,6 +1987,7 @@ print('Part 2:', answer)
 [d07]: #day-7---the-treachery-of-whales
 [d08]: #day-8---seven-segment-search
 [d09]: #day-9---smoke-basin
+[d10]: #day-10---syntax-scoring
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -1834,6 +1998,7 @@ print('Part 2:', answer)
 [d07-problem]: https://adventofcode.com/2021/day/7
 [d08-problem]: https://adventofcode.com/2021/day/8
 [d09-problem]: https://adventofcode.com/2021/day/9
+[d10-problem]: https://adventofcode.com/2021/day/10
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -1844,6 +2009,7 @@ print('Part 2:', answer)
 [d07-solution]: solutions/day07.py
 [d08-solution]: solutions/day08.py
 [d09-solution]: solutions/day09.py
+[d10-solution]: solutions/day10.py
 
 [d03-orginal]:             original_solutions/day03.py
 [d07-orginal]:             original_solutions/day07.py
@@ -1883,19 +2049,24 @@ print('Part 2:', answer)
 [py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
 [py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
 [py-statistics-median-low]:   https://docs.python.org/3/library/statistics.html#statistics.median_low
+[py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
+[py-str-rstrip]:              https://docs.python.org/3/library/stdtypes.html#str.rstrip
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
+[py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 
 [algo-bfs]:       https://en.wikipedia.org/wiki/Breadth-first_search
 [algo-quicksort]: https://en.wikipedia.org/wiki/Quicksort
 
 [wiki-bingo]:                 https://en.wikipedia.org/wiki/Bingo_(American_version)
 [wiki-cartesian-coords]:      https://en.wikipedia.org/wiki/Cartesian_coordinate_system
+[wiki-dyck-language]:         https://en.wikipedia.org/wiki/Dyck_language
 [wiki-floor-ceil]:            https://en.wikipedia.org/wiki/Floor_and_ceiling_functions
 [wiki-graph-component]:       https://en.wikipedia.org/wiki/Component_(graph_theory)
 [wiki-linear-least-squares]:  https://en.wikipedia.org/wiki/Linear_least_squares
 [wiki-linear-time]:           https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-median]:                https://en.wikipedia.org/wiki/Median
+[wiki-pushdown-automata]:     https://en.wikipedia.org/wiki/Pushdown_automaton
 [wiki-seven-segment-display]: https://en.wikipedia.org/wiki/Seven-segment_display
 [wiki-triangular-number]:     https://en.wikipedia.org/wiki/Triangular_number
 
