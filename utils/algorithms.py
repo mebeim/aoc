@@ -1,6 +1,8 @@
 __all__ = [
 	'INFINITY',
-	'grid_neighbors_gen', 'neighbors4', 'neighbors4x', 'neighbors8',
+	'grid_neighbors_gen', 'grid_neighbors_values_gen',
+	'neighbors4', 'neighbors4x', 'neighbors8',
+	'neighbors4_values', 'neighbors4x_values', 'neighbors8_values',
 	'grid_find_adjacent', 'graph_from_grid', 'grid_bfs', 'grid_bfs_lru',
 	'dijkstra', 'dijkstra_lru', 'dijkstra_path', 'dijkstra_path_lru',
 	'dijkstra_all', 'dijkstra_all_paths',
@@ -47,9 +49,26 @@ def grid_neighbors_gen(deltas):
 
 	return g
 
-neighbors4  = grid_neighbors_gen(((1, 0), (-1, 0), (0, 1), (0, -1)))
-neighbors4x = grid_neighbors_gen(((1, 1), (1, -1), (-1, 1), (-1, -1)))
-neighbors8  = grid_neighbors_gen(((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)))
+def grid_neighbors_values_gen(deltas):
+	'''Create a generator function for finding values of neighbors in a grid
+	(2D matrix) given a list of deltas to apply to the source coordinates
+	to get neighboring cells.
+	'''
+	g = grid_neighbors_gen(deltas)
+
+	def v(grid, r, c, avoid=()):
+		for rr, cc in g(grid, r, c, avoid):
+			yield grid[rr][cc]
+
+	return v
+
+neighbors4  = grid_neighbors_gen(((-1, 0), (0, -1), (0, 1), (1, 0)))
+neighbors4x = grid_neighbors_gen(((-1, -1), (-1, 1), (1, -1), (1, 1)))
+neighbors8  = grid_neighbors_gen(((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)))
+
+neighbors4_values  = grid_neighbors_values_gen(((-1, 0), (0, -1), (0, 1), (1, 0)))
+neighbors4x_values = grid_neighbors_values_gen(((-1, -1), (-1, 1), (1, -1), (1, 1)))
+neighbors8_values  = grid_neighbors_values_gen(((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)))
 
 def grid_find_adjacent(grid, src, find, avoid=(), coords=False, get_neighbors=neighbors4):
 	'''Find and yield edges to reachable nodes in grid (2D matrix) from src,
