@@ -1,6 +1,6 @@
 __all__ = [
 	'INFINITY',
-	'neighbors4', 'neighbors4x', 'neighbors8',
+	'grid_neighbors_gen', 'neighbors4', 'neighbors4x', 'neighbors8',
 	'grid_find_adjacent', 'graph_from_grid', 'grid_bfs', 'grid_bfs_lru',
 	'dijkstra', 'dijkstra_lru', 'dijkstra_path', 'dijkstra_path_lru',
 	'dijkstra_all', 'dijkstra_all_paths',
@@ -14,19 +14,18 @@ from collections import deque, defaultdict
 from functools import lru_cache
 from bisect import bisect_left
 from math import inf as INFINITY
+from itertools import filterfalse
 from .data_structures import UnionFind
 
-# Maximum cache size used for memoization with lru_Cache
-MAX_CACHE_SIZE = 256 * 2**20 # 256Mi entries -> ~4GiB if one entry is 32 bytes
+# Maximum cache size used for memoization with lru_cache
+MAX_CACHE_SIZE = 256 * 2**20 # 256Mi entries -> ~8GiB if one entry is 32 bytes
 
-def _grid_neighbors(deltas):
-	'''Create a generator function for finding neighbors in a 2D grid.
-
-	Given a specific list of deltas, returns a generator function to find
-	neighbors in a 2D grid (matrix) looking in nearby cells obtained adding each
-	delta to the source.
+def grid_neighbors_gen(deltas):
+	'''Create a generator function for finding coordinates of neighbors in a
+	grid (2D matrix) given a list of deltas to apply to the source coordinates
+	to get neighboring cells.
 	'''
-	def g(grid, r, c, avoid='#'):
+	def g(grid, r, c, avoid=()):
 		'''Get neighbors of a cell in a 2D grid (matrix) i.e. list of lists or
 		similar. Performs bounds checking. Grid is assumed to be rectangular.
 		'''
@@ -48,20 +47,20 @@ def _grid_neighbors(deltas):
 
 	return g
 
-neighbors4  = _grid_neighbors(((1, 0), (-1, 0), (0, 1), (0, -1)))
-neighbors4x = _grid_neighbors(((1, 1), (1, -1), (-1, 1), (-1, -1)))
-neighbors8  = _grid_neighbors(((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)))
+neighbors4  = grid_neighbors_gen(((1, 0), (-1, 0), (0, 1), (0, -1)))
+neighbors4x = grid_neighbors_gen(((1, 1), (1, -1), (-1, 1), (-1, -1)))
+neighbors8  = grid_neighbors_gen(((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)))
 
-def grid_find_adjacent(grid, src, find, avoid='#', coords=False, get_neighbors=neighbors4):
-	'''Find edges to reachable nodes in a character grid (2D matrix) given a
-	source and a set of characters to consider as nodes.
+def grid_find_adjacent(grid, src, find, avoid=(), coords=False, get_neighbors=neighbors4):
+	'''Find and yield edges to reachable nodes in grid (2D matrix) from src,
+	considering the values in find as nodes, and the values in avoid as walls.
 
-	src: (row, col) to start searching from.
-	find: characters to consider as nodes.
-	avoid: characters to consider walls.
-	Anyting else is considered open space.
+	src: (row, col) to start searching from
+	find: values to consider nodes
+	avoid: values to consider walls
+	anyting else is considered open space
+	get_neighbors(grid, r, c, avoid) is called to determine cell neighbors
 
-	The get_neighbors function is used to determine the neighbors of a cell.
 	If coords=False (default), yields edges in the form (char, dist), otherwise
 	in the form ((row, col, char), dist).
 
@@ -88,22 +87,22 @@ def grid_find_adjacent(grid, src, find, avoid='#', coords=False, get_neighbors=n
 
 				continue
 
-			for neighbor in filter(lambda n: n not in visited, get_neighbors(grid, *node)):
+			for neighbor in filterfalse(visited.__contains__, get_neighbors(grid, *node)):
 				queue.append((dist + 1, neighbor))
 
-def graph_from_grid(grid, find, avoid='#', coords=False, get_neighbors=neighbors4):
-	'''Reduce a character grid (2D matrix) to an undirected graph by finding
-	nodes and calculating their distance to others.
+def graph_from_grid(grid, find, avoid=(), coords=False, get_neighbors=neighbors4):
+	'''Reduce a grid (2D matrix) to an undirected graph by finding all nodes and
+	calculating their distance to others. Note: can return a disconnected graph.
 
-	find: characters to find in the grid which will be nodes of the graph.
-	avoid: characters to consider walls.
-	Anything else is considered open space.
+	find: values to consider nodes of the graph
+	avoid: values to consider walls
+	anything else is considered open space
+	get_neighbors(grid, r, c, avoid) is called to determine cell neighbors
 
-	The get_neighbors function is used to determine the neighbors of a cell.
 	If coord=False (default), nodes of the graph will be represented by the
-	found character only, otherwise by a tuple of the form (row, col, char).
+	found value only, otherwise by a tuple of the form (row, col, char).
 
-	Resulting graph will be of the form {node: [(dist, node)]}.
+	Returns a "graph dictionary" of the form {node: [(dist, node)]}.
 	'''
 	graph = {}
 
@@ -115,12 +114,13 @@ def graph_from_grid(grid, find, avoid='#', coords=False, get_neighbors=neighbors
 
 	return graph
 
-def grid_bfs(grid, src, dst, get_neighbors=neighbors4):
+def grid_bfs(grid, src, dst, avoid=(), get_neighbors=neighbors4):
 	'''Find the length of any path from src to dst in grid using breadth-first
-	search, where grid is a 2D matrix i.e. list of lists or similar.
+	search.
 
-	src and dst are tuples in the form (row, col).
-	The get_neighbors function is used to determine the neighbors of a cell.
+	grid is a 2D matrix i.e. list of lists or similar.
+	src and dst are tuples in the form (row, col)
+	get_neighbors(grid, r, c, avoid) is called to determine cell neighbors
 
 	For memoization, use: bfs = bfs_grid_lru(grid); bfs(src, dst).
 	'''
@@ -136,25 +136,24 @@ def grid_bfs(grid, src, dst, get_neighbors=neighbors4):
 		if rc not in visited:
 			visited.add(rc)
 
-			for n in filter(lambda n: n not in visited, neighbors4(grid, *rc)):
+			for n in filterfalse(visited.__contains__, get_neighbors(grid, *rc, avoid)):
 				queue.append((dist + 1, n))
 
 	return INFINITY
 
-def grid_bfs_lru(grid, get_neighbors=neighbors4):
+def grid_bfs_lru(grid, avoid=(), get_neighbors=neighbors4):
 	@lru_cache(MAX_CACHE_SIZE)
 	def wrapper(src, dst):
 		nonlocal grid, get_neighbors
-		return grid_bfs(grid, src, dst, get_neighbors)
+		return grid_bfs(grid, src, dst, avoid, get_neighbors)
 	return wrapper
 
 def dijkstra(G, src, dst, get_neighbors=None):
 	'''Find the length of the shortest path from src to dst in G using
 	Dijkstra's algorithm.
 
-	G is a "graph dictionary": {src: [(dst, weight)]}.
-	The get_neighbors function is used to determine the neighbors of a node
-	(defaults to G.get).
+	G is a "graph dictionary" of the form {src: [(dst, weight)]}
+	get_neighbors(node) is called to determine node neighbors (default is G.get)
 
 	For memoization, use: djk = dijkstra_lru(G); djk(src, dst).
 	'''
@@ -195,11 +194,13 @@ def dijkstra_lru(G, get_neighbors=None):
 	return wrapper
 
 def dijkstra_path(G, src, dst, get_neighbors=None):
-	'''Find the shortest path from src to dst in G and its length using
-	Dijkstra's algorithm. Returns a tuple (path, length).
+	'''Find the shortest path from src to dst in G using Dijkstra's algorithm.
 
-	G is a "graph dictionary": {src: [(dst, weight)]}. The get_neighbors
-	function is used to determine the neighbors of a node (defaults to G.get).
+	G is a "graph dictionary" of the form {src: [(dst, weight)]}
+	get_neighbors(node) is called to determine node neighbors (default is G.get)
+
+	Returns a tuple of the form (src, ..., dst) or an empty tuple if no path is
+	found.
 
 	For memoization, use: djk = dijkstra_path_lru(G); djk(src, dst).
 	'''
@@ -214,7 +215,7 @@ def dijkstra_path(G, src, dst, get_neighbors=None):
 		dist, node, path = heapq.heappop(queue)
 
 		if node == dst:
-			return path, dist
+			return path
 
 		if node not in visited:
 			visited.add(node)
@@ -230,7 +231,7 @@ def dijkstra_path(G, src, dst, get_neighbors=None):
 					distance[neighbor] = new_dist
 					heapq.heappush(queue, (new_dist, neighbor, path + (neighbor,)))
 
-	return (), INFINITY
+	return ()
 
 def dijkstra_path_lru(G, get_neighbors=None):
 	@lru_cache(MAX_CACHE_SIZE)
@@ -240,14 +241,14 @@ def dijkstra_path_lru(G, get_neighbors=None):
 	return wrapper
 
 def dijkstra_all(G, src, get_neighbors=None):
-	'''Find the length of all the shortest path from src to any reachable node
+	'''Find the length of all the shortest paths from src to any reachable node
 	in G using Dijkstra's algorithm.
+
+	G is a "graph dictionary" of the form {src: [(dst, weight)]}
+	get_neighbors(node) is called to determine node neighbors (default is G.get)
 
 	Reurns a defaultdict {node: distance}, where unreachable nodes have
 	distance=INFINITY.
-
-	G is a "graph dictionary": {src: [(dst, weight)]}. The get_neighbors
-	function is used to determine the neighbors of a node (defaults to G.get).
 	'''
 	if get_neighbors is None:
 		get_neighbors = G.get
@@ -277,13 +278,12 @@ def dijkstra_all(G, src, get_neighbors=None):
 
 def dijkstra_all_paths(G, src, get_neighbors=None):
 	'''Find all the shortest paths from src to any reachable node in G and their
-	lengths Dijkstra's algorithm.
+	using Dijkstra's algorithm.
 
-	Returns a defaultdict {node: (path, length)}, where unreachable nodes have
-	path=() and length=INFINITY.
+	G is a "graph dictionary" of the form {src: [(dst, weight)]}
+	get_neighbors(node) is called to determine node neighbors (default is G.get)
 
-	G is a "graph dictionary": {src: [(dst, weight)]}. The get_neighbors
-	function is used to determine the neighbors of a node (defaults to G.get).
+	Returns a defaultdict {node: path}, where unreachable nodes have path=().
 	'''
 	if get_neighbors is None:
 		get_neighbors = G.get
@@ -317,14 +317,17 @@ def bellman_ford(G, src):
 	lengths using the Bellman-Ford algorithm. IMPORTANT: all nodes of the graph
 	should be in G as keys!
 
-	G is a "graph dictionary": {src: [(dst, weight)]}.
+	G is a "graph dictionary" of the form {src: [(dst, weight)]}.
 
 	Returns two defaultdicts: distance, previous.
 
-	distance[node]: length of the shortest path from src to node
-		default	to INFINITY for unreachable nodes.
-	previous[node]: previous node in the shortest path from src to node
-		default to None for unreachable nodes.
+	distance[node]:
+		length of the shortest path from src to node
+		default to INFINITY for unreachable nodes
+
+	previous[node]:
+		previous node in the shortest path from src to node
+		default to None for unreachable nodes
 	'''
 	distance = defaultdict(lambda: INFINITY, {src: 0})
 	previous = defaultdict(lambda: None)
@@ -352,7 +355,7 @@ def kruskal(G):
 	'''Find the minimum spanning tree (or forest) of the *undirected* graph G
 	using Kruskal's algorithm.
 
-	G is a "graph dictionary": {src: [(dst, weight)]}.
+	G is a "graph dictionary" of the form {src: [(dst, weight)]}.
 
 	Returns a new graph dictionary representing the minimum spannign tree.
 	'''
@@ -384,8 +387,9 @@ def bisection(fn, y, lo=None, hi=None, tolerance=1e-9, upper=False):
 	on failure.
 
 	If y is a float, find a lower bound for x instead (or upper bound if
-	upper=True); in this case, the search cannot fail. It is up to the caller to
-	supply meaningful values for lo and hi.
+	upper=True) stopping when the size of the range of values to search gets
+	below tolerance; in this case, the search cannot fail. It is up to the
+	caller to supply meaningful values for lo and hi.
 
 	If not supplied, lo and hi are found through exponential search.
 	'''
