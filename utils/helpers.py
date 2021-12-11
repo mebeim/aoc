@@ -46,7 +46,7 @@ def eprint(*a, **kwa):
 	'''Wrapper for print() that prints on standard error.'''
 	print(*a, **kwa, file=sys.stderr)
 
-def wait(msg):
+def wait(msg='Press [ENTER] to continue...'):
 	'''Wait for user interaction by printing a message to standard error and
 	waiting for input.
 	'''
