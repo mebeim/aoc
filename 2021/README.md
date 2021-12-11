@@ -14,6 +14,7 @@ Table of Contents
 - [Day 8 - Seven Segment Search][d08]
 - [Day 9 - Smoke Basin][d09]
 - [Day 10 - Syntax Scoring][d10]
+- [Day 11 - Dumbo Octopus][d11]
 
 
 Day 1 - Sonar Sweep
@@ -1811,14 +1812,14 @@ print('Part 2:', answer)
 
 
 Day 10 - Syntax Scoring
--------------------
+-----------------------
 
 [Problem statement][d10-problem] — [Complete solution][d10-solution] — [Back to top][top]
 
 ### Part 1
 
 Today we need to validate sequences of open and closed parentheses, and I love
-me some [Dyck Language][wiki-dyck-languge] validation first thing in the
+me some [Dyck Language][wiki-dyck-language] validation first thing in the
 morning!
 
 We are given a bunch of lines consisting of only open and close parentheses of
@@ -1971,6 +1972,196 @@ print('Part 2:', mid_autocompl)
 Really nice puzzle. I used to love dealing with pushdown automata when studying
 for my "Formal languages and compilers" University course.
 
+
+Day 11 - Dumbo Octopus
+----------------------
+
+[Problem statement][d11-problem] — [Complete solution][d11-solution] — [Back to top][top]
+
+### Part 1
+
+And here it comes the first "evolve this grid N times" kind of puzzle of the
+year. We are dealing with a grid of digits (integers between 0 and 9). Given the
+initial state of the grid, we need to "evolve" it 100 times, given the following
+rules to evolve it once:
+
+- All cells increase their value by 1.
+- All cells above 9 "flash", and start a chain reaction:
+
+  1. All neighbors of a flashing cell increase by 1 (again).
+  2. If any of them also gets above 9, they also flash.
+  3. Repeat from point 1 until no cells flash anymore.
+
+- All cells that flashed reset their value to 0.
+
+After applying the above rules 100 times, we want to know how many flashes
+happened in total.
+
+First things first: let's get our input in the same way we did for [day 9][d09].
+Read the file, [`rstrip`][py-str-rstrip] newlines, [`map()`][py-builtin-map]
+each character of each row into an `int`, and construct a `list` of `list`:
+
+```python
+lines = map(str.rstrip, fin)
+grid  = list(list(map(int, row)) for row in lines)
+```
+
+First and foremost, we'll definitely need to iterate over the *eight* neighbors
+(diagonals are included this time) of a given cell. Let's write a
+[generator function][py-generator-function] that yields all the coordinates of
+the neighbors of a cell. This is again almost the same function we wrote for
+[day 9][d09], only that this time we'll have 8 coordinate deltas instead of 4:
+
+```python
+def neighbors8(r, c, h, w):
+    deltas = (
+        (1, 0), (-1,  0), ( 0, 1), ( 0, -1),
+        (1, 1), ( 1, -1), (-1, 1), (-1, -1)
+    )
+
+    for dr, dc in deltas:
+        rr, cc = (r + dr, c + dc)
+        if 0 <= rr < h and 0 <= cc < w:
+            yield rr, cc
+```
+
+It's pretty clear that the core of the problem is in the "flashing" of the
+cells, which creates a chain reaction among neighboring cells. The important
+thing to notice is that, once one cell flashes, its job is done for the day; it
+will no longer flash until the next step.
+
+There are different ways to do this: we could scan the entire grid until we find
+that no more cells will flash, we could enqueue new cells to flash in a queue
+and keep going until it's empty, or we could use a recursive function.
+
+My initial solution simply scanned through the whole grid until all cells were
+lower or equal than `9`. For such a small grid, that's a perfectly reasonable
+solution. However, this is one of the few times where I'd prefer to use
+recursion to simplify the problem. Let's write a function to "flash" all cells
+that need to, and then keep recursively flashing neighboring cells.
+
+Since we do not want to flash the same cell more than once, we'll use `-1` as a
+placeholder for cells that we have already "flashed", so that we can avoid doing
+it twice. The code is straightforward. Given a cell:
+
+- If this cell does not need to flash (`<= 9`), do nothing.
+- Otherwise:
+  - Mark it as "flashed" (`-1`).
+  - For each neighbor of the cell which did not flash yet, increment its value
+    and recursively call the function on it.
+
+```python
+def flash(grid, r, c, h, w):
+    if grid[r][c] <= 9:
+        return
+
+    grid[r][c] = -1
+
+    for nr, nc in neighbors8(r, c, h, w):
+        if grid[nr][nc] != -1:
+            grid[nr][nc] += 1
+            flash(grid, nr, nc, h, w)
+```
+
+We could also have wrapped the entire function body inside an
+`if grid[r][c] > 9`, it's just a matter of style.
+
+Now that we sorted out the complex part of the problem, we can just follow the
+rest of the rules. Let's write an `evolve()` function to evolve the grid of one
+step, and return the number of flashes that happened:
+
+```python
+def evolve(grid, h, w):
+    flashes = 0
+
+    # First increment every single cell
+    for r in range(h):
+        for c in range(w):
+            grid[r][c] += 1
+
+    # Then flash the ones that need to
+    for r in range(h):
+        for c in range(w):
+            flash(grid, r, c, h, w)
+
+    # Then reset their value to 0
+    for r in range(h):
+        for c in range(w):
+            if grid[r][c] == -1:
+                grid[r][c] = 0
+                flashes += 1
+
+    return flashes
+```
+
+Those are a lot of `for` loops there... that's annoying. We can use
+[`itertools.product()`][py-itertools-product] to simplify things a bit:
+
+```python
+def step(grid, h, w):
+    flashes = 0
+
+    for r, c in product(range(h), range(w)):
+        grid[r][c] += 1
+
+    for r, c in product(range(h), range(w)):
+        flash(grid, r, c, h, w)
+
+    for r, c in product(range(h), range(w)):
+        if grid[r][c] == -1:
+            grid[r][c] = 0
+            flashes += 1
+
+    return flashes
+```
+
+We could also cache the coordinates yielded by `product()` into a `tuple` and
+iterate over the tuple multiple times, but our grid is so small that this kind
+of optimization wouldn't give us any real advantage.
+
+**Note that** although it seems like the three loops could be fused into one,
+that would be wrong: we specifically need to do each of the three steps
+separately, otherwise the values in our grid will get mixed up in an
+inconsistent state and we'll not get what we want.
+
+Now we can finally call `evolve()` 100 times and [`sum()`][py-builtin-sum] the
+total number of flashes with a [generator expression][py-generator-expr] to get
+our answer:
+
+```python
+h, w = len(grid), len(grid[0])
+tot_flashes = sum(evolve(grid, h, w) for _ in range(100))
+
+print('Part 1:', tot_flashes)
+```
+
+### Part 2
+
+For the second part of the problem, we are asked to keep evolving the grid step
+by step until we reach a point where *all* cells flash in the same step. We need
+to find out how many steps it takes to reach such a state.
+
+Well... we can just keep calling `evolve()` until the number of flashing cells
+returned is equal to the number of cells in the grid. Easy peasy. To count from
+101 onwards we can use [`itertools.count()`][py-itertools-count], which is
+essentially like an infinite `range`.
+
+```python
+n_cells = h * w
+
+for sync_step in count(101):
+    if evolve(grid, h, w) == n_cells:
+        break
+
+print('Part 2:', sync_step)
+```
+
+That only took `354` steps, nice. I was already getting worried that the number
+would have been enormous and impossible to simulate without some major smart
+simplification such as finding periodic patterns, as it usually happens for
+these kind of problems. Thankfully Eric decided to spare us the pain this time
+:').
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -1988,6 +2179,7 @@ for my "Formal languages and compilers" University course.
 [d08]: #day-8---seven-segment-search
 [d09]: #day-9---smoke-basin
 [d10]: #day-10---syntax-scoring
+[d11]: #day-11---dumbo-octopus
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -1999,6 +2191,7 @@ for my "Formal languages and compilers" University course.
 [d08-problem]: https://adventofcode.com/2021/day/8
 [d09-problem]: https://adventofcode.com/2021/day/9
 [d10-problem]: https://adventofcode.com/2021/day/10
+[d11-problem]: https://adventofcode.com/2021/day/11
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -2010,6 +2203,7 @@ for my "Formal languages and compilers" University course.
 [d08-solution]: solutions/day08.py
 [d09-solution]: solutions/day09.py
 [d10-solution]: solutions/day10.py
+[d11-solution]: solutions/day11.py
 
 [d03-orginal]:             original_solutions/day03.py
 [d07-orginal]:             original_solutions/day07.py
@@ -2043,6 +2237,8 @@ for my "Formal languages and compilers" University course.
 [py-frozenset]:               https://docs.python.org/3/library/stdtypes.html#frozenset
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
+[py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
+[py-itertools-product]:       https://docs.python.org/3/library/itertools.html#itertools.product
 [py-itertools-repeat]:        https://docs.python.org/3/library/itertools.html#itertools.repeat
 [py-itertools-starmap]:       https://docs.python.org/3/library/itertools.html#itertools.starmap
 [py-itertools-chain]:         https://docs.python.org/3/library/itertools.html#itertools.chain
