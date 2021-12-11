@@ -4,6 +4,7 @@ __all__ = [
 	'neighbors4', 'neighbors4x', 'neighbors8',
 	'neighbors4_values', 'neighbors4x_values', 'neighbors8_values',
 	'grid_find_adjacent', 'graph_from_grid', 'grid_bfs', 'grid_bfs_lru',
+	'bfs', 'connected_components',
 	'dijkstra', 'dijkstra_lru', 'dijkstra_path', 'dijkstra_path_lru',
 	'dijkstra_all', 'dijkstra_all_paths',
 	'bellman_ford', 'kruskal',
@@ -17,6 +18,7 @@ from functools import lru_cache
 from bisect import bisect_left
 from math import inf as INFINITY
 from itertools import filterfalse
+from operator import itemgetter
 from .data_structures import UnionFind
 
 # Maximum cache size used for memoization with lru_cache
@@ -166,6 +168,59 @@ def grid_bfs_lru(grid, avoid=(), get_neighbors=neighbors4):
 		nonlocal grid, get_neighbors
 		return grid_bfs(grid, src, dst, avoid, get_neighbors)
 	return wrapper
+
+def bfs(G, src, weighted=False, get_neighbors=None):
+	'''Find and return the set of all nodes reachable from src in G using
+	breadth-first search.
+
+	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
+	in case weighted=True (weights are discarded).
+
+	get_neighbors(node) is called to determine node neighbors (default is G.get)
+
+	NOTE: for correct results in case of an undirected graph, all nodes must be
+	present in G as keys.
+	'''
+	if get_neighbors is None:
+		get_neighbors = G.get
+
+	queue   = deque([src])
+	visited = set()
+
+	while queue:
+		node = queue.popleft()
+		if node in visited:
+			continue
+
+		visited.add(node)
+		neighbors = get_neighbors(node) or ()
+		neighbors = map(itemgetter(0), neighbors) if weighted else neighbors
+		queue.extend(filterfalse(visited.__contains__, neighbors))
+
+	return visited
+
+def connected_components(G, weighted=False, get_neighbors=None):
+	'''Find and return a list of all the connected components of G.
+
+	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
+	in case weighted=True (weights are discarded).
+
+	get_neighbors(node) is called to determine node neighbors (default is G.get)
+
+	Returns a list of sets each representing the nodes of a connected component.
+
+	NOTE: for correct results in case of an undirected graph, all nodes must be
+	present in G as keys.
+	'''
+	visited = set()
+	components = []
+
+	for node in filterfalse(visited.__contains__, G):
+		component = bfs(G, node, weighted, get_neighbors)
+		visited |= component
+		components.append(component)
+
+	return components
 
 def dijkstra(G, src, dst, get_neighbors=None):
 	'''Find the length of the shortest path from src to dst in G using
