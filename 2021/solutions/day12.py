@@ -57,8 +57,8 @@ for edge in fin:
 	if a != 'start':
 		G[b].append(a)
 
-n = n_paths(G, 'start', 'end')
-advent.print_answer(1, n)
+n1 = n_paths(G, 'start', 'end')
+n2 = n_paths2(G, 'start', 'end')
 
-n = n_paths2(G, 'start', 'end')
-advent.print_answer(2, n)
+advent.print_answer(1, n1)
+advent.print_answer(2, n2)

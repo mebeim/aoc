@@ -2244,18 +2244,26 @@ However, there are still two caveats:
    don't really care: we can avoid adding those to the visited set.
 2. Since we want to find *all* possible paths, we cannot use a global set to
    keep track of visited nodes, otherwise the first path that gets to a given
-   node will just mark it visited and it "unavailable" to any different path
-   that could pass through the same node. We will have to keep one visited set
-   *per path*.
+   node will just mark it visited and make it "unavailable" to any different
+   path that could pass through the same node. We will have to keep one visited
+   set *per path*.
 
-Another important thing to notice (or actually, deduce) is that if the problem
-is asking us to *count* the number of different paths passing through any
-uppercase node any number of times, our graph *must not* contain edges that
-connect two uppercase nodes together. In such a case, we would have a cycle of
-uppercase nodes, and since we can pass through them any number of times, there
-would be an *infinite* amount of possible paths! If we also wanted to handle
-this case, we would have to implement a [cycle detection][wiki-cycle-detection]
-algorithm. Fortunately, this is unneeded.
+One interesting thing to notice (or actually, deduce) is that if the problem is
+asking us to *count* the number of different paths passing through any uppercase
+node any number of times, then there must be a finite number of them. This means
+that our graph *must not* contain edges that connect two uppercase nodes
+together. In such a case, we would have a cycle of uppercase nodes, and since we
+can pass through them any number of times, there would be an *infinite* amount
+of possible paths! If we also wanted to handle this case, we would have to
+implement a [cycle detection][wiki-cycle-detection] algorithm. Fortunately, this
+is unneeded.
+
+We can easily verify that the above condition holds (no edge in our input
+connects two uppercase nodes). This also means that no matter how we get to the
+destination, since we can only touch each lowercase edge at most once and we
+must visit a lowercase edge after an uppercase one, the longest path from
+`start` to `end` will visit a number of nodes which is at most around double the
+number of lowercase nodes (doing lower-UPPER-lower-UPPER-... an so on).
 
 The only real difference between "classic" BFS and DFS is that BFS uses a
 [queue][wiki-queue] to keep track of nodes to visit, while DFS uses a
@@ -2264,14 +2272,16 @@ recursively, while for BFS [not so much][misc-so-recursive-bfs]). In both cases,
 a [`deque`][py-collections-deque] can be used as queue/stack.
 
 So, which one should we choose between BFS and DFS? The number of possible paths
-is likely to grow big, if we pick DFS we'll probably waste less memory on
-keeping a large queue.
+is likely to grow big: if we pick DFS we'll probably waste less memory on
+keeping a large queue (even though the paths are short, there can still be a lot
+of them). My solution will be iterative, even though a recursive one is
+absolutely feasible, so this is just personal preference.
 
-The implementation is straightforward:
+Given all we discussed above, the implementation is straightforward:
 
 ```python
 def n_paths(G, src, dst):
-    # Our stack will contain tules of the form:
+    # Our stack will contain tuples of the form:
     # (node_to_visit, set_of_visited_nodes_to_get_here)
     stack = deque([(src, {src})])
     total = 0
@@ -2314,20 +2324,20 @@ print('Part 1:', n)
 ### Part 2
 
 The rules change slightly. Previously we were not allowed to visit the same
-lowercase node twice. Now, we can visit at most one lowercase node *twice* in
+lowercase node twice. Now, we can visit *at most one lowercase node twice* in
 any given path (except for `start`, which we can still only visit once). The
 question remains the same: how many different paths are there from `start` to
-`end` now?
+`end`?
 
 It seems like we also need to keep track of how many times we visit lowercase
-nodes now. Do we actually need to keep a count for each lowercase node though?
-Not really. The only additional constraint says that we can visit a single
-lowercase node twice. This thing can only happen once in any given path,
-therefore all we need is an additional boolean variable (for each path) to
-remember if this ever happened or not.
+nodes. Do we actually need to keep a count for each lowercase node though? Not
+really. The only additional constraint says that we can visit a single lowercase
+node twice. This thing can only happen once in any given path, therefore all we
+need is an additional boolean variable (for each path) to remember if this ever
+happened or not.
 
-Let's write a second function, very similar to the first one, to solve part 2.
-The only two things that really change from the above `n_paths()` function are:
+Let's write a second function very similar to the first one. The algorithm is
+the same; the only two things that really change are:
 
 1. We need to add a third element to the tuples in our stack: a boolean
    variable (let's call it `double`), which will be `True` if we ever visited a
@@ -2337,6 +2347,8 @@ The only two things that really change from the above `n_paths()` function are:
    time we can visit it again, but only if `double` is `False` (the actual logic
    we'll use is the exact opposite just to make the control flow of the function
    simpler).
+
+Here it is:
 
 ```python
 def n_paths2(G, src, dst):
@@ -2476,6 +2488,7 @@ As "easy" as that!
 
 [wiki-bingo]:                 https://en.wikipedia.org/wiki/Bingo_(American_version)
 [wiki-cartesian-coords]:      https://en.wikipedia.org/wiki/Cartesian_coordinate_system
+[wiki-cycle-detection]:       https://en.wikipedia.org/wiki/Cycle_detection
 [wiki-dyck-language]:         https://en.wikipedia.org/wiki/Dyck_language
 [wiki-floor-ceil]:            https://en.wikipedia.org/wiki/Floor_and_ceiling_functions
 [wiki-graph-component]:       https://en.wikipedia.org/wiki/Component_(graph_theory)
