@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from sys import last_type
 from utils import advent
 
 def deduce_mapping(patterns):
