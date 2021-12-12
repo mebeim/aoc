@@ -882,13 +882,13 @@ for points in starmap(diag, lines):
 Coupling this with `chain()` we can compress the double `for` into a single one:
 
 ```python
-for p in chain(starmap(horiz, lines)):
+for p in chain(*starmap(horiz, lines)):
     space[p] += 1
 
 overlapping = sum(x > 1 for x in space.values())
 print('Part 1:' overlapping)
 
-for p in chain(starmap(diag, lines)):
+for p in chain(*starmap(diag, lines)):
     space[p] += 1
 
 overlapping = sum(x > 1 for x in space.values())

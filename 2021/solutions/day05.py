@@ -33,14 +33,14 @@ for raw_line in fin:
 	bx, by = map(int, b.split(','))
 	lines.append((ax, ay, bx, by))
 
-for p in chain(starmap(horiz, lines)):
+for p in chain(*starmap(horiz, lines)):
 	space[p] += 1
 
 overlapping = sum(x > 1 for x in space.values())
 advent.print_answer(1, overlapping)
 
 
-for p in chain(starmap(diag, lines)):
+for p in chain(*starmap(diag, lines)):
 	space[p] += 1
 
 overlapping = sum(x > 1 for x in space.values())
