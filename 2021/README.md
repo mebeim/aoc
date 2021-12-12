@@ -15,6 +15,7 @@ Table of Contents
 - [Day 9 - Smoke Basin][d09]
 - [Day 10 - Syntax Scoring][d10]
 - [Day 11 - Dumbo Octopus][d11]
+- [Day 12 - Passage Pathing][d12]
 
 
 Day 1 - Sonar Sweep
@@ -2162,6 +2163,221 @@ simplification such as finding periodic patterns, as it usually happens for
 these kind of problems. Thankfully Eric decided to spare us the pain this time
 :').
 
+
+Day 12 - Passage Pathing
+------------------------
+
+[Problem statement][d12-problem] — [Complete solution][d12-solution] — [Back to top][top]
+
+### Part 1
+
+As you probably already guessed by the name of today's puzzle, we'll be dealing
+with paths and graphs. The request is simple: we are given an undirected graph,
+and we are told to count the number of different paths that exist betweeen the
+`start` node and the `end` node. Our paths must only satisfy one property: they
+can only visit nodes that have a lowercase name once (per node).
+
+My favorite way to represent graphs in Python is to use what I became used to
+call a "graph dictionary", which is a dictionary of the form
+`{node: list_of_neighbors}`. For an undirected graph, if we have an edge `a-b`,
+our graph dictionary will both contain `b` in the list of neighbors of `a`, and
+`a` in the list of neighbors of `b`.
+
+The input format is simple to parse, just [`.rstrip()`][py-str-rstrip] newlines
+and [`.split()`][py-str-split] on dashes (`-`) to get the two nodes of an edge.
+We'll start with an empty [`defaultdict`][py-collections-defaultdict] of `list`
+for simplicity. Since we cannot visit `start` more than once, we'll simply avoid
+adding it as a neighbor of any node, this way we won't have to add a special
+case to skip it in whatever algorithm we'll use to visit the graph.
+
+```python
+fin = open(...)
+G = defaultdict(list)
+
+for edge in fin:
+    a, b = edge.rstrip().split('-')
+
+    if b != 'start':
+        G[a].append(b)
+    if a != 'start':
+        G[b].append(a)
+```
+
+To give an idea of what `G` looks like, considering this simple input and the
+corresponding graph it represents (on the right):
+
+```none
+start-A
+start-b           start
+A-c               /   \
+A-b           c--A-----b--d
+b-d               \   /
+A-end              end
+b-end
+```
+
+After parsing the above, graph dictionary `G` would look like this:
+
+```python
+{
+    'start': ['A', 'b'],
+    'A': ['c', 'b', 'end'],
+    'b': ['A', 'd', 'end'],
+    'c': ['A'],
+    'd': ['b'],
+    'end': ['A', 'b']
+}
+```
+
+Now, if the task was to just find any [single] path from `start` to `end`, we
+could have simply used either [depth-first search][algo-dfs] (DFS) or
+[breadth-first search][algo-bfs] (BFS) to explore the graph starting from `start`
+until we reach `end`, and stop there. Surely enough, to find *all* possible
+paths we should not stop as soon as `end` is reached, but continue exploring
+other paths.
+
+However, there are still two caveats:
+
+1. In "classic" DFS/BFS we don't usually want to pass multiple times through the
+   same node. In fact, in both algorithms we usually keep a set of "visited"
+   nodes to avoid loops. In this case though, in case of uppercase nodes we
+   don't really care: we can avoid adding those to the visited set.
+2. Since we want to find *all* possible paths, we cannot use a global set to
+   keep track of visited nodes, otherwise the first path that gets to a given
+   node will just mark it visited and it "unavailable" to any different path
+   that could pass through the same node. We will have to keep one visited set
+   *per path*.
+
+Another important thing to notice (or actually, deduce) is that if the problem
+is asking us to *count* the number of different paths passing through any
+uppercase node any number of times, our graph *must not* contain edges that
+connect two uppercase nodes together. In such a case, we would have a cycle of
+uppercase nodes, and since we can pass through them any number of times, there
+would be an *infinite* amount of possible paths! If we also wanted to handle
+this case, we would have to implement a [cycle detection][wiki-cycle-detection]
+algorithm. Fortunately, this is unneeded.
+
+The only real difference between "classic" BFS and DFS is that BFS uses a
+[queue][wiki-queue] to keep track of nodes to visit, while DFS uses a
+[stack][wiki-stack] (which is also why it's very common to implement DFS
+recursively, while for BFS [not so much][misc-so-recursive-bfs]). In both cases,
+a [`deque`][py-collections-deque] can be used as queue/stack.
+
+So, which one should we choose between BFS and DFS? The number of possible paths
+is likely to grow big, if we pick DFS we'll probably waste less memory on
+keeping a large queue.
+
+The implementation is straightforward:
+
+```python
+def n_paths(G, src, dst):
+    # Our stack will contain tules of the form:
+    # (node_to_visit, set_of_visited_nodes_to_get_here)
+    stack = deque([(src, {src})])
+    total = 0
+
+    # while we have nodes to visit
+    while stack:
+        # get the most recently added node and the set of visited nodes in the
+        # path to reach it
+        node, visited = stack.pop()
+
+        # if we reached the destination, we found 1 additional path
+        # increment the count and stop going forward
+        if node == dst:
+            total += 1
+            continue
+
+        # otherwise, for each neighbor of this node
+        for n in G[node]:
+            # if we already visited this neighbor AND it's a lowercase node,
+            # skip it: we can't advance this path forward
+            if n in visited and n.islower():
+                continue
+
+            # add the neighbor to the stack and mark it as visited in this
+            # particular path
+            stack.append((n, visited | {n}))
+
+    return total
+```
+
+The `|` operator in `visited | {n}` performs the union of two sets.
+
+A single call to the above function will give us the answer we are looking for:
+
+```python
+n = n_paths(G, 'start', 'end')
+print('Part 1:', n)
+```
+
+### Part 2
+
+The rules change slightly. Previously we were not allowed to visit the same
+lowercase node twice. Now, we can visit at most one lowercase node *twice* in
+any given path (except for `start`, which we can still only visit once). The
+question remains the same: how many different paths are there from `start` to
+`end` now?
+
+It seems like we also need to keep track of how many times we visit lowercase
+nodes now. Do we actually need to keep a count for each lowercase node though?
+Not really. The only additional constraint says that we can visit a single
+lowercase node twice. This thing can only happen once in any given path,
+therefore all we need is an additional boolean variable (for each path) to
+remember if this ever happened or not.
+
+Let's write a second function, very similar to the first one, to solve part 2.
+The only two things that really change from the above `n_paths()` function are:
+
+1. We need to add a third element to the tuples in our stack: a boolean
+   variable (let's call it `double`), which will be `True` if we ever visited a
+   lowercase node twice in the path to this particular node.
+2. The check before adding neighbors to the stack gets a little bit more
+   complex: if a neighbor has already been visited and it is lowercase, this
+   time we can visit it again, but only if `double` is `False` (the actual logic
+   we'll use is the exact opposite just to make the control flow of the function
+   simpler).
+
+```python
+def n_paths2(G, src, dst):
+    stack = deque([(src, {src}, False)])
+    total = 0
+
+    while stack:
+        node, visited, double = stack.pop()
+        if node == dst:
+            total += 1
+            continue
+
+        for n in G[node]:
+            # if we didn't already visit this neighbor OR it's an uppercase
+            # node, we can surely visit it
+            if n not in visited or n.isupper():
+                stack.append((n, visited | {n}, double))
+                continue
+
+            # otherwise, this neighbor must be a lowercase node that we ALREADY
+            # visited: if double == True we already visited some lowercase node
+            # twice in this path before, don't advance this path forward
+            if double:
+                continue
+
+            # in this case we don't even need to add the node to the visited set
+            # since we already know it was visited
+            stack.append((n, visited, True))
+
+    return total
+```
+
+Again we're just one function call away from the answer:
+
+```python
+n = n_paths2(G, 'start', 'end')
+print('Part 2:', n)
+```
+
+As "easy" as that!
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -2180,6 +2396,7 @@ these kind of problems. Thankfully Eric decided to spare us the pain this time
 [d09]: #day-9---smoke-basin
 [d10]: #day-10---syntax-scoring
 [d11]: #day-11---dumbo-octopus
+[d12]: #day-12---passage-pathing
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -2192,6 +2409,7 @@ these kind of problems. Thankfully Eric decided to spare us the pain this time
 [d09-problem]: https://adventofcode.com/2021/day/9
 [d10-problem]: https://adventofcode.com/2021/day/10
 [d11-problem]: https://adventofcode.com/2021/day/11
+[d12-problem]: https://adventofcode.com/2021/day/12
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -2204,6 +2422,7 @@ these kind of problems. Thankfully Eric decided to spare us the pain this time
 [d09-solution]: solutions/day09.py
 [d10-solution]: solutions/day10.py
 [d11-solution]: solutions/day11.py
+[d12-solution]: solutions/day12.py
 
 [d03-orginal]:             original_solutions/day03.py
 [d07-orginal]:             original_solutions/day07.py
@@ -2252,6 +2471,7 @@ these kind of problems. Thankfully Eric decided to spare us the pain this time
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 
 [algo-bfs]:       https://en.wikipedia.org/wiki/Breadth-first_search
+[algo-dfs]:       https://en.wikipedia.org/wiki/Depth-first_search
 [algo-quicksort]: https://en.wikipedia.org/wiki/Quicksort
 
 [wiki-bingo]:                 https://en.wikipedia.org/wiki/Bingo_(American_version)
@@ -2263,7 +2483,9 @@ these kind of problems. Thankfully Eric decided to spare us the pain this time
 [wiki-linear-time]:           https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-median]:                https://en.wikipedia.org/wiki/Median
 [wiki-pushdown-automata]:     https://en.wikipedia.org/wiki/Pushdown_automaton
+[wiki-queue]:                 https://en.wikipedia.org/wiki/Queue_(abstract_data_type)
 [wiki-seven-segment-display]: https://en.wikipedia.org/wiki/Seven-segment_display
+[wiki-stack]:                 https://en.wikipedia.org/wiki/Stack_(abstract_data_type)
 [wiki-triangular-number]:     https://en.wikipedia.org/wiki/Triangular_number
 
 [misc-aoc-bingo]:            https://www.reddit.com/r/adventofcode/comments/k3q7tr/
@@ -2272,3 +2494,4 @@ these kind of problems. Thankfully Eric decided to spare us the pain this time
 [misc-cpp-nth-element-so]:   https://stackoverflow.com/q/29145520/3889449
 [misc-cpython-median-low]:   https://github.com/python/cpython/blob/ddbab69b6d44085564a9b5022b96b002a52b2f2b/Lib/statistics.py#L549-L568
 [misc-median-math-se]:       https://math.stackexchange.com/q/113270
+[misc-so-recursive-bfs]:     https://stackoverflow.com/q/2549541/3889449
