@@ -51,7 +51,12 @@ def wait(msg='Press [ENTER] to continue...'):
 	waiting for input.
 	'''
 	eprint(msg, end=' ')
-	input()
+
+	try:
+		input()
+	except KeyboardInterrupt:
+		log(" keyboard interrupt, exiting...\n")
+		sys.exit(0)
 
 def dump_iterable(iterable, fmt='{:d}: {!r}'):
 	'''Dump index and values of an iterable using the specified format string to
