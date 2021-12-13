@@ -16,6 +16,7 @@ Table of Contents
 - [Day 10 - Syntax Scoring][d10]
 - [Day 11 - Dumbo Octopus][d11]
 - [Day 12 - Passage Pathing][d12]
+- [Day 13 - Transparent Origami][d13]
 
 
 Day 1 - Sonar Sweep
@@ -2390,6 +2391,176 @@ print('Part 2:', n)
 
 As "easy" as that!
 
+
+Day 13 - Transparent Origami
+----------------------------
+
+[Problem statement][d13-problem] — [Complete solution][d13-solution] — [Back to top][top]
+
+### Part 1
+
+Today we need to fold a sheet of paper a bunch of times. Interesting. We are
+given a list of points in space (i.e. dots of ink on our paper sheet) in the
+form `x,y`. Our coordinate system starts from the top-left corner of our paper
+sheet, with X coordinates growing right, and Y coordinates growing *down*. After
+this, we are given a list of directions of two possible forms:
+
+- `fold along x=XXX` we need to "fold" our paper sheet along the axis `x=XXX`,
+  which means folding *up* the bottom half of the sheet.
+- `fold along y=YYY` we need to "fold" our paper sheet along the axis `y=YYY`,
+  which means folding *left* the right half of the sheet.
+
+Our sheet is transparent, so when folding, if two points end up being on top of
+each other we will only see one. For the first part, we only need to perform the
+first fold instruction, and then count the number of visible points.
+
+Let's start by building our transparent paper sheet. Since it is transparent
+and, as the problem statement says, we need to count any overlapping points as a
+single point after folding, we can use a `set` of tuples `(x, y)` to represent
+the sheet. This will make it easy to ignore overlaps.
+
+For each line of input, [`.split()`][py-str-split] it in half and turn the two
+numbers into a `tuple` of `int` with the help of [`map()`][py-builtin-map].
+Then, add the tuple to the set. Since folding instructions are separated from
+the list of coordinates by an empty line, when we found one we'll `break` and
+stop processing coordinates.
+
+```python
+sheet = set()
+
+for line in fin:
+    if line == '\n':
+        break
+
+    coords = tuple(map(int, line.split(',')))
+    sheet.add(coords)
+```
+
+Folding our paper sheet is nothing more than a [reflection][wiki-reflection]
+along an axis that is only applied to the points past the axis. Since our
+reflection axes can only be horizontal or vertical, and since we only need to
+reflect points *past* the axis, the operation is quite simple. Reflecting a
+point is nothing more than "moving it" as far on the opposite side of the axis
+as its original distance from the axis.
+
+- For a vertical reflection with axis `x=A`, the `x` coordinate of a point
+  becomes `A - (x - A)` or `2*A - x`.
+- For an horizontal reflection with axis `y=A`, the `y` coordinate of a point
+  becomes `A - (y - A)` or `2*A - y`.
+
+Let's write a `fold()` function to do this. For simplicity, this function will
+take 3 arguments: the sheet, the distance of the reflection axis from the X or Y
+axis, and a boolean value to indicate whether we are folding vertically or
+horizontally. For each point of the sheet, depending on the folding direction,
+we'll move the X or Y coordinate as defined above, add the "moved" point to a
+new sheet.
+
+```python
+def fold(sheet, axis, vertical=False):
+    folded = set()
+
+    for x, y in sheet:
+        if vertical:
+            if x > axis:
+                x = axis - (x - axis)
+        elif y > axis:
+            y = axis - (y - axis)
+
+        folded.add((x, y))
+
+    return folded
+```
+
+Now we can parse the first folding instruction and perform the fold. To only get
+one line of input we can either call [`next()`][py-builtin-next] on the input
+file or use [`.readline()`][py-io-readline]. The axis coordinate can be
+extracted by locating the `=` with [`.index()`][py-str-index], and the folding
+direction can be determined by checking whether the instruction contains `'x'`
+or not.
+
+```python
+line     = next(fin)
+axis     = int(line[line.index('=') + 1:])
+vertical = 'x' in line
+sheet    = fold(sheet, axis, vertical)
+n_points = len(sheet)
+
+print('Part 1:', n_points)
+```
+
+### Part 2
+
+Predictably enough, now we need to apply *all* folding instructions. The point
+visible on the final folded paper sheet will line up to form a sequence of
+letters, which is our answer.
+
+We already have all we need for folding... it's only a matter of wrapping it
+inside a loop:
+
+```python
+for line in fin:
+    axis  = int(line[line.index('=') + 1:])
+    sheet = fold(sheet, axis, 'x' in line)
+```
+
+After applying all folds, we can print out the resulting sheet and read the
+letters by hand. After determining the maximum X and Y coordinates for the
+points in the sheet, we can use a trivial double `for` loop to iterate over all
+the coordinates from `(0, 0)` to the maximum X and Y, printing one `#`
+symbol for every point that is present in the sheet, and one space for every
+point that is not.
+
+We can use [`max()`][py-builtin-max] along with a generator expression to get
+the maximum values for the X and Y coordinates in our `sheet`. Note that we need
+to first iterate over Y and then over X to get the sheet printed in the proper
+direction!
+
+```python
+def print_sheet(sheet):
+    maxx = max(p[0] for p in sheet)
+    maxy = max(p[1] for p in sheet)
+
+    out = ''
+    for y in range(maxy + 1):
+        for x in range(maxx + 1):
+            out += '#' if (x, y) in sheet else ' '
+        out += '\n'
+
+    print(out, end='')
+```
+
+We can also use [`itemgetter()`][py-operator-itemgetter] to extract the
+coordinates from our points when calculating the minimum and maximum:
+
+```diff
+ def print_sheet(sheet):
+-    maxx = max(p[0] for p in sheet)
+-    maxy = max(p[1] for p in sheet)
++    maxx = max(map(itemgetter(0), sheet))
++    maxy = max(map(itemgetter(1), sheet))
+     ...
+```
+
+Okay, let's print it!
+
+```python
+print('Part 2:')
+print_sheet(sheet)
+```
+
+```
+Part 2:
+###   ##  #  # ###  #  # #    #  # #
+#  # #  # #  # #  # # #  #    # #  #
+#  # #    #### #  # ##   #    ##   #
+###  # ## #  # ###  # #  #    # #  #
+#    #  # #  # # #  # #  #    # #  #
+#     ### #  # #  # #  # #### #  # ####
+```
+
+Cool puzzle! Today was also my first day of the year on the leaderboard (rank 37
+for P1). Phew, that took some time :')
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -2409,6 +2580,7 @@ As "easy" as that!
 [d10]: #day-10---syntax-scoring
 [d11]: #day-11---dumbo-octopus
 [d12]: #day-12---passage-pathing
+[d13]: #day-13---transparent-origami
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -2422,6 +2594,7 @@ As "easy" as that!
 [d10-problem]: https://adventofcode.com/2021/day/10
 [d11-problem]: https://adventofcode.com/2021/day/11
 [d12-problem]: https://adventofcode.com/2021/day/12
+[d13-problem]: https://adventofcode.com/2021/day/13
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -2435,6 +2608,7 @@ As "easy" as that!
 [d10-solution]: solutions/day10.py
 [d11-solution]: solutions/day11.py
 [d12-solution]: solutions/day12.py
+[d13-solution]: solutions/day13.py
 
 [d03-orginal]:             original_solutions/day03.py
 [d07-orginal]:             original_solutions/day07.py
@@ -2458,6 +2632,7 @@ As "easy" as that!
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
 [py-builtin-min]:             https://docs.python.org/3/library/functions.html#min
+[py-builtin-next]:            https://docs.python.org/3/library/functions.html#next
 [py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
@@ -2468,20 +2643,22 @@ As "easy" as that!
 [py-frozenset]:               https://docs.python.org/3/library/stdtypes.html#frozenset
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
+[py-io-readline]:             https://docs.python.org/3/library/io.html#io.IOBase.readline
 [py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
 [py-itertools-product]:       https://docs.python.org/3/library/itertools.html#itertools.product
 [py-itertools-repeat]:        https://docs.python.org/3/library/itertools.html#itertools.repeat
 [py-itertools-starmap]:       https://docs.python.org/3/library/itertools.html#itertools.starmap
 [py-itertools-chain]:         https://docs.python.org/3/library/itertools.html#itertools.chain
 [py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
+[py-operator-itemgetter]:     https://docs.python.org/3/library/operator.html#operator.itemgetter
 [py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
 [py-statistics-median-low]:   https://docs.python.org/3/library/statistics.html#statistics.median_low
+[py-str-index]:               https://docs.python.org/3/library/stdtypes.html#str.index
 [py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
 [py-str-rstrip]:              https://docs.python.org/3/library/stdtypes.html#str.rstrip
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
-
 [algo-bfs]:       https://en.wikipedia.org/wiki/Breadth-first_search
 [algo-dfs]:       https://en.wikipedia.org/wiki/Depth-first_search
 [algo-quicksort]: https://en.wikipedia.org/wiki/Quicksort
@@ -2497,6 +2674,7 @@ As "easy" as that!
 [wiki-median]:                https://en.wikipedia.org/wiki/Median
 [wiki-pushdown-automata]:     https://en.wikipedia.org/wiki/Pushdown_automaton
 [wiki-queue]:                 https://en.wikipedia.org/wiki/Queue_(abstract_data_type)
+[wiki-reflection]:            https://en.wikipedia.org/wiki/Reflection_(mathematics)
 [wiki-seven-segment-display]: https://en.wikipedia.org/wiki/Seven-segment_display
 [wiki-stack]:                 https://en.wikipedia.org/wiki/Stack_(abstract_data_type)
 [wiki-triangular-number]:     https://en.wikipedia.org/wiki/Triangular_number
