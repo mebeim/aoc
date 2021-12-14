@@ -7,7 +7,7 @@ __all__ = [
 	'bfs', 'connected_components',
 	'dijkstra', 'dijkstra_lru', 'dijkstra_path', 'dijkstra_path_lru',
 	'dijkstra_all', 'dijkstra_all_paths',
-	'bellman_ford', 'kruskal',
+	'bellman_ford', 'kruskal', 'toposort', 'lex_toposort',
 	'bisection', 'binary_search',
 	'knapsack'
 ]
@@ -453,6 +453,84 @@ def kruskal(G):
 			uf.union(a, b)
 
 	return mst
+
+def _toposort_dependencies(G, reverse):
+	'''Calculate forward and reverse dependencies of the nodes in the directed
+	graph G. If reverse=True, edges of G are considered inverted.
+
+	Returns two defaultdict:
+		dep: maps each node to its number of dependencies (0 for root nodes)
+		revdep: maps each node to a list of nodes that depend on it
+	'''
+	if reverse:
+		dep = defaultdict(int, {p: len(c) for p, c in G.items()})
+		revdep = defaultdict(list)
+
+		for child, parents in G.items():
+			for parent in parents:
+				revdep[parent].append(child)
+				dep[parent] # make sure to have *all* nodes as keys in dep
+	else:
+		dep = defaultdict(int)
+		revdep = defaultdict(tuple, G)
+
+		for parent, children in G.items():
+			dep[parent] # make sure to have *all* nodes as keys in dep
+			for child in children:
+				dep[child] += 1
+
+	return dep, revdep
+
+def toposort(G, reverse=False):
+	'''Perform a topological sort of G. If reverse=True, edges of G are
+	considered inverted. No particular order is guaranteed whenever there are
+	multiple nodes with no dependencies that can be chosen as next.
+
+	Returns a list of nodes sorted in topological order.
+	'''
+	dep, revdep = _toposort_dependencies(G, reverse)
+	queue = deque(n for n, d in dep.items() if d == 0)
+	result = []
+
+	while queue:
+		node = queue.popleft()
+		result.append(node)
+
+		for child in revdep[node]:
+			if dep[child] > 0:
+				dep[child] -= 1
+				if dep[child] == 0:
+					queue.append(child)
+
+	return result
+
+def lex_toposort(G, reverse=False):
+	'''Perform a lexicographical topological sort of G. If reverse=True, edges
+	of G are considered inverted. The smallest node is always chosen whenever
+	there are multiple nodes with no dependencies that can be chosen as next.
+
+	Returns a list of nodes sorted in lexicographical topological order.
+	'''
+	# Implemented with a min-heap as queue, so not the most efficient algorithm,
+	# see: https://en.wikipedia.org/wiki/Lexicographic_breadth-first_search
+
+	dep, revdep = _toposort_dependencies(G, reverse)
+	queue = [n for n, d in dep.items() if d == 0]
+	result = []
+
+	heapq.heapify(queue)
+
+	while queue:
+		node = heapq.heappop(queue)
+		result.append(node)
+
+		for child in revdep[node]:
+			if dep[child] > 0:
+				dep[child] -= 1
+				if dep[child] == 0:
+					heapq.heappush(queue, child)
+
+	return result
 
 def bisection(fn, y, lo=None, hi=None, tolerance=1e-9, upper=False):
 	'''Find a value x in the range [hi, lo] such that f(x) approximates y.
