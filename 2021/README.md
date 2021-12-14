@@ -17,6 +17,7 @@ Table of Contents
 - [Day 11 - Dumbo Octopus][d11]
 - [Day 12 - Passage Pathing][d12]
 - [Day 13 - Transparent Origami][d13]
+- [Day 14 - Extended Polymerization][d14]
 
 
 Day 1 - Sonar Sweep
@@ -2561,6 +2562,283 @@ Part 2:
 Cool puzzle! Today was also my first day of the year on the leaderboard (rank 37
 for P1). Phew, that took some time :')
 
+
+Day 14 - Extended Polymerization
+--------------------------------
+
+[Problem statement][d14-problem] — [Complete solution][d14-solution] — [Back to top][top]
+
+**NOTE**: today's part 1 and 2 can be solved using the same algorithm, however
+part 1 is simpler and allows for different, less optimal algorithms to
+accomplish the same task. The algorithm implementation here in part 1 is far
+from optimal, and in fact unsuitable for part 2. Nonetheless, I've decided to
+describe it for educational purposes. You can directly skip to [part 2][d14-p2]
+for the actual solution.
+
+### Part 1
+
+For today's problem, we are given a string of letters representing a "polymer
+template" where each letter is an element, and a set of reaction rules. Each
+rule has the form `AB -> C` meaning that the element `C` should be inserted in
+the middle of any [contiguous] pair of elements `AB`. In one "step", all the
+rules are applied to the polymer and a new, longer polymer is formed.
+
+The rules are applied simultaneously and do not influence each other nor chain
+together. For example, let's say we have the polymer `ABC` and the rules
+`AB -> X`, `BC -> Y`, `AX -> Z`. After one step, the new polymer is `AXBYC`.
+Notice how the `AX` did not immediately react to create `AZX`, this will only
+happen in the *next* step.
+
+After applying the rules and transforming the polymer 10 times, we are asked to
+count the number of the most and least common elements and compute their
+difference.
+
+The task seems... quite simple. After all, how long can our polymer ever become?
+In the puzzle example the polymer `NNCB` after 10 steps has a length of 3073.
+Our polymer is 5 times longer... a lowball estimate gives us a length of 15000,
+that doesn't seem so bad. We can easily emulate the whole thing with a list. Or,
+better, since inserting elements in the middle of a `list` is quite slow, a
+[singly linked list][wiki-linked-list]!
+
+> *Narrator voice: «the author later quickly came to the conclusion that this
+was a very bad choice...»*
+
+Let's get to work. Python does not have a native linked list object type, but we
+can create a `class` for this:
+
+```python
+class Node:
+    def __init__(self, v, nxt=None):
+        self.value = v
+        self.next = nxt
+```
+
+Now let's parse our first line of input and create a linked list representing
+the polymer. For each character in the initial template, we'll create a new
+`Node`. Starting with a head node created from the first character, we'll then
+iterate over the rest and append the characters to the list:
+
+```python
+fin = open(...)
+template = fin.readline().rstrip()
+
+head = Node(template[0])
+cur  = head
+
+for c in template[1:]:
+    cur.next = Node(c)
+    cur = cur.next
+```
+
+Parsing the reaction rules is just a matter of splitting each line of input on
+arrows `->` and storing them in a dictionary with the reactants as keys for easy
+lookup. We can [`.rstrip()`][py-str-rstrip] newlines from each line of input
+using [`map()`][py-builtin-map] as usual.
+
+```python
+rules = {}
+next(fin) # skip empty line
+
+for line in map(str.rstrip, fin):
+    ab, c = line.split(' -> ')
+    rules[ab] = c
+```
+
+A single step of reactions can now be performed as follows:
+
+1. Start iterating from the `head` of the linked list.
+2. Each iteration, check if `cur.value + cur.next.value` is in the reaction
+   `rules`:
+
+   - If so, insert the new element between `cur` and `cur.next`.
+   - Otherwise keep going.
+
+3. Stop iterating when we no longer have a `.next` (since we always need two
+   elements to react).
+
+```python
+for _ in range(10):
+    cur = head
+
+    while cur.next:
+        nxt = cur.next
+        ab  = cur.value + nxt.value
+
+        if ab in rules:
+            cur.next = Node(rules[ab], nxt)
+
+        cur = nxt
+```
+
+Pretty straightforward. Now we can count the number of elements of each kind
+with another loop. We'll use a [`defaultdict`][py-collections-defaultdict] to
+make our life easier:
+
+```python
+counts = defaultdict(int)
+
+cur = head
+while cur:
+    counts[cur.value] += 1
+    cur = cur.next
+```
+
+Finally, to get our answer we just need to find the minimum and maximum counts
+using [`min()`][py-builtin-min] and [`max()`][py-builtin-max]:
+
+```python
+answer = max(counts.values()) - min(counts.values())
+print('Part 1:', answer)
+```
+
+### Part 2
+
+For the second part, we still need to do the same thing, but this time we want
+***40 steps*** of reactions. In the problem statement we are told that just for
+the simple example polymer and rules, after 40 steps the most common element is
+`B` with a whopping 2192039569602 occurrences (that's 2 *trillions*)! Needless
+to say, we can 100% forget to even store such an insane amount of linked list
+nodes in RAM, let alone iterate over it before the
+[heat death of the universe][wiki-heat-death-universe]. Sadly, our naïve linked
+list solution must be thrown away, we must find a much better one.
+
+We cannot hold the entire polymer in memory... and we are asked about the number
+of occurrences of the most and least common elements. Can we get away with just
+storing counts of elements? How?
+
+Well, if we only store single element counts, we will completely lose any
+information regarding which pairs are present in the polymer. What we can do
+however is store counts of *pairs* of elements. After all, whenever a rule
+`AB -> C` is applied, *every single pair* of `AB` becomes `ACB`, so in the new
+polymer we will have an additional number of `AC` and `CB` pairs equal to the
+original number of `AB` pairs before the reaction. Grouping element pairs is a
+winning strategy: it requires very little memory and makes calculations an order
+of magnitude easier.
+
+Let's start again. This time, for ease of use we will parse the rules into a
+different kind of dictionary, where keys are pairs of two characters (the pair
+of reactants) and values are pairs of pairs of characters (the two resulting
+pairs of products):
+
+```python
+rules = {}
+
+for line in map(str.rstrip, fin):
+    (a, b), c = line.split(' -> ') # (a, b) here automagically matches 'AB' into ('A', 'B')
+    rules[a, b] = ((a, c), (c, b))
+```
+
+The initial number of each pair of elements can be calculated with a
+`defaultdict` and `for` a loop over the template polymer. The
+[`zip()`][py-builtin-zip] built-in comes in handy for iterating over overlapping
+pairs of characters:
+
+```python
+poly = defaultdict(int)
+
+for pair in zip(template, template[1:]):
+    poly[pair] += 1
+```
+
+The above can be simplified down to a single line with the help of a
+[`Counter`][py-collections-counter] object from the
+[`collections`][py-collections] module, which does exactly what we need:
+
+```python
+poly = Counter(zip(template, template[1:]))
+```
+
+A single step of reactions can now be performed as follows:
+
+- Create a new empty polymer (an empty `defaultdict` of `int`).
+- For each pair of elements in the old polymer (i.e. the keys of `poly`):
+
+  - Check if there is a rule for this pair (i.e. reactant):
+
+    - If so, get the products of the rule, and add them to the new polymer as
+      many times as the reactant appears in the old polymer (by simply
+      incrementing their count).
+    - Otherwise, just add the old count of reactant to the new polymer.
+
+Doing the above in a loop `10` times for part 1, and an additional `30` times
+for part 2 should give us what we want. Let's write a `react()` function to do
+this.
+
+```python
+def react(poly, rules, n):
+    for _ in range(n):
+        newpoly = defaultdict(int)
+
+        for pair in poly:
+            products = rules.get(pair)
+
+            if products:
+                n = poly[pair]
+                newpoly[products[0]] += n
+                newpoly[products[1]] += n
+            else:
+                newpoly[pair] = poly[pair]
+
+        poly = newpoly
+
+    return poly
+```
+
+Now for part 1 we can call `react()` with `n=10` to get the final polymer:
+
+```python
+poly = react(poly, rules, 10)
+```
+
+How can we count the occurrences of each kind of element now? All we have is a
+`poly` dictionary of the form `{pair: count}`. All those pairs in there are
+overlapping pairs of elements. For example, for `ABCD` we will find `AB BC CD`
+in the dictionary. Each character appears *twice* (in two different pairs). We
+can therefore iterate over each pair, check the first element kind and get its
+count.
+
+```python
+counts = defaultdict(int)
+for (a, _), n in poly.items():
+    counts[a] += n
+```
+
+There's a little problem, however: the last element of the polymer (of kind `D`
+in the above example) only appears in one pair. Given the way the polymer
+reacts, this last element will never move from the tail of the polymer (the same
+thing happens for the first element, but we are actually counting it above). We
+can just add `1` to the count of elements of its kind to compensate for this. As
+you can imagine, this kind of off-by-one problem can be very funny to debug!
+
+```python
+counts[template[-1]] += 1
+```
+
+Since we need to do this twice anyway, let's incorporate the final counting in
+the `react()` function we have and make it directly return the answer.
+
+```python
+def react(poly, rules, n, last):
+    # ... unchanged ...
+
+    counts = defaultdict(int, {last: 1})
+    for (a, _), n in poly.items():
+        counts[a] += n
+
+    return poly, max(counts.values()) - min(counts.values())
+```
+
+All that's left to do is call our function twice in a row to get the answers for
+both parts:
+
+```python
+poly, answer1 = react(poly, rules, 10, template[-1])
+poly, answer2 = react(poly, rules, 30, template[-1])
+
+print('Part 1:', answer1)
+print('Part 2:', answer2)
+```
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -2581,6 +2859,7 @@ for P1). Phew, that took some time :')
 [d11]: #day-11---dumbo-octopus
 [d12]: #day-12---passage-pathing
 [d13]: #day-13---transparent-origami
+[d14]: #day-14---extended-polymerization
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -2595,6 +2874,7 @@ for P1). Phew, that took some time :')
 [d11-problem]: https://adventofcode.com/2021/day/11
 [d12-problem]: https://adventofcode.com/2021/day/12
 [d13-problem]: https://adventofcode.com/2021/day/13
+[d14-problem]: https://adventofcode.com/2021/day/14
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -2609,6 +2889,7 @@ for P1). Phew, that took some time :')
 [d11-solution]: solutions/day11.py
 [d12-solution]: solutions/day12.py
 [d13-solution]: solutions/day13.py
+[d14-solution]: solutions/day14.py
 
 [d03-orginal]:             original_solutions/day03.py
 [d07-orginal]:             original_solutions/day07.py
@@ -2616,6 +2897,7 @@ for P1). Phew, that took some time :')
 [d07-reddit-megathread]:   https://www.reddit.com/rar7ty
 [d07-reddit-paper]:        https://www.reddit.com/r/adventofcode/comments/rawxad
 [d07-reddit-paper-author]: https://www.reddit.com/user/throwaway7824365346/
+[d14-p2]:                  #part-2-13
 
 [py-dict-comprehension]:      https://www.python.org/dev/peps/pep-0274/
 [py-lambda]:                  https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
@@ -2669,8 +2951,10 @@ for P1). Phew, that took some time :')
 [wiki-dyck-language]:         https://en.wikipedia.org/wiki/Dyck_language
 [wiki-floor-ceil]:            https://en.wikipedia.org/wiki/Floor_and_ceiling_functions
 [wiki-graph-component]:       https://en.wikipedia.org/wiki/Component_(graph_theory)
+[wiki-heat-death-universe]:   https://en.wikipedia.org/wiki/Heat_death_of_the_universe
 [wiki-linear-least-squares]:  https://en.wikipedia.org/wiki/Linear_least_squares
 [wiki-linear-time]:           https://en.wikipedia.org/wiki/Time_complexity#Linear_time
+[wiki-linked-list]:           https://en.wikipedia.org/wiki/Linked_list
 [wiki-median]:                https://en.wikipedia.org/wiki/Median
 [wiki-pushdown-automata]:     https://en.wikipedia.org/wiki/Pushdown_automaton
 [wiki-queue]:                 https://en.wikipedia.org/wiki/Queue_(abstract_data_type)
