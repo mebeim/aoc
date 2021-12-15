@@ -2860,9 +2860,9 @@ path. We want to know the lowest possible total risk level for a path that gets
 from the entrance (top-left) to the exit (bottom-right), passing through any of
 the cells in the grid.
 
-We can think about the grid as a graph where nodes are the cells of the grid,
-and each node is connected to its neighboring nodes (just as each cell of the
-grid is connected to its neighboring cells).
+We can think about the grid as a directed graph with as much nodes as there are
+cells in the grid, connected between each others just like cells are connected
+to their neighboring cells.
 
 What about the edges? Moving from a given cell A to a neighboring cell B (thus
 entering B) costs us as much as the risk level of B: we can represent this an
@@ -2872,8 +2872,7 @@ level of B, and thus we have another different edge going from B to A with a
 weight equal to the risk level of B. In other words, the edges entering a node
 have the same weight as the risk level of the cell corresponding to that node.
 
-It should be pretty clear how to think about the grid as a graph now, but in
-case it isn't, consider the following example with a small grid and its
+Do you see consider the following example with a small grid and its
 corresponding graph representation (`S` = entrance, `E` = exit):
 
 ```none
@@ -2918,18 +2917,23 @@ def neighbors4(r, c, h, w):
 ```
 
 Similarly to what we did two years ago for [2019 day 6 part 2][2019-d06-p2], we
-will implement Dijkstra's algorithm using a [min-heap][wiki-min-heap] as a queue
-to hold the nodes to visit and always pop the one with the shortest distance
-from the source. The [`heapq`][py-heapq] module is exactly what we need. A
-`defaultdict` that returns `float('inf')` (positive floating point infinity,
-which compares greater than any integer) as the default value is also useful to
-treat not-yet-seen nodes as being infinitely distant.
+will implement Dijkstra's algorithm using a [min-heap][wiki-min-heap] as a
+[priority queue][wiki-priority-queue] to hold the nodes to visit and always pop
+the one with the shortest distance from the source. The [`heapq`][py-heapq]
+module is exactly what we need. A `defaultdict` that returns `float('inf')`
+(also provided by `math.inf`) as the default value is also useful to treat
+not-yet-seen nodes as being infinitely distant (positive floating point infinity
+compares greater than any integer).
 
 The algorithm is pretty well-known and also well-explained in the Wikipedia page
 I just linked above, so I'm not going into much detail about it, I'll just add
 some comments to the code.
 
 ```python
+import heapq
+from collections import defaultdict
+from math import inf as INFINITY
+
 def dijkstra(grid):
     h, w = len(grid), len(grid[0])
     source = (0, 0)
@@ -2938,7 +2942,7 @@ def dijkstra(grid):
     # Start with only the source in our queue of nodes to visit and in the
     # mindist dictionary, with distance 0.
     queue = [(0, source)]
-    mindist = defaultdict(lambda: float('inf'), {source: 0})
+    mindist = defaultdict(lambda: INFINITY, {source: 0})
     visited = set()
 
     while queue:
@@ -2957,8 +2961,11 @@ def dijkstra(grid):
         visited.add(node)
         r, c = node
 
-        # For each neighbor of this node:
+        # For each unvisited neighbor of this node...
         for neighbor in neighbors4(r, c, h, w):
+            if neighbor in visited:
+                continue
+
             # Calculate the total distance from the source to this neighbor
             # passing through this node.
             nr, nc  = neighbor
@@ -2973,7 +2980,32 @@ def dijkstra(grid):
 
     # If we ever empty the queue without entering the node == destination check
     # in the above loop, there is no path from source to destination!
-    return float('inf')
+    return INFINITY
+```
+
+The `for` loop which iterates over the neighbors skipping already visited ones
+can be simplified with a [`filter()`][py-builtin-filter] plus a lambda:
+
+```python
+        # ...
+        for neighbor in filter(lambda n: n not in visited, neighbors4(r, c, h, w)):
+            nr, nc  = neighbor
+            newdist = dist + grid[nr][nc]
+            # ...
+```
+
+Or using [`itertools.filterfalse()`][py-itertools-filterfalse], exploiting the
+already existing `.__contains__()` built-in method of the `visited` set:
+
+```python
+from itertools import filterfalse
+# ...
+
+        # ...
+        for neighbor in filterfalse(visited.__contains__, neighbors4(r, c, h, w)):
+            nr, nc  = neighbor
+            newdist = dist + grid[nr][nc]
+            # ...
 ```
 
 All that's left to do is call the function we just wrote on our grid:
@@ -3146,6 +3178,7 @@ get on the global leaderboard, this time for both parts (79th and 62nd), yay!
 [py-heapq]:                   https://docs.python.org/3/library/heapq.html
 [py-io-readline]:             https://docs.python.org/3/library/io.html#io.IOBase.readline
 [py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
+[py-itertools-filterfalse]:   https://docs.python.org/3/library/itertools.html#itertools.filterfalse
 [py-itertools-product]:       https://docs.python.org/3/library/itertools.html#itertools.product
 [py-itertools-repeat]:        https://docs.python.org/3/library/itertools.html#itertools.repeat
 [py-itertools-starmap]:       https://docs.python.org/3/library/itertools.html#itertools.starmap
@@ -3179,6 +3212,7 @@ get on the global leaderboard, this time for both parts (79th and 62nd), yay!
 [wiki-linked-list]:           https://en.wikipedia.org/wiki/Linked_list
 [wiki-median]:                https://en.wikipedia.org/wiki/Median
 [wiki-min-heap]:              https://en.wikipedia.org/wiki/Binary_heap
+[wiki-priority-queue]:        https://en.wikipedia.org/wiki/Priority_queue
 [wiki-pushdown-automata]:     https://en.wikipedia.org/wiki/Pushdown_automaton
 [wiki-queue]:                 https://en.wikipedia.org/wiki/Queue_(abstract_data_type)
 [wiki-reflection]:            https://en.wikipedia.org/wiki/Reflection_(mathematics)
