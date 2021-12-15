@@ -18,6 +18,7 @@ Table of Contents
 - [Day 12 - Passage Pathing][d12]
 - [Day 13 - Transparent Origami][d13]
 - [Day 14 - Extended Polymerization][d14]
+- [Day 15 - Chiton][d15]
 
 
 Day 1 - Sonar Sweep
@@ -2839,6 +2840,218 @@ print('Part 1:', answer1)
 print('Part 2:', answer2)
 ```
 
+
+Day 15 - Chiton
+---------------
+
+[Problem statement][d15-problem] — [Complete solution][d15-solution] — [Back to top][top]
+
+### Part 1
+
+We are given a grid of digits, each digit representing the "risk level" of a
+cell of the grid. We are then told that we want to find a path from the top-left
+corner of the grid to the bottom-right corner, only moving up, down, left and
+right (not diagonally).
+
+Paths have a total risk level equal to the sum of risk levels of the cells they
+enter. Starting with risk level 0 in the top-left cell, each time we "enter" a
+cell in our path, we need to add its risk level to the total risk level for the
+path. We want to know the lowest possible total risk level for a path that gets
+from the entrance (top-left) to the exit (bottom-right), passing through any of
+the cells in the grid.
+
+We can think about the grid as a graph where nodes are the cells of the grid,
+and each node is connected to its neighboring nodes (just as each cell of the
+grid is connected to its neighboring cells).
+
+What about the edges? Moving from a given cell A to a neighboring cell B (thus
+entering B) costs us as much as the risk level of B: we can represent this an
+edge from A to B with weight equal to the risk level of B. Analogously, moving
+from B to A costs us the risk level of A, which may be different from the risk
+level of B, and thus we have another different edge going from B to A with a
+weight equal to the risk level of B. In other words, the edges entering a node
+have the same weight as the risk level of the cell corresponding to that node.
+
+It should be pretty clear how to think about the grid as a graph now, but in
+case it isn't, consider the following example with a small grid and its
+corresponding graph representation (`S` = entrance, `E` = exit):
+
+```none
+           SS <-1-- OO <-2-- OO
+           SS --2-> OO --1-> OO
+           |^       |^       |^
+121        5|       3|       6|
+536        |1       |2       |1
+           v|       v|       v|
+           OO --3-> OO --6-> EE
+           OO <-5-- OO <-3-- EE
+```
+
+The solution to our problem should now be pretty clear: we just want to find the
+shortest path from the entrance (`S`) to the exit (`E`). Good ol' Dijkstra comes
+to the rescue! We can implement [Dijksta's algorithm][algo-dijkstra] and run it
+on our grid.
+
+Before continuing, let's actually read and parse the input into a grid of
+integers. This is basically the same thing we did for [day 9][d09], as the input
+is in the same format: [`map()`][py-builtin-map] each character on each line of
+input into an `int`, and construct a `list` of `lists`s with a
+[generator expression][py-generator-expr]:
+
+```python
+fin   = open(...)
+lines = map(str.rstrip, fin)
+grid  = list(list(map(int, row)) for row in lines)
+```
+
+The nodes we are going to work with are going to be pairs of coordinates
+`(row, col)`. It's clear that we need a function to get the coordinates of the
+neighbors of a given cell. Again, we can just borrow the `neighbors4()`
+[generator function][py-generator-function] we wrote for [day 9 part 1][d09]:
+
+```python
+def neighbors4(r, c, h, w):
+    for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        rr, cc = (r + dr, c + dc)
+        if 0 <= rr < w and 0 <= cc < h:
+            yield rr, cc
+```
+
+Similarly to what we did two years ago for [2019 day 6 part 2][2019-d06-p2], we
+will implement Dijkstra's algorithm using a [min-heap][wiki-min-heap] as a queue
+to hold the nodes to visit and always pop the one with the shortest distance
+from the source. The [`heapq`][py-heapq] module is exactly what we need. A
+`defaultdict` that returns `float('inf')` (positive floating point infinity,
+which compares greater than any integer) as the default value is also useful to
+treat not-yet-seen nodes as being infinitely distant.
+
+The algorithm is pretty well-known and also well-explained in the Wikipedia page
+I just linked above, so I'm not going into much detail about it, I'll just add
+some comments to the code.
+
+```python
+def dijkstra(grid):
+    h, w = len(grid), len(grid[0])
+    source = (0, 0)
+    destination = (h - 1, w - 1)
+
+    # Start with only the source in our queue of nodes to visit and in the
+    # mindist dictionary, with distance 0.
+    queue = [(0, source)]
+    mindist = defaultdict(lambda: float('inf'), {source: 0})
+    visited = set()
+
+    while queue:
+        # Get the node with lowest distance from the queue (and its distance)
+        dist, node = heapq.heappop(queue)
+
+        # If we got to the destination, we have our answer.
+        if node == destination:
+            return dist
+
+        # If we already visited this node, skip it, proceed to the next one.
+        if node in visited:
+            continue
+
+        # Mark the node as visited.
+        visited.add(node)
+        r, c = node
+
+        # For each neighbor of this node:
+        for neighbor in neighbors4(r, c, h, w):
+            # Calculate the total distance from the source to this neighbor
+            # passing through this node.
+            nr, nc  = neighbor
+            newdist = dist + grid[nr][nc]
+
+            # If the new distance is lower than the minimum distance we have to
+            # reach this neighbor, then update its minimum distance and add it
+            # to the queue, as we found a "better" path to it.
+            if newdist < mindist[neighbor]:
+                mindist[neighbor] = newdist
+                heapq.heappush(queue, (newdist, neighbor))
+
+    # If we ever empty the queue without entering the node == destination check
+    # in the above loop, there is no path from source to destination!
+    return float('inf')
+```
+
+All that's left to do is call the function we just wrote on our grid:
+
+```python
+minrisk = dijkstra(grid)
+print('Part 1:', minrisk)
+```
+
+### Part 2
+
+For this second part the goal does not change... only the grid does. The
+*actual* grid is actually five times larger in both dimensions.
+
+The grid we have as input is merely a *tile*, and the actual grid is composed of
+5x5 tiles. Our tile repeats to the right and downward, and each time the tile it
+repeats, all of its "risk levels" are 1 higher than the tile immediately up or
+left of it. If any risk level gets above 9 in the process, it wraps back to 1.
+
+It's only a matter of enlarging our grid and re-running `dijkstra()` on it.
+Let's call the tile width and height `tilew` and `tileh` for simplicity:
+
+```python
+tilew = len(grid)
+tileh = len(grid[0])
+```
+
+We'll first expand the grid to the right: for each row of the grid, take the
+last `tilew` cells, increment them by 1, and append them to the row. This should
+be done a total of 4 times (not 5 since we already have the starting tile).
+
+```python
+for _ in range(4):
+    for row in grid:
+        tail = row[-tilew:] # last tilew elements of the row
+
+        for x in tail:
+            if x < 9:
+                x += 1
+            else:
+                x = 1
+
+            row.append(x)
+```
+
+The inner `for` loop can be simplified using the [`.extend()`][py-list-extend]
+method of lists plus a generator expression and a
+[conditional expression][py-cond-expr]:
+
+```python
+for _ in range(4):
+    for row in grid:
+        tail = row[-tilew:]
+        row.extend((x + 1) if x < 9 else 1 for x in tail)
+```
+
+Now that we have a full row of 5 tiles, we can extend it downwards another 4
+times. The code is pretty similar to the above, only that this time we will
+build a new row with the generator expression, and then `.append()` that to the
+grid.
+
+```python
+for _ in range(4):
+    for row in grid[-tileh:]:
+        row = [(x + 1) if x < 9 else 1 for x in row]
+        grid.append(row)
+```
+
+And as simple as that, we have our part 2 solution:
+
+```python
+minrisk = dijkstra(grid)
+print('Part 2:', minrisk)
+```
+
+Pretty straightforward problem today; second day of the year where I managed to
+get on the global leaderboard, this time for both parts (79th and 62nd), yay!
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -2860,6 +3073,7 @@ print('Part 2:', answer2)
 [d12]: #day-12---passage-pathing
 [d13]: #day-13---transparent-origami
 [d14]: #day-14---extended-polymerization
+[d15]: #day-15---chiton
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -2875,6 +3089,7 @@ print('Part 2:', answer2)
 [d12-problem]: https://adventofcode.com/2021/day/12
 [d13-problem]: https://adventofcode.com/2021/day/13
 [d14-problem]: https://adventofcode.com/2021/day/14
+[d15-problem]: https://adventofcode.com/2021/day/15
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -2890,6 +3105,7 @@ print('Part 2:', answer2)
 [d12-solution]: solutions/day12.py
 [d13-solution]: solutions/day13.py
 [d14-solution]: solutions/day14.py
+[d15-solution]: solutions/day15.py
 
 [d03-orginal]:             original_solutions/day03.py
 [d07-orginal]:             original_solutions/day07.py
@@ -2898,7 +3114,9 @@ print('Part 2:', answer2)
 [d07-reddit-paper]:        https://www.reddit.com/r/adventofcode/comments/rawxad
 [d07-reddit-paper-author]: https://www.reddit.com/user/throwaway7824365346/
 [d14-p2]:                  #part-2-13
+[2019-d06-p2]:             ../2019/README.md#part-2-5
 
+[py-cond-expr]:               https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-dict-comprehension]:      https://www.python.org/dev/peps/pep-0274/
 [py-lambda]:                  https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
 [py-generator-function]:      https://wiki.python.org/moin/Generators
@@ -2925,12 +3143,14 @@ print('Part 2:', answer2)
 [py-frozenset]:               https://docs.python.org/3/library/stdtypes.html#frozenset
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
+[py-heapq]:                   https://docs.python.org/3/library/heapq.html
 [py-io-readline]:             https://docs.python.org/3/library/io.html#io.IOBase.readline
 [py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
 [py-itertools-product]:       https://docs.python.org/3/library/itertools.html#itertools.product
 [py-itertools-repeat]:        https://docs.python.org/3/library/itertools.html#itertools.repeat
 [py-itertools-starmap]:       https://docs.python.org/3/library/itertools.html#itertools.starmap
 [py-itertools-chain]:         https://docs.python.org/3/library/itertools.html#itertools.chain
+[py-list-extend]:             https://docs.python.org/3/library/stdtypes.html#list.extend
 [py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
 [py-operator-itemgetter]:     https://docs.python.org/3/library/operator.html#operator.itemgetter
 [py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
@@ -2941,7 +3161,9 @@ print('Part 2:', answer2)
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
+
 [algo-bfs]:       https://en.wikipedia.org/wiki/Breadth-first_search
+[algo-dijkstra]:  https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
 [algo-dfs]:       https://en.wikipedia.org/wiki/Depth-first_search
 [algo-quicksort]: https://en.wikipedia.org/wiki/Quicksort
 
@@ -2956,6 +3178,7 @@ print('Part 2:', answer2)
 [wiki-linear-time]:           https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-linked-list]:           https://en.wikipedia.org/wiki/Linked_list
 [wiki-median]:                https://en.wikipedia.org/wiki/Median
+[wiki-min-heap]:              https://en.wikipedia.org/wiki/Binary_heap
 [wiki-pushdown-automata]:     https://en.wikipedia.org/wiki/Pushdown_automaton
 [wiki-queue]:                 https://en.wikipedia.org/wiki/Queue_(abstract_data_type)
 [wiki-reflection]:            https://en.wikipedia.org/wiki/Reflection_(mathematics)
