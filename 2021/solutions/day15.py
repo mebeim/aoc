@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
-from utils.all import *
+from utils import advent
+import heapq
 from math import inf as INFINITY
+from collections import defaultdict
+from itertools import filterfalse
 
 def neighbors4(r, c, h, w):
 	for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
@@ -44,11 +47,9 @@ def dijkstra(grid):
 advent.setup(2021, 15)
 fin = advent.get_input()
 
-grid = []
-for line in map(str.rstrip, fin):
-	grid.append(list(map(int, line)))
-
+grid    = list(list(map(int, row)) for row in map(str.rstrip, fin))
 minrisk = dijkstra(grid)
+
 advent.print_answer(1, minrisk)
 
 
