@@ -394,7 +394,8 @@ def bellman_ford(G, src):
 
 	G is a "graph dictionary" of the form {src: [(dst, weight)]}.
 
-	Returns two defaultdicts: distance, previous.
+	Returns a tuple (distance, previous, path_to) where distance and previous
+	are two defaultdict, while path_to is a function.
 
 	distance[node]:
 		length of the shortest path from src to node
@@ -403,9 +404,24 @@ def bellman_ford(G, src):
 	previous[node]:
 		previous node in the shortest path from src to node
 		default to None for unreachable nodes
+
+	path_to(dst):
+		convenience function which computes and returns the shortest path from
+		src (fixed) to dst as a deque of nodes using the values in previous
 	'''
 	distance = defaultdict(lambda: INFINITY, {src: 0})
 	previous = defaultdict(lambda: None)
+
+	def path_to(dst):
+		nonlocal previous
+
+		res = deque([])
+		while previous[dst] is not None:
+			res.appendleft(dst)
+			dst = previous[dst]
+
+		res.appendleft(src)
+		return res
 
 	# This needs to run exactly num_of_nodes - 1 times. If G does not have all
 	# nodes as keys this will run fewer times and produce wrong results.
@@ -424,7 +440,7 @@ def bellman_ford(G, src):
 				if distance[node] + weight < distance[neighbor]:
 					raise Exception('Bellman-Ford on graph containing negative-weight cycles')
 
-	return distance, previous
+	return distance, previous, path_to
 
 def floyd_warshall(G):
 	'''Find the length of the shortest paths between any pair of nodes in G and
