@@ -7,7 +7,7 @@ __all__ = [
 	'bfs', 'connected_components',
 	'dijkstra', 'dijkstra_lru', 'dijkstra_path', 'dijkstra_path_lru',
 	'dijkstra_all', 'dijkstra_all_paths',
-	'bellman_ford', 'kruskal', 'toposort', 'lex_toposort',
+	'bellman_ford', 'floyd_warshall', 'kruskal', 'toposort', 'lex_toposort',
 	'bisection', 'binary_search',
 	'knapsack'
 ]
@@ -19,6 +19,7 @@ from bisect import bisect_left
 from math import inf as INFINITY
 from itertools import filterfalse
 from operator import itemgetter
+from itertools import product
 from .data_structures import UnionFind
 
 # Maximum cache size used for memoization with lru_cache
@@ -424,6 +425,64 @@ def bellman_ford(G, src):
 					raise Exception('Bellman-Ford on graph containing negative-weight cycles')
 
 	return distance, previous
+
+def floyd_warshall(G):
+	'''Find the length of the shortest paths between any pair of nodes in G and
+	using the Floyd-Warshall algorithm.
+
+	G is a "graph dictionary" of the form {src: [(dst, weight)]}.
+
+	Returns a tuple (distance, successor, path), where distance and successor
+	are two defaultdict of defaultdicts, while path is a function.
+
+	distance[a][b]:
+		length of the shortest path from a to b
+		default to INFINITY if b is not reachable from a
+
+	successor[a][b]:
+		next node in the shortest path from a to b
+		default to None if b is not reachable from a
+
+	path(a, b):
+		convenience function which computes and returns the shortest path from
+		a to b as a list of nodes using the values in successor
+	'''
+	distance  = defaultdict(lambda: defaultdict(lambda: INFINITY))
+	successor = defaultdict(lambda: defaultdict(lambda: None))
+
+	def path(src, dst):
+		nonlocal successor
+
+		if successor[src][dst] is None:
+			return []
+
+		res = [src]
+		while src != dst:
+			src = successor[src][dst]
+			res.append(src)
+
+		return res
+
+	for a, bs in G.items():
+		distance[a][a], successor[a][a] = 0, a
+
+		for b, w in bs:
+			distance[a][b], successor[a][b] = w, b
+			distance[b][b], successor[b][b] = 0, b
+
+	nodes = distance.keys()
+
+	for a, b, c in product(nodes, nodes, nodes):
+		bc, ba, ac = distance[b][c], distance[b][a], distance[a][c]
+
+		if ba + ac < bc:
+			distance[b][c] = ba + ac
+			successor[b][c] = successor[b][a]
+
+	if any(distance[a][a] < 0 for a in nodes):
+		raise Exception('Floyd-Warshall on graph containing negative-weight cycles')
+
+	return distance, successor, path
 
 def kruskal(G):
 	'''Find the minimum spanning tree (or forest) of the *undirected* graph G
