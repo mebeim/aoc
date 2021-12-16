@@ -274,8 +274,11 @@ def dijkstra_path(G, src, dst, get_neighbors=None):
 	G is a "graph dictionary" of the form {src: [(dst, weight)]}
 	get_neighbors(node) is called to determine node neighbors (default is G.get)
 
-	Returns a tuple of the form (src, ..., dst) or an empty tuple if no path is
-	found.
+	Returns a tuple (shortest_path, length) where shortest_path is a tuple of
+	the form (src, ..., dst). If no path is found, the result is ([], INFINITY).
+
+	NOTE that the returned length is the length of the shortest path (i.e. sum
+	of edge weights along the path), not the number of nodes in the path.
 
 	For memoization, use: djk = dijkstra_path_lru(G); djk(src, dst).
 	'''
@@ -283,14 +286,21 @@ def dijkstra_path(G, src, dst, get_neighbors=None):
 		get_neighbors = G.get
 
 	distance = defaultdict(lambda: INFINITY, {src: 0})
-	queue    = [(0, src, (src,))]
+	previous = {src: None}
+	queue    = [(0, src)]
 	visited  = set()
 
 	while queue:
-		dist, node, path = heapq.heappop(queue)
+		dist, node = heapq.heappop(queue)
 
 		if node == dst:
-			return path
+			path = []
+
+			while node is not None:
+				path.append(node)
+				node = previous[node]
+
+			return reversed(path), dist
 
 		if node not in visited:
 			visited.add(node)
@@ -304,9 +314,10 @@ def dijkstra_path(G, src, dst, get_neighbors=None):
 
 				if new_dist < distance[neighbor]:
 					distance[neighbor] = new_dist
-					heapq.heappush(queue, (new_dist, neighbor, path + (neighbor,)))
+					previous[neighbor] = node
+					heapq.heappush(queue, (new_dist, neighbor))
 
-	return ()
+	return (), INFINITY
 
 def dijkstra_path_lru(G, get_neighbors=None):
 	@lru_cache(MAX_CACHE_SIZE)
@@ -358,7 +369,9 @@ def dijkstra_all_paths(G, src, get_neighbors=None):
 	G is a "graph dictionary" of the form {src: [(dst, weight)]}
 	get_neighbors(node) is called to determine node neighbors (default is G.get)
 
-	Returns a defaultdict {node: path}, where unreachable nodes have path=().
+	Returns a defaultdict {node: (path, length)}, where unreachable nodes have
+	path=() and length=INFINITY. NOTE that src is always present in the result
+	with path=(src,) and length=0.
 	'''
 	if get_neighbors is None:
 		get_neighbors = G.get
