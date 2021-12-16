@@ -3,6 +3,7 @@
 from re import UNICODE
 from utils.all import *
 
+advent.setup(2021, 9)
 if 'debug' not in map(str.lower, sys.argv):
 	fin = advent.get_input()
 else:

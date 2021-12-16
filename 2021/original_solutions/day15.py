@@ -2,6 +2,7 @@
 
 from utils.all import *
 
+advent.setup(2021, 15)
 DEBUG = 'debug' not in map(str.lower, sys.argv)
 if DEBUG:
 	fin = advent.get_input()

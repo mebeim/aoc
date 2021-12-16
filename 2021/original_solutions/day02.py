@@ -2,6 +2,7 @@
 
 from utils.all import *
 
+advent.setup(2021, 2)
 fin = advent.get_input()
 lines = get_lines(fin)
 
