@@ -58,6 +58,9 @@ def setup(year, day):
 def get_input(fname=None, mode='r'):
 	check_setup_once()
 
+	if fname is not None:
+		return open(fname, mode)
+
 	if not os.path.isdir(CACHE_DIR):
 		try:
 			os.mkdir(CACHE_DIR)
@@ -68,34 +71,36 @@ def get_input(fname=None, mode='r'):
 			sys.exit(1)
 
 	log('Getting input for year {} day {}... ', YEAR, DAY)
+	fname = os.path.join(CACHE_DIR, '{}_{:02d}.txt'.format(YEAR, DAY))
 
-	if fname is None:
-		fname = os.path.join(CACHE_DIR, '{}_{:02d}.txt'.format(YEAR, DAY))
-
-	if not os.path.isfile(fname):
-		if not REQUESTS:
-			logcont('err!\n')
-			log('ERROR: cannot download input, no requests module installed!\n')
-			sys.exit(1)
-		elif not SESSION:
-			logcont('err!\n')
-			log('ERROR: cannot download input file without session cookie!\n')
-			sys.exit(1)
-
-		logcont('downloading... ')
-
-		r = S.get(URL.format(YEAR, DAY, 'input'))
-		check_or_die(r)
-
-		with open(fname, 'wb') as f:
-			f.write(r.content)
-
-		logcont('done.\n')
-
-	else:
+	try:
+		file = open(fname, mode)
 		logcont('done (from disk).\n')
+		return file
+	except FileNotFoundError:
+		pass
 
-	return open(fname, mode)
+	if not REQUESTS:
+		logcont('err!\n')
+		log('ERROR: cannot download input, no requests module installed!\n')
+		sys.exit(1)
+	elif not SESSION:
+		logcont('err!\n')
+		log('ERROR: cannot download input file without session cookie!\n')
+		sys.exit(1)
+
+	logcont('downloading... ')
+
+	r = S.get(URL.format(YEAR, DAY, 'input'))
+	check_or_die(r)
+
+	with open(fname, 'wb') as f:
+		f.write(r.content)
+
+	file = open(fname, mode)
+	logcont('done.\n')
+
+	return file
 
 def print_answer(part, answer):
 	print('Part {}:'.format(part), answer)
