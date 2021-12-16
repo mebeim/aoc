@@ -19,6 +19,7 @@ Table of Contents
 - [Day 13 - Transparent Origami][d13]
 - [Day 14 - Extended Polymerization][d14]
 - [Day 15 - Chiton][d15]
+- [Day 16 - Packet Decoder][d16]
 
 
 Day 1 - Sonar Sweep
@@ -3084,6 +3085,275 @@ print('Part 2:', minrisk)
 Pretty straightforward problem today; second day of the year where I managed to
 get on the global leaderboard, this time for both parts (79th and 62nd), yay!
 
+
+Day 16 - Packet Decoder
+-----------------------
+
+[Problem statement][d16-problem] — [Complete solution][d16-solution] — [Back to top][top]
+
+### Part 1
+
+Today's problem is about binary data parsing. We are given the specifications of
+a rather bizarre recursive binary data format, and we need to parse our input
+(which is a hexadecimal string representing the data).
+
+The data we are going to parse is composed of packets. Each packet has a header
+of 6 bits composed of a 3-bit *version* and a 3-bit *type ID*, plus additional
+data depending on the type.
+
+There are two main kinds of packets:
+
+- Type `4` packets, which only contain an integer value. The value is encoded in
+  the packet data an unknown number of groups of 5 bits. The most significant
+  bit (MSB) of each group tells us if there are any additional groups; the
+  remaining 4 bits of each group should be concatenated to form the value.
+- Operator packets (any other type), which may contain an arbitrary number of
+  nested packets.
+
+Operator packets are encoded as follows:
+
+- The first data bit is a *length type ID* (`ltid`):
+- If `ltid=0`, the next 15 bits are an integer that represents the total length
+  in bits of the sub-packets contained by this packet.
+- Otherwise (`ltid=1`), then the next 11 bits are an integer that represents
+  the number of sub-packets contained by this packet.
+- The rest of the data are concatenated sub-packets.
+
+Our input data consists of only one very large operator packet, containing a lot
+of nested packets. Any leftover bits after parsing this big "root" packet need
+to be ignored.
+
+For the first part of today's problem, we need to calculate the sum of the
+versions of all packets (including those of sub-packets at any level).
+
+The data structure we need to parse can be parsed in a single pass from start to
+finish, keeping track of the current position while parsing. Nested packets are
+annoying to deal with, but with the appropriate amount of recursion we can make
+our life easier.
+
+Let's define a `Bitstream` [class][py-class] to do the job. It will directly
+take a file object as the only argument of its constructor, which will read all
+the data in the file and convert it from a hexadecimal string to a binary
+string.
+
+We can convert the hexadecimal input string into a [`bytes`][py-bytes] object we
+can use [`bytes.fromhex()`][py-bytes-fromhex]. Then, to convert every byte into
+a binary string we can use [`str.format()`][py-str-format] with a field
+`{:08b}`, which converts an integer into a zero-padded binary string of 8
+characters.
+
+```python
+class Bitstream:
+    def __init__(self, file):
+        hexdata = file.read()
+        rawdata = bytes.fromhex(hexdata)
+
+        self.pos = 0
+        self.bits = ''
+
+        for byte in rawdata:
+            self.bits += '{:08b}'.format(byte)
+```
+
+We can simplify the loop with the help of [`str.join()`][py-str-join] and
+[`map()`][py-builtin-map]:
+
+```python
+self.bits = ''.join(map('{:08b}'.format, rawdata))
+```
+
+The first method we want to implement is `decode_int()`, which will take a
+number `nbits` as parameter, decode an integer of the specified number of bits
+from the stream (`self.bits`) starting at the current position (`self.pos`), and
+then advance the position. To convert a bit string into an integer we can just
+use [`int()`][py-builtin-int] with `base=2`.
+
+```python
+def decode_int(self, nbits):
+    res = int(self.bits[self.pos:self.pos + nbits], 2)
+    self.pos += nbits
+    return res
+```
+
+Now we can start parsing actual packets. We'll represent packets as 3-element
+tuples of the form `(version, tid, data)`. Let's write a `decode_one_packet()`
+method to decode a single packet. It will read the packet version and type using
+`.decode_int()`, and then decide what to do based on the type:
+
+```python
+def decode_one_packet(self):
+    version = self.decode_int(3)
+    tid     = self.decode_int(3)
+    data    = self.decode_packet_data(tid)
+    return (version, tid, data)
+```
+
+For now, let's assume we already have the `.decode_packet_data()` method above
+at our disposal. We will build it from the bottom up, writing simpler methods
+first and then composing them.
+
+The data of value packets (`tid=4`) is the easiest to parse: just start reading
+integers of 5 bits each and accumulate the 4 least significant bits (using the
+binary AND operator `&`), stopping when the most significant bit is `0` (again
+extracted using `&`). We can use binary integer constants with the `0b` prefix
+to make our life easier.
+
+```python
+def decode_value_data(self):
+    value = 0
+    group = 0b10000
+
+    while group & 0b10000:
+        group = self.decode_int(5)
+        value <<= 4
+        value += group & 0b1111
+
+    return value
+```
+
+Now for operator packets' data... the first bit of data is the `ltid`, which
+tells us if the next bits need to be interpreted as a *number of packets*
+(`ltid=1`) or a *total length* (`ltid=0`).
+
+The first case is straightforward, we can recursively call `decode_one_packet()`
+the specified number of times and return a `list` of packets. Let's write a
+function that does just that for convenience. A simple
+[generator expression][py-generator-expr] is all we need:
+
+```python
+def decode_n_packets(self, n):
+    return [self.decode_one_packet() for _ in range(n)]
+```
+
+For `ltid=0` we have no other choice than to decode one packet at a time until
+we reach the specified total length. Let's also write a method for this:
+
+```python
+def decode_len_packets(self, length):
+    end = self.pos + length
+    pkts = []
+
+    while self.pos < end:
+        pkts.append(self.decode_one_packet())
+
+    return pkts
+```
+
+Now we can easily decode the data contained in operator packets:
+
+```python
+def decode_operator_data(self):
+    ltid = self.decode_int(1)
+
+    if ltid == 1:
+        return self.decode_n_packets(self.decode_int(11))
+
+    return self.decode_len_packets(self.decode_int(15))
+```
+
+And finally, we can easily implement `decode_operator_data()` as follows:
+
+```python
+def decode_packet_data(self, tid):
+    if tid == 4:
+        return self.decode_value_data()
+    return self.decode_operator_data()
+```
+
+We have all we need to parse the entire input into an appropriate data
+structure. Once we do so, we can recursively iterate over it to sum all the
+packet versions. Let's write a function that does just that. Given how we
+structured packets, this is simpler than one might think. We only have two
+possible cases:
+
+1. Value packets (`tid == 4`) that don't contain any sub-packet, for these we
+   can just return the version.
+2. Operator packets (`tid != 4`) that contain sub-packets: iterate over each
+   packet and make a recursive call, summing everything up. This can be done in
+   a single line with [`sum()`][py-builtin-sum] plus [`map()`][py-builtin-map].
+
+```python
+def sum_versions(packet):
+    v, tid, data = packet
+
+    if tid == 4:
+        return v
+
+    return v + sum(map(sum_versions, data))
+```
+
+It's cool to notice that the only piece of code which advances the position of
+our `Bitstream` is in `decode_int()` (`self.pos += nbits`). Any other function
+is just going to end up calling `decode_int()` somehow!
+
+That's it! A couple of function calls and we are done:
+
+```python
+fin    = open(...)
+stream = Bitstream(fin)
+packet = stream.decode_one_packet()
+vsum   = sum_versions(packet)
+
+print('Part 1:', vsum)
+```
+
+### Part 2
+
+For the second part, we are given the specifications of all operator packets:
+
+- `tid=0` means "sum": the value of this packet is the sum of the values of all
+  its sub-packets.
+- `tid=1` means "product": the value of this packet is the product of the values
+  of all its sub-packets.
+- `tid=2` means "minimum": ... minimum amongst all sub-packets' values.
+- `tid=3` means "maximum": ... maximum amongst all sub-packets' values.
+- `tid=5` means "greater than": this packet always contains 2 sub-packets and
+  its value is `1` if the first sub-packet's value is greater than the second
+  sub-packet's value.
+- `tid=6` means "less than": ... `1` if 1st sub-packet has lower value than the
+  2nd.
+- `tid=7` means "equals": ... `1` if 1st sub-packet has equal value to the 2nd.
+
+We need to calculate the value of the "root" packet.
+
+Yet another recursive function! There isn't much to do except follow directions
+here. In case of plain value packets (`tid=4`) we'll just return the packet's
+value. In all other cases, we'll first make one recursive call per sub-packet to
+calculate all sub-packet values, then apply whatever operation is needed on the
+values based on the packet type. We have built-ins for everything (`sum()`,
+`min()`, `max()`) except the product: we'll use [`math.prod()`][py-math-prod]
+for that (Python >= 3.8).
+
+```python
+from math import prod
+
+def evaluate(packet):
+    _, tid, data = packet
+
+    if tid == 4:
+        return data
+
+    values = map(evaluate, data)
+
+    if tid == 0: return sum(values)
+    if tid == 1: return prod(values)
+    if tid == 2: return min(values)
+    if tid == 3: return max(values)
+
+    a, b = values
+
+    if tid == 5: return int(a > b)
+    if tid == 6: return int(a < b)
+    return int(a == b) # tid == 7
+```
+
+That was straightforward. Let's get that second star:
+
+```python
+result = evaluate(packet)
+print('Part 2:', result)
+```
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -3106,6 +3376,7 @@ get on the global leaderboard, this time for both parts (79th and 62nd), yay!
 [d13]: #day-13---transparent-origami
 [d14]: #day-14---extended-polymerization
 [d15]: #day-15---chiton
+[d16]: #day-16---packet-decoder
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -3122,6 +3393,7 @@ get on the global leaderboard, this time for both parts (79th and 62nd), yay!
 [d13-problem]: https://adventofcode.com/2021/day/13
 [d14-problem]: https://adventofcode.com/2021/day/14
 [d15-problem]: https://adventofcode.com/2021/day/15
+[d16-problem]: https://adventofcode.com/2021/day/16
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -3138,6 +3410,7 @@ get on the global leaderboard, this time for both parts (79th and 62nd), yay!
 [d13-solution]: solutions/day13.py
 [d14-solution]: solutions/day14.py
 [d15-solution]: solutions/day15.py
+[d16-solution]: solutions/day16.py
 
 [d03-orginal]:             original_solutions/day03.py
 [d07-orginal]:             original_solutions/day07.py
@@ -3148,6 +3421,7 @@ get on the global leaderboard, this time for both parts (79th and 62nd), yay!
 [d14-p2]:                  #part-2-13
 [2019-d06-p2]:             ../2019/README.md#part-2-5
 
+[py-class]:                   https://docs.python.org/3/tutorial/classes.html#a-first-look-at-classes
 [py-cond-expr]:               https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-dict-comprehension]:      https://www.python.org/dev/peps/pep-0274/
 [py-lambda]:                  https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
@@ -3168,6 +3442,8 @@ get on the global leaderboard, this time for both parts (79th and 62nd), yay!
 [py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
+[py-bytes]:                   https://docs.python.org/3/library/stdtypes.html#bytes
+[py-bytes-fromhex]:           https://docs.python.org/3/library/stdtypes.html#bytes.fromhex
 [py-collections]:             https://docs.python.org/3/library/collections.html
 [py-collections-counter]:     https://docs.python.org/3/library/collections.html#collections.Counter
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
@@ -3185,10 +3461,13 @@ get on the global leaderboard, this time for both parts (79th and 62nd), yay!
 [py-itertools-chain]:         https://docs.python.org/3/library/itertools.html#itertools.chain
 [py-list-extend]:             https://docs.python.org/3/library/stdtypes.html#list.extend
 [py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
+[py-math-prod]:               https://docs.python.org/3/library/math.html#math.prod
 [py-operator-itemgetter]:     https://docs.python.org/3/library/operator.html#operator.itemgetter
 [py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
 [py-statistics-median-low]:   https://docs.python.org/3/library/statistics.html#statistics.median_low
+[py-str-format]:              https://docs.python.org/3/library/stdtypes.html#str.format
 [py-str-index]:               https://docs.python.org/3/library/stdtypes.html#str.index
+[py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
 [py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
 [py-str-rstrip]:              https://docs.python.org/3/library/stdtypes.html#str.rstrip
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
