@@ -3471,7 +3471,7 @@ some example values to get an idea of what is going on:
 
 From the above table we can clearly see that V<sub>y</sub>(t) = 0 − t. If we
 also consider a generic starting value we have V<sub>y</sub>(t) =
-V<sub>0,y</sub> − T. Analogously, we have V<sub>x</sub>(t) = V<sub>0,x</sub> −
+V<sub>0,y</sub> − t. Analogously, we have V<sub>x</sub>(t) = V<sub>0,x</sub> −
 t. As per the x and y coordinates... their value at some t is just the sum of
 all the *previous* velocities:
 
@@ -3480,7 +3480,7 @@ all the *previous* velocities:
   which is when V<sub>x</sub> = 0, we have x equal to the sum of all the natural
   numbers from V<sub>0,x</sub> to 1. This is a
   [triangular number][wiki-triangular-number]! Remember those? We have x(t) =
-  sum from n = 0 to t of n = n(n + 1)/2.
+  sum from n = 0 to t of n, which is equal to n(n + 1)/2.
 
 We can easily see this second point graphically if we plot a histogram for the
 values of V<sub>x</sub>:
@@ -3519,9 +3519,9 @@ y0 = 0; V0x = 5
 |  5 |  0 |  15 |             0  1  2  3  4  5
 ```
 
-We can think about the problem independently for x and y. Let's assume that they
-are not correlated at all, then we'll add in the correlation. So,
-**what if we only had y?**
+We can think about the problem independently for x and y. Let's assume just for
+a moment that they are not correlated at all, then we'll add in the correlation.
+So, **what if we only had y?**
 
 Given the above, we can draw some very important conclusions:
 
@@ -3554,9 +3554,9 @@ Given the above, we can draw some very important conclusions:
 6. Given the above, the maximum height we will ever reach is
    y<sub>min</sub>(y<sub>min</sub> + 1)/2.
 
-Now, all of the above reasoning makes sense, but we must also consider the other
-coordinate. After all, we are only guaranteed to hit the if at the same time of
-hitting it with the y coordinate we also hit it with the x coordinate.
+Now, all of the above reasoning makes sense alone for the y, but we must also
+consider the other coordinate. After all, we are only guaranteed to hit the
+target if we do it with *both* coordinates at the same time.
 
 Let's think about it:
 
@@ -3575,13 +3575,19 @@ Let's think about it:
    the right downwards velocity and acceleration, as we figured out in the
    previous paragraph.
 
-The existence of a triangular number between x<sub>min</sub> and x<sub>max</sub>
-seems to be guaranteed by looking at the inputs for today's puzzle, however it's
-still not explicitly stated in the problem statement, so we'll better `assert`
-that. We can check this by computing N using the
+**IMPORTANT note**: the existence of a triangular number between x<sub>min</sub>
+and x<sub>max</sub> seems to be guaranteed by looking at the inputs for today's
+puzzle, however it's still not explicitly stated in the problem statement. It's
+an assumption that I decided to make for today's walkthrough just to make it
+more entertaining. We can still easily solve the problem if it does not hold.
+For this purpose, we'll also include a "generic" part 1 calculation in the code
+for part 2 later.
+
+Since this is an assumption that must hold for the above reasoning to make
+sense, we'll better `assert` that. We can check this by computing N using the
 [inverse triangular number formula][misc-inverse-triangular] for
-x<sub>min</sub>, rounding down, and then checking if either the N-th triangular
-number is equal to x<sub>min</sub> or the (N+1)-th triangular number is less
+x<sub>min</sub>, rounding down, and then checking if either the Nth triangular
+number is equal to x<sub>min</sub> or the (N+1)th triangular number is less
 than or equal to x<sub>max</sub>.
 
 ```python
@@ -3591,7 +3597,7 @@ def tri(n):
 def invtri(x):
     return int((x * 2)**0.5)
 
-assert tri(invtri(xmin)) == xmin or tri(invtri(xmin) + 1) <= xmax
+assert tri(invtri(xmin)) == xmin or tri(invtri(xmin) + 1) <= xmax, 'No triangular number in [xmin, xmax]'
 ```
 
 We did our homework. We can now *finally* calculate the solution!
@@ -3631,11 +3637,11 @@ y<sub>max</sub> are both negative):
 
   So 1 ≤ V<sub>0,x</sub> ≤ x<sub>max</sub>.
 
-- As per V<sub>0,y</sub>, any value that is above -y<sub>min</sub> will
+- As per V<sub>0,y</sub>, any value that is above −y<sub>min</sub> will
   immediately overshoot the target after reaching y=0 (as we discussed in part
   1), so V<sub>0,y</sub> <= −y<sub>min</sub>. The lowest we can shoot is
   V<sub>0,y</sub> = y<sub>min</sub> (i.e. directly hit the target at t=1).
-  Anything lower and we'll miss it entirely with our prove going deep down
+  Anything lower and we'll miss it entirely with our probe going deep down
   towards negative infinity.
 
   So y<sub>min</sub> ≤ V<sub>0,x</sub> ≤ −y<sub>min</sub>.
@@ -3644,11 +3650,17 @@ All that's left to do is write a double nested loop, and simulate the trajectory
 of the probe until we either hit the target or we get too far out and go beyond
 it (in either direction, right or down).
 
+To be safer in case part 1's assumption about the existence of a triangular
+number between x<sub>min</sub> and x<sub>max</sub>, we can include the
+calculation of the maximum y (`yhi` in part 1's code) in this brute force
+solution as well.
+
 Here's the function we need:
 
 ```python
 def search(xmin, xmax, ymin, ymax):
     total = 0
+    yhi   = 0
 
     # For every reasonable (v0x, v0y)
     for v0x in range(1, xmax + 1):
@@ -3656,7 +3668,7 @@ def search(xmin, xmax, ymin, ymax):
             x, y   = 0, 0
             vx, vy = v0x, v0y
 
-            # While we did not get past the target (on either axis)
+            # While we are not past the target (on either axis)
             while x <= xmax and y >= ymin:
                 # If we are inside the target, these v0x and v0y were good
                 if x >= xmin and y <= ymax:
@@ -3667,23 +3679,27 @@ def search(xmin, xmax, ymin, ymax):
                 x, y = (x + vx, y + vy)
                 vy -= 1
 
-                if vx > 0: # ... also remembering that vx can never go below 0
+                if vx > 0: # vx never goes below 0
                     vx -= 1
 
-    return total
+                # Update the maximum y found so far if needed
+                if y > yhi:
+                    yhi = y
+
+    return yhi, total
 ```
 
 There is one small improvement to make: the lower bound for V<sub>0,x</sub> can
 be increased. We can start searching from the first inverse triangular number
 that is smaller than x<sub>min</sub>. This is because, again as we discussed in
 part 1, we cannot possibly reach the target in enough time without overshooting
-it on the y axis if V<sub>0,x</sub> isn't *at least* inverse the inverse of the
-smallest triangular number contained between x<sub>min</sub> and
-x<sub>max</sub>.
+it on the y axis if V<sub>0,x</sub> isn't *at least* the inverse of the smallest
+triangular number contained between x<sub>min</sub> and x<sub>max</sub>.
 
 ```diff
  def search(xmin, xmax, ymin, ymax):
      total = 0
+     yhi   = 0
 
      # For every reasonable (v0x, v0y)
 -     for v0x in range(1, xmax + 1):
@@ -3695,7 +3711,7 @@ x<sub>max</sub>.
 Now we can call `search()` and get our solution:
 
 ```python
-total = search(xmin, xmax, ymin, ymax)
+_, total = search(xmin, xmax, ymin, ymax)
 print('Part 2:', total)
 ```
 
