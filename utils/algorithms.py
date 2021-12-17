@@ -636,6 +636,18 @@ def bisection(fn, y, lo=None, hi=None, tolerance=1e-9, upper=False):
 	caller to supply meaningful values for lo and hi.
 
 	If not supplied, lo and hi are found through exponential search.
+
+	```
+	                 * * *
+	               * |
+	             *   |
+	    y ------*    |
+	           *     |
+	         *       |
+	       *         |
+	    *  |         |
+	       lo        hi
+	```
 	'''
 	if type(y) not in (int, float):
 		raise TypeError('y must be int or float, got {}'.format(type(y)))
