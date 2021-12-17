@@ -20,6 +20,7 @@ Table of Contents
 - [Day 14 - Extended Polymerization][d14]
 - [Day 15 - Chiton][d15]
 - [Day 16 - Packet Decoder][d16]
+- [Day 17 - Trick Shot][d17]
 
 
 Day 1 - Sonar Sweep
@@ -3354,6 +3355,352 @@ result = evaluate(packet)
 print('Part 2:', result)
 ```
 
+
+Day 17 - Trick Shot
+-------------------
+
+[Problem statement][d17-problem] — [Complete solution][d17-solution] — [Back to top][top]
+
+### Part 1
+
+Cool mathematical problem today. We are working with a slight variation of the
+classical [projectile motion][wiki-projectile-motion]. We have a probe living in
+the [Cartesian plane][wiki-cartesian-coords] which starts at the origin (0, 0)
+and needs to be shot with a certain initial velocity (V<sub>0,x</sub>,
+V<sub>0,y</sub>) in order to hit a known target.
+
+All coordinates are integers. The target to hit is a rectangle which is placed
+in the 4th quadrant of the Cartesian plane at (positive xs, negative ys). It
+spans from x<sub>min</sub> to x<sub>max</sub> horizontally and from
+y<sub>min</sub> to y<sub>max</sub> vertically. NOTE that y<sub>min</sub> and
+y<sub>max</sub> are lower than 0. This seems to be an assumption that we are
+allowed to make, which as we'll see simplifies the problem. We'll
+[`assert`][py-assert] it just to be sure.
+
+Let's get input parsing out of the way immediately, it's merely one line of
+code. We'll use a [regular expression][misc-regexp] for convenience, with
+[`re`][py-re] module. And of course, what would we do without our beloved
+[`map()`][py-builtin-map] to convert the matches to `int` right away...
+
+```python
+xmin, xmax, ymin, ymax = map(int, re.findall(r'-?\d+', fin.read()))
+assert ymin < 0 and ymax < 0
+```
+
+The time is also finite, and each instant the probe moves given the following
+rules:
+
+- The probe's x position increases by its x velocity.
+- The probe's y position increases by its y velocity.
+- Due to drag, the probe's x velocity changes by 1 toward the value 0; that is,
+  it decreases by 1 if it is greater than 0, increases by 1 if it is less than
+  0, or does not change if it is already 0.
+- Due to gravity, the probe's y velocity decreases by 1.
+
+The starting velocity (V<sub>0,x</sub>, V<sub>0,y</sub>) is chosen by us, and we
+want to determine the highest possible y coordinate that the probe can reach
+while still hitting the target afterward.
+
+Here's a visual representation of the problem we are talking about:
+
+```none
+ Y ^............#....#............
+   |......#..............#........
+   |..............................
+---O------------------------#-------> X
+   |..............................
+   |..............................
+   |..........................#...
+   |..............................
+   |...................TTTTTTTTTTT
+   |...................TTTTTTTT#TT <-- hit
+   |...................TTTTTTTTTTT
+```
+
+Of course, we could brute force the solution, but there is actually a smart way
+to solve the problem with a single mathematical expression (a
+[closed-form expression][wiki-closed-form-expr]) given the input.
+
+If it wasn't for the drag affecting the horizontal speed (V<sub>x</sub>), the
+whole thing would be pretty straightforward: a simple parabola, textbook
+projectile motion. This second example given in the problem statement makes us
+understand the effect of the drag:
+
+```none
+ Y ^..............#..#............
+   |..........#........#..........
+   |..............................
+   |.....#..............#.........
+   |..............................
+   |..............................
+---O--------------------#-----------> X
+   |..............................
+   |..............................
+   |..................TTTTTTTTTTTT
+   |..................TT#TTTTTTTTT <-- hit
+   |..................TTTTTTTTTTTT
+```
+
+Let's start reasoning...
+
+First of all, given the way the probe moves, we can agree right away on the fact
+that the starting V<sub>x</sub> and V<sub>y</sub> must be positive integers,
+otherwise we're never going to hit the target.
+
+Given that both V<sub>0,x</sub> and V<sub>0,y</sub> must be positive, the
+behavior of the x and y coordinates of the probe is pretty similar: in both
+directions, we have a constant acceleration of A<sub>x</sub> = A<sub>y</sub> =
+−1. The only difference is that the x coordinate will stop advancing when
+V<sub>x</sub> becomes 0, while the y coordinate will keep moving. Let's tabulate
+some example values to get an idea of what is going on:
+
+```none
+(x0, y0) = (0, 0); (V0x, V0y) = (5, 0);
+
+|   t |  Vx |   x |  Vy |   y |
++-----+-----+-----+-----+-----+
+|   0 |   5 |   0 |   0 |   0 |
+|   1 |   4 |   5 |  -1 |   0 |
+|   2 |   3 |   9 |  -2 |  -1 |
+|   3 |   2 |  12 |  -3 |  -3 |
+|   4 |   1 |  14 |  -4 |  -6 |
+|   5 |   0 |  15 |  -5 | -10 |
+|   6 |   0 |  15 |  -6 | -15 |
+|   7 |   0 |  15 |  -7 | -21 |
+```
+
+From the above table we can clearly see that V<sub>y</sub>(t) = 0 − t. If we
+also consider a generic starting value we have V<sub>y</sub>(t) =
+V<sub>0,y</sub> − T. Analogously, we have V<sub>x</sub>(t) = V<sub>0,x</sub> −
+t. As per the x and y coordinates... their value at some t is just the sum of
+all the *previous* velocities:
+
+- For y, we have: y(t) = sum from n = 0 to t of V<sub>y</sub>(n).
+- For x, it's a little different. If we look at which point x stop increasing,
+  which is when V<sub>x</sub> = 0, we have x equal to the sum of all the natural
+  numbers from V<sub>0,x</sub> to 1. This is a
+  [triangular number][wiki-triangular-number]! Remember those? We have x(t) =
+  sum from n = 0 to t of n = n(n + 1)/2.
+
+We can easily see this second point graphically if we plot a histogram for the
+values of V<sub>x</sub>:
+
+```none
+Vx ^
+   |##
+   |## ##
+   |## ## ##
+   |## ## ## ##
+   |## ## ## ## ##
+   +-----------------> t
+    0  1  2  3  4  5
+```
+
+The value of x is exactly the sum of all the previous values of V<sub>x</sub>,
+so the area of the above triangle.
+
+Okay, now, about the highest point: when will we reach it? If we start with some
+V<sub>0,y</sub> > 0, since we subtract 1 each step, we will inevitably end up
+with V<sub>0,y</sub> = 0 after exactly V<sub>0,y</sub> steps, at which point, we
+will stop going up and start going down. What would the y coordinate be? Well...
+if we think about it for a second, up until the highest point, the y coordinate
+is also a triangular number:
+
+```none
+y0 = 0; V0x = 5
+
+|  t | Vy |   y |         Vy ^
++----+----+-----+            |##
+|  0 |  5 |   0 |            |## ##
+|  1 |  4 |   5 |            |## ## ##
+|  2 |  3 |   9 |   ==>      |## ## ## ##
+|  3 |  2 |  12 |            |## ## ## ## ##
+|  4 |  1 |  14 |            +-----------------> t
+|  5 |  0 |  15 |             0  1  2  3  4  5
+```
+
+We can think about the problem independently for x and y. Let's assume that they
+are not correlated at all, then we'll add in the correlation. So,
+**what if we only had y?**
+
+Given the above, we can draw some very important conclusions:
+
+1. The highest point the probe will reach is always at
+   T<sub>hi</sub>=V<sub>0,y</sub> and its height is exactly y =
+   V<sub>0,y</sub>(V<sub>0,y</sub> + 1)/2.
+
+2. We obviously want to start with a V<sub>0,y</sub> greater than 0, the higher
+   the better, since y directly increases with V<sub>0,y</sub>.
+
+3. After reaching the highest point, the probe will then fall down and always
+   reach y=0 in exactly double the time it took to get to the highest point
+   (T<sub>zero</sub> = 2T<sub>hi</sub>), and with exactly the opposite value of
+   the initial speed: −V<sub>0,y</sub>.
+
+4. At this point (when y=0), if │V<sub>y</sub>│ is greater than
+   │y<sub>min</sub>│, it will overshoot the target immediately at the next
+   instant of time. The highest possible value for │V<sub>y</sub>│ to not
+   overshoot the target is exactly │y<sub>min</sub>│ (i.e. equal to the
+   coordinate of the very bottom of the target). Both y<sub>min</sub> and
+   V<sub>y</sub> are negative at this point: V<sub>y</sub>(T<sub>zero</sub>) =
+   −V<sub>0,y</sub> = y<sub>min</sub>.
+
+5. If V<sub>0,y</sub> = −y<sub>min</sub>, then we know that the will "hit" the
+   target (at least with the y coordinate) exactly the instant after
+   T<sub>zero</sub>, since at T<sub>zero</sub> we have y=0 and at the next step
+   we will have y = 0 −(−y<sub>min</sub>) = y<sub>min</sub>. So T<sub>hi</sub>
+   = T<sub>zero</sub> + 1 = 2T<sub>hi</sub> + 1 = 2V<sub>0,y</sub> + 1.
+
+6. Given the above, the maximum height we will ever reach is
+   y<sub>min</sub>(y<sub>min</sub> + 1)/2.
+
+Now, all of the above reasoning makes sense, but we must also consider the other
+coordinate. After all, we are only guaranteed to hit the if at the same time of
+hitting it with the y coordinate we also hit it with the x coordinate.
+
+Let's think about it:
+
+7. We know that given an initial V<sub>0,x</sub>, the x coordinate will *stop*
+   moving forward and we will start falling *straight down*. When this happens,
+   we will be at xstop = V<sub>0,x</sub>(V<sub>0,x</sub> + 1)/2, which is a
+   triangular number, and is reached at exactly T<sub>stop</sub> =
+   V<sub>0,x</sub>. So we could also say xstop =
+   T<sub>stop</sub>(T<sub>stop</sub> + 1)/2.
+
+8. Therefore, if there is a triangular number between x<sub>min</sub> and
+   x<sub>max</sub> (the horizontal bounds of the target), and that triangular
+   number is generated by a T<sub>stop</sub> value that is lower or equal than
+   T<sub>hi</sub>, we are guaranteed to hit the target. This is because we will
+   find ourselves falling down right above the target in a horizontal line with
+   the right downwards velocity and acceleration, as we figured out in the
+   previous paragraph.
+
+The existence of a triangular number between x<sub>min</sub> and x<sub>max</sub>
+seems to be guaranteed by looking at the inputs for today's puzzle, however it's
+still not explicitly stated in the problem statement, so we'll better `assert`
+that. We can check this by computing N using the
+[inverse triangular number formula][misc-inverse-triangular] for
+x<sub>min</sub>, rounding down, and then checking if either the N-th triangular
+number is equal to x<sub>min</sub> or the (N+1)-th triangular number is less
+than or equal to x<sub>max</sub>.
+
+```python
+def tri(n):
+    return n * (n + 1) // 2
+
+def invtri(x):
+    return int((x * 2)**0.5)
+
+assert tri(invtri(xmin)) == xmin or tri(invtri(xmin) + 1) <= xmax
+```
+
+We did our homework. We can now *finally* calculate the solution!
+
+```python
+yhi = tri(ymin)
+print('Part 1:', yhi)
+```
+
+### Part 2
+
+For the second part, we are now told to *count* the number of possible starting
+values for the velocity vector (V<sub>0,x</sub>; V<sub>0,y</sub>) which will
+cause the probe to hit the target.
+
+Okay. There isn't much we can do here, except maybe an "educated" brute force
+search. While for part 1 we can avoid a lot of useless calculations by being
+smart, apparently here the choice is between (A) doing plain brute force given
+reasonable bounds or (B) somehow finding valid xs (or ys) first, and then
+finding valid ys (or xs) based on those, matching the number of steps between
+the two.
+
+The second kind of solution, also discussed by multiple people in the
+[daily Reddit megathread][d17-reddit-megathread], involves the use of
+maps/sets/dictionaries to remember values. The thing is, the search space is so
+small that the cost of using a set of complex objects most probably outweighs a
+simple double nested `for` scanning all possible values within reasonable
+bounds. This is why I've decided to go with the first kind of solution.
+
+Let's define a range to search in (remember that y<sub>min</sub> and
+y<sub>max</sub> are both negative):
+
+- The search bounds for V<sub>0,x</sub> are pretty obvious: since
+  V<sub>0,x</sub> never goes below 0 and therefore x never decreases, we can be
+  sure that starting with V<sub>0,x</sub> < 1 or V<sub>0,x</sub> >
+  x<sub>max</sub> is guaranteed to make us fail.
+
+  So 1 ≤ V<sub>0,x</sub> ≤ x<sub>max</sub>.
+
+- As per V<sub>0,y</sub>, any value that is above -y<sub>min</sub> will
+  immediately overshoot the target after reaching y=0 (as we discussed in part
+  1), so V<sub>0,y</sub> <= −y<sub>min</sub>. The lowest we can shoot is
+  V<sub>0,y</sub> = y<sub>min</sub> (i.e. directly hit the target at t=1).
+  Anything lower and we'll miss it entirely with our prove going deep down
+  towards negative infinity.
+
+  So y<sub>min</sub> ≤ V<sub>0,x</sub> ≤ −y<sub>min</sub>.
+
+All that's left to do is write a double nested loop, and simulate the trajectory
+of the probe until we either hit the target or we get too far out and go beyond
+it (in either direction, right or down).
+
+Here's the function we need:
+
+```python
+def search(xmin, xmax, ymin, ymax):
+    total = 0
+
+    # For every reasonable (v0x, v0y)
+    for v0x in range(1, xmax + 1):
+        for v0y in range(ymin, -ymin):
+            x, y   = 0, 0
+            vx, vy = v0x, v0y
+
+            # While we did not get past the target (on either axis)
+            while x <= xmax and y >= ymin:
+                # If we are inside the target, these v0x and v0y were good
+                if x >= xmin and y <= ymax:
+                    total += 1
+                    break
+
+                # Advance the trajectory following the rules
+                x, y = (x + vx, y + vy)
+                vy -= 1
+
+                if vx > 0: # ... also remembering that vx can never go below 0
+                    vx -= 1
+
+    return total
+```
+
+There is one small improvement to make: the lower bound for V<sub>0,x</sub> can
+be increased. We can start searching from the first inverse triangular number
+that is smaller than x<sub>min</sub>. This is because, again as we discussed in
+part 1, we cannot possibly reach the target in enough time without overshooting
+it on the y axis if V<sub>0,x</sub> isn't *at least* inverse the inverse of the
+smallest triangular number contained between x<sub>min</sub> and
+x<sub>max</sub>.
+
+```diff
+ def search(xmin, xmax, ymin, ymax):
+     total = 0
+
+     # For every reasonable (v0x, v0y)
+-     for v0x in range(1, xmax + 1):
++     for v0x in range(invtri(xmin), xmax + 1):
+         for v0y in range(ymin, -ymin):
+     ...
+```
+
+Now we can call `search()` and get our solution:
+
+```python
+total = search(xmin, xmax, ymin, ymax)
+print('Part 2:', total)
+```
+
+This "bruteforce" took 15 milliseconds on my machine. I'd say I'm satisfied :')
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -3377,6 +3724,7 @@ print('Part 2:', result)
 [d14]: #day-14---extended-polymerization
 [d15]: #day-15---chiton
 [d16]: #day-16---packet-decoder
+[d17]: #day-17---trick-shot
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -3394,6 +3742,7 @@ print('Part 2:', result)
 [d14-problem]: https://adventofcode.com/2021/day/14
 [d15-problem]: https://adventofcode.com/2021/day/15
 [d16-problem]: https://adventofcode.com/2021/day/16
+[d17-problem]: https://adventofcode.com/2021/day/17
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -3411,6 +3760,7 @@ print('Part 2:', result)
 [d14-solution]: solutions/day14.py
 [d15-solution]: solutions/day15.py
 [d16-solution]: solutions/day16.py
+[d17-solution]: solutions/day17.py
 
 [d03-orginal]:             original_solutions/day03.py
 [d07-orginal]:             original_solutions/day07.py
@@ -3418,9 +3768,12 @@ print('Part 2:', result)
 [d07-reddit-megathread]:   https://www.reddit.com/rar7ty
 [d07-reddit-paper]:        https://www.reddit.com/r/adventofcode/comments/rawxad
 [d07-reddit-paper-author]: https://www.reddit.com/user/throwaway7824365346/
+[d17-reddit-megathread]:   https://www.reddit.com/ri9kdq
+
 [d14-p2]:                  #part-2-13
 [2019-d06-p2]:             ../2019/README.md#part-2-5
 
+[py-assert]:                  https://docs.python.org/3/reference/simple_stmts.html#grammar-token-python-grammar-assert_stmt
 [py-class]:                   https://docs.python.org/3/tutorial/classes.html#a-first-look-at-classes
 [py-cond-expr]:               https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-dict-comprehension]:      https://www.python.org/dev/peps/pep-0274/
@@ -3463,6 +3816,7 @@ print('Part 2:', result)
 [py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
 [py-math-prod]:               https://docs.python.org/3/library/math.html#math.prod
 [py-operator-itemgetter]:     https://docs.python.org/3/library/operator.html#operator.itemgetter
+[py-re]:                      https://docs.python.org/3/library/re.html
 [py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
 [py-statistics-median-low]:   https://docs.python.org/3/library/statistics.html#statistics.median_low
 [py-str-format]:              https://docs.python.org/3/library/stdtypes.html#str.format
@@ -3481,6 +3835,7 @@ print('Part 2:', result)
 
 [wiki-bingo]:                 https://en.wikipedia.org/wiki/Bingo_(American_version)
 [wiki-cartesian-coords]:      https://en.wikipedia.org/wiki/Cartesian_coordinate_system
+[wiki-closed-form-expr]:      https://en.wikipedia.org/wiki/Closed-form_expression
 [wiki-cycle-detection]:       https://en.wikipedia.org/wiki/Cycle_detection
 [wiki-dyck-language]:         https://en.wikipedia.org/wiki/Dyck_language
 [wiki-floor-ceil]:            https://en.wikipedia.org/wiki/Floor_and_ceiling_functions
@@ -3492,6 +3847,7 @@ print('Part 2:', result)
 [wiki-median]:                https://en.wikipedia.org/wiki/Median
 [wiki-min-heap]:              https://en.wikipedia.org/wiki/Binary_heap
 [wiki-priority-queue]:        https://en.wikipedia.org/wiki/Priority_queue
+[wiki-projectile-motion]:     https://en.wikipedia.org/wiki/Projectile_motion
 [wiki-pushdown-automata]:     https://en.wikipedia.org/wiki/Pushdown_automaton
 [wiki-queue]:                 https://en.wikipedia.org/wiki/Queue_(abstract_data_type)
 [wiki-reflection]:            https://en.wikipedia.org/wiki/Reflection_(mathematics)
@@ -3500,9 +3856,11 @@ print('Part 2:', result)
 [wiki-triangular-number]:     https://en.wikipedia.org/wiki/Triangular_number
 
 [misc-aoc-bingo]:            https://www.reddit.com/r/adventofcode/comments/k3q7tr/
+[misc-inverse-triangular]:   https://math.stackexchange.com/a/2041994
 [misc-issue-11]:             https://github.com/mebeim/aoc/issues/11
 [misc-cpp-nth-element]:      https://en.cppreference.com/w/cpp/algorithm/nth_element
 [misc-cpp-nth-element-so]:   https://stackoverflow.com/q/29145520/3889449
 [misc-cpython-median-low]:   https://github.com/python/cpython/blob/ddbab69b6d44085564a9b5022b96b002a52b2f2b/Lib/statistics.py#L549-L568
 [misc-median-math-se]:       https://math.stackexchange.com/q/113270
+[misc-regexp]:               https://www.regular-expressions.info/
 [misc-so-recursive-bfs]:     https://stackoverflow.com/q/2549541/3889449
