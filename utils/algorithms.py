@@ -621,9 +621,13 @@ def lex_toposort(G, reverse=False):
 	return result
 
 def bisection(fn, y, lo=None, hi=None, tolerance=1e-9, upper=False):
-	'''Find a value x in the range [hi, lo] such that f(x) approximates y.
+	'''Find a value x in the range [lo, hi] such that fn(x) == y.
 
-	If y is an int, find an exact match for x such that y == fn(x); return None
+	NOTE: fn(x) must be a monotinically increasing function for this to work! In
+	case f(x) is monotonically decreasing, -fn(x) can be provided. In case f(x)
+	is not monotonous, this method cannot possibly work.
+
+	If y is an int, find an exact match for x such that fn(x) == y; return None
 	on failure.
 
 	If y is a float, find a lower bound for x instead (or upper bound if
@@ -636,14 +640,17 @@ def bisection(fn, y, lo=None, hi=None, tolerance=1e-9, upper=False):
 	if type(y) not in (int, float):
 		raise TypeError('y must be int or float, got {}'.format(type(y)))
 
+	if lo is not None and hi is not None:
+		assert fn(lo) <= fn(hi), 'fn(x) not monotonically increasing'
+
 	if lo is None:
 		# Optimistic check
 		if fn(0) <= y:
 			lo = 0
-
-		lo = -1
-		while fn(lo) > y:
-			lo *= 2
+		else:
+			lo = -1
+			while fn(lo) > y:
+				lo *= 2
 
 	if hi is None:
 		hi = 1
@@ -657,7 +664,7 @@ def bisection(fn, y, lo=None, hi=None, tolerance=1e-9, upper=False):
 
 			if v > y:
 				hi = x - 1
-			elif v < x:
+			elif v < y:
 				lo = x + 1
 			else:
 				return x
