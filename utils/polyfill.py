@@ -1,4 +1,4 @@
-__all__ = ['gcd', 'lcm', 'prod', 'comb', 'perm']
+__all__ = ['gcd', 'lcm', 'prod', 'comb', 'perm', 'pow']
 
 import sys
 from math import factorial
@@ -95,22 +95,51 @@ def _perm(n, k=None):
 		return 0
 	return factorial(n) // factorial(n - k)
 
+def egcd(a, b):
+	if a == 0:
+		return (b, 0, 1)
+	g, y, x = egcd(b % a, a)
+	return (g, x - (b // a) * y, y)
+
+def _modinv(base, mod):
+	g, inv, _ = egcd(base, mod)
+	if g != 1:
+		raise ValueError('base is not invertible for the given modulus')
+	return inv % mod
+
+def _pow(base, exp, mod=None):
+	'''
+	Equivalent to base**exp with 2 arguments or base**exp % mod with 3 arguments
+
+	Some types, such as ints, are able to use a more efficient algorithm when
+	invoked using the three argument form.
+	'''
+	if exp >= 0:
+		# Ok for any Python 3.x
+		return real_pow(base, exp, mod)
+
+	# Polyfill for Python < 3.8
+	return real_pow(_modinv(base, mod), -exp, mod)
+
+real_pow = pow
 
 if sys.version_info >= (3, 9):
 	from math import (
-		gcd,  # 3.9
-		lcm,  # 3.9
-		prod, # 3.8
-		comb, # 3.8
-		perm, # 3.8
+		gcd,  # accepts > 2 arguments since 3.9
+		lcm,  # since 3.9
+		prod, # since 3.8
+		comb, # since 3.8
+		perm, # since 3.8
 	)
 elif sys.version_info >= (3, 8):
 	from math import prod, comb, perm
-	gcd = _gcd # gcd is present from 3.5, but we want the 3.9 version
+	gcd = _gcd
 	lcm = _lcm
+	pow = _pow
 else:
 	gcd = _gcd
 	lcm = _lcm
 	prod = _prod
 	comb = _comb
 	perm = _perm
+	pow = _pow
