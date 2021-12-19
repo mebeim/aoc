@@ -122,6 +122,7 @@ def _pow(base, exp, mod=None):
 	return real_pow(_modinv(base, mod), -exp, mod)
 
 real_pow = pow
+pow = real_pow
 
 if sys.version_info >= (3, 9):
 	from math import (
@@ -131,6 +132,8 @@ if sys.version_info >= (3, 9):
 		comb, # since 3.8
 		perm, # since 3.8
 	)
+
+	pow = real_pow
 elif sys.version_info >= (3, 8):
 	from math import prod, comb, perm
 	gcd = _gcd
