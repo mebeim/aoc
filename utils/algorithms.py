@@ -427,8 +427,11 @@ def bellman_ford(G, src):
 
 	def path_to(dst):
 		nonlocal previous
-
 		res = deque([])
+
+		if previous[dst] is None:
+			return res
+
 		while previous[dst] is not None:
 			res.appendleft(dst)
 			dst = previous[dst]
