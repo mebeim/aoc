@@ -21,6 +21,7 @@ Table of Contents
 - [Day 15 - Chiton][d15]
 - [Day 16 - Packet Decoder][d16]
 - [Day 17 - Trick Shot][d17]
+- [Day 18 - Snailfish][d18]
 
 
 Day 1 - Sonar Sweep
@@ -3717,6 +3718,605 @@ print('Part 2:', total)
 
 This "bruteforce" took 15 milliseconds on my machine. I'd say I'm satisfied :')
 
+
+Day 18 - Snailfish
+------------------
+
+[Problem statement][d18-problem] — [Complete solution][d18-solution] — [Back to top][top]
+
+### Part 1
+
+Today's problem is quite intricate. We are dealing with nested pairs of numbers.
+We are given a list of pairs as input: each pair contains two elements: the
+left one and the right one. An element can either be a pair or just a plain
+integer. We need to "add" together all the pairs given in our input.
+
+To add two pairs, we need to first concatenate them into a new one: `a + b`
+becomes `(a, b)`. After doing this, we need to *simplify the result*. The
+simplification to perform is defined as follows:
+
+1. If there is any pair nested inside four parent pairs, it needs to "explode".
+   The leftmost such pair "explodes".
+2. If there are still pairs that need to explode, go back to step 1 and explode
+   them.
+3. If any number in the pair (at any depth) is greater than or equal to 10, it
+   needs to "split". The leftmost such pair "splits".
+4. Go back to step 1 and perform the same actions again. Keep doing this until
+   no more explosions nor splits happen.
+
+What does it mean to "explode" a pair? Well, that's... odd:
+
+1. The left number of the pair is added to the first number which appears to the
+   left of the exploded pair, *regardless of depth!* If there is no number on
+   the left, we just discard the left number.
+2. The right number of the pair is added to the first number which appears to
+   the right of the exploded pair, *regardless of depth!* If there is no number
+   on the right, we just discard the right number.
+3. The pair itself becomes `0`.
+
+That *"regardless of depth"* part is what makes this operation quite complex.
+Here's an example:
+
+```none
+          [1,[[[[2,3],4],5],6]]
+                /   \
+               /     \
+2 added to 1  /       | 3 added to 4
+             /        |
+            /         |
+          [3,[[[  0  ,7],5],6]]
+                  ^
+                  old pair
+```
+
+In the above example, the pair `[2, 3]` explodes because it is nested inside 4
+outer pairs. As a result of the explosion, the pair itself is replaced with a
+`0`, the `2` is added to the `1` on the left, and the `3` is added to the `4` on
+the right. If there was no other number on the left, the `2` would have been
+lost, and analogously the `3` would have been lost in case there was no number
+on the right.
+
+There are plenty of examples in today's problem statement, so I would advise to
+go ahead and check them out if the above is not clear.
+
+As per the "split", this means dividing the number by two and replacing it with
+a pair where the left part is the rounded down result of the division, while the
+right part is what is the rounded up result:
+
+```
+[10,[1,2]] --- split the 10 --> [[5,5],[1,2]]
+[13,[1,2]] --- split the 13 --> [[6,7],[1,2]]
+```
+
+After performing the addition of all the pairs in our input (in the given order)
+we are asked to compute the "magnitude" of the final resulting pair, which is
+defined recursively:
+
+- The magnitude of a number is the number itself.
+- The magnitude of a pair is double the magnitude of the left part plus triple
+  the magnitude of the right part.
+
+It is worth mentioning that our input consists of already simplified pairs.
+Therefore, we do not need to simplify them before performing the addition, only
+after. We can also observe the following interesting properties of the two
+operations:
+
+- The "explode" operation will reduce the maximum depth of the pair by at most
+  1, and at least 0. This is because exploding means getting rid of a pair and
+  replacing with with `0` (and possibly modifying two other numbers).
+- The "split" operation will increase the maximum depth of the pair by at most
+  1, and at least 0.
+
+In other words, throughout all the simplification operations, we will never
+exceed a maximum nesting level of 4 for any pair.
+
+There are different ways of solving today's problem, using different data
+structures and algorithms. I've seen a lot of different approaches in
+[today's Reddit megathread][d18-reddit-megathread], here's the three that make
+the most sense to me:
+
+1. The simplest, yet probably one of the slowest since we are using Python, is
+   to directly operate on the input strings, or parse them into lists of tokens.
+   For example turning `"[1,[69,3]]"` into `['[','[',69,3,']',']']` or even into
+   `[(1,1),(69,2),(3,2)]` pairing numbers with their depths. Use of regular
+   expressions is also an option here.
+
+   The explode operation then becomes a search through the tokens, keeping track
+   of the depth level either by counting the `[` and `]` while scanning or by
+   having them stored along with the numbers. When a deep enough pair of numbers
+   is found, we just pop the pair and then scan left and right to add the popped
+   numbers to the first ones we find in either direction. The split operation
+   becomes a pop of one element plus an insertion. This is straightforward and
+   does not involve any kind of recursion, yet it requires moving back and
+   forth, performing additions and removals. Using a linked-list instead of a
+   list for storing tokens makes insertion painless.
+
+   Modifying strings was [my original solution][d18-original]... after trying
+   too hard to get a cool recursive one working, re-writing it a few times, and
+   finally giving up on that to think about it later. It's decent, but nothing
+   amazing.
+
+   As seen implemented by:
+   [u/jonathan_paulson](https://www.reddit.com/r/adventofcode/comments/rizw2c/2021_day_18_solutions/hp0o2sr/),
+   [u/timrprobocom](https://www.reddit.com/r/adventofcode/comments/rizw2c/2021_day_18_solutions/hp0qwi6/),
+   [u/yrkbzbo](https://www.reddit.com/r/adventofcode/comments/rizw2c/2021_day_18_solutions/hp17suu/),
+   [u/willsmith28](https://www.reddit.com/r/adventofcode/comments/rizw2c/2021_day_18_solutions/hp3hnyi/),
+   [u/Prudent_Candle](https://www.reddit.com/r/adventofcode/comments/rizw2c/2021_day_18_solutions/hp0w57h/).
+
+2. Slightly more complex: build a binary tree and parse the input pairs as trees
+   where each node can either be a number or another node with two children.
+   Explosion can be implemented recursively without much effort with parent
+   references thinking using this method, and node addition/removal is only a
+   matter of updating some "pointers".
+
+   This is a good improvement on just scanning strings/lists of tokens (unless
+   those tokens are organized in a linked list, then it's pretty similar), but
+   it can be tricky to optimize as the basic operation we are doing is accessing
+   class attributes and, yet again, Python can bite us in the back with some
+   really bad performance drawbacks. This is probably my least favorite approach
+   if I have to be honest, but nonetheless it makes a lot of sense.
+
+   As seen implemented by:
+   [u/mockle2](https://www.reddit.com/r/adventofcode/comments/rizw2c/2021_day_18_solutions/hp27mp6/),
+   [u/StripedSunlight](https://www.reddit.com/r/adventofcode/comments/rizw2c/2021_day_18_solutions/hp3s03a/),
+   [u/0b01](https://www.reddit.com/r/adventofcode/comments/rizw2c/2021_day_18_solutions/hp3lkif/),
+   [u/leijurv](https://www.reddit.com/r/adventofcode/comments/rizw2c/2021_day_18_solutions/hp0x7bw/),
+   [u/seba_dos1](https://www.reddit.com/r/adventofcode/comments/rizw2c/2021_day_18_solutions/hp15uum/).
+
+3. Some "smart" recursive solutions treating pairs as *actual pairs* (either
+   lists of lists or tuples of tuples). Explosion and splitting can be
+   implemented (similarly to the tree-based approach) as depth-first visit of
+   the nested pairs. When a pair explodes/splits the nested pair containing it
+   are re-constructed bottom-up by propagating the new elements through return
+   values.
+
+   The problem here lays in the logic for the explode function. It is definitely
+   not trivial. This is the solution I spent a couple of hours trying to
+   implement, getting close to make it work, but unsuccessfully. A fun thing
+   about this kind of solution is that the code I've seen from other people
+   implementing it is really, really similar. The solutions linked here which I
+   found in the daily Reddit megathread helped me complete my initially broken
+   code.
+
+   As seen implemented by:
+   [u/michaelgallagher](https://www.reddit.com/r/adventofcode/comments/rizw2c/2021_day_18_solutions/hp1zvkp/),
+   [u/leijurv](https://www.reddit.com/r/adventofcode/comments/rizw2c/2021_day_18_solutions/hp0x7bw/),
+   [u/1vader](https://www.reddit.com/r/adventofcode/comments/rizw2c/2021_day_18_solutions/hp0o32g/),
+   [u/xoposhiy](https://www.reddit.com/r/adventofcode/comments/rizw2c/2021_day_18_solutions/hp0qv7k/).
+
+So... as you might have guessed: we're going to implement a cool recursive
+solution, with actual pairs (using `tuple`s).
+
+Our input can be parsed into a tuple of tuples by simply replacing open and
+close square brackets with parentheses. For these replacements we can use
+[`str.maketrans`][py-str-maketrans]. Then, for the actual parsing, we can just be
+lazy and let Python handle it for us using [`eval()`][py-builtin-eval]. You
+shouldn't normally be using `eval()` in your code if you are doing anything else
+that is not a solving programming puzzle for fun.
+
+```python
+fin   = open(...)
+trans = str.maketrans('[]', '()')
+pairs = []
+
+for line in fin:
+    pairs.append(eval(line.translate(trans)))
+```
+
+The above `for` can also be compressed down to a single line using a
+[generator expression][py-generator-expr]:
+
+```python
+pairs = tuple(map(lambda line: eval(line.translate(trans)), fin))
+```
+
+Our `pairs` will look like this:
+
+```python
+(
+    (1,2),
+    ((1,2),3),
+    (9,(8,7)),
+    ((1,9),(8,5)),
+    ((((1,2),(3,4)),((5,6),(7,8))),9),
+    ...
+)
+```
+
+So each element can either be an actual pair (`(1, 2)`) or a number. A function
+to check whether a pair is actually a pair (i.e. a `tuple`) or a number (i.e. an
+`int`) will be handy for the next parts:
+
+```python
+def is_number(p):
+    return type(p) is int
+```
+
+Now, for the real problem: let's start from the "explode" operation since it's
+the most complex. Anything else will be downhill from here. The way we want to
+structure the logic of the function is as follows:
+
+1. Take a pair and a depth as parameters.
+2. If the pair is in reality just a number, return it.
+3. Otherwise, if we are at a depth of 4, explode it into its left and right
+   numbers, then return the extracted numbers along with a zero instead of the
+   pair.
+4. Otherwise, if we are at a lower depth, make two recursive calls passing an
+   incremented depth: one to search for a pair to explode on the left, and then
+   one to search for a pair to explode on the right.
+5. If none of the two recursive calls find any pair to explode, just return the
+   current pair.
+
+To return information back to the caller in the recursive calls, we will need
+4 return values: `left_num, mid, right_num, did_explode`:
+
+- In case of a simple number, we return `_, number, _, False`. Nothing exploded,
+  the two `_` values are really not important to the caller since nothing
+  happened.
+- In case of the explosion of a pair, we return `pair[0], 0, pair[1], True`.
+  The two split values of the original pair will be propagated to the left and
+  right respectively until they can be added to another number.
+- In other cases... we'll see.
+
+Here's a skeleton of the code for the above:
+
+```python
+def explode(pair, depth=0):
+    if is_number(pair):
+        return None, pair, None, False
+
+    left, right = pair
+
+    if depth == 4:
+        return left, 0, right, True
+
+    left_num, new_left, right_num, did_explode = explode(left, depth + 1)
+    # Check results...
+    # If did_explode == True then return, no more explosions.
+
+    left_num, new_right, right_num, did_explode = explode(right, depth + 1)
+    # Check results...
+    # If did_explode == True then return, no more explosions.
+
+    # None of the left and right parts exploded, just return the pair as is.
+    return None, pair, None, False
+```
+
+How can we reconstruct the pair from the bottom up when returning after one of
+the two recursive calls succeeded? We will have to examine both cases.
+
+For the left part:
+
+```python
+left_num, new_left, right_num, did_explode = explode(left, depth + 1)
+```
+
+In case `did_explode == True`, how can we "move" `left_num` and `right_num`
+to the left/right to add them to the correct position? We know we are looking at
+the *left* part of some pair. We have two possible cases:
+
+1. `[left, 123]`: the exploded left part of our `pair` has a number on the
+   right. We can simply add `right_num` to this number.
+2. `[left, [...]]`: the exploded left part of our `pair` has another pair to the
+   right (`[...]`). We will need to add `right_num` to the rightmost number that
+   we find in this other pair. Keep in mind that this other pair could consist
+   of other nested pairs.
+
+In both cases though, we have no idea what's *on the left of `left`* (outside
+the current `pair` we are looking at), hence
+**we cannot possibly know where `left_num` needs to end up**...
+only the calling function has knowledge of this, so we'll have to
+return it to the caller! If we were recursively called to explode the *right*
+part of a pair, then the caller will know how where to place `left_num`. Indeed,
+any `left_num` can only ever be added if there is some number something on the
+right (at any level), in which case a right recursive call is made. If no right
+recursive call is ever made, `left_num` will simply get returned back to the
+first call and be discarded entirely. The same reasoning goes for `right_num` if
+no left recursive call is performed.
+
+Interestingly enough, given the way the pairs are structured, there will never
+be a case in which both the left and the right number are discarded after an
+explosion, because the explosion must have been caused either by a left
+recursive call or a right recursive call.
+
+Back to the problem after this short digression. How do we perform the addition
+of `right_num` to the leftmost part of whatever is `right`? A simple recursive
+function will suffice: this function will take a pair and a number, and add the
+number to the leftmost element of the pair.
+
+- If the "pair" is also a number: sum it with the given number and return it.
+- Otherwise, recursively perform the addition on the left part of the pair,
+  while keeping the right part untouched.
+
+Translated into code:
+
+```python
+def add_to_leftmost(pair, num):
+    if is_number(pair):
+        return pair + num
+
+    left, right = pair
+    return (add_to_leftmost(left, num), right)
+```
+
+Now we have all we need to write the left recursion step:
+
+```python
+def explode(pair, depth=0):
+    # ...
+
+    left_num, new_left, right_num, did_explode = explode(left, depth + 1)
+
+    if did_explode:
+        new_right = add_to_leftmost(right, right_num)
+        new_pair = (new_left, new_right)
+        return left_num, new_pair, None, True
+
+    # ...
+```
+
+ERR! There is a problem: since we "consume" `right_num` straight away, we are
+returning `None` as third element to indicate that to the caller. However, we
+ourselves could be "the caller": if we just get a `right_num` that is `None` we
+must handle that, because it was already consumed before returning the result to
+us. In this case, `new_left` already contains the added right number, since the
+explosion took place deeper. We can solve this with a simple check:
+
+```python
+def explode(pair, depth=0):
+    # ...
+
+    left_num, new_left, right_num, did_explode = explode(left, depth + 1)
+
+    if did_explode:
+        if right_num is None:
+            # right_num was already added to the leftmost element of new_left,
+            # we merely need to propagate the result...
+            return left_num, (new_left, right), None, True
+
+        new_right = add_to_leftmost(right, right_num)
+        new_pair = (new_left, new_right)
+
+        # left_num always needs to be propagated up as we have no idea where to
+        # place it right now...
+        return left_num, new_pair, None, True
+
+    # ...
+```
+
+The logic for the right recursive call is analogous:
+
+```python
+left_num, new_right, right_num, did_explode = explode(right, depth + 1)
+```
+
+In case `did_explode == True`, we only know how to handle `left_num` this time,
+since adding `right_num` to the right would require knowledge of what's on the
+right, which only the caller has. We have two possible cases:
+
+1. `[123, right]`: the exploded right part of our `pair` has a number on the
+   left. We can simply add `left_num` to this number.
+2. `[[...], right]`: the exploded right part of our `pair` has another pair to
+   the left (`[...]`). We will need to add `left_num` to the rightmost number
+   that we find on in this other pair. Keep in mind that this other pair could
+   consist of other nested pairs.
+
+Here's the counterpart of `add_to_leftmost()` function which does exactly this:
+
+```python
+def add_to_rightmost(pair, num):
+    if is_number(pair):
+        return pair + num
+
+    left, right = pair
+    return (left, add_to_rightmost(right, num))
+```
+
+The code for the right recursive call is analogous to the one of the left one,
+so I'd rather show the complete function instead. Here's the final commented
+code:
+
+```python
+def explode(pair, depth=0):
+    if is_number(pair):
+        # Just a number, return as is, no explosion.
+        return None, pair, None, False
+
+    left, right = pair
+
+    if depth == 4:
+        # Too deep! Explode current pair and replace it with 0.
+        return left, 0, right, True
+
+    # Recursively explode on the left.
+    left_num, new_left, right_num, did_explode = explode(left, depth + 1)
+
+    if did_explode:
+        # Something on the left exploded, stop here, return.
+
+        if right_num is None:
+            # right_num was already added to the leftmost element of new_left,
+            # we merely need to propagate the result...
+            return left_num, (new_left, right), None, True
+
+        # Otherwise, add right_num to the leftmost element of right and then
+        # return the new pair.
+        new_right = add_to_leftmost(right, right_num)
+        new_pair = (new_left, new_right)
+
+        # left_num always needs to be propagated up as we have no idea where to
+        # place it right now...
+        return left_num, new_pair, None, True
+
+    # Left part didn't explode, recursively explode on the right.
+    left_num, new_right, right_num, did_explode = explode(right, depth + 1)
+
+    if did_explode:
+        # Something on the right exploded, stop here, return.
+
+        if left_num is None:
+            # left_num was already added to the leftmost element of new_right,
+            # we merely need to propagate the result...
+            return None, (left, new_right), right_num, True
+
+        # Otherwise, add left_num to the rightmost element of left and then
+        # return the new pair.
+        new_left = add_to_rightmost(left, left_num)
+        new_pair = (new_left, new_right)
+
+        # right_num always needs to be propagated up as we have no idea where to
+        # place it right now...
+        return None, new_pair, right_num, True
+
+    # None of the left and right parts exploded, just return the pair as is.
+    return None, pair, None, False
+```
+
+That was... as complex to write as it was to explain it.
+
+Let's implement the "splitting" now, again as a recursive function. This is
+easy:
+
+1. Take a pair, check if it's a number: if so, check if it's `>= 10`, and in
+   such case split it into a pair and return it.
+2. Otherwise, perform the split on the left part of the pair: if successful,
+   stop here and return the result.
+3. Otherwise, perform the split on the right part of the pair and return the
+   result.
+
+In order to "stop" and return whenever a split happens, we'll use another
+boolean value, exactly as we did for `explode()`. Here's the code:
+
+```python
+def split(pair):
+    if is_number(pair):
+        if pair < 10:
+            return pair, False
+
+        left = pair // 2
+        return (left, pair - left), True
+
+    left, right = pair
+    left, did_split = split(left)
+
+    if not did_split:
+        right, did_split = split(right)
+
+    return (left, right), did_split
+```
+
+Now we need to perform addition and simplification. According to the rules, to
+simplify the result of additions we need to keep exploding and splitting
+repeatedly until no more exploding nor splitting is needed. Keep in mind that
+exploding has precedence over splitting, so first we have to explode all pairs
+from left to right, and only then split. This isn't much of a problem: both our
+functions return a boolean value indicating whether the action (explode/split)
+succeeded. If so, we will keep going.
+
+```python
+def simplify(pair):
+    keep_going = True
+
+    while keep_going:
+        _, pair, _, keep_going = explode(pair)
+        if keep_going:
+            continue
+
+        pair, keep_going = split(pair)
+
+    return pair
+```
+
+The two values I am ignoring (`_`) from the `explode()` call are simply any
+left/right numbers from the exploding pair which did not have any other number
+to be added to, and so propagated all the way up to the initial call.
+
+Adding is merely creating a pair from two existing pairs, and then simplifying
+the result:
+
+```python
+def add(a, b):
+    return simplify((a, b))
+```
+
+Lastly, we only miss one function to calculate the "magnitude" of a pair: for
+numbers, it's simply their value; for pairs, it's 2 times the left magnitude
+plus 3 times the right magnitude. Did anybody say recursion again???
+
+```python
+def magnitude(pair):
+    if is_number(pair):
+        return pair
+
+    left, right = pair
+    return 3 * magnitude(left) + 2 * magnitude(right)
+```
+
+Now we can add up all the pairs in our input, and calculate the "magnitude" of
+the final result:
+
+```python
+res = pairs[0]
+
+for pair in pairs[1:]:
+    res = add(res, pair)
+
+answer = magnitude(res)
+```
+
+What we just did is a [*reduction*][wiki-fold] (or *fold*). We have
+[`functools.reduce()`][py-functools-reduce] for this:
+
+```python
+from functools import reduce
+
+answer = magnitude(reduce(add, pairs))
+print('Part 1:', answer)
+```
+
+### Part 2
+
+Now we are asked to find the sum of any two pairs in our input which has the
+highest possible magnitude. Well, let's just calculate all of them, why not?
+
+```python
+best = 0
+for a in pairs:
+    for b in pairs:
+        if a is b:
+            continue
+
+        m = magnitude(add(a, b))
+        if m > best:
+            best = m
+```
+
+We can simplify the above *a lot*. First, using
+[`itertools.permutations()`][py-itertools-permutations] instead of the boring
+nested loops, which also avoids the check `a is b` to avoid summing pairs with
+themselves. Since `permutations()` already returns a pair.. we can also
+directly call `simplify()` instead of `add()`.
+
+```python
+for ab in permutations(pairs, 2):
+    m = magnitude(simplify(ab))
+    if m > best:
+        best = m
+```
+
+Finally, a couple of [`map()`][py-builtin-map] plus [`max()`][py-builtin-max]
+reduces the above to a single row, which puts the nail in the coffin in terms of
+simplification:
+
+```python
+best = max(map(magnitude, map(simplify, permutations(pairs, 2))))
+print('Part 2:', best)
+```
+
+What a day! Can't really say I enjoyed the problem itself that much, but I sure
+did enjoy checking out solutions and optimizing mine for this walkthrough. If
+you didn't already, you can check it out [here][d18-solution].
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -3741,6 +4341,7 @@ This "bruteforce" took 15 milliseconds on my machine. I'd say I'm satisfied :')
 [d15]: #day-15---chiton
 [d16]: #day-16---packet-decoder
 [d17]: #day-17---trick-shot
+[d18]: #day-18---snailfish
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -3759,6 +4360,7 @@ This "bruteforce" took 15 milliseconds on my machine. I'd say I'm satisfied :')
 [d15-problem]: https://adventofcode.com/2021/day/15
 [d16-problem]: https://adventofcode.com/2021/day/16
 [d17-problem]: https://adventofcode.com/2021/day/17
+[d18-problem]: https://adventofcode.com/2021/day/18
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -3777,17 +4379,20 @@ This "bruteforce" took 15 milliseconds on my machine. I'd say I'm satisfied :')
 [d15-solution]: solutions/day15.py
 [d16-solution]: solutions/day16.py
 [d17-solution]: solutions/day17.py
+[d18-solution]: solutions/day18.py
 
 [d03-orginal]:             original_solutions/day03.py
 [d07-orginal]:             original_solutions/day07.py
+[d18-original]:            original_solutions/day18.py
+[d14-p2]:                  #part-2-13
+[2019-d06-p2]:             ../2019/README.md#part-2-5
+
 [d07-reddit-discussion]:   https://www.reddit.com/r/adventofcode/comments/rars4g/
 [d07-reddit-megathread]:   https://www.reddit.com/rar7ty
 [d07-reddit-paper]:        https://www.reddit.com/r/adventofcode/comments/rawxad
 [d07-reddit-paper-author]: https://www.reddit.com/user/throwaway7824365346/
 [d17-reddit-megathread]:   https://www.reddit.com/ri9kdq
-
-[d14-p2]:                  #part-2-13
-[2019-d06-p2]:             ../2019/README.md#part-2-5
+[d18-reddit-megathread]:   https://www.reddit.com/rizw2c
 
 [py-assert]:                  https://docs.python.org/3/reference/simple_stmts.html#grammar-token-python-grammar-assert_stmt
 [py-class]:                   https://docs.python.org/3/tutorial/classes.html#a-first-look-at-classes
@@ -3801,6 +4406,7 @@ This "bruteforce" took 15 milliseconds on my machine. I'd say I'm satisfied :')
 [py-builtin-abs]:             https://docs.python.org/3/library/functions.html#abs
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
+[py-builtin-eval]:            https://docs.python.org/3/library/functions.html#eval
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
 [py-builtin-len]:             https://docs.python.org/3/library/functions.html#len
@@ -3820,10 +4426,12 @@ This "bruteforce" took 15 milliseconds on my machine. I'd say I'm satisfied :')
 [py-frozenset]:               https://docs.python.org/3/library/stdtypes.html#frozenset
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
+[py-functools-reduce]:        https://docs.python.org/3/library/functools.html#functools.reduce
 [py-heapq]:                   https://docs.python.org/3/library/heapq.html
 [py-io-readline]:             https://docs.python.org/3/library/io.html#io.IOBase.readline
 [py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
 [py-itertools-filterfalse]:   https://docs.python.org/3/library/itertools.html#itertools.filterfalse
+[py-itertools-permutations]:  https://docs.python.org/3/library/itertools.html#itertools.permutations
 [py-itertools-product]:       https://docs.python.org/3/library/itertools.html#itertools.product
 [py-itertools-repeat]:        https://docs.python.org/3/library/itertools.html#itertools.repeat
 [py-itertools-starmap]:       https://docs.python.org/3/library/itertools.html#itertools.starmap
@@ -3855,6 +4463,7 @@ This "bruteforce" took 15 milliseconds on my machine. I'd say I'm satisfied :')
 [wiki-cycle-detection]:       https://en.wikipedia.org/wiki/Cycle_detection
 [wiki-dyck-language]:         https://en.wikipedia.org/wiki/Dyck_language
 [wiki-floor-ceil]:            https://en.wikipedia.org/wiki/Floor_and_ceiling_functions
+[wiki-fold]:                  https://en.wikipedia.org/wiki/Fold_(higher-order_function)
 [wiki-graph-component]:       https://en.wikipedia.org/wiki/Component_(graph_theory)
 [wiki-heat-death-universe]:   https://en.wikipedia.org/wiki/Heat_death_of_the_universe
 [wiki-linear-least-squares]:  https://en.wikipedia.org/wiki/Linear_least_squares
