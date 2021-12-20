@@ -22,6 +22,8 @@ Table of Contents
 - [Day 16 - Packet Decoder][d16]
 - [Day 17 - Trick Shot][d17]
 - [Day 18 - Snailfish][d18]
+- Day 19 - Beacon Scanner (TODO)
+- [Day 20 - Trench Map][d20]
 
 
 Day 1 - Sonar Sweep
@@ -4317,6 +4319,256 @@ What a day! Can't really say I enjoyed the problem itself that much, but I sure
 did enjoy checking out solutions and optimizing mine for this walkthrough. If
 you didn't already, you can check it out [here][d18-solution].
 
+
+Day 20 - Trench Map
+-------------------
+
+[Problem statement][d20-problem] — [Complete solution][d20-solution] — [Back to top][top]
+
+### Part 1
+
+For today's puzzle, we need to compute
+[image convolutions][wiki-image-convolution]. We are given a first input line
+which is exactly 512 characters long and encodes the rules for the convolution,
+plus an image as an ASCII-art grid, where each pixel can either be on (`#`) or
+off (`.`).
+
+For each pixel in the image, we need to look at the 3x3 region composed of the
+pixel itself and its 8 neighbors. From top-left to bottom-right, each of the
+cells in this region must be interpreted as a bit to compose a 9-bit number.
+This 9-bit number will then be used as an index in the given rules: the new
+value of the pixel will be the character at the calculated index in the rules.
+
+The image we are working on extends infinitely in all directions, but we are
+given the "center" which contains the only lit pixels. The transformation needs
+to be applied *simultaneously* to every pixel of the image, two times in a row.
+After doing so, we want to know how many pixels are ON in the final image.
+
+The tricky part of today's puzzle resides in the *first rule*. This rule is
+special, as it's ad index `0` and therefore represents the value which OFF
+pixels surrounded by 8 other OFF pixels should assume after the transformation.
+If this special rule is set to `#`, since our image is infinite, and the outer
+space is filled with OFF pixels... this means that after only one iteration of
+the transformation, we will have an infinite number of pixels that are ON.
+
+This seems problematic. However, after two transformations all those pixels (ON
+with 8 neighbors ON) will follow the last rule (since a 3x3 box of ON pixels
+represents `111111111`). The last rule in our input is `.`, therefore all the
+infinitely many outside pixels will turn off. In general, on every *odd* number
+of transformations we will have infinitely many ON pixels, and on every *even*
+number of transformations we will go back to a "normal" scenario with only the
+"central" part of the image has pixels that are ON.
+
+If both the first and the last rule are `#` though, we would be in trouble!
+Well, at that point the problem wouldn't even make any sense: after the first
+iteration, there would be infinite ON pixels, which would never turn off.
+
+Let's parse the input. First the rules: for simplicity we'll convert every `#`
+to a `True` and every `.` to a `False`. It's just a matter of converting each
+character in the first line of input using a
+[generator expression][py-generator-expr] after stripping it:
+
+```python
+fin = open(...)
+rules = tuple(x == '#' for x in next(fin).rstrip())
+```
+
+Since as we said, in order for the problem to make any sense at all, we cannot
+possibly have both the first and last rules set to `#`, we might as well
+[`assert`][py-assert] that:
+
+```python
+assert not (rules[0] and rules[-1]), 'Invalid rules!'
+```
+
+Now the image. We are dealing with an expanding grid of pixels, so using a
+matrix (e.g. `list` of `list`) is not practical at all, as it would require
+either starting with a huge matrix or adding rows/columns as we go. Instead, our
+image will simply be a `set` only containing coordinates of the pixels that are
+ON. We can use [`enumerate()`][py-builtin-enumerate] in a classical a double
+`for` loop to easily get both coordinates and values of the pixels.
+
+```python
+next(fin) # skip empty line of input
+img = set()
+
+for r, row in enumerate(fin):
+    for c, char in enumerate(row):
+        if char == '#':
+            img.add((r, c))
+```
+
+Let's write a function to calculate the next state of a pixel given its
+coordinates. It's just a matter of iterating over the 9 possible pixels and
+checking if their coordinates are in the image, accumulating the bits into a
+variable.
+
+```python
+def conv(img, rules, row, col):
+    idx = 0
+
+    for r in (row - 1, row, row + 1):
+        for c in (col - 1, col, col + 1):
+            idx <<= 1
+            idx |= ((r, c) in img) # 1 if pixel is on, 0 otherwise
+
+    return rules[idx]
+```
+
+Err... there is a problem with the above code. Remember about the first rule? It
+turns out that for our input it's `#`... so `rules[0] == True`. We of course
+don't want to have infinite pixels in our `img`. The above function however does
+not take into account the fact that there could be an infinite number of ON
+pixels outside the bounding box of `img`.
+
+How do we fix this? We'll use a flag to remember if the outside pixels are all
+ON. If so, when a row or column coordinate gets outside of the image, we need to
+consider it as ON.
+
+```python
+def conv(img, rules, row, col, minr, maxr, minc, maxc, outside_on):
+    idx = 0
+
+    for r in (row - 1, row, row + 1):
+        for c in (col - 1, col, col + 1):
+            idx <<= 1
+            idx |= ((r, c) in img)
+
+            # If all the outside pixels are ON and (r,c) is outside
+            # of the image, this pixel is also ON!
+            idx |= outside_on and (r < minr or r > maxr or c < minc or c > maxc)
+
+    return rules[idx]
+```
+
+To check whether the `(r,c)` coordinates are inside the image we had to pass the
+[bounding box][wiki-bounding-box] (`minr, maxr, minc, maxc`) of our image to the
+above function. This seems kind of an excessive amount of arguments... we'll
+simplify things later.
+
+Let's now define a function to apply one step of the "enhancement"
+transformation to the whole image. First, find the bounding box that encloses
+all the pixels in the image by simply doing a [`min()`][py-builtin-min] and
+[`max()`][py-builtin-max] of both components of the coordinates in the image.
+Then, iterate over all pixels and call `conv()` to determine whether each pixel
+should become ON or OFF. We'll accumulate new ON pixels in a new set since we
+need to apply the transformation simultaneously to all pixels.
+
+```python
+def enhance_once(img, rules, outside_on):
+    minr, maxr = min(r for r, _ in img), max(r for r, _ in img)
+    minc, maxc = min(c for _, c in img), max(c for _, c in img)
+    new = set()
+
+    for row in range(minr - 1, maxr + 2):
+        for col in range(minc - 1, maxc + 2):
+            if conv(img, rules, row, col, minr, maxr, minc, maxc, outside_on):
+                new.add((row, col))
+
+    return new
+```
+
+Those `- 1` and `+ 2` in the ranges above are because we also need to check the
+outside perimeter of the image, as each enhancement iteration could potentially
+expand the image by at most 1 pixel in any direction (up, down, left, right).
+
+Okay, pretty nice, but I think it's time to drop that `conv()` function and
+simply integrate it into `enhance_once()`... after all, that's the only place we
+are ever going to call it from (and also it takes more arguments than I am
+comfortable allowing my code to take).
+
+```diff
+ def enhance_once(img, rules, outside_on):
+     minr, maxr = min(r for r, _ in img), max(r for r, _ in img)
+     minc, maxc = min(c for _, c in img), max(c for _, c in img)
+     new = set()
+
+     for row in range(minr - 1, maxr + 2):
+         for col in range(minc - 1, maxc + 2):
+-            if conv(img, rules, row, col, minr, maxr, minc, maxc, outside_on):
++            idx = 0
++
++            for r in (row - 1, row, row + 1):
++                for c in (col - 1, col, col + 1):
++                    idx <<= 1
++                    idx |= ((r, c) in img)
++                    idx |= outside_on and (r < minr or r > maxr or c < minc or c > maxc)
++
++            if rules[idx]:
+                 new.add((row, col))
+
+     return new
+```
+
+It's only a matter of calling the above function twice now. After that, the
+`len()` of our `img` will tell us how many pixels are ON. Remember: after the
+first transformation all the outside pixels will turn on if the first rule of
+the input is `#`: we need to first pass `outside_on=False`, and then
+`outside_on=rules[0]` to account for this.
+
+```python
+img  = enhance_once(img, rules, False)
+img  = enhance_once(img, rules, rules[0])
+n_on = len(img)
+
+print('Part 1:', n_on)
+```
+
+### Part 2
+
+For the second part, not much changes. We need to apply the same transformation
+50 times now.
+
+Let's create a function that takes care of this for us. At each even step the
+outside pixels will all be OFF, while at each odd step they will follow the
+first rule.
+
+```python
+def enhance(img, rules, steps):
+    for i in range(steps):
+        img = enhance_once(img, rules, rules[0] and i % 2 == 1)
+    return img
+```
+
+There is one small problem though: the `enhance_once()` function re-calculates
+the bounding box of the entire image every single time. Should we optimize that?
+Well, common sense says *"yes, definitely"*, but CPython disagrees. As it turns
+out, there seems to be little-to-no difference in performance between
+re-calculating the bounding box each step or checking if we exceed that and
+updating it as we go with a bunch of `if` statements. At most, I was able to
+gain 0.05 seconds. It could make sense to optimize for a larger input, but for
+now there is really no incentive in doing so, except making the entire code
+annoyingly more complex.
+
+As simple as that, now we can use the above function for both parts:
+
+```python
+img  = enhance(img, rules, 2)
+n_on = len(img)
+print('Part 1:', n_on)
+
+img  = enhance(img, rules, 48)
+n_on = len(img)
+print('Part 2:', n_on)
+```
+
+### Reflections
+
+Today is a sad day for [CPython][wiki-cpython] apparently. My solution runs in
+around 2 seconds, which I find kind of annoying. Unfortunately, there isn't much
+to optimize in the code, apart from the obvious bounding-box calculation which
+as I said does not really represent a performance bottleneck. I believe the
+large amount of set insertions and checks is what makes the whole thing as slow
+as it is. Using [PyPy][misc-pypy] 7.3.5 gives me a speedup of about 2.55x (780ms
+vs 2s). I've fiddled around trying to optimize stuff here and there for a while,
+but did not have much luck.
+
+This is also true for other Python solutions I have tested: today's problem was
+simple, and solutions are really similar (if you exclude those of people who
+just used [SciPy][wiki-scipy] or [NumPy][wiki-numpy] to do everything in two
+lines of code). In contrast, any Rust/C++ solution probably takes a few
+tens of milliseconds at most. Oh well...
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -4342,6 +4594,8 @@ you didn't already, you can check it out [here][d18-solution].
 [d16]: #day-16---packet-decoder
 [d17]: #day-17---trick-shot
 [d18]: #day-18---snailfish
+[d19]: #day-19---beacon-scanner
+[d20]: #day-20---trench-map
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -4361,6 +4615,8 @@ you didn't already, you can check it out [here][d18-solution].
 [d16-problem]: https://adventofcode.com/2021/day/16
 [d17-problem]: https://adventofcode.com/2021/day/17
 [d18-problem]: https://adventofcode.com/2021/day/18
+[d19-problem]: https://adventofcode.com/2021/day/19
+[d20-problem]: https://adventofcode.com/2021/day/20
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -4380,6 +4636,8 @@ you didn't already, you can check it out [here][d18-solution].
 [d16-solution]: solutions/day16.py
 [d17-solution]: solutions/day17.py
 [d18-solution]: solutions/day18.py
+[d19-solution]: solutions/day19.py
+[d20-solution]: solutions/day20.py
 
 [d03-orginal]:             original_solutions/day03.py
 [d07-orginal]:             original_solutions/day07.py
@@ -4458,24 +4716,29 @@ you didn't already, you can check it out [here][d18-solution].
 [algo-quicksort]: https://en.wikipedia.org/wiki/Quicksort
 
 [wiki-bingo]:                 https://en.wikipedia.org/wiki/Bingo_(American_version)
+[wiki-bounding-box]:          https://en.wikipedia.org/wiki/Minimum_bounding_box
 [wiki-cartesian-coords]:      https://en.wikipedia.org/wiki/Cartesian_coordinate_system
 [wiki-closed-form-expr]:      https://en.wikipedia.org/wiki/Closed-form_expression
+[wiki-cpython]:               https://en.wikipedia.org/wiki/CPython
 [wiki-cycle-detection]:       https://en.wikipedia.org/wiki/Cycle_detection
 [wiki-dyck-language]:         https://en.wikipedia.org/wiki/Dyck_language
 [wiki-floor-ceil]:            https://en.wikipedia.org/wiki/Floor_and_ceiling_functions
 [wiki-fold]:                  https://en.wikipedia.org/wiki/Fold_(higher-order_function)
 [wiki-graph-component]:       https://en.wikipedia.org/wiki/Component_(graph_theory)
 [wiki-heat-death-universe]:   https://en.wikipedia.org/wiki/Heat_death_of_the_universe
+[wiki-image-convolution]:     https://en.wikipedia.org/wiki/Kernel_(image_processing)
 [wiki-linear-least-squares]:  https://en.wikipedia.org/wiki/Linear_least_squares
 [wiki-linear-time]:           https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-linked-list]:           https://en.wikipedia.org/wiki/Linked_list
 [wiki-median]:                https://en.wikipedia.org/wiki/Median
 [wiki-min-heap]:              https://en.wikipedia.org/wiki/Binary_heap
+[wiki-numpy]:                 https://en.wikipedia.org/wiki/NumPy
 [wiki-priority-queue]:        https://en.wikipedia.org/wiki/Priority_queue
 [wiki-projectile-motion]:     https://en.wikipedia.org/wiki/Projectile_motion
 [wiki-pushdown-automata]:     https://en.wikipedia.org/wiki/Pushdown_automaton
 [wiki-queue]:                 https://en.wikipedia.org/wiki/Queue_(abstract_data_type)
 [wiki-reflection]:            https://en.wikipedia.org/wiki/Reflection_(mathematics)
+[wiki-scipy]:                 https://en.wikipedia.org/wiki/SciPy
 [wiki-seven-segment-display]: https://en.wikipedia.org/wiki/Seven-segment_display
 [wiki-stack]:                 https://en.wikipedia.org/wiki/Stack_(abstract_data_type)
 [wiki-triangular-number]:     https://en.wikipedia.org/wiki/Triangular_number
@@ -4487,5 +4750,6 @@ you didn't already, you can check it out [here][d18-solution].
 [misc-cpp-nth-element-so]:   https://stackoverflow.com/q/29145520/3889449
 [misc-cpython-median-low]:   https://github.com/python/cpython/blob/ddbab69b6d44085564a9b5022b96b002a52b2f2b/Lib/statistics.py#L549-L568
 [misc-median-math-se]:       https://math.stackexchange.com/q/113270
+[misc-pypy]:                 https://www.pypy.org/
 [misc-regexp]:               https://www.regular-expressions.info/
 [misc-so-recursive-bfs]:     https://stackoverflow.com/q/2549541/3889449
