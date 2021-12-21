@@ -1,6 +1,6 @@
 __all__ = [
 	'log', 'rlog', 'eprint', 'wait',
-	'dump_iterable', 'dump_dict', 'dump_char_matrix',
+	'dump_iterable', 'dump_dict', 'dump_char_matrix', 'dump_sparse_matrix',
 	'get_ints', 'get_int_matrix', 'get_lines', 'get_char_matrix',
 	'autorange'
 ]
@@ -90,6 +90,45 @@ def dump_char_matrix(mat, transpose=False):
 			sys.stderr.write('\n')
 
 	sys.stderr.flush()
+
+def dump_sparse_matrix(mat, chars='# ', transpose=False, header=False):
+	'''Dump the contents of a sparse matrix (e.g. a set or a dict, where the key
+	is the coordinates of a cell in the matrix) to standard error.
+
+	The TWO chars are used to represent coordinates present (first char) or not
+	present (second char) in the matrix. For a dict, values in the dict are used
+	for coordinates that are present instead.
+
+	If transpose=True, print the transposed matrix.
+
+	If header=True, print top-left and bottom-right coordinates represenitng the
+	extreme points of the bounding box of the sparse matrix.
+	'''
+	if type(chars) is not str and len(chars) != 2:
+		raise ValueError('chars must be a two-character string')
+
+	minr, maxr = min(r for r, _ in mat), max(r for r, _ in mat)
+	minc, maxc = min(c for _, c in mat), max(c for _, c in mat)
+
+	if type(mat) is set:
+		char_at = lambda x: chars[x not in mat]
+	else:
+		char_at = lambda x: mat.get(x, chars[1])
+
+	if header:
+		fmt = ('TRANSPOSED s' if transpose else 'S') + 'parse matrix from ({}, {}) to ({}, {}):\n'
+		log(fmt, minr, minc, maxr, maxc)
+
+	if transpose:
+		for c in range(minc, maxc + 1):
+			for r in range(minr, maxr + 1):
+				sys.stderr.write(char_at((r, c)))
+			sys.stderr.write('\n')
+	else:
+		for r in range(minr, maxr + 1):
+			for c in range(minc, maxc + 1):
+				sys.stderr.write(char_at((r, c)))
+			sys.stderr.write('\n')
 
 def get_ints(file, use_regexp=False, regexp=r'-?\d+', as_tuple=False):
 	'''Parse file containing whitespace delimited integers into a list of
