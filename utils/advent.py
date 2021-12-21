@@ -124,7 +124,11 @@ def submit_answer(part, answer):
 		return False
 
 	if "that's the right answer" in t:
-		log('Right answer!\n')
+		matches = re.findall(r'rank (\d+)', t)
+		if matches:
+			logcont('Right answer! Rank {}.\n', matches[0])
+		else:
+			log('Right answer!\n')
 
 		if DAY == 25 and part == 1:
 			log("It's Christmas! Automatically submitting second part in 5s...\n")
