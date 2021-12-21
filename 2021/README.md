@@ -24,6 +24,7 @@ Table of Contents
 - [Day 18 - Snailfish][d18]
 - Day 19 - Beacon Scanner (TODO)
 - [Day 20 - Trench Map][d20]
+- [Day 21 - Dirac Dice][d21]
 
 
 Day 1 - Sonar Sweep
@@ -4569,6 +4570,330 @@ just used [SciPy][wiki-scipy] or [NumPy][wiki-numpy] to do everything in two
 lines of code). In contrast, any Rust/C++ solution probably takes a few
 tens of milliseconds at most. Oh well...
 
+
+Day 21 - Dirac Dice
+-------------------
+
+[Problem statement][d21-problem] — [Complete solution][d21-solution] — [Back to top][top]
+
+### Part 1
+
+Today we need to emulate a 2-player turn-based game:
+
+- Players play on a board with 10 slots numbered from 1 to 10.
+- Each turn, a player rolls a die 3 times, sums up the rolled values, and moves
+  of that amount of steps, wrapping back to slot 1 after slot 10.
+- After rolling and moving, the player's score is incremented by their current
+  slot number, and it's the other player's turn to play.
+
+The die the players use is a [100-sided die][wiki-zocchihedron], but has a
+peculiar characteristic: it rolls *deterministically*. In particular, it always
+rolls the numbers from 1 to 100 in order, cyclically (not really that cool of a
+die, to be honest).
+
+The two players are starting from two given slots (our input). Player 1 plays
+first, and the first player who reaches a score greater or equal to 1000 wins.
+We need to calculate the total number of rolls in the whole game multiplied by
+the score of the losing player.
+
+We don't have to put much effort into it, we can just emulate the whole game!
+Let's start with the die: we could model it as a
+[generator function][py-generator-function] that loops indefinitely and yields
+the values from 1 to 100 cyclically, resetting to 1 after 100. Well,
+[`itertools.cycle()`][py-itertools-cycle] does exactly this, if we pass the
+appropriate `range()` as argument.
+
+```python
+>>> die = itertools.cycle(range(1, 101))
+>>> next(die)
+1
+>>> next(die)
+2
+...
+>>> next(die)
+100
+>>> next(die)
+1
+```
+
+We can also "cheat" and directly extract the `__next__` method of the generator
+without having to deal with calling `next()` every time:
+
+```python
+>>> die = itertools.cycle(range(1, 101)).__next__
+>>> die()
+1
+>>> die()
+2
+```
+
+Perfect, we have our die... what else do we need? Not much really, just a
+function which takes the starting positions of the players and emulates the
+game:
+
+1. Let the current player play by rolling the die 3 times, moving the player
+   position increasing their score.
+2. If the score reaches the limit, the player wins: return the total number of
+   dice rolls performed and the other player's score.
+2. Otherwise switch to the other player and repeat from step 1.
+
+We need to be careful when moving the player positions: game tiles are numbered
+from 1 to 10. Each time we increase a player's position we need to then decrease
+it in steps of 10 until it reaches a value below 10. To make it easier, we could
+use tile numbers from 0 to 9 instead: this way we can simply use the modulus
+operator (`%`) to wrap the player's position around after increasing it. When
+adding to the total score, we'll simply add the current position *plus 1* to
+account for the fact that our tiles are all numbered 1 lower than the original
+ones.
+
+```python
+from itertools import cycle
+
+def play(p1_pos, p2_pos, score_limit):
+    rolls = p1_score = p2_score = 0
+    die   = cycle(range(1, 101)).__next__
+
+    while 1:
+        p1_pos    = (p1_pos + die() + die() + die()) % 10
+        p1_score += p1_pos + 1
+        rolls    += 3
+
+        if p1_score >= score_limit:
+            return rolls, p2_score
+
+        p2_pos    = (p2_pos + die() + die() + die()) % 10
+        p2_score += p2_pos + 1
+        rolls    += 3
+
+        if p2_score >= score_limit:
+            return rolls, p1_score
+```
+
+We are basically only missing input parsing. It's quite simple given the input
+format: just [`.split()`][py-str-split] each line and convert the last element
+into `int`:
+
+```python
+with open(...) as fin:
+    p1_pos = int(fin.readline().split()[-1]) - 1
+    p2_pos = int(fin.readline().split()[-1]) - 1
+```
+
+And finally call the function we just wrote to calculate the answer:
+
+```python
+rolls, loser_score = play(p1_pos, p2_pos, 1000)
+answer = rolls * loser_score
+print('Part 1:', answer)
+```
+
+### Part 2
+
+The situation drastically changes because now we use a very different kind of
+die: a *"quantum die"*. It's a 3-sided die (faces numbered from 1 to 3), which
+splits reality into 3 "parallel universes" every single time we roll it, one
+copy for each possible rolling outcome. After the first and only initial game
+starts, each dice roll it will "split" into 3 different games. We want to count
+the number of universes in which each player wins, this time with a much lower
+score limit of 21. Our answer needs to be the highest between the two counts.
+
+Things got really ugly really quickly, but we can do it. Of course, we cannot
+possibly simulate *all* those universes one by one. Each time a player plays, it
+rolls the die *3 times*, meaning that every single turn we are looking at 3x3x3
+= 27 different "alternative universes". If then we take another turn in each of
+those, we are looking at 27x27 universes. In general, after N turns we will have
+a total of 27<sup>N</sup> possible different universes. If N is 21, that is
+1'144'561'273'430'837'494'885'949'696'427, which is... a little bit too large
+for us to handle!
+
+The logic behind the solution is quite similar to the one we used for
+[day 6 part 2][d06-p2] and also [day 14 part 2][d14-p2]. We cannot advance all
+universes one by one, they are too many, but we can *group them* if they are
+"similar", and advance groups of universes instead.
+
+How can we find similar universes though? Well, of course, if we somehow know
+that two universes will end up making player 1 win... we can consider them as
+the same one. Going a bit further, if for any reason any two parallel universes
+have the same player positions, scores, and current player turn, they will
+inevitably produce the same outcome. Players can have at most 10 different
+positions and 21 different scores. Furthermore, the next player to play can
+either be player 1 or player 2 at any given time. Therefore, the total number of
+different states one game can be in is just *10×10×21×21×2 = 88200*. This
+corresponds to the maximum possible number of *different* universes we can have.
+That's a much, much more manageable number!
+
+We can solve this in two different ways:
+
+1. Iteratively, keeping a dictionary of states with a count of universes for
+   each state. Every step of the game, play all 27 possible dice rolls and for
+   each one calculate the new state and increment its count by the count of the
+   old state.
+2. Recursively through [dynamic programming][wiki-dynamic-programming], making
+   good use of [memoization][wiki-memoization].
+
+We are going to implement the second option. My
+[original solution][d21-original] for today's part 2 implements the first option
+though. and while the code is definitely not that "clean", it's still
+comprehensible enough to be easily understood, in case you are curious.
+
+As we said, our game state is defined as the current positions and scores of the
+players, plus whether it's the turn of player 1 or player 2. We can represent a
+state as a tuple `(my_pos, my_score, other_pos, other_score)`, meaning that the
+player who needs to play the next turn is at `my_pos` and has score `my_score`,
+while the other one is at `other_pos` and has score `other_score`. The
+information about the turn is implicitly stored in our state by the order of the
+items: if it's player 1's turn, then `my_pos` and `my_score` will refer to
+player 1; otherwise they will refer to player 2.
+
+Our function will take the four values of a state as arguments (so 4 arguments),
+and return a tuple `(my_wins, other_wins)`, where `my_wins` will represent the
+wins of the player whose position and score are passed as the first two
+arguments.
+
+To implement a recursive solution we necessarily need a "base case" to return a
+known base result when needed. We know that if a player's score ever gets above
+or equal to `21`, then that player wins. Quite simply, in case `my_score >= 21`
+we'll return `(1, 0)`, meaning that the current player won this game. In case
+`other_score >= 21` we'll return `(0, 1)` instead, meaning that the other player
+won.
+
+```python
+def play2(my_pos, my_score, other_pos, other_score):
+    if my_score >= 21:
+        return 1, 0
+
+    if other_score >= 21:
+        return 0, 1
+
+    # ...
+```
+
+In order to generate all 27 possible values to roll, we *could* use three nested
+`for` loops. Since those are always going to be the same 27 values though, we
+could simply cache them into a global `list` and iterate over that instead:
+
+```python
+QUANTUM_ROLLS = []
+
+for die1 in range(1, 4):
+    for die2 in range(1, 4):
+        for die3 in range(1, 4):
+            QUANTUM_ROLLS.append(die1 + die2 + die3)
+```
+
+We can compact the 3 loops into one using
+[`itertools.product()`][py-itertools-product], using [`sum()`][py-builtin-sum]
+over the 3-element tuples returned by that function:
+
+```python
+from itertools import product
+
+QUANTUM_ROLLS = []
+for dice in product(range(1, 4), range(1, 4), range(1, 4)):
+    QUANTUM_ROLLS.append(sum(dice))
+```
+
+And since what we just wrote is nothing more than accumulating elements into a
+list, at this point we can make use of [`map()`][py-builtin-map] to
+automatically do the job of summing for us:
+
+```python
+QUANTUM_ROLLS = tuple(map(sum, product(range(1, 4), range(1, 4), range(1, 4))))
+```
+
+In general `itertools.product()` is a pretty cool function, but beware that it's
+pretty slow. Using it just once in the whole program to pre-calculate some
+values is completely fine, but in general, depending on what you are iterating
+over, the performance of `product()` can get pretty bad compared to that of
+multiple nested `for` loops.
+
+Okay, let's keep going. We're almost finished, we only need to perform a single
+turn for each of the different rolls in `QUANTUM_ROLLS` and recursively call our
+function to let the other player play after us. Then, sum the returned numbers
+of wins and return the total.
+
+
+```python
+def play2(my_pos, my_score, other_pos, other_score):
+    if my_score >= 21:
+        return 1, 0
+
+    if other_score >= 21:
+        return 0, 1
+
+    my_wins = other_wins = 0
+
+    for roll in QUANTUM_ROLLS:
+        # Play one turn calculating the new score with the current roll:
+        new_pos   = (my_pos + roll) % 10
+        new_score = my_score + new_pos + 1
+
+        # Let the other player play, swapping the arguments:
+        ow, mw = play2(other_pos, other_score, new_pos, new_score)
+
+        # Update total wins of each player:
+        my_wins    += mw
+        other_wins += ow
+
+    return my_wins, other_wins
+```
+
+As it's currently written, the above function should do its job. However, there
+is one very important detail missing: [memoization][wiki-memoization]! Remember?
+The number of parallel universes grows exponentially, each turn they multiply by
+27. We still aren't checking if we reached an already known state in any way,
+and we definitely need to do that to instantly return the known outcome
+associated with that state in case we do, avoiding *a lot* of unnecessary
+calculations.
+
+Normally this can be done through the use of a dictionary:
+
+```python
+# The cache={} dictionary here is only created once at the time of definition of
+# the function! If we do not pass any value to overwrite it, it keeps being the
+# same dictionary.
+def expensive_function(a, b, c, cache={}):
+    state = (a, b, c)
+
+    # If the current state is already known, return the known result:
+    if state in cache:
+        return state[cache]
+
+    # Otherwise, calculate the result from scratch:
+    result = ...
+
+    # Save the result for the current state before returning, so that it can be
+    # re-used to avoid the expensive_calculation() later on:
+    cache[state] = result
+    return result
+```
+
+As it turns out, Python has (>= 3.2) has a very cool way of painlessly handling
+memoization. All we need is the [`@lru_cache`][py-functools-lru_cache]
+[decorator][py-decorator] from the [`functools`][py-functools] module, which
+automagically does all of the above for us with a single line of code.
+[LRU][wiki-lru-cache] is a caching policy that discards the least recently used
+value when too many values are cached. If we don't need to disregard old values,
+we can also use the [`@cache`][py-functools-cache] decorator as a shortcut for
+`@lru_cache(maxsize=None)`.
+
+We can apply the decorator our function like this:
+
+```python
+@lru_cache(maxsize=None)
+def play2(my_pos, my_score, other_pos, other_score):
+    # ... unchanged ...
+```
+
+Beautiful! We have all we need, let's get our part 2 answer:
+
+```python
+wins = play2(p1_pos, 0, p2_pos, 0, 21)
+best = max(wins)
+
+print('Part 2:', best)
+```
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -4596,6 +4921,7 @@ tens of milliseconds at most. Oh well...
 [d18]: #day-18---snailfish
 [d19]: #day-19---beacon-scanner
 [d20]: #day-20---trench-map
+[d21]: #day-21---dirac-dice
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -4617,6 +4943,7 @@ tens of milliseconds at most. Oh well...
 [d18-problem]: https://adventofcode.com/2021/day/18
 [d19-problem]: https://adventofcode.com/2021/day/19
 [d20-problem]: https://adventofcode.com/2021/day/20
+[d21-problem]: https://adventofcode.com/2021/day/21
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -4638,10 +4965,13 @@ tens of milliseconds at most. Oh well...
 [d18-solution]: solutions/day18.py
 [d19-solution]: solutions/day19.py
 [d20-solution]: solutions/day20.py
+[d21-solution]: solutions/day21.py
 
 [d03-orginal]:             original_solutions/day03.py
 [d07-orginal]:             original_solutions/day07.py
 [d18-original]:            original_solutions/day18.py
+[d21-original]:            original_solutions/day21.py
+[d06-p2]:                  #part-2-7
 [d14-p2]:                  #part-2-13
 [2019-d06-p2]:             ../2019/README.md#part-2-5
 
@@ -4655,12 +4985,13 @@ tens of milliseconds at most. Oh well...
 [py-assert]:                  https://docs.python.org/3/reference/simple_stmts.html#grammar-token-python-grammar-assert_stmt
 [py-class]:                   https://docs.python.org/3/tutorial/classes.html#a-first-look-at-classes
 [py-cond-expr]:               https://docs.python.org/3/reference/expressions.html#conditional-expressions
+[py-decorator]:               https://wiki.python.org/moin/PythonDecorators#What_is_a_Decorator
 [py-dict-comprehension]:      https://www.python.org/dev/peps/pep-0274/
 [py-lambda]:                  https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
 [py-generator-function]:      https://wiki.python.org/moin/Generators
 [py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
 [py-unpacking]:               https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
-
+[py-yield-from]:              https://docs.python.org/3.9/whatsnew/3.3.html#pep-380
 [py-builtin-abs]:             https://docs.python.org/3/library/functions.html#abs
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
@@ -4683,11 +5014,14 @@ tens of milliseconds at most. Oh well...
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
 [py-frozenset]:               https://docs.python.org/3/library/stdtypes.html#frozenset
 [py-functools]:               https://docs.python.org/3/library/functools.html
+[py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
+[py-functools-cache]:         https://docs.python.org/3/library/functools.html#functools.cache
 [py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
 [py-functools-reduce]:        https://docs.python.org/3/library/functools.html#functools.reduce
 [py-heapq]:                   https://docs.python.org/3/library/heapq.html
 [py-io-readline]:             https://docs.python.org/3/library/io.html#io.IOBase.readline
 [py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
+[py-itertools-cycle]:         https://docs.python.org/3/library/itertools.html#itertools.cycle
 [py-itertools-filterfalse]:   https://docs.python.org/3/library/itertools.html#itertools.filterfalse
 [py-itertools-permutations]:  https://docs.python.org/3/library/itertools.html#itertools.permutations
 [py-itertools-product]:       https://docs.python.org/3/library/itertools.html#itertools.product
@@ -4722,6 +5056,7 @@ tens of milliseconds at most. Oh well...
 [wiki-cpython]:               https://en.wikipedia.org/wiki/CPython
 [wiki-cycle-detection]:       https://en.wikipedia.org/wiki/Cycle_detection
 [wiki-dyck-language]:         https://en.wikipedia.org/wiki/Dyck_language
+[wiki-dynamic-programming]:   https://en.wikipedia.org/wiki/Dynamic_programming
 [wiki-floor-ceil]:            https://en.wikipedia.org/wiki/Floor_and_ceiling_functions
 [wiki-fold]:                  https://en.wikipedia.org/wiki/Fold_(higher-order_function)
 [wiki-graph-component]:       https://en.wikipedia.org/wiki/Component_(graph_theory)
@@ -4730,7 +5065,9 @@ tens of milliseconds at most. Oh well...
 [wiki-linear-least-squares]:  https://en.wikipedia.org/wiki/Linear_least_squares
 [wiki-linear-time]:           https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-linked-list]:           https://en.wikipedia.org/wiki/Linked_list
+[wiki-lru-cache]:             https://en.wikipedia.org/wiki/Cache_replacement_policies#Least_recently_used_(LRU)
 [wiki-median]:                https://en.wikipedia.org/wiki/Median
+[wiki-memoization]:           https://en.wikipedia.org/wiki/Memoization
 [wiki-min-heap]:              https://en.wikipedia.org/wiki/Binary_heap
 [wiki-numpy]:                 https://en.wikipedia.org/wiki/NumPy
 [wiki-priority-queue]:        https://en.wikipedia.org/wiki/Priority_queue
@@ -4742,6 +5079,7 @@ tens of milliseconds at most. Oh well...
 [wiki-seven-segment-display]: https://en.wikipedia.org/wiki/Seven-segment_display
 [wiki-stack]:                 https://en.wikipedia.org/wiki/Stack_(abstract_data_type)
 [wiki-triangular-number]:     https://en.wikipedia.org/wiki/Triangular_number
+[wiki-zocchihedron]:          https://en.wikipedia.org/wiki/Zocchihedron
 
 [misc-aoc-bingo]:            https://www.reddit.com/r/adventofcode/comments/k3q7tr/
 [misc-inverse-triangular]:   https://math.stackexchange.com/a/2041994
