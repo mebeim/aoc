@@ -124,7 +124,7 @@ def submit_answer(part, answer):
 		return False
 
 	if "that's the right answer" in t:
-		matches = re.findall(r'rank (\d+)', t)
+		matches = re.findall(r'rank\s+(\d+)', t)
 		if matches:
 			logcont('Right answer! Rank {}.\n', matches[0])
 		else:
