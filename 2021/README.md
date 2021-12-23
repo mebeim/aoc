@@ -25,6 +25,8 @@ Table of Contents
 - Day 19 - Beacon Scanner (TODO)
 - [Day 20 - Trench Map][d20]
 - [Day 21 - Dirac Dice][d21]
+- Day 22 - Reactor Reboot (TODO)
+- [Day 23 - Amphipod][d23]
 
 
 Day 1 - Sonar Sweep
@@ -4894,6 +4896,438 @@ best = max(wins)
 print('Part 2:', best)
 ```
 
+
+Day 23 - Amphipod
+-----------------
+
+[Problem statement][d23-problem] — [Complete solution][d23-solution] — [Back to top][top]
+
+### Part 1
+
+Today we're dealing with an [NP-complete][wiki-np-complete] problem, woah. We
+are given a very small ASCII-art grid representing an hallway plus four rooms
+which all contain two objects. There are four different kinds of objects
+(letters from `A` to `D`), and two of each kind. Each kind of object should go
+in its corresponding room (`A`s in the first, `B`s in the second, etc), but they
+are initially misplaced into different rooms.
+
+Each kind of object also has a different associated cost to be moved from one
+cell to an adjacent one. Our task is to move these objects around, one at a
+time, in order to get them all into the correct rooms with the lowest possible
+total "cost", which is the answer we are looking for. There are some rules
+though:
+
+1. The only two moves that an object can make are either going from the room to
+   a cell of the hallway (except cells that are *right above* rooms) or move
+   from the hallway to *its assigned room*.
+2. Once in the hallway, the object cannot be moved anywhere else other than its
+   assigned room, and only if that room is either empty or only contains objects
+   of the correct kind.
+3. If an object finds itself in its assigned room alone or with other objects of
+   the same kind, it cannot move from there anymore.
+
+This problem seems like a variation to the very famous
+[Tower of Hanoi][wiki-tower-of-hanoi] game. It's also "similar" to the one given
+on [2019 day 18][2019-d18], meaning that it can be solved using the same
+algorithm. As I said at the very beginning, we seem to be dealing with an
+NP-complete problem: this means that the only way to solve it is to actually
+"try" all possible moves until we find the sequence of moves that gets to the
+solution with the lowest total cost.
+
+First of all, we need to abstract away all the details and find a decent way to
+represent the problem. What we are essentially doing is just moving around
+objects from some container to another. We have 4 rooms and one hallway, which
+can all be modeled as simple `tuple`s. Furthermore, since our hallway does not
+allow placing objects in all its cells, we can simply ignore those for now.
+
+We'll turn our map into 5 total tuples, of which one is the hallway. Since
+objects from `A` to `D` respectively go to rooms 0 to 3 and have moving cost
+from 10<sup>0</sup> (1) to 10<sup>3</sup> (1000), it's convenient to *translate
+the objects `ABCD` into the integers `0`, `1`, `2`, `3`*.
+
+Here's what the data structures we are going to use will look like given an
+example map (the `x` are only there to mark illegal spots of the hallway):
+
+```none
+#############
+#..x.x.x.x..# --> hallway: (None, None, None, None, None, None, None) (7 slots)
+###B#C#B#D### --> rooms  : ((1, 0), (2, 3), (1, 2), (3, 0))
+  #A#D#C#A#
+  #########
+```
+
+When a solution is reached (regardless of total cost), we will be in the
+following situation:
+
+```none
+#############
+#..x.x.x.x..# --> hallway: (None, None, None, None, None, None, None)
+###A#B#C#D### --> rooms  : ((0, 0), (1, 1), (2, 2), (3, 3))
+  #A#B#C#D#
+  #########
+```
+
+We're going to write a recursive function which explores all the possible
+solutions in a [depth-first][algo-dfs] manner. Given the current state of the
+game, we'll figure out every possible next move to make, try making it, and
+check with a recursive call how good that choice was. A "move" here is the
+movement of one of the objects from a room to a free spot in the hallway or from
+the hallway to the correct room. It's important to remember that objects cannot
+pass through each other, so if there's one blocking the hallway, other objects
+cannot get past it until it moves.
+
+Given the above representation of the state of the game, let's start writing
+some functions to generate all possible moves given the current state. A move
+will simply consist of a cost and a new state after the move.
+
+First, moves that move objects from the hallway to a room: scan the hallway for
+objects, and for each object:
+
+1. Check if its corresponding room is only occupied by objects of the same kind.
+2. If so, check if the path through the hallway from this object's position to
+   the room is clear (no other objects in the way).
+3. If so, calculate the cost of the move, and generate a new game state where
+   the object has been removed from the hallway and inserted in the room.
+
+We'll implement the above as a [generator function][py-generator-function]. The
+[`enumerate()`][py-builtin-enumerate] built-in makes it convenient to iterate
+over both indexes and objects in the hallway, while the
+[`any()`][py-builtin-any] built-in is useful to concisely check whether a room
+only contains objects of the right kind. Remember that according to our model,
+objects are numbered from `0` to `3`, and their number also corresponds to the
+index of the correct room they belong to in the tuple of rooms.
+
+Here's a commented version of the code:
+
+```python
+from math import inf as INFINITY
+
+def moves_to_room(rooms, hallway):
+    # For any object in the hallway...
+    for h, obj in enumerate(hallway):
+        # Skip empty hallway spots.
+        if obj is None:
+            continue
+
+        # Check the corresponding room: if it contains any other kind of object,
+        # skip it, can't move this obj there yet.
+        room = rooms[obj]
+        if any(o != obj for o in room):
+            continue
+
+        # Calculate the cost of moving this object from this hallway spot
+        # to its room.
+        cost = move_cost(...)
+
+        # If it's impossible to move the object to the room (i.e. there is some
+        # other object in the way from this spot to the room), skip it.
+        if cost == INFINITY:
+            continue
+
+        # Create a new state where this object has been moved from slot h of the
+        # hallway to its room, and yield it along with the cost.
+        new_rooms   = rooms[:obj] + ((obj,) + room,) + rooms[obj + 1:]
+        new_hallway = hallway[:h] + (None,) + hallway[h + 1:]
+        yield cost, (new_rooms, new_hallway)
+```
+
+The `move_cost()` function used above is something that we'll need to define
+later. For now we'll just assume it will return an integer cost in case it is
+possible to do the move and `INFINITY` otherwise.
+
+Let's think about the "opposite" of the above function now: it will be a pretty
+similar generator function which goes through all the possible moves from any
+room to any free hallway spot, one at a time, and yields their cost plus the
+corresponding next game state.
+
+We'll have to scan each room, skipping those that are filled with objects of the
+right kind (which cannot be moved anymore). Then, for each such room, and for
+each hallway spot:
+
+1. Check if the path through the hallway from this object's current room to the
+   free hallway spot we found is clear (no other objects in the way).
+2. If so, calculate the cost of the move, and generate a new game state where
+   the object has been removed from the room and inserted in the hallway.
+
+Again, here's the commented code:
+
+```python
+def moves_to_hallway(rooms, hallway):
+    # For any room...
+    for r, room in enumerate(rooms):
+        # If the room we are looking at only contains the right objects,
+        # those objects will not move from there, skip them.
+        if all(o == r for o in room):
+            continue
+
+        # For any hallway spot...
+        for h in range(len(hallway)):
+            # Calculate the cost of moving this object from this room to this
+            # hallway spot (h).
+            cost = move_cost(...)
+
+            # If it's impossible to move the object to this hallway spot (i.e.
+            # there is some other object in the way), skip it.
+            if cost == INFINITY:
+                continue
+
+            # Create a new state where this object has been moved from room r to
+            # slot h of the hallway, and yield it along with the cost.
+            new_rooms   = rooms[:r] + (room[1:],) + rooms[r + 1:]
+            new_hallway = hallway[:h] + (room[0],) + hallway[h + 1:]
+            yield cost, (new_rooms, new_hallway)
+```
+
+We can group the above two functions into a single one that given a state will
+generate ALL possible moves to any next valid state. We can do this easily with
+[`yield from`][py-yield-from]:
+
+```python
+def possible_moves(rooms, hallway):
+    yield from moves_to_room(rooms, hallway)
+    yield from moves_to_hallway(rooms, hallway)
+```
+
+Ok, now we can write the `move_cost()` function, which is probably the most
+complex, due to the simplified nature of our state (rooms and hallways). We are
+using a "compressed" hallway which is missing the illegal spots, so the
+situation is the following:
+
+```none
+hallway spots:  0 | 1 | 2 | 3 | 4 | 5 | 6
+                      ^   ^   ^   ^
+rooms:                0   1   2   3
+```
+
+The first thing to do is check whether the path is clear or not. I will spare
+anyone reading a pretty boring explanation, but long story short: some annoying
+calculation using the two indexes (room index and hallway index) is needed. Once
+we have a `start` and `end` position to move from/to in the hallway, we can
+check if `hallway[start:end]` only contains empty spots (`None`) and if so
+proceed.
+
+The simplest way to keep track of the distance from each room to each hallway
+step is to use a map (in our case a matrix made as a tuple of tuples), which can
+then be indexed by the room index and the hallway index to get the number of
+steps.
+
+```python
+ROOM_DISTANCE = (
+    (2, 1, 1, 3, 5, 7, 8), # from/to room 0
+    (4, 3, 1, 1, 3, 5, 6), # from/to room 1
+    (6, 5, 3, 1, 1, 3, 4), # from/to room 2
+    (8, 7, 5, 3, 1, 1, 2), # from/to room 3
+)
+```
+
+Additionally, the number of steps needed to move in/out of a room varies
+depending on how many objects are in the room. For example, if we are moving one
+out while there are two, it will take only one move to move the top one out, and
+it will take two moves to move the second one out later. In any case, the cost
+of moving object N one step is 10<sup>N</sup>, so we'll multiply every distance
+by the apprpriate power of 10 to get the cost.
+
+Here's the complete code:
+
+```python
+def move_cost(room, hallway, r, h, to_room=False):
+    # Here h is the hallway spot index and r the room index.
+
+    if r + 1 < h:
+        start = r + 2
+        end   = h + (not to_room)
+    else:
+        start = h + to_room
+        end   = r + 2
+
+    # Ceck if hallway path is clear.
+    if any(x is not None for x in hallway[start:end]):
+        return INFINITY
+
+    # If moving to the room, the obj is in the hallway at spot h,
+    # otherwise it's the first in the room.
+    obj = hallway[h] if to_room else room[0]
+
+    return 10**obj * (ROOM_DISTANCE[r][h] + (to_room + 2 - len(room)))
+```
+
+The last utility function we'll need is one that will be able to tell us whether
+we reached a final state (every object in the correct room) or not. This is just
+a matter of checking if every room only contains two objects and those objects
+are also equal to the room index.
+
+```python
+def done(rooms):
+    for r, room in enumerate(rooms):
+        if len(room) != 2 or any(obj != r for obj in room):
+            return False
+    return True
+```
+
+Now we can write the *real* funciton to solve all of this. Given the helpers we
+just wrote, the task is straightforward:
+
+1. Check if the current state is `done()`: if so, the cost to reach the final
+   state is `0`, so `return 0`.
+2. Otherwise, for each possible move, calculate the next state and make a
+   recursive call to try and find the best solution from that state.
+3. If that solution is better than our previous one, keep it as new best and
+   keep checking.
+
+```python
+def solve(rooms, hallway):
+    if done(rooms):
+        return 0
+
+    best = INFINITY
+
+    for cost, next_state in possible_moves(rooms, hallway):
+        cost += solve(*next_state)
+
+        if cost < best:
+            best = cost
+
+    return best
+```
+
+There are *a lot* of different ways to end a game with the correct
+configuration, but only one has the minimum cost. The number of different ways
+to get to the end is probably really large, and it's unfeasible to explore the
+complete tree of possible moves. This means that our `solve()` function, as it's
+currently written, will take forever to finish. *However*, we know that if we
+ever reach the same state (same `rooms` and same `hallway` state), the minimum
+cost to reach the end will always be the same, no matter what moves were played
+before that. We can therefore [memoize][wiki-memoization] the results of our
+function to avoid unnecessary calculations if we ever reach the same state
+twice, just like we did for [day 21 part 2][d21-p2]. It's merely a matter of
+using the magic [`lru_cache`][py-functools-lru_cache] decorator:
+
+```diff
++@lru_cache(maxsize=None)
+ def solve(rooms, hallway, room_size):
+     ...
+```
+
+We left input parsing as the last thing to do, and indeed today's input is kind
+of annoying to parse to be honest. We're already assuming an hallway with 7 free
+spots (see hardcoded values in the `ROOM_DISTANCE` dictionary), let's just
+assume only four rooms are present. We can convert an object `ABCD` to its
+corresponding number `0123` with a little trick using `'ABCD'.index(object)`.
+Skipping the hallway, we have two lines of four objects per line (one per room).
+After getting those and translating them into numbers, we'll need to "transpose"
+them from 2 iterables of 4 elements to 4 tuples of 2 elements, using
+[`zip()`][py-builtin-zip] plus an [unpacking operator][py-unpacking].
+
+```python
+def parse_rooms(fin):
+    next(fin)
+    next(fin)
+    rooms = []
+
+    for _ in range(2):
+        l = next(fin)
+        rooms.append(map('ABCD'.index, (l[3], l[5], l[7], l[9])))
+
+    return tuple(zip(*rooms))
+```
+
+Finally, we can parse the input and pass it to `solve()` to get the answer:
+
+```python
+fin      = open(...)
+hallway  = (None,) * 7
+rooms    = parse_rooms(fin)
+min_cost = solve(rooms, hallway)
+
+print('Part 1:', min_cost)
+```
+
+### Part 2
+
+Now the total number of objects doubles: we have 16 objects, 4 per kind, and the
+rooms can hold 4 objects. The task is unchanged: find the minimum cost to
+complete the puzzle and reach a state where each room contains all 4
+corresponding objects.
+
+Given the way we have written our code for part 1, adapting it to part 2 is a
+walk in the park. We'll make it more general by adding a `room_size` parameter
+and passing it around where needed. In reality, the only places where we'll
+actually need it is when calculating the cost of moving in or out of a room in
+`move_cost()` and when determining if we are finished in `done()`, but we'll
+have to get the parameter there propagating it through all the function calls.
+
+Here are the needed modifications:
+
+```diff
+-def move_cost(room, hallway, r, h, to_room=False):
++def move_cost(room, hallway, r, h, room_size, to_room=False):
+     ...
+-    return 10**obj * (ROOM_DISTANCE[r][h] + (to_room + 2 - len(room)))
++    return 10**obj * (ROOM_DISTANCE[r][h] + (to_room + room_size - len(room)))
+
+-def moves_to_room(rooms, hallway):
++def moves_to_room(rooms, hallway, room_size):
+     ...
+-        cost = move_cost(room, hallway, obj, h, to_room=True)
++        cost = move_cost(room, hallway, obj, h, room_size, to_room=True)
+     ...
+
+-def moves_to_hallway(rooms, hallway):
++def moves_to_hallway(rooms, hallway, room_size):
+     ...
+-            cost = move_cost(room, hallway, r, h)
++            cost = move_cost(room, hallway, r, h, room_size)
+
+-def possible_moves(rooms, hallway):
+-    yield from moves_to_room(rooms, hallway)
+-    yield from moves_to_hallway(rooms, hallway)
++def possible_moves(rooms, hallway, room_size):
++    yield from moves_to_room(rooms, hallway, room_size)
++    yield from moves_to_hallway(rooms, hallway, room_size)
+
+-def done(rooms):
++def done(rooms, room_size):
+    for r, room in enumerate(rooms):
+-        if len(room) != 2 or any(obj != r for obj in room):
++        if len(room) != room_size or any(obj != r for obj in room):
+            return False
+    return True
+
+@lru_cache(maxsize=None)
+-def solve(rooms, hallway):
+-    if done(rooms):
++def solve(rooms, hallway, room_size=2):
++    if done(rooms, room_size):
+        return 0
+
+    best = INFINITY
+
+-    for cost, next_state in possible_moves(rooms, hallway):
+-        cost += solve(*next_state)
++    for cost, next_state in possible_moves(rooms, hallway, room_size):
++        cost += solve(*next_state, room_size)
+
+        if cost < best:
+            best = cost
+```
+
+The code for part 1 remains unchanged. For part 2 we only need to add the four
+new objects given in the problem statement:
+
+```python
+
+newobjs  = [(3, 3), (2, 1), (1, 0), (0, 2)]
+newrooms = []
+
+for room, new in zip(rooms, newobjs):
+    newrooms.append((room[0], *new, room[-1]))
+
+rooms    = tuple(newrooms)
+min_cost = solve(rooms, hallway, len(rooms[0]))
+
+print('Part 2:', min_cost)
+```
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -4922,6 +5356,8 @@ print('Part 2:', best)
 [d19]: #day-19---beacon-scanner
 [d20]: #day-20---trench-map
 [d21]: #day-21---dirac-dice
+[d22]: #day-22---reactor-reboot
+[d23]: #day-23---amphipod
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -4944,6 +5380,8 @@ print('Part 2:', best)
 [d19-problem]: https://adventofcode.com/2021/day/19
 [d20-problem]: https://adventofcode.com/2021/day/20
 [d21-problem]: https://adventofcode.com/2021/day/21
+[d22-problem]: https://adventofcode.com/2021/day/22
+[d23-problem]: https://adventofcode.com/2021/day/23
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -4966,6 +5404,8 @@ print('Part 2:', best)
 [d19-solution]: solutions/day19.py
 [d20-solution]: solutions/day20.py
 [d21-solution]: solutions/day21.py
+[d22-solution]: solutions/day22.py
+[d23-solution]: solutions/day23.py
 
 [d03-orginal]:             original_solutions/day03.py
 [d07-orginal]:             original_solutions/day07.py
@@ -4973,7 +5413,10 @@ print('Part 2:', best)
 [d21-original]:            original_solutions/day21.py
 [d06-p2]:                  #part-2-7
 [d14-p2]:                  #part-2-13
+<!-- TODO: change this when adding d19! -->
+[d21-p2]:                  #part-2-19
 [2019-d06-p2]:             ../2019/README.md#part-2-5
+[2019-d18]:                ../2019/README.md##day-18---many-worlds-interpretation
 
 [d07-reddit-discussion]:   https://www.reddit.com/r/adventofcode/comments/rars4g/
 [d07-reddit-megathread]:   https://www.reddit.com/rar7ty
@@ -4994,6 +5437,7 @@ print('Part 2:', best)
 [py-yield-from]:              https://docs.python.org/3.9/whatsnew/3.3.html#pep-380
 [py-builtin-abs]:             https://docs.python.org/3/library/functions.html#abs
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
+[py-builtin-any]:             https://docs.python.org/3/library/functions.html#any
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-eval]:            https://docs.python.org/3/library/functions.html#eval
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
@@ -5069,6 +5513,7 @@ print('Part 2:', best)
 [wiki-median]:                https://en.wikipedia.org/wiki/Median
 [wiki-memoization]:           https://en.wikipedia.org/wiki/Memoization
 [wiki-min-heap]:              https://en.wikipedia.org/wiki/Binary_heap
+[wiki-np-complete]:           https://en.wikipedia.org/wiki/NP-completeness
 [wiki-numpy]:                 https://en.wikipedia.org/wiki/NumPy
 [wiki-priority-queue]:        https://en.wikipedia.org/wiki/Priority_queue
 [wiki-projectile-motion]:     https://en.wikipedia.org/wiki/Projectile_motion
@@ -5078,6 +5523,7 @@ print('Part 2:', best)
 [wiki-scipy]:                 https://en.wikipedia.org/wiki/SciPy
 [wiki-seven-segment-display]: https://en.wikipedia.org/wiki/Seven-segment_display
 [wiki-stack]:                 https://en.wikipedia.org/wiki/Stack_(abstract_data_type)
+[wiki-tower-of-hanoi]:        https://en.wikipedia.org/wiki/Tower_of_Hanoi
 [wiki-triangular-number]:     https://en.wikipedia.org/wiki/Triangular_number
 [wiki-zocchihedron]:          https://en.wikipedia.org/wiki/Zocchihedron
 
