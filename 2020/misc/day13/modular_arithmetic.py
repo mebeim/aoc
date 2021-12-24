@@ -51,5 +51,5 @@ for _, period in buses:
 ans = best_p * best
 print('Part 1:', ans)
 
-time = chinese_remainder_theorem(n, a)
+time = chinese_remainder_theorem(buses)
 print('Part 2:', time)
