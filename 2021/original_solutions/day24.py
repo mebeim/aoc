@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import z3
 
 def add_constraints(s, inp):
