@@ -27,6 +27,8 @@ Table of Contents
 - [Day 21 - Dirac Dice][d21]
 - Day 22 - Reactor Reboot (TODO)
 - [Day 23 - Amphipod][d23]
+- Day 24 - Arithmetic Logic Unit (TODO)
+- [Day 25 - Sea Cucumber][d25]
 
 
 Day 1 - Sonar Sweep
@@ -5328,6 +5330,151 @@ min_cost = solve(rooms, hallway, len(rooms[0]))
 print('Part 2:', min_cost)
 ```
 
+
+Day 25 - Sea Cucumber
+---------------------
+
+[Problem statement][d25-problem] — [Complete solution][d25-solution] — [Back to top][top]
+
+Not a hard ptoblem for this years' Christmas day. We are givn an ASCII-art grid
+where we can have three kind of cells: `>` (a sea cucumber facing right), `v` (a
+sea cucumber facing down), `.` (empty). We need to evolve the grid according to
+the following rules to be applied every evolution step:
+
+1. First all sea cucumbers facing right (`>`) try moving right simultaneously.
+   They succeed only if the cell on their right is empty (`.`), and on the
+   rightmost cell, they wrap around to the leftmost if possible.
+2. Then, all sea cucumbers facing down (`v`) try moving down simultaneously.
+   They succeed only if the cell below them is empty (`.`), and on the very
+   bottom cell, they wrap up to the very top if possible.
+
+We want to know how many evolution steps it takes for all the sea cucumber to
+stop moving because they all get stuck in front of others.
+
+Looks simple. We could solve this problem either with an actual grid (a 2x2
+matrix i.e. `list` of `list`) or with a sparse matrix represented by a `dict`. I
+will go with the first approach. I have implemented both options, and for
+today's input there is no performance difference between using an actual matrix
+or a sparse matrix backed by a `dict`, but in general using a sparse matrix
+could perform better if the input is sparse enough (i.e. lots of empty spaces
+`.`). You can find my sparse matrix solution implemented
+**[here][d25-alternative]**.
+
+Input parsing is simple: read the entire input, split it on whitespace
+(newlines), and then transform every single line in a `list` with the help of
+[`map()`][py-builtin-map]:
+
+```python
+fin  = open(...)
+grid = list(map(list, fin.read().split()))
+```
+
+For the evolution of our grid, we need to pay attention to the fact that all
+right facing sea cucumbers check the next cell simultaneously, *before* any of
+them moves. This means that in a situation where some of them are stuck in line
+(`>>>..`), only the first one will move (`>>.>.`). To take this into account, we
+could either:
+
+1. Clone the entire grid before performing the moves, then use the old copy to
+   check if cells are free, and only modify the new copy.
+2. Use a single grid, scanning it without modifying it first, remembering all
+   the locations of sea cucumbers that will be able to move (e.g. storing them
+   in a list). Then, perform all the moves.
+
+The second option seems both faster and more memory efficient, since copying the
+grid every single time might be an expensive operation, and would probably also
+use more memory than a simple list of coordintes.
+
+To check if the "next" cell is free, and take into account that sea cucumbers
+can and will wrap around (`..>>>` becomes `>.>>.`), we can just use the modulo
+operator (`%`) when calculating the candidate new coulmn. Here's what a single
+sweep and move of all the right-facing cucumbers looks like:
+
+```python
+h, w = len(grid), len(grid[0])
+advance = []
+
+for r in range(h):
+    for c in range(w):
+        newc = (c + 1) % w
+
+        # Check if this cell contains a right-facing sea cucumber and if the
+        # next one is free. If so, this sea cucumber can advance.
+        if mat[r][c] == '>' and mat[r][newc] == '.':
+            advance.append((r, c, newc))
+
+# Move all right-facing sea cucumbers that can advance.
+for r, c, newc in advance:
+    mat[r][c]    = '.'
+    mat[r][newc] = '>'
+```
+
+After doing the above, we can determine if any sea cucumber advanced
+horizontally by checking if `advanced` is empty or not. Python lists are
+"truthy" if they aren't empty, so:
+
+```python
+horiz_still = not advance # true if no right-facing sea cucumber advanced
+```
+
+For the down-facing sea cucumbers... well, it's exactly the same story, only
+that we'll need to make movements on rows instead of columns. The code barely
+changes. In the end, we can check if `horiz_still==True` and the new `advanced`
+list is empty: if so, nothing moved and we can call it a day.
+
+Wrapping things up, here's the full code of the function we'll use to evolve the
+grid until everything stops moving. The steps are counted using
+[`itertools.count()`][py-itertools-count] as we don't know how many there will
+be.
+
+```python
+def evolve(grid):
+    h, w  = len(grid), len(grid[0])
+    steps = 0
+
+    for steps in count(1):
+        advance = []
+
+        for r in range(h):
+            for c in range(w):
+                newc = (c + 1) % w
+
+                if grid[r][c] == '>' and grid[r][newc] == '.':
+                    advance.append((r, c, newc))
+
+        for r, c, newc in advance:
+            grid[r][c]    = '.'
+            grid[r][newc] = '>'
+
+        horiz_still = not advance
+        advance = []
+
+        for r in range(h):
+            for c in range(w):
+                newr = (r + 1) % h
+
+                if grid[r][c] == 'v' and grid[newr][c] == '.':
+                    advance.append((r, c, newr))
+
+        if horiz_still and not advance:
+            break
+
+        for r, c, newr in advance:
+            grid[r][c]    = '.'
+            grid[newr][c] = 'v'
+
+    return steps
+```
+
+Simple enough. We can now get the last two stars of the year:
+
+```python
+ans = evolve(grid)
+print('Part 1:', ans)
+```
+
+As always, there is no part 2 for day 25. Merry Christmas!
+
 ---
 
 *Copyright &copy; 2021 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -5358,6 +5505,8 @@ print('Part 2:', min_cost)
 [d21]: #day-21---dirac-dice
 [d22]: #day-22---reactor-reboot
 [d23]: #day-23---amphipod
+[d24]: #day-24---arithmetic-logic-unit
+[d25]: #day-25---sea-cucumber
 
 [d01-problem]: https://adventofcode.com/2021/day/1
 [d02-problem]: https://adventofcode.com/2021/day/2
@@ -5382,6 +5531,8 @@ print('Part 2:', min_cost)
 [d21-problem]: https://adventofcode.com/2021/day/21
 [d22-problem]: https://adventofcode.com/2021/day/22
 [d23-problem]: https://adventofcode.com/2021/day/23
+[d24-problem]: https://adventofcode.com/2021/day/24
+[d25-problem]: https://adventofcode.com/2021/day/25
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -5406,11 +5557,14 @@ print('Part 2:', min_cost)
 [d21-solution]: solutions/day21.py
 [d22-solution]: solutions/day22.py
 [d23-solution]: solutions/day23.py
+[d24-solution]: solutions/day24.py
+[d25-solution]: solutions/day25.py
 
 [d03-orginal]:             original_solutions/day03.py
 [d07-orginal]:             original_solutions/day07.py
 [d18-original]:            original_solutions/day18.py
 [d21-original]:            original_solutions/day21.py
+[d25-alternative]:         misc/day25/sparse_matrix.py
 [d06-p2]:                  #part-2-7
 [d14-p2]:                  #part-2-13
 <!-- TODO: change this when adding d19! -->
