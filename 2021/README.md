@@ -27,7 +27,7 @@ Table of Contents
 - [Day 21 - Dirac Dice][d21]
 - Day 22 - Reactor Reboot (TODO)
 - [Day 23 - Amphipod][d23]
-- Day 24 - Arithmetic Logic Unit (TODO)
+- [Day 24 - Arithmetic Logic Unit][d24]
 - [Day 25 - Sea Cucumber][d25]
 
 
@@ -5331,6 +5331,393 @@ print('Part 2:', min_cost)
 ```
 
 
+Day 24 - Arithmetic Logic Unit
+------------------------------
+
+[Problem statement][d24-problem] — [Complete solution][d24-solution] — [Back to top][top]
+
+### Part 1
+
+Do you like reverse engineering? Hope you do. Today is reverse engineering day!
+
+We are given an assembly program as input. This program runs on a custom machine
+whose CPU has 4 registers named `x`, `y`, `z` and `w`. There are 6 different
+opcodes available:
+
+- `inp DST`: takes a number as input and store it in register `DST`.
+- `add DST SRC`: store the value of `DST + SRC` into `DST`. In this case `SRC`
+  can either be another register name or an immediate integer value (positive or
+  negative).
+- `mul DST SRC`: same as `add`... `DST := DST * SRC`.
+- `div DST SRC`: `DST := DST / SRC` (integer division).
+- `mod DST SRC`: `DST := DST % SRC` (integer modulus).
+- `eql DST SRC`: `DST := 1` if `DST == SRC`, else `DST := 0`.
+
+Our program has exactly 14 `inp` instructions, and each of them should take a
+digit between 1 and 9 (inclusive) as input. The program will then tell us if
+the 14-digit number we entered one digit at a time is valid or not, by running
+to its end and leaving a result in the `z` register. If `z` is `0` at the end of
+the run, the number was valid.
+
+We want to know the highest possible 14-digit number accepted by the machine.
+
+The problem is not trivial: it is not enough to simply implement the CPU as
+specified and emulate the execution of the program. There are too many
+possibilities to guess, and testing them all would take ages. It's also not
+possible to do any kind of binary search, as there could be multiple "local"
+solutions in the input range.
+
+There are three main approaches for solving the problem:
+
+1. Manually look at the program code and figure out which constraints are being
+   checked on the input. Then, we can either fully solve them by hand, or write
+   a program to do so.
+2. Do an exhaustive depth-first search of the solution (from highest to lowest),
+   [memoizing][wiki-memoization] the intermediate states of the CPU (registers
+   and current input digit) at each `inp` instruction. This will run pretty
+   slowly, but it's still doable as the set of possible states for the CPU is
+   not too large.
+3. Implement the CPU instructions and determine the input constraints through
+   [symbolic execution][wiki-symbolic-execution]. This can be done through the
+   use of a [SMT solver][wiki-smt], and is exactly what I did for my
+   [original solution][d24-original] (with some more smart simplifications
+   first). Take a look at [this comment of mine][d24-reddit-comment] on today's
+   Reddit megathread to know more. This does not require understanding what the
+   code does *at all*, and it's most likely the quickest option to implement,
+   however it is still pretty slow.
+
+I'm going to proceed with option number 1 in today's waklthrough. It's fun and
+also the most optimal solution, however the code we are going to write highly
+relies on the input format, so it will only work for AoC inputs, and not for any
+possible input programs.
+
+Let's start analyzing the program. Right off the bat, we can notice some
+interesting characteristics:
+
+1. All the 14 `inp` instructions store the input digit in register `w`.
+2. There are exactly 17 other instructions following an `inp w`. This means we
+   can see the whole program as 14 different 18-instruction chunks.
+3. Each chunk always consists of the same 18 instructions, except the last
+   operand of those instructions changes from chunk to chunk.
+
+Let's examine the first chunk of code, and try to understand what happens to the
+various registers. Here's a commented version of the code, where on the right
+side I have simplified the result of successive instructions that operate on the
+same register:
+
+```none
+ #  Instr       Result
+
+ 1. inp w       w = current input digit
+
+ 2. mul x 0     x = 0
+ 3. add x z     x = z
+ 4. mod x 26    x = x % 26
+ 5. div z 1     z = z
+ 6. add x 12    x = (z % 26) + 12
+ 7. eql x w     if x == w (input digit), then x = 1; else x = 0
+ 8. eql x 0     if x == 0, then x = 1; else x = 0
+
+ 9. mul y 0     y = 0
+10. add y 25    y = 25
+11. mul y x     y = 25 * x        (either 25 or 0)
+12. add y 1     y = (25 * x) + 1  (either 26 or 1)
+13. mul z y     z = z * y         (either z * 26 or z * 1)
+
+14. mul y 0     y = 0
+15. add y w     y = w (input digit)
+16. add y 4     y = w + 4
+17. mul y x     y = (w + 4) * x   (either w + 4 or 0)
+18. add z y     z = z + y         (either z + w + 4 or 0)
+```
+
+I have split the chunk into 4 sub-chunks on purpose. We can now observe the
+following:
+
+1. Taking a look at the `z` register, we can see that it's being treated like a
+   base 26 number: the two fundamental operations performed on it are `z % 26`
+   or `z * 26 + something`. Other operations like `div z 1` or `mul z y`
+   (when `y = 1`) are useless and don't change its value.
+2. Instructions 2 to 8 seem useless: no matter what is the value of `z % 26`
+   (which initially will be `0`), if we add `12` to it, it will never compare
+   equal to `w`, since `w` holds the input digit and must therefore be between
+   `1` and `9`. The result after instruction 8 is simply `x = 1`.
+3. The rest of the code does things based on the value of `x`. Since we now know
+   that `x` will always be `1` after instruction 8, we can simplify the rest.
+
+Applying the simplification:
+
+```none
+ #  Instr       Result
+
+ 1. inp w       w = current input digit
+
+ 2. mul x 0
+ 3. add x z
+ 4. mod x 26
+ 5. div z 1
+ 6. add x 12
+ 7. eql x w
+ 8. eql x 0     x = 1
+
+ 9. mul y 0     y = 0
+10. add y 25    y = 25
+11. mul y x     y = 25
+12. add y 1     y = 26
+13. mul z y     z = z * 26
+
+14. mul y 0     y = 0
+15. add y w     y = w (input digit)
+16. add y 4     y = w + 4
+17. mul y x     y = w + 4
+18. add z y     z = z + w + 4
+```
+
+The above code is basically *"pushing" the input digit plus `4` into `z`* as the
+last digit, treating `z` as a base-26 number. The end result of the above code
+is `z = 26*z + (w+4)`.
+
+Looking at the next two chunks of code, the behavior seems to be the same: the
+second chunk does `z = 26*z + (w+11)`, and the third chunk does
+`z = 26*z + (w+7)`. What these first 3 chunks are doing is nothing more than
+pushing the first 3 input digits (plus some constants) into z, one after the
+other.
+
+Coming to the fourth chunk, the story is different:
+
+```none
+ #  Instr       Result
+ 1. inp w       w = input digit
+
+ 2. mul x 0
+ 3. add x z
+ 4. mod x 26    x = z % 26
+ 5. div z 26    z //= 26
+
+ 6. add x -14   x -= 14
+ 7. eql x w
+ 8. eql x 0     if x != w then x = 1 else x = 0
+
+ 9. mul y 0
+10. add y 25
+11. mul y x     y = 25 * x  (either 25 or 0)
+12. add y 1     y += 1      (either 26 or 1)
+13. mul z y     z = z * y   (either z * 26 or z)
+
+14. mul y 0
+15. add y w
+16. add y 2
+17. mul y x     y = (w + 2) * x  (either w + 2 or 0)
+18. add z y     z += y
+```
+
+The main difference between this chunk and the previous ones is that
+instructions 2 to 5 are doing something different: the last base-26 digit of `z`
+is being extracted into `x` with the `mod` instruction, then removed from `z`
+with the integer division. After instruction 5, `x` represents the last value
+that was "pushed" into `z`, which in our case was `w+7` i.e. the previous digit
+plus `7`. It seems that `z` is being used as a simple *stack* of base 26
+numbers.
+
+Instructions 6 to 8 then perform another addition and compare `x` (which is the
+value of the previously pushed digit plus some constants) with the current
+digit. If they are equal, the final value of `x` becomes `0`. In such case, the
+rest of the operations do *nothing:* we have ops 9 to 13 which compute `z *= 1`
+and instructions 14 to 18 which compute `z += 0`. Otherwise, if after
+instruction 8 we end up with `x = 1` (the two numbers did not match), we have
+the rest of the operations which push some other value into `z`.
+
+In the entire program, we have two different kinds of 18-instruction chunks:
+
+1. 7 chunks arf of the first kind we analyzed, they simply push the current
+   input digit plus some constant into `z`. This kind of chunk can be seen as:
+
+   ```none
+   push (current_digit + A) into z
+   ```
+
+2. The other 7 are of the second kind. They pop a previously saved digit (plus
+   constant) from `z`, add another constant to it, and then compare it with the
+   current digit. If the comparison is successful, `z` just "lost" its least
+   significant base-26 digit, otherwise some other value is pushed into it.
+
+   This kind of chunk can be seen as:
+
+   ```none
+   pop (other_digit + A) from z
+
+   if (other_digit + A + B) != current_digit:
+       push some_value into z
+   ```
+
+If we want `z` to have value `0` after all these operations, we need the
+comparisons done in the second kind of chunk to succeed. This way, we are
+pushing and popping from `z` exactly 7 times and 7 times, resulting in an
+"empty" `z` stack with value `0` at the end of execution. Otherwise, if any of
+the comparisons doesn't succeed, we'll end up with some non-zero value in `z`.
+
+All we have to do to pass the program check on the input digits is pass all the
+7 comparisons, which are comparing pairs of digits together. More specifically,
+each of those pairs of digits needs to have a known difference (`D = A + B`)
+given by the constants in the program.
+
+How can we get the maximum possible values of two digits of a pair knowing that
+they are both between `1` and `9`, and that their difference is `D`? Well, one
+of them will of course be `9`. The other one will be `9 - D` if `D` is positive
+or `9 + D` if `D` is negative.
+
+Let's get to coding. The first thing we want to do is parse the input program
+and parse each chunk of 18 instructions to extract the constants that determine
+our input constraints. The first constant gets added to the current input digit
+by the 16th instruction (`add x A`) of each first-kind chunk, then pushed into
+`z`. The second constant gets added by the 6th instruction (`add x B`) of each
+second-kind chunk, after popping. The two kinds of chunks can be distinguished
+by the 5th instruction: it's `div z 1` for the first kind and `div z 26` for the
+second kind.
+
+Since we really don't care about most of the instructions, we'll skip a lot of
+input lines. Let's write a function to skip `n` lines for simplicity:
+
+```python
+def skip(file, n):
+    for _ in range(n):
+        next(file)
+```
+
+Now we can extract the constants and return them along with the indexes of the
+pair of digits they refer to and return a `list` of constraints to use later to
+determine the value we want. For the "stack" we'll use a
+[`deque`][py-collections-deque]. Each time we'll determine the kind of chunk:
+
+- For the first kind of chunk we'll push the current digit index and the
+  constant to add into the stack.
+- For the second kind chunk we'll pop from the stack the other digit index and
+  the first constant, add the second constant to the first and then append old
+  digit index, current digit index and sum of the constants to the result to
+  return.
+
+Doing the above, the result will be a list of tuples of the form `(i, j, diff)`,
+each of which indicates the constraint `digits[j] - digits[i] = diff`. Here's
+the code:
+
+```python
+def get_constraints(fin):
+    constraints = []
+    stack = deque()
+
+    for i in range(14):
+        skip(fin, 4)
+        op = next(fin).rstrip()
+        assert op.startswith('div z '), 'Invalid input!'
+
+        if op == 'div z 1': # first kind of chunk
+            skip(fin, 10)
+            op = next(fin)
+            assert op.startswith('add y '), 'Invalid input!'
+
+            a = int(op.split()[-1]) # first constant to add
+            stack.append((i, a))
+            skip(fin, 2)
+        else:               # second kind of chunk
+            op = next(fin)
+            assert op.startswith('add x '), 'Invalid input!'
+
+            b = int(op.split()[-1]) # second constant to add
+            j, a = stack.pop()
+            constraints.append((i, j, a + b)) # digits[j] - digits[i] must equal a + b
+            skip(fin, 12)
+
+    return constraints
+```
+
+With the list of constraints, we can now solve each pair of digits. One of them
+will always be 9, while the other will be `9 - diff` in case `diff` is positive,
+or `9 + diff` in case it's negative.
+
+```python
+def find_max(constraints):
+    digits = [0] * 14
+
+    for i, j, diff in constraints:
+        if diff > 0:
+            digits[i], digits[j] = 9, 9 - diff
+        else:
+            digits[i], digits[j] = 9 + diff, 9
+
+    # Compute the actual number from its digits.
+    num = 0
+    for d in digits:
+        num = num * 10 + d
+
+    return num
+```
+
+The last part of the above function where we reconstruct the number from its
+digits can be simplified using [`functools.reduce()`][py-functools-reduce]:
+
+```python
+from functools import reduce
+
+def find_max(constraints):
+    # ...
+    return reduce(lambda acc, d: acc * 10 + d, digits)
+```
+
+Perfect, now we should have today's first star in our pocket:
+
+```python
+fin         = open(...)
+constraints = get_constraints(fin)
+nmax        = find_max(constraints)
+
+print('Part 1:', nmax)
+```
+
+### Part 2
+
+For the second part we are asked to find the minimum possible accepted number
+instead.
+
+Well, we already have all we need. Let's modify `find_max()` to calculate both
+the maximum and minimum accepted values. Finding minimum is analogous to what we
+did to find the maximum: given a pair of digits and their difference, one of the
+two will just be the lowest possible (`1`), and the other will be `1 + diff` in
+case `diff` is positive, and `1 - diff` otherwise.
+
+```python
+def find_max_min(constraints):
+    nmax = [0] * 14
+    nmin = [0] * 14
+
+    for i, j, diff in constraints:
+        if diff > 0:
+            nmax[i], nmax[j] = 9, 9 - diff
+            nmin[i], nmin[j] = 1 + diff, 1
+        else:
+            nmax[i], nmax[j] = 9 + diff, 9
+            nmin[i], nmin[j] = 1, 1 - diff
+
+    nmax = reduce(lambda acc, d: acc * 10 + d, nmax)
+    nmin = reduce(lambda acc, d: acc * 10 + d, nmin)
+    return nmax, nmin
+```
+
+We can now solve both parts at once using the above function:
+
+```python
+fin         = open(...)
+constraints = get_constraints(fin)
+nmax, nmin  = find_max_min(constraints)
+
+print('Part 1:', nmax)
+print('Part 2:', nmin)
+```
+
+Nice puzzle today. Not really much about programming, but more about
+reverse engineering. Indeed, we could have solved the constraints in the input
+by hand in a fraction of the time we spent writing a more general automated
+solution!
+
 Day 25 - Sea Cucumber
 ---------------------
 
@@ -5564,6 +5951,7 @@ As always, there is no part 2 for day 25. Merry Christmas!
 [d07-orginal]:             original_solutions/day07.py
 [d18-original]:            original_solutions/day18.py
 [d21-original]:            original_solutions/day21.py
+[d24-original]:            original_solutions/day24.py
 [d25-alternative]:         misc/day25/sparse_matrix.py
 [d06-p2]:                  #part-2-7
 [d14-p2]:                  #part-2-13
@@ -5578,6 +5966,7 @@ As always, there is no part 2 for day 25. Merry Christmas!
 [d07-reddit-paper-author]: https://www.reddit.com/user/throwaway7824365346/
 [d17-reddit-megathread]:   https://www.reddit.com/ri9kdq
 [d18-reddit-megathread]:   https://www.reddit.com/rizw2c
+[d24-reddit-comment]:      https://www.reddit.com/r/adventofcode/comments/rnejv5/2021_day_24_solutions/hps4c3n/
 
 [py-assert]:                  https://docs.python.org/3/reference/simple_stmts.html#grammar-token-python-grammar-assert_stmt
 [py-class]:                   https://docs.python.org/3/tutorial/classes.html#a-first-look-at-classes
@@ -5676,7 +6065,9 @@ As always, there is no part 2 for day 25. Merry Christmas!
 [wiki-reflection]:            https://en.wikipedia.org/wiki/Reflection_(mathematics)
 [wiki-scipy]:                 https://en.wikipedia.org/wiki/SciPy
 [wiki-seven-segment-display]: https://en.wikipedia.org/wiki/Seven-segment_display
+[wiki-smt]:                   https://en.wikipedia.org/wiki/Satisfiability_modulo_theories
 [wiki-stack]:                 https://en.wikipedia.org/wiki/Stack_(abstract_data_type)
+[wiki-symbolic-execution]:    https://en.wikipedia.org/wiki/Symbolic_execution
 [wiki-tower-of-hanoi]:        https://en.wikipedia.org/wiki/Tower_of_Hanoi
 [wiki-triangular-number]:     https://en.wikipedia.org/wiki/Triangular_number
 [wiki-zocchihedron]:          https://en.wikipedia.org/wiki/Zocchihedron
