@@ -58,8 +58,10 @@ def moves_to_hallway(rooms, hallway, room_size):
 			yield cost, (new_rooms, new_hallway)
 
 def possible_moves(rooms, hallway, room_size):
-	yield from moves_to_room(rooms, hallway, room_size)
-	yield from moves_to_hallway(rooms, hallway, room_size)
+	try:
+		yield next(moves_to_room(rooms, hallway, room_size))
+	except StopIteration:
+		yield from moves_to_hallway(rooms, hallway, room_size)
 
 def done(rooms, room_size):
 	for r, room in enumerate(rooms):

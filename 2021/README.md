@@ -5090,6 +5090,27 @@ def possible_moves(rooms, hallway):
     yield from moves_to_hallway(rooms, hallway)
 ```
 
+It's worth noting that *whenever we can move an object from the hallway into its
+room, that move will always be optimal*. Doing it as soon as we can or
+postponing it later does not change the final cost. However, if we always
+perform optimal moves right away when possible and ignore the other moves, we
+can avoid wasting time trying other solutions that we already know can only
+either cost the same (at best) or more (in the worst case), but never less.
+
+To translate this into code: whenever our `moves_to_room()` generators yields at
+least one possible move, we should `yield` the first one only, without wasting
+time checking other moves. We can do this by calling [`next()`][py-builtin-next]
+once, and then only `yield` other moves in case we receive a
+[`StopIteration`][py-stopiteration] (i.e. no moves to rooms are available).
+
+```python
+def possible_moves(rooms, hallway):
+    try:
+        yield next(moves_to_room(rooms, hallway))
+    except StopIteration:
+        yield from moves_to_hallway(rooms, hallway)
+```
+
 Ok, now we can write the `move_cost()` function, which is probably the most
 complex, due to the simplified nature of our state (rooms and hallways). We are
 using a "compressed" hallway which is missing the illegal spots, so the
@@ -5258,7 +5279,8 @@ actually need it is when calculating the cost of moving in or out of a room in
 `move_cost()` and when determining if we are finished in `done()`, but we'll
 have to get the parameter there propagating it through all the function calls.
 
-Here are the needed modifications:
+Here are the needed modifications (basically just adding the `room_size`
+parameter and propagating it everywhere):
 
 ```diff
 -def move_cost(room, hallway, r, h, to_room=False):
@@ -5281,11 +5303,13 @@ Here are the needed modifications:
 +            cost = move_cost(room, hallway, r, h, room_size)
 
 -def possible_moves(rooms, hallway):
--    yield from moves_to_room(rooms, hallway)
--    yield from moves_to_hallway(rooms, hallway)
 +def possible_moves(rooms, hallway, room_size):
-+    yield from moves_to_room(rooms, hallway, room_size)
-+    yield from moves_to_hallway(rooms, hallway, room_size)
+     try:
+-        yield next(moves_to_room(rooms, hallway))
++        yield next(moves_to_room(rooms, hallway, room_size))
+     except StopIteration:
+-        yield from moves_to_hallway(rooms, hallway)
++        yield from moves_to_hallway(rooms, hallway, room_size)
 
 -def done(rooms):
 +def done(rooms, room_size):
@@ -5976,8 +6000,10 @@ As always, there is no part 2 for day 25. Merry Christmas!
 [py-lambda]:                  https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
 [py-generator-function]:      https://wiki.python.org/moin/Generators
 [py-generator-expr]:          https://www.python.org/dev/peps/pep-0289/
+[py-stopiteration]:           https://docs.python.org/3/library/exceptions.html#StopIteration
 [py-unpacking]:               https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 [py-yield-from]:              https://docs.python.org/3.9/whatsnew/3.3.html#pep-380
+
 [py-builtin-abs]:             https://docs.python.org/3/library/functions.html#abs
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-any]:             https://docs.python.org/3/library/functions.html#any
