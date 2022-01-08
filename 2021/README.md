@@ -25,7 +25,7 @@ Table of Contents
 - Day 19 - Beacon Scanner (TODO)
 - [Day 20 - Trench Map][d20]
 - [Day 21 - Dirac Dice][d21]
-- Day 22 - Reactor Reboot (TODO)
+- [Day 22 - Reactor Reboot][d22]
 - [Day 23 - Amphipod][d23]
 - [Day 24 - Arithmetic Logic Unit][d24]
 - [Day 25 - Sea Cucumber][d25]
@@ -4899,6 +4899,378 @@ print('Part 2:', best)
 ```
 
 
+Day 22 - Reactor Reboot
+-----------------------
+
+[Problem statement][d22-problem] — [Complete solution][d22-solution] — [Back to top][top]
+
+### Part 1
+
+We have a (sort of) geometrical problem to solve. We are given a list of cuboids
+identifying regions of 3D space, each of which also has an associated command:
+"on" or "off". We are working with a 3D space partitioned in cubes of size 1x1x1
+which are initially all "off". Applying an "on" command means turning on all the
+unit cubes contained in the cuboid, while applying an "off" command means
+turning them off. We need to apply all commands, only focusing on the region of
+cubes from -50 to 50 (inclusive) in all 3 directions, and figure out how many
+unit cubes will be ON inside this region after all the commands are applied.
+
+Needless to say, the cuboids provided in our input do overlap. This causes a
+little bit of a problem: how do we deal with subsequent commands that involve
+the same unit cube? There is a simple solution, which given the relatively small
+range of -50/+50 will work just fine: keeping track of the state of *all* unit
+cubes in the region, applying each command literally, turning ON of OFF all the
+cubes involved by the command every time.
+
+To extract coordinates from each line of input we can use a
+[regexp][misc-regexp] that matches all sequences of digits optionally preceded
+by a minus sign (`-`), converting each match in into an `int` through
+[`map`][py-builtin-map].
+
+```python
+import re
+
+regexp   = re.compile(r'-?\d+')
+commands = []
+
+for line in fin:
+    on     = line.startswith('on') # True if the command is "on", False otherwise
+    cuboid = tuple(map(int, regexp.findall(line)))
+    commands.append((on, cuboid))
+```
+
+To keep track of the state of each unit cube we can either use a `set` of
+coordinates or a 3D matrix (`list` of `list` of `list`). Using a `set`
+simplifies things, as we do not need any initialization and we can only keep
+track of ON cubes.
+
+The first thing to check for each command is whether the cuboid in question
+touches the -50/+50 region we are interested in. If so, we also need to limit
+the range of coordinates of the cuboid in all directions to be inside -50/+50.
+For example, if we get the command `on x=-200..200,...` it's clear that we do
+not care about most of the range, so we can limit the low `x` to `-50` and the
+high `x` to `50`. This can be done by simply applying
+[`min()`][py-builtin-min]/[`max()`][py-builtin-max] as needed.
+
+For "on" commands, we'll mark every integer coordinate (corresponding to a
+single unit cube) inside the specified cuboid (limited to -50/+50) as ON by
+adding it to a `set`. For "off" commands, we'll just discard all interested
+coordinates from the set. Doing this, after processing all commands we will be
+left with a set only containing the coordinates of unit cubes that are ON.
+
+```python
+on_cubes = set()
+
+for on, (x1, x2, y1, y2, z1, z2) in commands:
+    if on:
+        for x in range(max(x1, -50), min(x2, 50) + 1):
+            for y in range(max(y1, -50), min(y2, 50) + 1):
+                for z in range(max(z1, -50), min(z2, 50) + 1):
+                    on_cubes.add((x, y, z))
+    else:
+        for x in range(max(x1, -50), min(x2, 50) + 1):
+            for y in range(max(y1, -50), min(y2, 50) + 1):
+                for z in range(max(z1, -50), min(z2, 50) + 1):
+                    on_cubes.discard((x, y, z))
+```
+
+To avoid duplicated code we can simplify the above by keeping the method to use
+(`.add()` or `.discard()`) in a variable created before the 3 internal `for`
+loops:
+
+```python
+for on, (x1, x2, y1, y2, z1, z2) in commands:
+    method = on_cubes.add if on else on_cubes.discard
+
+    for x in range(max(x1, -50), min(x2, 50) + 1):
+        for y in range(max(y1, -50), min(y2, 50) + 1):
+            for z in range(max(z1, -50), min(z2, 50) + 1):
+                method((x, y, z))
+```
+
+The size of the `on_cubes` set will now tell us how many unit cubes are ON in
+the end:
+
+```python
+n_on = len(on_cubes)
+print('Part 1:', n_on)
+```
+
+### Part 2
+
+As we could easily expect, we are now asked to work without bounds, considering
+all cuboids in their entirety. All coordinates need to be considered.
+
+Whelp! Our part 1 approach just became unfeasible. If we take a look at our
+input (or even just at the examples given in the problem statement) we can see
+that coordinates in all 3 directions go from around -100000 to around 100000.
+This means 200k units for 3 directions which is up to 8×10<sup>15</sup>
+different points to keep track of... a little bit too many to fit in memory
+(and also to iterate over in a decent amount of time).
+
+As usual, there are different ways to solve today's problem:
+
+1. The most optimal solution in terms of time complexity is probably using
+   [segment trees][wiki-segment-tree], however it also the most complex one to
+   actually implement. There are other solutions that work just fine given the
+   number of commands in our input isn't that large.
+
+2. The simplest solution is to use coordinate compression (no Wikipedia entry
+   for this technique unfortunately, but here are two useful links:
+   [one][misc-coord-compression-so], [two][misc-coord-compression-quora]).
+   Coordinate compression is intuitive and also simple to implement, and indeed
+   it's probably what most people implemented at first to solve this problem,
+   however, it's pretty bad in terms of both time and space complexity.
+
+   [Here's my solution][d22-alternative] using coordinate compression, which I
+   wrote just for fun. It runs in *O(N<sup>3</sup>)* (where *N* is the number of
+   commands in the input) and uses around *O((2N)<sup>3</sup>)* space (on my
+   machine it requires around 4GB of RAM, sigh).
+
+3. Another possible approach is using an [Octree][wiki-octree] to partition the
+   space, but this is unfeasible in terms of space (and probably also time).
+   [I did implement this one too][d22-alternative-2], but did not test it that
+   much as my implementation requires way too much memory and time, as the
+   overhead of my `class`-based approach is quite large. The problem with
+   octrees is that in the average case scenario it could actually get as bad as
+   the brute-force approach (if not worse), segmenting the 3D space in too many
+   unit cubes.
+
+4. Lastly, the "smart" solution involves detecting and somehow handling overlaps
+   between cuboids of subsequent commands. This is the solution we are going to
+   discuss and implement today.
+
+As I just said, we can solve the problem in a rather simple way if we are smart
+enough about the overlaps of the cuboids in different commands, because
+obviously this is what everything boils down to: figuring out how to handle
+those annoying overlaps to correctly count ON/OFF cubes.
+
+Let's simplify things and see how we could deal with the same problem, but only
+in one dimension instead of three: what if our commands acted on segments of a
+number line, and we wanted to figure out how many unit segments were ON after
+applying all commands?
+
+We will solve the problem by keeping two separate lists: "positive" segments,
+which contribute a positive amount (equal to their length) to the final count,
+and "negative" segments, which contribute a negative amount instead. Clearly, if
+we only had non-overlapping ON commands we could just add all the segments to
+the "positive" list, and sum their lengths. In case of overlaps, however, this
+would cause double counts. To overcome this issue, whenever we encounter an
+overlap we can also add the intersection of the two overlapping segments to the
+"negative" list, so that the double-counting gets corrected.
+
+As per OFF commands, the actions to perform are similar. In case of no overlaps
+with any existing positive or negative segment, simply ignore the command. In
+case of overlaps, any intersection with positive segments needs to be added to
+the negative segments, and any intersection with negative segments needs to be
+added to the positive segments instead, again to correct for double-counting.
+
+Some visual examples can help us a lot. For simplicity, we'll add 1 to the
+second number of each command (the end of the range), in order to be able to
+compute the number of unit segments with a simple subtraction later
+(`end - start`). Here it is:
+
+```none
+           0   1   2   3   4   5
+on  0..3   |+++++++++++|
+on  2..5           |+++++++++++|
+off 1..4       |-----------|
+on  1..2       |+++|
+
+result     |+++++++|       |+++|
+```
+
+Now let's apply commands one by one and see how to handle them:
+
+1. The first command is straightforward: we just have an ON segment, add it to
+   the "positive" list. Positive segments: `0..3`.
+2. The second command is trickier, as it overlaps with the first. If we simply
+   count it as is, we have 3 more units ON, but we would be counting the segment
+   `2..3` twice, so we'll also need to remove it from the count. Positive
+   segments: `0..3`, `2..5`; negative segments: `2..3`.
+3. The third command is OFF, and it overlaps with both the previous commands.
+   Let's try applying it as is by removing all parts of previous ON segments
+   that overlap with this one: we have `1..3` and `2..4` to remove. There is a
+   problem again though, we are removing `2..3` twice. How could we possibly
+   detect and correct this? Well, we have `2..3` in the negative list, so we
+   know that it was the result of an earlier ON command overlapping with another
+   one. Let's add it back in. Positive segments: `0..3`, `2..5`, `2..3`;
+   negative segments: `2..3`, `1..3`, `2..4`. The `2..3` in the positive
+   segments was added to prevent double-counting the `2..3` segment as negative.
+4. Lastly, for the final ON command the reasoning is the same: if we just add it
+   to the positive segments, we could potentially be double-counting. We also
+   need to check for any overlap with other positive segments to add the
+   intersection to the negative segments, and vice-versa check for any overlap
+   with other negative segments and add the intersection to the positive ones.
+   The final result is positive segments: `0..3`, `2..5`, `2..3`, `1..2`,
+   `1..2`; negative segments: `2..3`, `1..3`, `2..4`, `1..2`. The second
+   occurrence of `1..2` in the positive segments is a result of the intersection
+   with the negative `1..3`, while the only occurrence of `1..2` in the negative
+   segments is a result of the intersection with positive segment `0..3`. Both
+   of these prevent double-counting (positively or negatively).
+
+If we now take a look at our "positive" and "negative" lists, we can see that
+adding together the lengths of positive segments and subtracting the lengths of
+the negative segments we end up with *3+3+1+1+1-1-2-2-1 = 3*, which is exactly
+the final number of ON unit segments we are left with.
+
+The advantage of the above method is that it works with any number of
+dimensions, as long as we are able to correctly detect overlaps and calculate
+intersections. The intersection of two segments is straightforward: we take the
+maximum of the two starting points as starting point and the minimum of the two
+ending as ending point; if the calculated starting point is greater or equal to
+the ending point, it means there is no intersection so we can just discard it.
+In 3D it's pretty much the same, the only difference is that we need to do these
+calculations and checks for all 3 dimensions.
+
+With the above said, here's a function to calculate the intersection of two
+cuboids given their starting and ending coordinates as tuples of 6 numbers:
+
+```python
+def intersection(a, b):
+    ax1, ax2, ay1, ay2, az1, az2 = a
+    bx1, bx2, by1, by2, bz1, bz2 = b
+
+    ix1, ix2 = max(ax1, bx1), min(ax2, bx2)
+    iy1, iy2 = max(ay1, by1), min(ay2, by2)
+    iz1, iz2 = max(az1, bz1), min(az2, bz2)
+
+    if ix1 < ix2 and iy1 < iy2 and iz1 < iz2:
+        return ix1, ix2, iy1, iy2, iz1, iz2
+
+    return None # there's no intersection if we get here
+```
+
+Now, using the `commands` list we created in part 1, which holds pairs of the
+form `(on, (x1, x2, y1, ...))`, we can apply the steps we just described in the
+previous paragraphs:
+
+```python
+positive = []
+negative = []
+
+for on, cuboid in commands:
+    for other in positive:
+        inter = intersection(cuboid, other)
+        if inter is None:
+            continue
+
+        negative.append(inter)
+
+    for other in negative:
+        inter = intersection(cuboid, other)
+        if inter is None:
+            continue
+
+        positive.append(inter)
+
+    if on:
+        positive.append(cuboid)
+```
+
+Now all that's left to do is sum up the volumes of all `positive` cuboids and
+then subtract the volumes of all `negative` cuboids. We can write a function to
+calculate the volume of a given cuboid:
+
+```python
+def volume(x1, x2, y1, y2, z1, z2):
+    return (x2 - x1 + 1) * (y2 - y1 + 1) * (z2 - z1 + 1)
+```
+
+Using a couple of [generator expressions][py-generator-expr] along with
+[`sum()`][py-builtin-sum] and [`starmap()`][py-itertools-starmap] (since the
+`volume()` function we wrote takes 6 arguments and our cuboids are tuples of 6
+values) the final calculation is just a single line of code:
+
+```python
+from itertools import starmap
+
+total = sum(starmap(volume, positive)) - sum(starmap(volume, negative))
+```
+
+We the answer we were looking for, however there is one significant optimization
+that can be made. As we saw with the pretty small example on 1D segments, it's
+quite common to end up calculating the same intersection more than once. Since
+we are iterating over the entire list of negative and positive cuboids for every
+new command, we can potentially end up with *O(N<sup>2</sup>)* cuboids in our
+lists, with a lot of duplicates.
+
+To make everything work faster, we can batch together operations that concern
+already seen cuboids, using a dictionary of the form `{cuboid: count}` instead
+of two lists. Whenever an intersection occurs between the current cuboid and
+another one already present in the dictionary, we can then increment (or
+decrement) the count of the intersection as much as the count of the existing
+cuboid (since we are intersecting multiple copies of that same cuboid). Whether
+to decrement or not is determined by the sign of the existing cuboid's count: if
+positive, we decrement; if negative, we increment. In other words, just subtract
+the count (regardless of its sign) every time.
+
+We can use a [`defaultdict()`][py-collections-defaultdict] of `int` to make it
+painless to add new entries with a default count of `0`. The only thing we need
+to be careful about is iterating over old cuboids: we basically want to modify
+the dictionary while iterating on its keys, which is not a good idea (and also
+not possible, we would get a `RuntimeError`). We only need to iterate over
+previously existing cuboids though, so we can take the
+[`.items()`][py-dict-items] in the dictionary and turn them into an immutable
+`tuple` before iterating.
+
+Here's the updated code:
+
+```python
+from collections import defaultdict
+
+counts = defaultdict(int)
+
+for on, cuboid in commands:
+    for other, count in tuple(counts.items()):
+        inter = intersection(cuboid, other)
+        if inter is None:
+            continue
+
+        counts[inter] -= count
+
+    if on:
+        counts[cuboid] += 1
+```
+
+The final calculation now becomes a sum of products `volume * count` for each
+unique cuboid in the dictionary:
+
+```python
+total = sum(n * volume(*cuboid) for cuboid, n in counts.items())
+print('Part 2:', total)
+```
+
+We can also use this code to calculate the answer for part 1, by writing another
+function that only calculates the volume of cuboids that have coordinates in the
+-50/+50 range, using the same `min()`/`max()` approach we used for part 1 to
+limit the coordinates:
+
+```python
+def volume_small(x1, x2, y1, y2, z1, z2):
+    if x1 > 50 or y1 > 50 or z1 > 50 or x2 < -50 or y2 < -50 or z2 < -50:
+        return 0
+
+    x1, x2 = max(x1, -50), min(x2, 50)
+    y1, y2 = max(y1, -50), min(y2, 50)
+    z1, z2 = max(z1, -50), min(z2, 50)
+
+    return volume(x1, x2, y1, y2, z1, z2)
+```
+
+The final calculation for both parts now becomes:
+
+```python
+total = total_small = 0
+
+for cuboid, n in counts.items():
+    total       += n * volume(*cuboid)
+    total_small += n * volume_small(*cuboid)
+
+print('Part 1:', total_small)
+print('Part 2:', total)
+```
+
 Day 23 - Amphipod
 -----------------
 
@@ -5977,6 +6349,8 @@ As always, there is no part 2 for day 25. Merry Christmas!
 [d21-original]:            original_solutions/day21.py
 [d24-original]:            original_solutions/day24.py
 [d25-alternative]:         misc/day25/sparse_matrix.py
+[d22-alternative]:         misc/day22/coord_compression.py
+[d22-alternative-2]:       misc/day22/octree.py
 [d06-p2]:                  #part-2-7
 [d14-p2]:                  #part-2-13
 <!-- TODO: change this when adding d19! -->
@@ -6025,6 +6399,7 @@ As always, there is no part 2 for day 25. Merry Christmas!
 [py-collections-counter]:     https://docs.python.org/3/library/collections.html#collections.Counter
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
+[py-dict-items]:              https://docs.python.org/3/library/stdtypes.html#dict.items
 [py-frozenset]:               https://docs.python.org/3/library/stdtypes.html#frozenset
 [py-functools]:               https://docs.python.org/3/library/functools.html
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
@@ -6084,12 +6459,14 @@ As always, there is no part 2 for day 25. Merry Christmas!
 [wiki-min-heap]:              https://en.wikipedia.org/wiki/Binary_heap
 [wiki-np-complete]:           https://en.wikipedia.org/wiki/NP-completeness
 [wiki-numpy]:                 https://en.wikipedia.org/wiki/NumPy
+[wiki-octree]:                https://en.wikipedia.org/wiki/Octree
 [wiki-priority-queue]:        https://en.wikipedia.org/wiki/Priority_queue
 [wiki-projectile-motion]:     https://en.wikipedia.org/wiki/Projectile_motion
 [wiki-pushdown-automata]:     https://en.wikipedia.org/wiki/Pushdown_automaton
 [wiki-queue]:                 https://en.wikipedia.org/wiki/Queue_(abstract_data_type)
 [wiki-reflection]:            https://en.wikipedia.org/wiki/Reflection_(mathematics)
 [wiki-scipy]:                 https://en.wikipedia.org/wiki/SciPy
+[wiki-segment-tree]:          https://en.wikipedia.org/wiki/Segment_tree
 [wiki-seven-segment-display]: https://en.wikipedia.org/wiki/Seven-segment_display
 [wiki-smt]:                   https://en.wikipedia.org/wiki/Satisfiability_modulo_theories
 [wiki-stack]:                 https://en.wikipedia.org/wiki/Stack_(abstract_data_type)
@@ -6098,13 +6475,15 @@ As always, there is no part 2 for day 25. Merry Christmas!
 [wiki-triangular-number]:     https://en.wikipedia.org/wiki/Triangular_number
 [wiki-zocchihedron]:          https://en.wikipedia.org/wiki/Zocchihedron
 
-[misc-aoc-bingo]:            https://www.reddit.com/r/adventofcode/comments/k3q7tr/
-[misc-inverse-triangular]:   https://math.stackexchange.com/a/2041994
-[misc-issue-11]:             https://github.com/mebeim/aoc/issues/11
-[misc-cpp-nth-element]:      https://en.cppreference.com/w/cpp/algorithm/nth_element
-[misc-cpp-nth-element-so]:   https://stackoverflow.com/q/29145520/3889449
-[misc-cpython-median-low]:   https://github.com/python/cpython/blob/ddbab69b6d44085564a9b5022b96b002a52b2f2b/Lib/statistics.py#L549-L568
-[misc-median-math-se]:       https://math.stackexchange.com/q/113270
-[misc-pypy]:                 https://www.pypy.org/
-[misc-regexp]:               https://www.regular-expressions.info/
-[misc-so-recursive-bfs]:     https://stackoverflow.com/q/2549541/3889449
+[misc-aoc-bingo]:               https://www.reddit.com/r/adventofcode/comments/k3q7tr/
+[misc-coord-compression-so]:    https://stackoverflow.com/q/29528934/3889449
+[misc-coord-compression-quora]: https://www.quora.com/What-is-coordinate-compression-and-what-is-it-used-for
+[misc-inverse-triangular]:      https://math.stackexchange.com/a/2041994
+[misc-issue-11]:                https://github.com/mebeim/aoc/issues/11
+[misc-cpp-nth-element]:         https://en.cppreference.com/w/cpp/algorithm/nth_element
+[misc-cpp-nth-element-so]:      https://stackoverflow.com/q/29145520/3889449
+[misc-cpython-median-low]:      https://github.com/python/cpython/blob/ddbab69b6d44085564a9b5022b96b002a52b2f2b/Lib/statistics.py#L549-L568
+[misc-median-math-se]:          https://math.stackexchange.com/q/113270
+[misc-pypy]:                    https://www.pypy.org/
+[misc-regexp]:                  https://www.regular-expressions.info/
+[misc-so-recursive-bfs]:        https://stackoverflow.com/q/2549541/3889449
