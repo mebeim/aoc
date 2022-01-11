@@ -5030,7 +5030,7 @@ As usual, there are different ways to solve today's problem:
 3. Another possible approach is using an [Octree][wiki-octree] to partition the
    space, but this is unfeasible in terms of space (and probably also time).
    [I did implement this one too][d22-alternative-2], but did not test it that
-   much as my implementation requires way too much memory and time, as the
+   much as my implementation requires way too much memory and time, and the
    overhead of my `class`-based approach is quite large. The problem with
    octrees is that in the average case scenario it could actually get as bad as
    the brute-force approach (if not worse), segmenting the 3D space in too many
@@ -5150,12 +5150,14 @@ positive = []
 negative = []
 
 for on, cuboid in commands:
+    new_negative = []
+
     for other in positive:
         inter = intersection(cuboid, other)
         if inter is None:
             continue
 
-        negative.append(inter)
+        new_negative.append(inter)
 
     for other in negative:
         inter = intersection(cuboid, other)
@@ -5164,13 +5166,19 @@ for on, cuboid in commands:
 
         positive.append(inter)
 
+    negative.extend(new_negative)
+
     if on:
         positive.append(cuboid)
 ```
 
-Now all that's left to do is sum up the volumes of all `positive` cuboids and
-then subtract the volumes of all `negative` cuboids. We can write a function to
-calculate the volume of a given cuboid:
+The `new_negative` temporary list used above is to avoid adding intersections to
+the `negative` list before we iterate over it with `for other in negative`, as
+that would mean counting them twice
+([thanks @atkinew0 for pointing this out][misc-issue-14]). Now all that's left
+to do is sum up the volumes of all `positive` cuboids and then subtract the
+volumes of all `negative` cuboids. We can write a function to calculate the
+volume of a given cuboid:
 
 ```python
 def volume(x1, x2, y1, y2, z1, z2):
@@ -5188,12 +5196,12 @@ from itertools import starmap
 total = sum(starmap(volume, positive)) - sum(starmap(volume, negative))
 ```
 
-We the answer we were looking for, however there is one significant optimization
-that can be made. As we saw with the pretty small example on 1D segments, it's
-quite common to end up calculating the same intersection more than once. Since
-we are iterating over the entire list of negative and positive cuboids for every
-new command, we can potentially end up with *O(N<sup>2</sup>)* cuboids in our
-lists, with a lot of duplicates.
+We ahve the answer we were looking for, however there is one significant
+optimization that can be made. As we saw with the pretty small example on 1D
+segments, it's quite common to end up calculating the same intersection more
+than once. Since we are iterating over the entire list of negative and positive
+cuboids for every new command, we can potentially end up with *O(N<sup>2</sup>)*
+cuboids in our lists, with a lot of duplicates.
 
 To make everything work faster, we can batch together operations that concern
 already seen cuboids, using a dictionary of the form `{cuboid: count}` instead
@@ -6480,6 +6488,7 @@ As always, there is no part 2 for day 25. Merry Christmas!
 [misc-coord-compression-quora]: https://www.quora.com/What-is-coordinate-compression-and-what-is-it-used-for
 [misc-inverse-triangular]:      https://math.stackexchange.com/a/2041994
 [misc-issue-11]:                https://github.com/mebeim/aoc/issues/11
+[misc-issue-14]:                https://github.com/mebeim/aoc/issues/14
 [misc-cpp-nth-element]:         https://en.cppreference.com/w/cpp/algorithm/nth_element
 [misc-cpp-nth-element-so]:      https://stackoverflow.com/q/29145520/3889449
 [misc-cpython-median-low]:      https://github.com/python/cpython/blob/ddbab69b6d44085564a9b5022b96b002a52b2f2b/Lib/statistics.py#L549-L568
