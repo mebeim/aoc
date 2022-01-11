@@ -6,7 +6,8 @@ Personal repository of [Advent of Code](#about-advent-of-code) solutions.
 ### Quick links
 
 - **Advent of Code 2021:  [walkthrough][2021-wal],
-  [clean][2021-sol] / [original][2021-ori] solutions**
+  [clean][2021-sol] / [original][2021-ori] solutions,
+  [full leaderboard][2021-lea]**
 - Advent of Code 2020:  [walkthrough][2020-wal],
   [clean][2020-sol] / [original][2020-ori] solutions,
   [full leaderboard][2020-lea]
@@ -58,7 +59,7 @@ In each year's folder you will find:
   recurring concepts and problems each year. If needed, this folder will hold
   common code used by multiple solutions.
 - `misc/`: anything else interesting. This includes image/video visualizations
-  of puzzles, additional interesting scripts, and so on.
+  of puzzles, additional interesting scripts, alternative solutions, and so on.
 
    - `full_leaderboard.md`: a complete leaderboard of all participants of
      advent of code, including those who do not make it to the top 100, built by
@@ -100,24 +101,22 @@ license, which you can find in the file
 [2021-wal]: 2021/README.md
 [2021-sol]: 2021/solutions
 [2021-ori]: 2021/original_solutions
+[2021-lea]: 2021/misc/full_leaderboard.md
 
 [2020-wal]: 2020/README.md
 [2020-sol]: 2020/solutions
 [2020-ori]: 2020/original_solutions
 [2020-lea]: 2020/misc/full_leaderboard.md
-[2020-cal]: 2020/misc/calendar.gif
 
 [2019-wal]: 2019/README.md
 [2019-sol]: 2019/solutions
 [2019-ori]: 2019/original_solutions
 [2019-lea]: 2019/misc/full_leaderboard.md
-[2019-cal]: 2019/misc/calendar.gif
 
 [2018-wal]: 2018/README.md
 [2018-sol]: 2018/solutions
 [2018-ori]: 2018/original_solutions
 [2018-lea]: 2018/misc/full_leaderboard.md
-[2018-cal]: 2018/misc/calendar.gif
 
 [contributing]: /CONTRIBUTING.md
 [new-issue]:    https://github.com/mebeim/aoc/issues/new
