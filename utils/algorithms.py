@@ -275,7 +275,7 @@ def dijkstra_path(G, src, dst, get_neighbors=None):
 	get_neighbors(node) is called to determine node neighbors (default is G.get)
 
 	Returns a tuple (shortest_path, length) where shortest_path is a tuple of
-	the form (src, ..., dst). If no path is found, the result is ([], INFINITY).
+	the form (src, ..., dst). If no path is found, the result is ((), INFINITY).
 
 	NOTE that the returned length is the length of the shortest path (i.e. sum
 	of edge weights along the path), not the number of nodes in the path.
@@ -300,7 +300,7 @@ def dijkstra_path(G, src, dst, get_neighbors=None):
 				path.append(node)
 				node = previous[node]
 
-			return reversed(path), dist
+			return tuple(reversed(path)), dist
 
 		if node not in visited:
 			visited.add(node)
