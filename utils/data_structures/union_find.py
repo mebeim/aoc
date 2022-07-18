@@ -42,7 +42,7 @@ class UnionFind:
 		# Avoid ambiguity since it's not obvious whether len() should return
 		# the number of sets in the UF or the total number of elements in all
 		# sets of the UF.
-		raise NotImplementedError('len() not supported, use .size to get the'
+		raise NotImplementedError('len() not supported, use .size to get the '
 			'number of disjoint sets present in this UnionFind') from None
 
 	def make_set(self, el):
