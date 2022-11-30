@@ -5,17 +5,11 @@ Personal repository of [Advent of Code](#about-advent-of-code) solutions.
 
 ### Quick links
 
-- **Advent of Code 2021:  [walkthrough][2021-wal],
-  [clean][2021-sol] / [original][2021-ori] solutions,
-  [full leaderboard][2021-lea]**
-- Advent of Code 2020:  [walkthrough][2020-wal],
-  [clean][2020-sol] / [original][2020-ori] solutions,
-  [full leaderboard][2020-lea]
-- Advent of Code 2019: [walkthrough][2019-wal],
-  [clean][2019-sol] / [original][2019-ori] solutions,
-  [full leaderboard][2019-lea]
-- Advent of Code 2018: [clean][2018-sol] / [original][2018-ori] solutions,
-  [full leaderboard][2018-lea]
+- **Advent of Code 2022: [walkthrough][2022-wal], [clean][2022-sol] / [original][2022-ori] solutions**
+- Advent of Code 2021: [walkthrough][2021-wal], [clean][2021-sol] / [original][2021-ori] solutions, [full leaderboard][2021-lea]
+- Advent of Code 2020: [walkthrough][2020-wal], [clean][2020-sol] / [original][2020-ori] solutions, [full leaderboard][2020-lea]
+- Advent of Code 2019: [walkthrough][2019-wal], [clean][2019-sol] / [original][2019-ori] solutions, [full leaderboard][2019-lea]
+- Advent of Code 2018: [clean][2018-sol] / [original][2018-ori] solutions, [full leaderboard][2018-lea]
 
 
 About Advent of Code
@@ -95,8 +89,12 @@ license, which you can find in the file
 
 ---
 
-*Copyright &copy; 2018-2021 Marco Bonelli.*
+*Copyright &copy; 2018-2022 Marco Bonelli.*
 
+
+[2022-wal]: 2022/README.md
+[2022-sol]: 2022/solutions
+[2022-ori]: 2022/original_solutions
 
 [2021-wal]: 2021/README.md
 [2021-sol]: 2021/solutions
