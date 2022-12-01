@@ -162,3 +162,4 @@ REQUESTS  = find_loader('requests')
 if REQUESTS:
 	import requests
 	S = requests.Session()
+	S.headers['User-Agent'] = 'github.com/mebeim/aoc by marco AT mebeim.net'
