@@ -104,15 +104,15 @@ pre-compute all possible scores for the second player:
 
 ```python
 SCORES = (
-	1 + 3, # A (rock)     vs X (rock)     -> draw
-	2 + 6, # A (rock)     vs Y (paper)    -> win
-	3 + 0, # A (rock)     vs Z (scissors) -> loss
-	1 + 0, # B (paper)    vs X (rock)     -> loss
-	2 + 3, # B (paper)    vs Y (paper)    -> draw
-	3 + 6, # B (paper)    vs Z (scissors) -> win
-	1 + 6, # C (scissors) vs X (rock)     -> win
-	2 + 0, # C (scissors) vs Y (paper)    -> loss
-	3 + 3, # C (scissors) vs Z (scissors) -> draw
+    1 + 3, # A (rock)     vs X (rock)     -> draw
+    2 + 6, # A (rock)     vs Y (paper)    -> win
+    3 + 0, # A (rock)     vs Z (scissors) -> loss
+    1 + 0, # B (paper)    vs X (rock)     -> loss
+    2 + 3, # B (paper)    vs Y (paper)    -> draw
+    3 + 6, # B (paper)    vs Z (scissors) -> win
+    1 + 6, # C (scissors) vs X (rock)     -> win
+    2 + 0, # C (scissors) vs Y (paper)    -> loss
+    3 + 3, # C (scissors) vs Z (scissors) -> draw
 )
 ```
 
@@ -127,7 +127,7 @@ and [`str.translate()`][py-str-translate].
 table = str.maketrans('ABCXYZ', '036123')
 
 with open(...):
-	data = fin.read().translate(table)
+    data = fin.read().translate(table)
 ```
 
 The [`with`][py-with] statement used above is useful to auto-close the file once
@@ -144,8 +144,8 @@ index `SCORES`. As usual, [`map()`][py-builtin-map] comes in handy.
 score = 0
 
 for line in data.splitlines():
-	a, b = map(int, line.split())
-	score += SCORES[a + b]
+    a, b = map(int, line.split())
+    score += SCORES[a + b]
 
 print('Part 1:', score)
 ```
@@ -168,23 +168,23 @@ together.
 SCORES1 = ... # SCORES from part 1, unchanged
 
 SCORES2 = (
-	0 + 3, # A (rock)     and X (lose) -> play scissors
-	3 + 1, # A (rock)     and Y (draw) -> play rock
-	6 + 2, # A (rock)     and Z (win)  -> play paper
-	0 + 1, # B (paper)    and X (lose) -> play rock
-	3 + 2, # B (paper)    and Y (draw) -> play paper
-	6 + 3, # B (paper)    and Z (win)  -> play scissors
-	0 + 2, # C (scissors) and X (lose) -> play paper
-	3 + 3, # C (scissors) and Y (draw) -> play scissors
-	6 + 1, # C (scissors) and Z (win)  -> play rock
+    0 + 3, # A (rock)     and X (lose) -> play scissors
+    3 + 1, # A (rock)     and Y (draw) -> play rock
+    6 + 2, # A (rock)     and Z (win)  -> play paper
+    0 + 1, # B (paper)    and X (lose) -> play rock
+    3 + 2, # B (paper)    and Y (draw) -> play paper
+    6 + 3, # B (paper)    and Z (win)  -> play scissors
+    0 + 2, # C (scissors) and X (lose) -> play paper
+    3 + 3, # C (scissors) and Y (draw) -> play scissors
+    6 + 1, # C (scissors) and Z (win)  -> play rock
 )
 
 score1 = score2 = 0
 
 for line in data.splitlines():
-	a, b = map(int, line.split())
-	score1 += SCORES1[a + b]
-	score2 += SCORES2[a + b]
+    a, b = map(int, line.split())
+    score1 += SCORES1[a + b]
+    score2 += SCORES2[a + b]
 
 print('Part 1:', score1)
 print('Part 2:', score2)
