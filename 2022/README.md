@@ -6,6 +6,9 @@ Table of Contents
 
 - [Day 1 - Calorie Counting][d01]
 - [Day 2 - Rock Paper Scissors][d02]
+- *Day 3 - Rucksack Reorganization (TODO)*
+- [Day 4 - Camp Cleanup][d04]
+
 
 Day 1 - Calorie Counting
 ------------------------
@@ -147,7 +150,6 @@ for line in data.splitlines():
 print('Part 1:', score)
 ```
 
-
 ### Part 2
 
 Now we are told that the second letter does not actually represent the move of
@@ -194,8 +196,140 @@ above lookup tables that we are always repeating the same numbers over and over,
 and in particular we are cycling among them depending on the move of the first
 player. Thus, given any two moves (appropriately converted to integers) we can
 calculate the score for the round using a simple closed-form mathematical
-formula using the modulo operator. I implemented a simplified version of this approach in my
-[alternative solution][d02-alternative].
+formula using the modulo operator. I implemented a simplified version of this
+approach in my [alternative solution][d02-alternative].
+
+
+Day 4 - Camp Cleanup
+--------------------
+
+[Problem statement][d04-problem] — [Complete solution][d04-solution] — [Back to top][top]
+
+### Part 1
+
+Our job today is rather straightforward. We are given a list of pairs of integer
+ranges (in the form `<start>-<end>,<start>-<end>`), and we want to count the
+pairs for which one of the two ranges is fully contained within the other. A
+range is fully contained within another even if they share one or both their
+ends. For example, `2-3` is fully contained within `0-3`.
+
+Let's start by parsing the input. Quite simple: [`.split()`][py-str-split] each
+input line on the comma (`,`), split each of the two parts on the dash (`-`),
+and turn the numbers into `int`s. We can do the integer conversion on the fly
+using [`map`][py-builtin-map].
+
+```python
+fin = open(...)
+
+for line in fin:
+    a, b   = line.strip().split(',')
+    a1, a2 = map(int, a.split('-'))
+    b1, b2 = map(int, b.split('-'))
+```
+
+Now for each line of input we know the start and end of the two ranges. There
+are a few different ways in which we could check if one range is within another,
+for example computing their overlap:
+
+```text
+    a1|------------|a2
+b1|---------|b2
+    o1|-----|o2
+      overlap
+```
+
+If the length of the overlap is equal to the length of one of the two
+ranges, then that range is fully contained within the other. Or, to put it in
+other words, the extremes of the overlap (`o1` and `o2`) coincide with the
+extremes of the inner range.
+
+```text
+    a1|--------------|a2
+         b1|-----|b2
+         o1|-----|o2
+           overlap
+```
+
+We can compute the extremes of the overlap by simply calculating the maximum
+between the two range start values and the minimum between the two range end
+values. For this purpose, we have the [`max()`][py-builtin-max] and
+[`min()`][py-builtin-min] builtins.
+
+```python
+full_overlap = 0
+
+for line in fin:
+    a, b   = line.strip().split(',')
+    a1, a2 = map(int, a.split('-'))
+    b1, b2 = map(int, b.split('-'))
+
+    o1 = max(a1, b1)
+    o2 = min(a2, b2)
+
+    if o1 == a1 and o2 == a2 or o1 == b1 and o2 == b2:
+        full_overlap += 1
+
+print('Part 1:', full_overlap)
+```
+
+And as easy as that, we have our solution!
+
+Another way full overlap could have been checked is through simple logic
+formulas:
+
+```python
+for line in fin:
+    # ...
+
+    #        b inside a               a inside b
+    if a1 <= b1 and a2 >= b2 or b1 <= a1 and b2 >= a2:
+        full_overlap += 1
+```
+
+However, as we'll shortly see, computing the overlap also helps us solve part 2
+effortlessly.
+
+### Part 2
+
+Now we want to count the number of range pairs that overlap in any way, either
+*partially* or fully (part 1).
+
+We know that all the cases counted in part 1 will also count for part two, since
+if one range is fully contained within another, there is a full overlap. To also
+take into account *partial* overlaps, we can simply check the two extremes of
+the overlap we just calculated.
+
+```text
+    a1|------------|a2     |            a1|--------|a2
+b1|---------|b2            |   b1|--|b2
+    o1|-----|o2            |        |o2 o1|
+      overlap (o2 >= o1)   |       no overlap (o2 < o1)
+```
+
+As can be seen in the above example, if the end of the overlap (`o2`) is after
+the start (`o1`) then we have a valid range and an overlap (partial or full)
+must exist.
+
+All of this simply means adding one check to our part 1 code, and since we know
+that a full overlap is a special case of a partial overlap, we can move the part
+1 check inside the part 2 one.
+
+```python
+overlap = full_overlap = 0
+
+for line in fin:
+    # ... same as part 1 ...
+
+    if o2 >= o1:
+        overlap += 1
+        if o1 == a1 and o2 == a2 or o1 == b1 and o2 == b2:
+            full_overlap += 1
+
+print('Part 1:', full_overlap)
+print('Part 2:', overlap)
+```
+
+Et voilà! 8 out of 50 stars.
 
 ---
 
@@ -206,12 +340,15 @@ formula using the modulo operator. I implemented a simplified version of this ap
 [top]: #advent-of-code-2022-walkthrough
 [d01]: #day-1---calorie-counting
 [d02]: #day-2---rock-paper-scissors
+[d04]: #day-4---camp-cleanup
 
 [d01-problem]: https://adventofcode.com/2022/day/1
 [d02-problem]: https://adventofcode.com/2022/day/2
+[d04-problem]: https://adventofcode.com/2022/day/4
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
+[d04-solution]: solutions/day04.py
 
 [d02-alternative]: misc/day02/mathematical.py
 
@@ -225,6 +362,7 @@ formula using the modulo operator. I implemented a simplified version of this ap
 
 [py-builtin-map]: https://docs.python.org/3/library/functions.html#map
 [py-builtin-max]: https://docs.python.org/3/library/functions.html#max
+[py-builtin-min]: https://docs.python.org/3/library/functions.html#min
 [py-str-split]:   https://docs.python.org/3/library/stdtypes.html#str.split
 
 [algo-quickselect]: https://en.wikipedia.org/wiki/Quickselect
