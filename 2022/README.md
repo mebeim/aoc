@@ -6,7 +6,7 @@ Table of Contents
 
 - [Day 1 - Calorie Counting][d01]
 - [Day 2 - Rock Paper Scissors][d02]
-- *Day 3 - Rucksack Reorganization (TODO)*
+- [Day 3 - Rucksack Reorganization][d03]
 - [Day 4 - Camp Cleanup][d04]
 
 
@@ -200,6 +200,146 @@ formula using the modulo operator. I implemented a simplified version of this
 approach in my [alternative solution][d02-alternative].
 
 
+Day 3 - Rucksack Reorganization
+-------------------------------
+
+[Problem statement][d03-problem] — [Complete solution][d03-solution] — [Back to top][top]
+
+### Part 1
+
+For today's problem, we are dealing with strings. We are given a list of strings
+of even length, one per line of input, composed of seemingly random uppercase
+and lowercase letters. For each input string, there is exactly one common letter
+that appears in both of its halves. Once found, we need to calculate its
+"priority" using a simple rule given in the problem statement. The answer we are
+looking for is the sum of all the priorities for such common letters.
+
+First of all, let's write a short function to calculate the "priority" value of
+a letter given the instructions in the problem statement. It's basically equal
+to the letter's position in the English alphabet, plus 26 in case it's
+uppercase. Knowing this, and given that we are dealing with [ASCII][wiki-ascii]
+characters, the [`ord()`][py-builtin-ord] builtin comes in handy, as we can use
+`ord(x) - ord('a')` to calculate the position of the letter in the variable `x`
+in the English alphabet. Note that for this to work we must have `len(x) == 1`.
+
+```python
+def prio(x):
+    if 'a' <= x <= 'z':
+        return ord(x) - ord('a') + 1
+    return ord(x) - ord('A') + 27
+```
+
+We can optimize the function a bit by pre-computing everything that is constant,
+like for example `ord('A') + 27`. Furthermore, since we are guaranteed to only
+have to deal with lowercase and uppercase ASCII letters, the check for lowercase
+can be simplified to `x >= 'a'`, as lowercase letters come after uppercase ones.
+
+```python
+def prio(x):
+    if x >= 'a':
+        return ord(x) - 96
+    return ord(x) - 38
+```
+
+We can also make use of a [ternary operator][py-cond-expr] if we wish to
+simplify things even further:
+
+```python
+def prio(x):
+    return ord(x) - (96 if x >= 'a' else 38)
+```
+
+Now we are ready to solve the actual problem. We'll iterate over the input one
+line at a time and split each line in half. We can do this through
+[slicing][py-slicing].
+
+```python
+fin = open(...)
+
+for line in fin:
+    mid = len(line) // 2
+    a, b = line[:mid], line[mid:]
+```
+
+A careful reader is going to notice one small thing in the above code: we are
+iterating with `for line in fin` to get lines of input, however, these lines
+will still contain the trailing newline character (`\n`), which will therefore
+end up in `b`. We are actually splitting the string in half correctly, since the
+length is odd and doing `odd // 2` is the same as doing `(odd - 1) // 2`.
+Nonetheless, we can strip the final newline from each line if we wish, using
+[`map()`][py-builtin-map] and [`str.rstrip()`][py-str-rstrip]:
+
+```python
+for line in map(str.rstrip, fin):
+    # ...
+```
+
+Now that we have the two halves we can simply iterate over the first one and
+check which letter is present in the second one. When we find such a sletter, we
+calculate its priority and stop the search, moving on to the next line of input.
+
+```python
+total = 0
+
+for line in fin:
+    mid = len(line) // 2
+    a, b = line[:mid], line[mid:]
+
+    for letter in a:
+        if letter in b:
+            total += prio(letter)
+            break
+
+print('Part 1:', total)
+```
+
+### Part 2
+
+We still need to search for common letters, but this time among groups of 3
+lines of input, and compute the same sum of priorities that we did before. For
+example, given the following input:
+
+```none
+asdfgXjkl
+qwXertyui
+zxcvbnXab
+lksjhagAa
+Awuytiqwe
+mmvxbbzAz
+```
+
+The first 3 lines of input all contain `'X'`, while the following 3 all contain
+`'A'`, so the total would be `prio('X') + prio('A')`.
+
+We can keep using the same input loop we wrote for part 1, accumulating lines
+into a small temporary list (the current group). When the group list reaches a
+length of `3` we will find the common letter among the lines in the group and
+update the total priority for part 2.
+
+```python
+group = []
+total = group_total = 0
+
+for line in fin:
+    # .. same code as part 1 ...
+
+    group.append(line)
+
+    if len(group) == 3:
+        a, b, c = group
+        group = []
+
+        for item in a:
+            if item in b and item in c:
+                group_total += prio(item)
+                break
+
+print('Part 1:', total)
+print('Part 2:', group_total)
+```
+
+Easy peasy! Daily puzzle solved once again.
+
 Day 4 - Camp Cleanup
 --------------------
 
@@ -340,31 +480,40 @@ Et voilà! 8 out of 50 stars.
 [top]: #advent-of-code-2022-walkthrough
 [d01]: #day-1---calorie-counting
 [d02]: #day-2---rock-paper-scissors
+[d03]: #day-3---rucksack-reorganization
 [d04]: #day-4---camp-cleanup
 
 [d01-problem]: https://adventofcode.com/2022/day/1
 [d02-problem]: https://adventofcode.com/2022/day/2
+[d03-problem]: https://adventofcode.com/2022/day/3
 [d04-problem]: https://adventofcode.com/2022/day/4
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
+[d03-solution]: solutions/day03.py
 [d04-solution]: solutions/day04.py
 
 [d02-alternative]: misc/day02/mathematical.py
 
+[py-cond-expr]:          https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-list-comprehension]: https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions
-[py-list]:               https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
-[py-list-sort]:          https://docs.python.org/3/library/stdtypes.html#list.sort
-[py-str-maketrans]:      https://docs.python.org/3/library/stdtypes.html#str.maketrans
-[py-str-translate]:      https://docs.python.org/3/library/stdtypes.html#str.translate
+[py-slicing]:            https://docs.python.org/3/glossary.html#term-slice
 [py-tuple]:              https://docs.python.org/3/tutorial/datastructures.html#tuples-and-sequences
 [py-with]:               https://peps.python.org/pep-0343/
 
-[py-builtin-map]: https://docs.python.org/3/library/functions.html#map
-[py-builtin-max]: https://docs.python.org/3/library/functions.html#max
-[py-builtin-min]: https://docs.python.org/3/library/functions.html#min
-[py-str-split]:   https://docs.python.org/3/library/stdtypes.html#str.split
+
+[py-builtin-map]:   https://docs.python.org/3/library/functions.html#map
+[py-builtin-max]:   https://docs.python.org/3/library/functions.html#max
+[py-builtin-min]:   https://docs.python.org/3/library/functions.html#min
+[py-builtin-ord]:   https://docs.python.org/3/library/functions.html#ord
+[py-list]:          https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-list-sort]:     https://docs.python.org/3/library/stdtypes.html#list.sort
+[py-str-maketrans]: https://docs.python.org/3/library/stdtypes.html#str.maketrans
+[py-str-split]:     https://docs.python.org/3/library/stdtypes.html#str.split
+[py-str-rstrip]:    https://docs.python.org/3/library/stdtypes.html#str.split
+[py-str-translate]: https://docs.python.org/3/library/stdtypes.html#str.translate
 
 [algo-quickselect]: https://en.wikipedia.org/wiki/Quickselect
 
+[wiki-ascii]:       https://en.wikipedia.org/wiki/ASCII
 [wiki-linear-time]: https://en.wikipedia.org/wiki/Time_complexity#Linear_time
