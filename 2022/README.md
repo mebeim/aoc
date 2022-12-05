@@ -8,7 +8,7 @@ Table of Contents
 - [Day 2 - Rock Paper Scissors][d02]
 - [Day 3 - Rucksack Reorganization][d03]
 - [Day 4 - Camp Cleanup][d04]
-
+- [Day 5 - Supply Stacks][d05]
 
 Day 1 - Calorie Counting
 ------------------------
@@ -340,6 +340,7 @@ print('Part 2:', group_total)
 
 Easy peasy! Daily puzzle solved once again.
 
+
 Day 4 - Camp Cleanup
 --------------------
 
@@ -471,6 +472,179 @@ print('Part 2:', overlap)
 
 Et voilà! 8 out of 50 stars.
 
+
+Day 5 - Supply Stacks
+---------------------
+
+[Problem statement][d05-problem] — [Complete solution][d05-solution] — [Back to top][top]
+
+### Part 1
+
+Do you like simulations? Today we're gonna need to simulate a crane moving
+crates stacked on top of each other. We start with a few stacks of crates, which
+is given as input in the following form:
+
+```none
+    [D]
+[N] [C]
+[Z] [M] [P]
+ 1   2   3
+```
+
+This represents the initial configuration of N stacks of crates (in the above
+example we have N = 3, but in the real input N = 10). Following the initial
+configuration is an empty line followed by a list of instructions, one per line,
+of the form `move <n> from <i> to <j>`, meaning "move the top `n` crates from
+stack `i` to stack `j`, one at a time.
+
+After executing all instructions, we need to answer with a string of letters
+representing the topmost crate of each stack in order. For example, if the above
+configuration was the final one, we would answer `NDP`.
+
+Today's input is particularly annoying to parse: we are given stacks in fancy
+ASCII art columns, and we need to somehow turn each one into a string or list in
+order to work with it. The easiest way to approach this is probably to just read
+the entirety of the first few lines of input, stopping at the first empty line,
+and then *transpose* them to obtain a list of columns. In other words, do
+something like this:
+
+```none
+ +----------> ' [[ '
+ |+---------> ' NZ1'
+ ||+--------> ' ]] '
+ |||+-------> '    '
+ ||||+------> '[[[ '
+ |||||+-----> 'DCM2'
+ ||||||+----> ...
+ |||||||
+'    [D]    '
+'[N] [C]    '
+'[Z] [M] [P]'
+' 1   2   3 '
+```
+
+After reading the initial ASCII art and stopping at the first empty line:
+
+```python
+fin = open(...)
+raw = []
+
+for line in fin:
+    if line == '\n':
+        break
+    raw.append(line)
+
+# raw = ['    [D]    \n',
+#        '[N] [C]    \n',
+#        '[Z] [M] [P]\n',
+#        ' 1   2   3 \n']
+```
+
+We can transpose the `raw` list with the help of [`zip()`][py-builtin-zip] plus
+an [unpacking operator][py-unpacking]:
+
+```python
+columns = list(zip(*raw))
+# [(' ', '[', '[', ' ', '\n'),
+#  (' ', 'N', 'Z', '1', '\n'),
+#   ...                      ]
+```
+
+This seemingly esoteric single-line transposition works because `zip()` yields
+tuples consisting of the i-th element of each line in `raw`, i.e. it effectively
+yields columns.
+
+We went from strings to tuples, but that's no problem for now. The next thing to
+do is skip all the useless columns (those consisting of only spaces and square
+brackets) and keep the rest, turning good columns into strings through
+[`str.join()`][py-str-join] and discarding leading whitespace with
+[`str.lstrip()`][py-str-lstrip].
+
+Fortunately, all we need to do to identify good columns is
+[`enumerate()`][py-builtin-enumerate], skip the first column and then only keep
+one every 4, which can be achieved using the modulo (`%`) operator.
+
+```python
+# Indexes in the instructions are 1-based, fill stacks[0] with some useless
+# value so that later we can do stacks[i] instead of stacks[i - 1].
+stacks = [None]
+
+for i, column in enumerate(zip(*raw)):
+    if i % 4 == 1:
+        # column = (' ', 'N', 'Z', '1', '\n')
+        column = ''.join(column[:-1]) # -> ' NZ'
+        column = column.lstrip()      # -> 'NZ'
+        stacks.append(column)
+
+# Make a copy to use for part 2
+original = stacks[:]
+```
+
+Now that we *finally* have the initial stacks parsed, let's also parse the
+instructions. This is quite simple: iterate over input lines, split them and
+extract the three numbers at positions `1`, `3` and `5`:
+
+```python
+moves = []
+
+for line in fin:
+    line = line.split()
+    moves.append((int(line[1]), int(line[3]), int(line[5])))
+```
+
+We have the instructions parsed, now let's simply follow them:
+
+```python
+for n, i, j in moves:
+    for _ in range(n):
+        crate = stacks[i][0]          # Extract top of stacks[i]
+        stacks[i] = stacks[1:]        # Remove it from stacks[i]
+        stacks[j] = crate + stacks[j] # Add it to top of stacks[j]
+```
+
+We optimize the above operation by extracting all `n` crates at once and then
+reversing their order doing `crate[::-1]`, a common Python trick to reverse an
+indexable iterable through [slicing][py-slicing]:
+
+```python
+for n, i, j in moves:
+    chunk = stacks[i][:n][::-1]
+    stacks[i] = stacks[i][n:]
+    stacks[j] = chunk + stacks[j]
+```
+
+Finally, we can extract the topmost element of each stack using a simple
+[generator expression][py-generator-expr] and `.join()` the result into a
+string:
+
+```python
+top = ''.join(s[0] for s in stacks[1:]) # Skip stacks[0], which is None
+print('Part 1:', top)
+```
+
+### Part 2
+
+For part two, we need to follow the same list of instructions as part 1, but
+this time moving *all* of the topmost `n` crates from a given stack to another
+at once, meaning that their final order on top of the second stack will *not* be
+reversed.
+
+Well, given the code we already wrote, this is really child's play: we can use
+the same code as part 1, removing the reversing operation (`[::-1]`):
+
+```python
+# Restore initial state from the copy we made earlier
+stacks = original
+
+for n, i, j in moves:
+    chunk = stacks[i][:n] # <- removed [::-1] from here
+    stacks[i] = stacks[i][n:]
+    stacks[j] = chunk + stacks[j]
+
+top = ''.join(s[0] for s in stacks[1:])
+print('Part 2:', top)
+```
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -482,36 +656,44 @@ Et voilà! 8 out of 50 stars.
 [d02]: #day-2---rock-paper-scissors
 [d03]: #day-3---rucksack-reorganization
 [d04]: #day-4---camp-cleanup
+[d05]: #day-5---supply-stacks
 
 [d01-problem]: https://adventofcode.com/2022/day/1
 [d02-problem]: https://adventofcode.com/2022/day/2
 [d03-problem]: https://adventofcode.com/2022/day/3
 [d04-problem]: https://adventofcode.com/2022/day/4
+[d05-problem]: https://adventofcode.com/2022/day/5
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
 [d04-solution]: solutions/day04.py
+[d05-solution]: solutions/day05.py
 
 [d02-alternative]: misc/day02/mathematical.py
 
 [py-cond-expr]:          https://docs.python.org/3/reference/expressions.html#conditional-expressions
+[py-generator-expr]:     https://www.python.org/dev/peps/pep-0289/
 [py-list-comprehension]: https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions
 [py-slicing]:            https://docs.python.org/3/glossary.html#term-slice
 [py-tuple]:              https://docs.python.org/3/tutorial/datastructures.html#tuples-and-sequences
+[py-unpacking]:          https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 [py-with]:               https://peps.python.org/pep-0343/
 
-
-[py-builtin-map]:   https://docs.python.org/3/library/functions.html#map
-[py-builtin-max]:   https://docs.python.org/3/library/functions.html#max
-[py-builtin-min]:   https://docs.python.org/3/library/functions.html#min
-[py-builtin-ord]:   https://docs.python.org/3/library/functions.html#ord
-[py-list]:          https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
-[py-list-sort]:     https://docs.python.org/3/library/stdtypes.html#list.sort
-[py-str-maketrans]: https://docs.python.org/3/library/stdtypes.html#str.maketrans
-[py-str-split]:     https://docs.python.org/3/library/stdtypes.html#str.split
-[py-str-rstrip]:    https://docs.python.org/3/library/stdtypes.html#str.split
-[py-str-translate]: https://docs.python.org/3/library/stdtypes.html#str.translate
+[py-builtin-enumerate]: https://docs.python.org/3/library/functions.html#enumerate
+[py-builtin-map]:       https://docs.python.org/3/library/functions.html#map
+[py-builtin-max]:       https://docs.python.org/3/library/functions.html#max
+[py-builtin-min]:       https://docs.python.org/3/library/functions.html#min
+[py-builtin-ord]:       https://docs.python.org/3/library/functions.html#ord
+[py-builtin-zip]:       https://docs.python.org/3/library/functions.html#zip
+[py-list]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-list-sort]:         https://docs.python.org/3/library/stdtypes.html#list.sort
+[py-str-join]:          https://docs.python.org/3/library/stdtypes.html#str.join
+[py-str-lstrip]:        https://docs.python.org/3/library/stdtypes.html#str.lstrip
+[py-str-maketrans]:     https://docs.python.org/3/library/stdtypes.html#str.maketrans
+[py-str-rstrip]:        https://docs.python.org/3/library/stdtypes.html#str.rstrip
+[py-str-split]:         https://docs.python.org/3/library/stdtypes.html#str.split
+[py-str-translate]:     https://docs.python.org/3/library/stdtypes.html#str.translate
 
 [algo-quickselect]: https://en.wikipedia.org/wiki/Quickselect
 
