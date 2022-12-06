@@ -9,6 +9,7 @@ Table of Contents
 - [Day 3 - Rucksack Reorganization][d03]
 - [Day 4 - Camp Cleanup][d04]
 - [Day 5 - Supply Stacks][d05]
+- [Day 6 - Tuning Trouble][d06]
 
 Day 1 - Calorie Counting
 ------------------------
@@ -645,6 +646,74 @@ top = ''.join(s[0] for s in stacks[1:])
 print('Part 2:', top)
 ```
 
+
+Day 6 - Tuning Trouble
+----------------------
+
+[Problem statement][d06-problem] — [Complete solution][d06-solution] — [Back to top][top]
+
+### Part 1
+
+Today's problem feels like it could have been an day 1 problem. In fact, I
+believe it was even easiest than this year's day 1. We are given a long string
+of seemingly random characters as input, and we need to find the first group of
+4 consecutive characters that are all different, called the "start-of-packet".
+Once found, our answer will be the 1-based index of the character immediately
+following the start-of-packet.
+
+After reading the whole file as a string:
+
+```python
+with open(...) as fin:
+    data = fin.read()
+```
+
+We can extract groups of 4 consecutive characters starting at index `i` just
+doing `data[i:i + 4]`. To check whether they are all different, a quick and easy
+way is to simply put them all inside a `set` and calculate the size of the set:
+if the size is 4, it means all 4 were different.
+
+```python
+for i in range(len(data) - 4):
+    if len(set(data[i:i + 4])) == 4:
+        sop = i + 4
+        break
+
+print('Part 1:', sop)
+```
+
+You technically do not need to build the entire set in order to perform this
+check: you can add the characters to the set one by one and stop at the first
+one that is already present. However, since we are talking about merely 4
+characters, such an optimization would just be pointless.
+
+### Part 2
+
+We need to... do the same thing as before, only that we are looking for a
+"start-of-message" consisting of *14* different consecutive characters now.
+
+Well, the code is the same as part 1, so let's just move it into a function. We
+also know for a fact that our "start-of-message" cannot appear before the
+"start-of-packet" (we do not have 4 consecutive different characters before the
+start-of-packet, let alone 14), so let's also give our functionm the ability to
+skip the start of the data for performance.
+
+```python
+def find_start(data, header_len, start=0):
+    for i in range(start, len(data) - header_len):
+        if len(set(data[i:i + header_len])) == header_len:
+            return i + header_len
+```
+
+Here we go, we can now get both part 1 and part 2 answers using this function:
+
+```python
+sop = find_start(data, 4)
+som = find_start(data, 14, sop)
+print('Part 1:', sop)
+print('Part 2:', som)
+```
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -657,18 +726,21 @@ print('Part 2:', top)
 [d03]: #day-3---rucksack-reorganization
 [d04]: #day-4---camp-cleanup
 [d05]: #day-5---supply-stacks
+[d06]: #day-6---tuning-trouble
 
 [d01-problem]: https://adventofcode.com/2022/day/1
 [d02-problem]: https://adventofcode.com/2022/day/2
 [d03-problem]: https://adventofcode.com/2022/day/3
 [d04-problem]: https://adventofcode.com/2022/day/4
 [d05-problem]: https://adventofcode.com/2022/day/5
+[d06-problem]: https://adventofcode.com/2022/day/6
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
 [d03-solution]: solutions/day03.py
 [d04-solution]: solutions/day04.py
 [d05-solution]: solutions/day05.py
+[d06-solution]: solutions/day06.py
 
 [d02-alternative]: misc/day02/mathematical.py
 
