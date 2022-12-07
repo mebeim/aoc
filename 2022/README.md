@@ -10,6 +10,8 @@ Table of Contents
 - [Day 4 - Camp Cleanup][d04]
 - [Day 5 - Supply Stacks][d05]
 - [Day 6 - Tuning Trouble][d06]
+- [Day 7 - No Space Left On Device][d07]
+
 
 Day 1 - Calorie Counting
 ------------------------
@@ -714,6 +716,346 @@ print('Part 1:', sop)
 print('Part 2:', som)
 ```
 
+
+Day 7 - No Space Left On Device
+-------------------------------
+
+[Problem statement][d07-problem] — [Complete solution][d07-solution] — [Back to top][top]
+
+### Part 1
+
+First challenging problem of the year today! We are dealing with a filesystem,
+and we are given the output of a shell session where the only two commands used
+are `cd` to change directory and `ls` to list the current directory's contents.
+Each line of input that starts with `$` indicates a command, and the following
+lines that don't start with `$` are the command's output.
+
+Simply enough, only the `ls` command generates output. Each directory can
+contain other directories or files, and the `ls` command prints out a list where
+each directory name is preceded by the string `dir` and each file name is
+preceded by its size.
+
+The total size of a directory is the sum of the sizes of the files it contains,
+either directly or inside other subdirectories. We are asked to find all
+directories with total size up to 100000 and sum all their sizes.
+
+First of all, let's see an example input to help us understand what we're
+talking about:
+
+```none
+$ cd /
+$ ls
+dir a
+1000 b.txt
+699 c.dat
+$ cd a
+$ ls
+100 d
+200 e
+```
+
+Given the above shell session, we can infer the contents of `/` and `/a`, and we
+know that the filesystem looks like this:
+
+```none
+/
+├── a
+│   ├── d, size 100
+│   └── e, size 200
+├── b.txt, size 1000
+└── c.dat, size 699
+```
+
+The total size of the directory `/a` is `100 + 200 = 300`, and the total size of
+`/` is `300 + 1000 + 699 = 1999`.
+
+Since the size of a directory will need to be calculated recursively entering
+all its descendant directories and finding all the files contained within them,
+it's pretty obvious that we'll need to somehow reconstruct the structure of the
+filesystem to fulfill our request. We can represent the filesystem as a
+[tree][wiki-tree] structure, where the root is `/`.
+
+Parsing the input line by line, one option would be to store the size of each
+file and the contents of each directory in a dictionary, for example like this:
+
+```python
+fs = {
+    '/': ['a', 'b.txt', 'c.dat'],
+    'a': ['d', 'e'],
+    'd': 100,
+    'e': 200,
+    'b.txt': 1000,
+    'c.dat': 699,
+}
+```
+
+However, this is not enough, because directory and file names are not unique.
+There could be for example multiple directories, each containing a file with the
+same name. Even worse, there could be one directory containing a file, and
+another one containing a directory with the same name as the file! Indeed, we
+should already know, the thing that uniquely identifies a file or directory in a
+filesystem is not its name, but its *path*. The path to the file `d` in the
+above example would be `/a/d`.
+
+Given the input, and starting with an empty path, we should be able to keep
+track of the current path by simply looking at the `cd` commands that are
+performed. For simplicity, we'll use a `tuple` to represent a path instead of a
+string of path components separated by slashes, meaning that the path `/a/d`
+will be represented by the tuple `('/', 'a', 'd')`. This will make it easier to
+add and remove path components as needed.
+
+The output we want is a dictionary of the form `{path: list_of_contents}`. Since
+we do not care about file names at all, instead of storing their names we'll
+simply store their size as an integer. Later, when iterating over the list of
+contents of a given path, we'll know that anything that is an integer is the
+size of a file. Furthermore, we also do not care about directories that we do
+not explicitly enter through the `cd` command. If some `ls` command lists 100
+directories, but we only enter one of them, that's the only one we care about.
+We can therefore skip all the lines of `ls` output that start with `dir`. Our
+input seems to be "well-formed", and seems to suggest that we actually enter
+with `cd` every single directory that is listed by a `ls` command, but still.
+
+We'll parse the input one line at a time, like so:
+
+- Each time we encounter a `cd` command, we'll add a component to the current
+  path. If we encounter the special component `..` we'll remove the last
+  component from the current path instead.
+- Each time we encounter a `ls` command, we'll start reading the following lines
+  until the next command. Each line can either be `dir <dirname>` or
+  `<size> <filename>`. We will completely skip lines starting with `dir`, and
+  for the others we'll only parse the file size as an integer, adding it to the
+  list of the contents of the current directory.
+
+As already said, we'll use a dictionary to keep track of the contents of each
+path we encounter. More precisely, to make things easier, a
+[`defaultdict`][py-collections-defaultdict] of `list` comes in handy, so that we
+can just do `fs[path].append(...)` without worrying about `path` not being
+already present in `fs`. A [`deque`][py-collections-deque] is also useful to
+process the input line by line while being able to peek at the next line without
+consuming it, since we want to stop parsing the output of the `ls` command
+whenever we encounter a line starting with `$`. We can peek the first element of
+a `deque` with `d[0]`, and consume it by popping it `d.popleft()`. The same
+could be done with a normal list through `l.pop(0)`, but the operation is much
+more expensive as it internally requires to move all elements of the list back
+one position after removing the first one.
+
+Here's a function that implements the above logic taking advantage of
+`defaultdict` and `deque`:
+
+```python
+from collections import deque, defaultdict
+
+def parse_filesystem(fin):
+    lines = deque(fin)
+    fs    = defaultdict(list)
+    path  = ()
+
+    while lines:
+        line    = lines.popleft().split() # ['$', 'cd', 'foo']
+        command = line[1]
+        args    = line[2:] # ['foo'] or [] in case the command is `ls`
+
+        if command == 'ls':
+            # The `ls` command outputs a list of directory contents, keep going
+            # until we either run out of lines or the next line is not a command
+            while lines and not lines[0].startswith('$'):
+                # Get the size of the file
+                size = lines.popleft().split()[0]
+
+                # Skip if not a file
+                if size == 'dir':
+                    continue
+
+                # Add the size of the file to the contents of the current path
+                fs[path].append(int(size))
+        else:
+            # The `cd` command has no output, but changes the current path
+            if args[0] == '..':
+                # Discard last path component (go up one directory)
+                path = path[:-1]
+            else:
+                # Calculate path of the directory we are moving into
+                new_path = path + (args[0],)
+                # Add its path to the contents of the current directory
+                fs[path].append(new_path)
+                # Move into the new directory
+                path = new_path
+
+    return fs
+```
+
+The result of calling `parse_filesystem()` using the example input we saw
+earlier should be something like this:
+
+```python
+with open(...) as fin:
+    fs = parse_filesystem(fin)
+
+fs = {
+    ()        : [('/',)]
+    ('/',)    : [1000, 699, ('/', 'a')]
+    ('/', 'a'): [100, 200]
+}
+```
+
+The extra empty tuple `()` is an artifact of the fact that we start with an
+empty path (`path = ()`), and the first command is `cd /`, so effectively our
+actual root is `()`, but it only contains `('/',)` so there isn't much
+difference. If we wanted to avoid this, we could have started with
+`path = ('/',)` skipping the first command.
+
+Technicalities aside, now we have a dictionary that represents the tree of our
+filesystem. In order to calculate the size of a single directory we need to
+traverse the tree starting at its path, and sum up any file sizes we find along
+the way. The simplest way to do this is through a
+[depth-first search][algo-dfs], which, given the data structure we have, can be
+implemented as a recursive function in just a few lines of code. All we have to
+do given a path is iterate over `fs[path]` and check whether the current item is
+an `int` (size of a file) or another path representing a subdirectory. In the
+first case, we'll just add the size to the total, while in the second case we'll
+make a recursive call to determine the size of the subdirectory. The
+[`isinstance`][py-builtin-isinstance] built-in function can be used to check for
+`int`s, as well as the [`type`][py-builtin-type] built-in, it's more or less a
+matter of taste.
+
+```python
+def directory_size(fs, path):
+    size = 0
+
+    for subdir_or_size in fs[path]:
+        if isinstance(subdir_or_size, int):
+            # File, add size to total
+            size += subdir_or_size
+        else:
+            # Directory, recursively calculate size
+            size += directory_size(subdir_or_size)
+
+    return size
+```
+
+Now we have all we need to solve the problem. We'll iterate over all the keys of
+`fs` (representing all the paths of the directories we know) and call
+`directory_size()` for each one of them, summing up the sizes that are less than
+100000.
+
+There is a small performance issue though: calling the `directory_size()`
+function we just wrote for every single path is not optimal. It's a recursive
+function that will traverse the whole tree starting from `path` every time it's
+called, however we only need a single traversal (starting at the root `('/',)`)
+to kno the size of any directory. We can save this information into a dictionary
+before returning from the function.
+
+```python
+def directory_size(fs, path, output):
+    size = 0
+
+    for subdir_or_size in fs[path]:
+        if isinstance(subdir_or_size, int):
+            size += subdir_or_size
+        else:
+            size += directory_size(subdir_or_size)
+
+    output[path] = size
+    return size
+```
+
+This only traverses the entire `fs` tree once and saves the size of each
+directory into a dictionary of the form `{path: size}`. After a single call
+starting from the root, we'll know the size of any directory:
+
+```python
+sizes = {}
+directory_size(fs, ('/',), sizes)
+
+small_dir_total = 0
+for sz in sizes.values():
+    if sz <= 100000:
+        small_dir_total += sz
+```
+
+Alternativelt, we could also use [memoization][wiki-memoization] to cache the
+results of `directory_size()` calls, and keep calling the function regardless.
+This is an easy to implement solution since Python 3 already provides us with a
+decorator to implement memoization out of the box:
+[`functools.lru_cache`][py-functools-lru_cache].
+
+```python
+@lru_cache(maxsize=None)
+def directory_size(path):
+    size = 0
+
+    for subdir_or_size in fs[path]:
+        if isinstance(subdir_or_size, int):
+            size += subdir_or_size
+        else:
+            size += directory_size(subdir_or_size)
+
+    return size
+```
+
+Now no matter how many times we call `directory_size()`, the calculation is only
+performed *once* for any given `path` on the first call and cached automatically
+by `lru_cache` to be reused for subsequent calls.
+
+In any case, we finally have our solution:
+
+```python
+small_dir_total = 0
+
+for path in fs:
+    sz = directory_size(path)
+    if sz <= 100000:
+        small_dir_total += sz
+
+print('Part 1:', small_dir_total)
+```
+
+As a bonus, this can also be rewritten as a one-liner with the help of
+[`filter`][py-builtin-filter], [`map`][py-builtin-map] and a
+[`lambda`][py-lambda]:
+
+```python
+small_dir_total  = sum(filter(lambda s: s <= 100000, map(directory_size, fs)))
+print('Part 1:', small_dir_total)
+```
+
+Though I would honestly avoid it for readability.
+
+### Part 2
+
+The bulk of the work is done, now we want to find a single directory to delete
+to free some space on the disk. The total available space is 70000000, and we
+need at least 30000000 of it free. We need to find the size of the smallest
+directory that can be deleted in order to end up with a free space of at least
+30000000.
+
+Well, we already have the code to do everything, all we need to do is add a
+couple of variables and another `if` inside the final `for` loop used to
+calculate the answer for part 1:
+
+```python
+used = directory_size(('/',))
+free = 70000000 - used
+need = 30000000 - free
+
+small_dir_total  = 0
+min_size_to_free = used
+
+for path in fs:
+    sz = directory_size(path)
+
+    if sz <= 100000:
+        small_dir_total += sz
+
+    if sz >= need and sz < min_size_to_free:
+        min_size_to_free = sz
+
+print('Part 1:', small_dir_total)
+print('Part 2:', min_size_to_free)
+```
+
+Ta-dah! Thankfully an easier part 2 than part 1, and nothing too weird.
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -727,6 +1069,7 @@ print('Part 2:', som)
 [d04]: #day-4---camp-cleanup
 [d05]: #day-5---supply-stacks
 [d06]: #day-6---tuning-trouble
+[d07]: #day-7---no-space-left-on-device
 
 [d01-problem]: https://adventofcode.com/2022/day/1
 [d02-problem]: https://adventofcode.com/2022/day/2
@@ -734,6 +1077,7 @@ print('Part 2:', som)
 [d04-problem]: https://adventofcode.com/2022/day/4
 [d05-problem]: https://adventofcode.com/2022/day/5
 [d06-problem]: https://adventofcode.com/2022/day/6
+[d07-problem]: https://adventofcode.com/2022/day/7
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -741,33 +1085,44 @@ print('Part 2:', som)
 [d04-solution]: solutions/day04.py
 [d05-solution]: solutions/day05.py
 [d06-solution]: solutions/day06.py
+[d07-solution]: solutions/day07.py
 
 [d02-alternative]: misc/day02/mathematical.py
 
 [py-cond-expr]:          https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-generator-expr]:     https://www.python.org/dev/peps/pep-0289/
+[py-lambda]:             https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
 [py-list-comprehension]: https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions
 [py-slicing]:            https://docs.python.org/3/glossary.html#term-slice
 [py-tuple]:              https://docs.python.org/3/tutorial/datastructures.html#tuples-and-sequences
 [py-unpacking]:          https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 [py-with]:               https://peps.python.org/pep-0343/
 
-[py-builtin-enumerate]: https://docs.python.org/3/library/functions.html#enumerate
-[py-builtin-map]:       https://docs.python.org/3/library/functions.html#map
-[py-builtin-max]:       https://docs.python.org/3/library/functions.html#max
-[py-builtin-min]:       https://docs.python.org/3/library/functions.html#min
-[py-builtin-ord]:       https://docs.python.org/3/library/functions.html#ord
-[py-builtin-zip]:       https://docs.python.org/3/library/functions.html#zip
-[py-list]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
-[py-list-sort]:         https://docs.python.org/3/library/stdtypes.html#list.sort
-[py-str-join]:          https://docs.python.org/3/library/stdtypes.html#str.join
-[py-str-lstrip]:        https://docs.python.org/3/library/stdtypes.html#str.lstrip
-[py-str-maketrans]:     https://docs.python.org/3/library/stdtypes.html#str.maketrans
-[py-str-rstrip]:        https://docs.python.org/3/library/stdtypes.html#str.rstrip
-[py-str-split]:         https://docs.python.org/3/library/stdtypes.html#str.split
-[py-str-translate]:     https://docs.python.org/3/library/stdtypes.html#str.translate
+[py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
+[py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
+[py-builtin-isinstance]:      https://docs.python.org/3/library/functions.html#isinstance
+[py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
+[py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
+[py-builtin-min]:             https://docs.python.org/3/library/functions.html#min
+[py-builtin-ord]:             https://docs.python.org/3/library/functions.html#ord
+[py-builtin-type]:            https://docs.python.org/3/library/functions.html#type
+[py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
+[py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
+[py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
+[py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
+[py-list]:                    https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
+[py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
+[py-str-lstrip]:              https://docs.python.org/3/library/stdtypes.html#str.lstrip
+[py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
+[py-str-rstrip]:              https://docs.python.org/3/library/stdtypes.html#str.rstrip
+[py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
+[py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 
+[algo-dfs]:         https://en.wikipedia.org/wiki/Depth-first_search
 [algo-quickselect]: https://en.wikipedia.org/wiki/Quickselect
 
 [wiki-ascii]:       https://en.wikipedia.org/wiki/ASCII
 [wiki-linear-time]: https://en.wikipedia.org/wiki/Time_complexity#Linear_time
+[wiki-memoization]: https://en.wikipedia.org/wiki/Memoization
+[wiki-tree]:        https://en.wikipedia.org/wiki/Tree_(data_structure)
