@@ -11,6 +11,7 @@ Table of Contents
 - [Day 5 - Supply Stacks][d05]
 - [Day 6 - Tuning Trouble][d06]
 - [Day 7 - No Space Left On Device][d07]
+- [Day 8 - Treetop Tree House][d08]
 
 
 Day 1 - Calorie Counting
@@ -1056,6 +1057,241 @@ print('Part 2:', min_size_to_free)
 
 Ta-dah! Thankfully an easier part 2 than part 1, and nothing too weird.
 
+
+Day 8 - Treetop Tree House
+--------------------------
+
+[Problem statement][d08-problem] — [Complete solution][d08-solution] — [Back to top][top]
+
+### Part 1
+
+The long-awaited grid of characters strikes back. This time we are dealing with
+trees. We are given a grid of tree heights, each represented by a single digit
+between `0` and `9`, and we need to count out how many trees are visible from
+outside the grid. A tree is considered visible from outside the grid if its
+height is higher than that of any other tree in at least one of the four
+cardinal directions (up, down, left, right).
+
+Obviously, all trees on the perimeter of the grid are visible from the outside,
+but what about the inner ones?
+
+Let's start by parsing the input data. Transforming each digit of each line into
+an `int` seems natural, but it's unneeded. We are, as usual, dealing with plain
+[ASCII][wiki-ascii] characters, and the byte values of the digits `0` through
+`9` in ASCII are ascending (from `0x30` to `0x39`). If we open the input file in
+binary mode, we can simply use [`.splitlines()`][py-bytes-splitlines] and we'll
+have a list of `bytes` objects (one per line), and iterating over `bytes`
+already yields integers. We could do the same by opening the file in text mode
+(the default), since `'1' > '0'` still holds for strings too, but decoding is
+unneeded.
+
+```python
+with open(..., 'rb') as fin:
+    grid = fin.read().splitlines()
+```
+
+As already said, all the trees on the perimeter of the grid are visible, and we
+can pre-calculate this number to save time: it's simply `H * 2 + W * 2 - 4` (the
+`- 4` is needed to avoid counting vertices twice). While we are at it, let's
+also calculate a couple of useful values for later.
+
+```python
+height, width = len(grid), len(grid[0])
+maxr, maxc    = height - 1, width - 1
+visible       = height * 2 + width * 2 - 4
+```
+
+To easily iterate over a grid while having the current row, column and cell
+value ready at hand I usually like to use a double `for` loop with
+[`enumerate()`][py-builtin-enumerate]:
+
+```python
+for r, row in enumerate(grid):
+    for c, tree in enumerate(row):
+        ...
+```
+
+Since we already pre-computed the visibility of the perimeter, we can skip that:
+
+```python
+for r, row in enumerate(grid):
+    if r == 0 or r == maxr:
+        continue
+
+    for c, tree in enumerate(row):
+        if c == 0 or c == maxc:
+            continue
+
+        ...
+```
+
+To know whether a tree is visible from outside the grid on the east side we can
+iterate the current `row` starting from `c + 1` up to its end, and check if our
+`tree` is higher than all of them. If not, there is no visibility from east.
+
+```python
+        # ... continues from above
+
+        visible_from_east = True
+        for t in row[c + 1:]:
+            if tree <= t:
+                visible_from_east = False
+```
+
+The kind of loop we just wrote is exactly what the [`all()`][py-builtin-all]
+built-in function was invented for: using `all()` together with a
+[generator expression][py-generator-expr] gives us a one-liner equivalent to the
+above loop that is also easily readable:
+
+```python
+visible_from_east = all(tree > t for t in row[c + 1:])
+```
+
+Analogously, we can do the same thing for west, south and north. The only hiccup
+is that for south and north we don't have a nice `column` variable to iterate
+over, and we'll have to iterate over the `grid` with an index instead of using
+[`range()`][py-builtin-range].
+
+```python
+visible_from_east  = all(tree > t for t in row[c + 1:])
+visible_from_west  = all(tree > t for t in row[:c])
+visible_from_south = all(tree > grid[i][c] for i in range(r + 1, len(grid)))
+visible_from_north = all(tree > grid[i][c] for i in range(r - 1, -1, -1))
+```
+
+Now in theory a tree is visible from outside the grid if *any* of the above
+variables is `True`, so we are doing unneeded work: if `visible_from_east` is
+`True`, we don't need to calculate the rest, and the same goes for the others.
+
+Since we are in a loop, we could use `continue` to skip right to the next
+iteration when any of the four is satisfied:
+
+```python
+for r, row in enumerate(grid):
+    if r == 0 or r == maxr:
+        continue
+
+    for c, tree in enumerate(row):
+        if c == 0 or c == maxc:
+            continue
+
+        if all(tree > t for t in row[c + 1:]): # east
+            visible += 1
+            continue
+
+        if all(tree > t for t in row[:c]): # west
+            visible += 1
+            continue
+
+        # Same for south and north...
+```
+
+However, if we save the generators in a variable instead of feeding them to
+`all()` immediately we can also do this without duplicating much code with a
+single `if` statement, retaining the lazyness of the operation with a simple
+`or`, which only evaluates its right operand if the left one is `False`.
+
+```python
+for r, row in enumerate(grid):
+    if r == 0 or r == maxr:
+        continue
+
+    for c, tree in enumerate(row):
+        if c == 0 or c == maxc:
+            continue
+
+        east  = (tree > t for t in row[c + 1:])
+        west  = (tree > t for t in row[:c])
+        south = (tree > grid[i][c] for i in range(r + 1, len(grid)))
+        north = (tree > grid[i][c] for i in range(r - 1, -1, -1))
+
+        if all(east) or all(west) or all(south) or all(north):
+            visible += 1
+
+print('Part 1:', visible)
+```
+
+### Part 2
+
+For the second part we need to do a similar job, but this time we want to find
+out *how far can we see from the top of a given tree* in the four cardinal
+directions. Being on top of a tree, we can only see in a certain direction up
+until our view is blocked by a taller tree. For each tree, we need to calculate
+a *score* equal to the product of the viewing distances in the four directions.
+Out of all these scores, we must then find the highest.
+
+As an example, given the following small grid:
+
+```
+8303730
+9255124
+3677320
+```
+
+The tree with height `5` in the middle of the grid can see `1` unit north, `3`
+units right, `1` unit down and `1` unit left (blocked by the other `5`). Its
+score would then be `1 * 2 * 1 * 1 = 2`.
+
+Calculating the view distance in each direction is pretty similar to what we
+just did for part 1, except that we need to *count* how many grid cells we pass
+before stopping because of a higher tree. Well, if we use plain and simple (but
+also boring) `for` loops instead of writing fancy generator expressions, we can
+do this pretty easily.
+
+For example, for east:
+
+```python
+for r, row in enumerate(grid):
+    # ...
+    for c, tree in enumerate(row):
+        # ...
+        for i in range(c + 1, width):
+            if row[i] >= tree:
+                break
+
+        view_east = i - c
+```
+
+Doing the same for all directions, and adding the formula to calculate the
+score, we have the solution for part 2:
+
+```python
+for r, row in enumerate(grid):
+    if r == 0 or r == maxr:
+        continue
+
+    for c, tree in enumerate(row):
+        if c == 0 or c == maxc:
+            continue
+
+        for east in range(c + 1, width):
+            if row[east] >= tree:
+                break
+
+        for west in range(c - 1, -1, -1):
+            if row[west] >= tree:
+                break
+
+        for south in range(r + 1, height):
+            if grid[south][c] >= tree:
+                break
+
+        for north in range(r - 1, -1, -1):
+            if grid[north][c] >= tree:
+                break
+
+        score = (east - c) * (c - west) * (south - r) * (r - north)
+
+        if score > best:
+            best = score
+
+print('Part 2:', best)
+```
+
+Technically, the code for both parts could be easily joined together into the
+same extended loop we just wrote for part 2, but I liked the concise part 1 code
+using `all()` with generator expressions, so I kept it in my final solution.
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -1070,6 +1306,7 @@ Ta-dah! Thankfully an easier part 2 than part 1, and nothing too weird.
 [d05]: #day-5---supply-stacks
 [d06]: #day-6---tuning-trouble
 [d07]: #day-7---no-space-left-on-device
+[d08]: #day-8---treetop-tree-house
 
 [d01-problem]: https://adventofcode.com/2022/day/1
 [d02-problem]: https://adventofcode.com/2022/day/2
@@ -1078,6 +1315,7 @@ Ta-dah! Thankfully an easier part 2 than part 1, and nothing too weird.
 [d05-problem]: https://adventofcode.com/2022/day/5
 [d06-problem]: https://adventofcode.com/2022/day/6
 [d07-problem]: https://adventofcode.com/2022/day/7
+[d08-problem]: https://adventofcode.com/2022/day/8
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -1086,6 +1324,7 @@ Ta-dah! Thankfully an easier part 2 than part 1, and nothing too weird.
 [d05-solution]: solutions/day05.py
 [d06-solution]: solutions/day06.py
 [d07-solution]: solutions/day07.py
+[d08-solution]: solutions/day08.py
 
 [d02-alternative]: misc/day02/mathematical.py
 
@@ -1098,6 +1337,7 @@ Ta-dah! Thankfully an easier part 2 than part 1, and nothing too weird.
 [py-unpacking]:          https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 [py-with]:               https://peps.python.org/pep-0343/
 
+[py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-isinstance]:      https://docs.python.org/3/library/functions.html#isinstance
@@ -1105,8 +1345,10 @@ Ta-dah! Thankfully an easier part 2 than part 1, and nothing too weird.
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
 [py-builtin-min]:             https://docs.python.org/3/library/functions.html#min
 [py-builtin-ord]:             https://docs.python.org/3/library/functions.html#ord
+[py-builtin-range]:           https://docs.python.org/3/library/functions.html#range
 [py-builtin-type]:            https://docs.python.org/3/library/functions.html#type
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
+[py-bytes-splitlines]:        https://docs.python.org/3/library/stdtypes.html#bytes.splitlines
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
