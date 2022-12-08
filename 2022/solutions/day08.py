@@ -12,13 +12,11 @@ maxr, maxc    = height - 1, width - 1
 visible       = height * 2 + width * 2 - 4
 best          = 0
 
-for r, row in enumerate(grid):
-	if r == 0 or r == maxr:
-		continue
+for r in range(1, maxr):
+	row = grid[r]
 
-	for c, tree in enumerate(row):
-		if c == 0 or c == maxc:
-			continue
+	for c in range(1, maxc):
+		tree = row[c]
 
 		e = (tree > t for t in row[c + 1:])
 		w = (tree > t for t in row[:c])
@@ -31,13 +29,11 @@ for r, row in enumerate(grid):
 advent.print_answer(1, visible)
 
 
-for r, row in enumerate(grid):
-	if r == 0 or r == maxr:
-		continue
+for r in range(1, maxr):
+	row = grid[r]
 
-	for c, tree in enumerate(row):
-		if c == 0 or c == maxc:
-			continue
+	for c in range(1, maxc):
+		tree = row[c]
 
 		for e in range(c + 1, width):
 			if row[e] >= tree:

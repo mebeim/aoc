@@ -1067,10 +1067,10 @@ Day 8 - Treetop Tree House
 
 The long-awaited grid of characters strikes back. This time we are dealing with
 trees. We are given a grid of tree heights, each represented by a single digit
-between `0` and `9`, and we need to count out how many trees are visible from
-outside the grid. A tree is considered visible from outside the grid if its
-height is higher than that of any other tree in at least one of the four
-cardinal directions (up, down, left, right).
+between `0` and `9`, and we need to count how many trees are visible from
+outside the grid. A tree is considered visible from outside the grid if it is
+taller than any other tree in at least one of the four cardinal directions
+(looking north, south, east or west).
 
 Obviously, all trees on the perimeter of the grid are visible from the outside,
 but what about the inner ones?
@@ -1097,30 +1097,22 @@ also calculate a couple of useful values for later.
 
 ```python
 height, width = len(grid), len(grid[0])
-maxr, maxc    = height - 1, width - 1
-visible       = height * 2 + width * 2 - 4
+maxr, maxc = height - 1, width - 1
+visible = height * 2 + width * 2 - 4
 ```
 
-To easily iterate over a grid while having the current row, column and cell
-value ready at hand I usually like to use a double `for` loop with
-[`enumerate()`][py-builtin-enumerate]:
+We'll use two nested `for` loops to iterate over the entire grid. Since we
+already pre-computed the visibility of the perimeter of the grid, we can skip
+it, which means starting our iterations from `1` and stopping right before
+`maxr` and `maxc` (calculated above). We'll also keep the current row in a
+variable, to avoid double-indexing the grid where possible.
 
 ```python
-for r, row in enumerate(grid):
-    for c, tree in enumerate(row):
-        ...
-```
+for r in range(1, maxr):
+    row = grid[r]
 
-Since we already pre-computed the visibility of the perimeter, we can skip that:
-
-```python
-for r, row in enumerate(grid):
-    if r == 0 or r == maxr:
-        continue
-
-    for c, tree in enumerate(row):
-        if c == 0 or c == maxc:
-            continue
+    for c in range(1, maxc):
+        tree = row[c]
 
         ...
 ```
@@ -1159,21 +1151,18 @@ visible_from_south = all(tree > grid[i][c] for i in range(r + 1, len(grid)))
 visible_from_north = all(tree > grid[i][c] for i in range(r - 1, -1, -1))
 ```
 
-Now in theory a tree is visible from outside the grid if *any* of the above
-variables is `True`, so we are doing unneeded work: if `visible_from_east` is
-`True`, we don't need to calculate the rest, and the same goes for the others.
-
-Since we are in a loop, we could use `continue` to skip right to the next
-iteration when any of the four is satisfied:
+Now, in theory, a tree is visible from outside the grid if *any* of the above
+variables is `True`, so we are doing unneeded work. For example, if
+`visible_from_east` is `True`, we don't need to calculate the rest, and the same
+goes for the others. Since we are in a loop, we could use `continue` to skip
+right to the next iteration when any of the four is satisfied:
 
 ```python
-for r, row in enumerate(grid):
-    if r == 0 or r == maxr:
-        continue
+for r in range(1, maxr):
+    row = grid[r]
 
-    for c, tree in enumerate(row):
-        if c == 0 or c == maxc:
-            continue
+    for c in range(1, maxc):
+        tree = row[c]
 
         if all(tree > t for t in row[c + 1:]): # east
             visible += 1
@@ -1192,13 +1181,11 @@ single `if` statement, retaining the lazyness of the operation with a simple
 `or`, which only evaluates its right operand if the left one is `False`.
 
 ```python
-for r, row in enumerate(grid):
-    if r == 0 or r == maxr:
-        continue
+for r in range(1, maxr):
+    row = grid[r]
 
-    for c, tree in enumerate(row):
-        if c == 0 or c == maxc:
-            continue
+    for c in range(1, maxc):
+        tree = row[c]
 
         east  = (tree > t for t in row[c + 1:])
         west  = (tree > t for t in row[:c])
@@ -1229,8 +1216,8 @@ As an example, given the following small grid:
 ```
 
 The tree with height `5` in the middle of the grid can see `1` unit north, `3`
-units right, `1` unit down and `1` unit left (blocked by the other `5`). Its
-score would then be `1 * 2 * 1 * 1 = 2`.
+units east, `1` unit south and `1` unit west (blocked by the other `5`). Its
+score would then be `1 * 3 * 1 * 1 = 2`.
 
 Calculating the view distance in each direction is pretty similar to what we
 just did for part 1, except that we need to *count* how many grid cells we pass
@@ -1241,10 +1228,11 @@ do this pretty easily.
 For example, for east:
 
 ```python
-for r, row in enumerate(grid):
-    # ...
-    for c, tree in enumerate(row):
-        # ...
+for r in range(1, maxr):
+    row = grid[r]
+    for c in range(1, maxc):
+        tree = row[c]
+
         for i in range(c + 1, width):
             if row[i] >= tree:
                 break
@@ -1256,13 +1244,11 @@ Doing the same for all directions, and adding the formula to calculate the
 score, we have the solution for part 2:
 
 ```python
-for r, row in enumerate(grid):
-    if r == 0 or r == maxr:
-        continue
+for r in range(1, maxr):
+    row = grid[r]
 
-    for c, tree in enumerate(row):
-        if c == 0 or c == maxc:
-            continue
+    for c in range(1, maxc):
+        tree = row[c]
 
         for east in range(c + 1, width):
             if row[east] >= tree:
@@ -1327,6 +1313,7 @@ using `all()` with generator expressions, so I kept it in my final solution.
 [d08-solution]: solutions/day08.py
 
 [d02-alternative]: misc/day02/mathematical.py
+[d08-alternative]: misc/day08/faster_part1.py
 
 [py-cond-expr]:          https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-generator-expr]:     https://www.python.org/dev/peps/pep-0289/
