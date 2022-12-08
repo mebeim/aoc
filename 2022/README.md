@@ -1278,6 +1278,34 @@ Technically, the code for both parts could be easily joined together into the
 same extended loop we just wrote for part 2, but I liked the concise part 1 code
 using `all()` with generator expressions, so I kept it in my final solution.
 
+### Reflections
+
+The algorithms I implemented for today's part 1 and part 2 scan the grid in four
+direction for every single grid cell. This means that in the worst case scenario
+we are potentially scanning the entire grid 4 times per single tree. For a
+square grid of side *n* there are *n<sup>2</sup>* trees, thus the computational
+complexity of these algorithm is at worst
+*O(4n<sup>2</sup>n<sup>2</sup>) = O(n<sup>4</sup>)* operations.
+
+That honestly doesn't sound very good. Indeed, there is a smarter solution, at
+least for part 1, which achieves the same result in *O(n<sup>2</sup>)*
+operations only:
+
+- Scan the entire matrix once per direction.
+- For each row/column, keep track of the tallest tree while scanning.
+- Mark all the trees taller than the tallest as visible from outside the grid.
+- As a bonus: stop scanning the current row/column when the tallest tree
+  encountered is a `9`.
+
+I implemented this approach in [my alternative solution][d08-alternative] for
+those that are curious.
+
+For part 2, a similar logic can be used, keeping track of the last time a tree
+of *each possible height* was seen, and using such information to instantly
+compute the view distance from any encountered tree in the current scanning
+direction. This requires a bit more effort though, and I did not have time to
+re-implement my part 2 solution using this approach.
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
