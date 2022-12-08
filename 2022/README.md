@@ -1130,10 +1130,24 @@ iterate the current `row` starting from `c + 1` up to its end, and check if our
                 visible_from_east = False
 ```
 
-The kind of loop we just wrote is exactly what the [`all()`][py-builtin-all]
-built-in function was invented for: using `all()` together with a
-[generator expression][py-generator-expr] gives us a one-liner equivalent to the
-above loop that is also easily readable:
+Let me take a second to make a small digression. It should be noted that in
+general doing something like `row[c + 1:]` is not that good of an idea, since in
+Python slicing lists, tuples, strings, bytes or similar collections *performs a
+copy* of the sliced values. Clearly a copy is unneeded if we don't need to
+modify the data and only slows things down, more so if the operation is
+performed on large collections or repeated a lot of times. This is a pretty
+unfortunate design flaw of the language that we can get around in a couple
+different ways, including using external libraries such as [NumPy][misc-numpy],
+since [by default slices of NumPy arrays return *views*][misc-numpy-views]
+instead of performing copies. In our case, the input grid is 99 by 99, which is
+a pretty small size, so we can get away with all this unnecessary copying to
+keep the code more concise and easier to read, but be warned that in general
+this isn't the case.
+
+Back to the problem. The kind of loop we just wrote is exactly what the
+[`all()`][py-builtin-all] built-in function was invented for: using `all()`
+together with a [generator expression][py-generator-expr] gives us a one-liner
+equivalent to the above loop that is also easily readable:
 
 ```python
 visible_from_east = all(tree > t for t in row[c + 1:])
@@ -1383,3 +1397,6 @@ re-implement my part 2 solution using this approach.
 [wiki-linear-time]: https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-memoization]: https://en.wikipedia.org/wiki/Memoization
 [wiki-tree]:        https://en.wikipedia.org/wiki/Tree_(data_structure)
+
+[misc-numpy]:       https://numpy.org
+[misc-numpy-views]: https://numpy.org/doc/stable/user/basics.copies.html
