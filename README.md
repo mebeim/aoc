@@ -56,8 +56,8 @@ In each year's folder you will find:
   of puzzles, additional interesting scripts, alternative solutions, and so on.
 
    - `full_leaderboard.md`: a complete leaderboard of all participants of
-     advent of code, including those who do not make it to the top 100, built by
-     by scraping each day's leaderboard.
+     Advent of Code for the year, including those who did not make it to the top
+     100, built by scraping each day's leaderboard.
    - `calendar.gif`: a GIF of the animated complete calendar for the year.
      That is, if I managed to finish all puzzles.
 
