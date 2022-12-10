@@ -42,7 +42,7 @@ We are given a list of numbers as input, and we are asked to count the number of
 consecutive pairs (overlapping) where the second number is higher than the
 first.
 
-After getting the numbers from the input file into a list. We can use the
+After getting the numbers from the input file into a list, we can use the
 [`map()`][py-builtin-map] built-in over the opened file object to convert every
 line into `int`. To iterate over pairs of consecutive numbers we can use the
 [`zip()`][py-builtin-zip] built-in. Then, for each pair check whether the
@@ -61,7 +61,7 @@ print('Part 1:', tot)
 
 Now we need to group numbers by 3, using a sliding-window method to determine
 how many couples of (overlapping) triplets are there where the second triplet
-has an higher sum than the first one. For example, in `1 2 3 4` the triplet
+has a higher sum than the first one. For example, in `1 2 3 4` the triplet
 `2 3 4` has higher sum than the previous triplet `1 2 3`.
 
 Let's just write a simple loop: we can use `zip` again to group the numbers in
@@ -163,7 +163,7 @@ answer1 = horiz * aim
 answer2 = horiz * depth
 
 print('Part 1:', answer1)
-print('Part 2:', answer1)
+print('Part 2:', answer2)
 ```
 
 Ta-dah! As simple as that, we now have two more gold stars.
@@ -242,9 +242,9 @@ the above expression in a [`sum()`][py-builtin-sum] using a
 n_set = sum(((n >> 3) & 1) for n in nums)
 ```
 
-If we want to know the most common bit set now we can just compare the `n_set`
-with the length of `nums`. We'll consider `1` to be most common in case of a
-tie.
+If we want to know the most common bit set at a given position we can now just
+compare the `n_set` with the length of `nums`. We'll consider `1` to be most
+common in case of a tie.
 
 ```python
 def most_common_bit(nums, shift):
@@ -296,10 +296,10 @@ print('Part 1:', power)
 ### Part 2
 
 Our task gets a little trickier now. We need to filter out numbers based on a
-certain criteria:
+certain criterion:
 
-1. Star with all numbers, find the most common significant bit and only keep the
-   numbers which have that same most significant bit.
+1. Start with all numbers, find the most common significant bit and only keep
+   the numbers which have that same most significant bit.
 2. Further filter these numbers by looking at the second most significant bit,
    only keeping those with the most common second most significant bit.
 3. Keep going, each time looking at the next position, filtering out numbers
@@ -311,7 +311,7 @@ Multiplying the two together will give us the answer.
 
 Okay, we alraedy have a `most_common_bit()` function which tells us if the most
 common bit at a given shift (position) in a set of numbers is either `1` or `0`:
-we can use it in a loop for filtering. We'll start with a `set` containing all
+we can use it in a loop for filtering. We'll start with the initial list of
 numbers, then check the most common MSB and filter out those that have a
 different MSB. Then look at the second MSB, and so on... we'll keep filtering
 until our set only contains one number.
@@ -358,7 +358,7 @@ def filter_numbers(nums, n_bits):
 Okay, we have the first of the two magic numbers we needed. Now we have to do
 the exact same job checking the *least common* bits instead. Well, we can write
 a `least_common_bit()` function and do the same as the above. To do this, we'll
-also generalize `filter_numbers` to take a `predicate` function as thirt
+also generalize `filter_numbers` to take a `predicate` function as third
 argument that will determine the bit to keep for us:
 
 ```python
@@ -467,7 +467,7 @@ numbers with `-1` in the cards.
 Now how can we find out if a certain card wins? Simply scan through each row and
 column of the card counting the occurrences of `-1`: if any row/col has 5 of
 them, the card just won. We can use [`sum()`][py-builtin-sum] and `map()` to
-easily do this given a card. Let's writa a function:
+easily do this given a card. Let's write a function:
 
 ```python
 def check_win(card):
@@ -484,7 +484,7 @@ def check_win(card):
     return False
 ```
 
-Can we optimize the above function? Yes, we'll do it soon, first let's write yet
+Can we optimize the above function? Yes, we'll do it soon. First let's write yet
 another function to mark a number on a card. Since we potentially need to modify
 the contents of a cell in the board, we'll need to iterate over each cell while
 keeping track of row and column indexes, so that we can do `card[r][c] = -1` to
@@ -543,7 +543,7 @@ def winner_score(card, last_number):
 
     for row in card:
         for x in row:
-            if x == -1:
+            if x != -1:
                 unmarked_tot += 1
 
     return unmarked_tot * last_number
@@ -562,7 +562,7 @@ def winner_score(card, last_number):
     return unmarked_tot * last_number
 ```
 
-Since all we do in the loop now is a sum, we can also wimplify that:
+Since all we do in the loop now is a sum, we can also simplify that:
 
 ```python
 def winner_score(card, last_number):
@@ -608,9 +608,9 @@ for number in drawn:
             n_won += 1
 
             if n_won == 1:
-                first_winner_score = winner_score(cards[i], number)
+                first_winner_score = winner_score(card, number)
             elif n_won == n_cards:
-                last_winner_score = winner_score(cards[i], number)
+                last_winner_score = winner_score(card, number)
 
             cards[i] = None
 
@@ -665,8 +665,8 @@ points on the line (ends included).
 We have two possible scenarios:
 
 1. Vertical lines: fixed `x` (`ax == bx`) and varying `y`. In this case we can
-   have `ay > by` or `by > ay`: we can simply use `min()`[py-builtin-min] and
-   `max()`[py-builtin-max] to always go from the lowest to the highest `y`
+   have `ay > by` or `by > ay`: we can simply use [`min()`][py-builtin-min] and
+   [`max()`][py-builtin-max] to always go from the lowest to the highest `y`
    coordinate.
 2. Horizontal lines: fixed `y` (`ay == by`) and varying `x`. Again, we can
    either have `ax > bx` or `bx > ax`: same logic as the previous case.
@@ -680,7 +680,7 @@ def horiz(ax, ay, bx, by):
         for x in range(min(ax, bx), max(ax, bx) + 1):
             yield x, ay
 
-    # Ignore anything else that is no an horizontal or vertical line, if we
+    # Ignore anything else that is not a horizontal or vertical line, if we
     # don't return anything the generator will just stop immediately.
 ```
 
@@ -828,8 +828,8 @@ def diag(ax, ay, bx, by):
     # anything the generator will just stop immediately.
 ```
 
-We can also use our `autorange()` function to simplify `horiz()`, replacing the
-ranges with min/max:
+We can also use our `autorange()` function to simplify `horiz()`, avoiding the
+use of `min`/`max`:
 
 ```python
 def horiz(ax, ay, bx, by):
@@ -840,7 +840,7 @@ def horiz(ax, ay, bx, by):
 ```
 
 All that's left to do for part 2 is increment the counters for all points on
-horizontal lines and re-count the overlapping points again:
+diagonal lines and re-count the overlapping points again:
 
 ```python
 for line in lines:
@@ -919,12 +919,11 @@ Day 6 - Lanternfish
 
 [Problem statement][d06-problem] — [Complete solution][d06-solution] — [Back to top][top]
 
-
 ### Part 1
 
 Lanternfish. Amazing creatures, aren't they? I always found them fascinating.
 Today's puzzle asks us to track the evolution of a population of fish. We know
-each fish produces a new one each 7 days. We can interpret this as the fish
+each fish produces a new one every 7 days. We can interpret this as the fish
 having a "timer" of days left until reporoduction starting at 6 and going down
 to 0; once at 0, the next day the fish will give birth to a new one and reset
 its timer to 6.
@@ -1120,13 +1119,12 @@ the other half (excluding the median itself). In other words, after sorting all
 the numbers we have, the median is the number which sits right in the middle (in
 case we have an odd amount of numbers).
 
-To understand *why* the median, let's try to see what would happen in case we
-do *not* chose the median:
-
-Let's say that we have *N* numbers (*N* odd for simplicity) amongst which *X* is
-the median, and *S* is the sum of the absolute deviations of our numbers from
-*X*. Note that as per the definition of median, we have exactly *(N-1)/2*
-numbers above and below the median. Now, what happens if we deviate from *X*?
+To understand *why* the median, let's try to see what would happen in case we do
+*not* choose the median. Let's say that we have *N* numbers (*N* odd for
+simplicity) amongst which *X* is the median, and *S* is the sum of the absolute
+deviations of our numbers from *X*. Note that as per the definition of median,
+we have exactly *(N-1)/2* numbers above and below the median. Now, what happens
+if we deviate from *X*?
 
 - If we *increment* *X* by one, we are getting closer to exactly *(N-1)/2*
   numbers (i.e. all the numbers above the median), so the absolute sum of
@@ -1225,8 +1223,8 @@ there are two differences:
    by a constant (the minimum changes, but its position doesn't). However, we
    also have an additional *(n<sub>i</sub> - X)/2* in our way. As it turns out,
    this additional linear term means that using the least squares method is not
-   exactly accurate for our goal, but it still gives us a very good
-   approximation of the value of *X* we want to find.
+   exactly accurate for our goal, but still gives us a very good approximation
+   of the value of *X* we want to find.
 
 2. We are not interested in a real 2D linear regression, but merely some sort of
    *average*, as our problem is one dimensional. It can also be seen as looking
@@ -1665,7 +1663,7 @@ def neighbors4(grid, r, c):
             yield (rr, cc)
 ```
 
-Since we merely need coordinates, we can just pass heigh and width of the grid
+Since we merely need coordinates, we can just pass height and width of the grid
 as arguments and avoid calling `len()` every single time:
 
 ```python
@@ -1772,7 +1770,7 @@ def bfs(grid, r, c, h, w):
 
 To find *all* connected components, we could simply call the above `bfs()`
 function for every single cell, accumulating the set of visited cells to ignore
-them later. However, the problem statement gives an hint that can help us
+them later. However, the problem statement gives a hint that can help us
 simplify the search for connected components:
 
 > **A basin is all locations that eventually flow downward to a single low
@@ -2020,8 +2018,8 @@ lines = map(str.rstrip, fin)
 grid  = list(list(map(int, row)) for row in lines)
 ```
 
-First and foremost, we'll definitely need to iterate over the *eight* neighbors
-(diagonals are included this time) of a given cell. Let's write a
+We'll definitely need to iterate over the *eight* neighbors (diagonals are
+included this time) of a given cell. Let's write a
 [generator function][py-generator-function] that yields all the coordinates of
 the neighbors of a cell. This is again almost the same function we wrote for
 [day 9][d09], only that this time we'll have 8 coordinate deltas instead of 4:
@@ -2457,7 +2455,7 @@ as its original distance from the axis.
 
 - For a vertical reflection with axis `x=A`, the `x` coordinate of a point
   becomes `A - (x - A)` or `2*A - x`.
-- For an horizontal reflection with axis `y=A`, the `y` coordinate of a point
+- For a horizontal reflection with axis `y=A`, the `y` coordinate of a point
   becomes `A - (y - A)` or `2*A - y`.
 
 Let's write a `fold()` function to do this. For simplicity, this function will
@@ -2581,8 +2579,8 @@ Day 14 - Extended Polymerization
 
 **NOTE**: today's part 1 and 2 can be solved using the same algorithm, however
 part 1 is simpler and allows for different, less optimal algorithms to
-accomplish the same task. The algorithm implementation here in part 1 is far
-from optimal, and in fact unsuitable for part 2. Nonetheless, I've decided to
+accomplish the same task. The algorithm implemented here in part 1 is far from
+optimal, and in fact unsuitable for part 2. Nonetheless, I've decided to
 describe it for educational purposes. You can directly skip to [part 2][d14-p2]
 for the actual solution.
 
@@ -2871,8 +2869,8 @@ from the entrance (top-left) to the exit (bottom-right), passing through any of
 the cells in the grid.
 
 We can think about the grid as a directed graph with as much nodes as there are
-cells in the grid, connected between each others just like cells are connected
-to their neighboring cells.
+cells in the grid, connected between each other just like cells are connected to
+their neighboring cells.
 
 What about the edges? Moving from a given cell A to a neighboring cell B (thus
 entering B) costs us as much as the risk level of B: we can represent this an
@@ -2882,8 +2880,8 @@ level of B, and thus we have another different edge going from B to A with a
 weight equal to the risk level of B. In other words, the edges entering a node
 have the same weight as the risk level of the cell corresponding to that node.
 
-Do you see consider the following example with a small grid and its
-corresponding graph representation (`S` = entrance, `E` = exit):
+Consider the following example with a small grid and its corresponding graph
+representation (`S` = entrance, `E` = exit):
 
 ```none
            SS <-1-- OO <-2-- OO
@@ -2935,9 +2933,9 @@ module is exactly what we need. A `defaultdict` that returns `float('inf')`
 not-yet-seen nodes as being infinitely distant (positive floating point infinity
 compares greater than any integer).
 
-The algorithm is pretty well-known and also well-explained in the Wikipedia page
-I just linked above, so I'm not going into much detail about it, I'll just add
-some comments to the code.
+The algorithm is well-known and also well-explained in the Wikipedia page I just
+linked above, so I'm not going into much detail about it, I'll just add some
+comments to the code.
 
 ```python
 import heapq
@@ -3027,13 +3025,12 @@ print('Part 1:', minrisk)
 
 ### Part 2
 
-For this second part the goal does not change... only the grid does. The
-*actual* grid is actually five times larger in both dimensions.
-
-The grid we have as input is merely a *tile*, and the actual grid is composed of
-5x5 tiles. Our tile repeats to the right and downward, and each time the tile it
-repeats, all of its "risk levels" are 1 higher than the tile immediately up or
-left of it. If any risk level gets above 9 in the process, it wraps back to 1.
+For this second part the goal does not change, only the grid does. The grid we
+have as input is merely a *tile*, and the actual grid is composed by 25 tiles
+arranged in 5 rows of 5. Our tile repeats to the right and downward, and each
+time the it does, all of its "risk levels" are 1 higher than the tile
+immediately up or left of it. If any risk level gets above 9 in the process, it
+wraps back to 1.
 
 It's only a matter of enlarging our grid and re-running `dijkstra()` on it.
 Let's call the tile width and height `tilew` and `tileh` for simplicity:
@@ -3122,10 +3119,10 @@ There are two main kinds of packets:
 Operator packets are encoded as follows:
 
 - The first data bit is a *length type ID* (`ltid`):
-- If `ltid=0`, the next 15 bits are an integer that represents the total length
-  in bits of the sub-packets contained by this packet.
-- Otherwise (`ltid=1`), then the next 11 bits are an integer that represents
-  the number of sub-packets contained by this packet.
+- If `ltid=1`, the next *11* bits are an integer that represents the number of
+  sub-packets contained by this packet.
+- If `ltid=0`, the next *15* bits are an integer that represents the total
+  length in bits of the sub-packets contained by this packet.
 - The rest of the data are concatenated sub-packets.
 
 Our input data consists of only one very large operator packet, containing a lot
@@ -3145,11 +3142,10 @@ take a file object as the only argument of its constructor, which will read all
 the data in the file and convert it from a hexadecimal string to a binary
 string.
 
-We can convert the hexadecimal input string into a [`bytes`][py-bytes] object we
-can use [`bytes.fromhex()`][py-bytes-fromhex]. Then, to convert every byte into
-a binary string we can use [`str.format()`][py-str-format] with a field
-`{:08b}`, which converts an integer into a zero-padded binary string of 8
-characters.
+We can convert the hexadecimal input string into a [`bytes`][py-bytes] object
+using [`bytes.fromhex()`][py-bytes-fromhex]. Then, to convert every byte into a
+binary string we can use [`str.format()`][py-str-format] with a field `{:08b}`,
+which converts an integer into a zero-padded binary string of 8 characters.
 
 ```python
 class Bitstream:
@@ -3278,8 +3274,9 @@ possible cases:
 1. Value packets (`tid == 4`) that don't contain any sub-packet, for these we
    can just return the version.
 2. Operator packets (`tid != 4`) that contain sub-packets: iterate over each
-   packet and make a recursive call, summing everything up. This can be done in
-   a single line with [`sum()`][py-builtin-sum] plus [`map()`][py-builtin-map].
+   sub-packet and make a recursive call, summing everything up. This can be done
+   in a single line with [`sum()`][py-builtin-sum] plus
+   [`map()`][py-builtin-map].
 
 ```python
 def sum_versions(packet):
@@ -3318,10 +3315,11 @@ For the second part, we are given the specifications of all operator packets:
 - `tid=3` means "maximum": ... maximum amongst all sub-packets' values.
 - `tid=5` means "greater than": this packet always contains 2 sub-packets and
   its value is `1` if the first sub-packet's value is greater than the second
-  sub-packet's value.
+  sub-packet's value, otherwise `0`.
 - `tid=6` means "less than": ... `1` if 1st sub-packet has lower value than the
-  2nd.
-- `tid=7` means "equals": ... `1` if 1st sub-packet has equal value to the 2nd.
+  2nd, otherwise `0`.
+- `tid=7` means "equals": ... `1` if 1st sub-packet has equal value to the 2nd,
+  otherwise `0`.
 
 We need to calculate the value of the "root" packet.
 
@@ -3484,7 +3482,7 @@ t. As per the x and y coordinates... their value at some t is just the sum of
 all the *previous* velocities:
 
 - For y, we have: y(t) = sum from n = 0 to t of V<sub>y</sub>(n).
-- For x, it's a little different. If we look at which point x stop increasing,
+- For x, it's a little different. If we look at which point x stops increasing,
   which is when V<sub>x</sub> = 0, we have x equal to the sum of all the natural
   numbers from V<sub>0,x</sub> to 1. This is a
   [triangular number][wiki-triangular-number]! Remember those? We have x(t) =
@@ -3556,7 +3554,7 @@ Given the above, we can draw some very important conclusions:
 5. If V<sub>0,y</sub> = −y<sub>min</sub>, then we know that the will "hit" the
    target (at least with the y coordinate) exactly the instant after
    T<sub>zero</sub>, since at T<sub>zero</sub> we have y=0 and at the next step
-   we will have y = 0 −(−y<sub>min</sub>) = y<sub>min</sub>. So T<sub>hi</sub>
+   we will have y = 0 −(−y<sub>min</sub>) = y<sub>min</sub>. So T<sub>hit</sub>
    = T<sub>zero</sub> + 1 = 2T<sub>hi</sub> + 1 = 2V<sub>0,y</sub> + 1.
 
 6. Given the above, the maximum height we will ever reach is
@@ -3570,15 +3568,15 @@ Let's think about it:
 
 7. We know that given an initial V<sub>0,x</sub>, the x coordinate will *stop*
    moving forward and we will start falling *straight down*. When this happens,
-   we will be at xstop = V<sub>0,x</sub>(V<sub>0,x</sub> + 1)/2, which is a
-   triangular number, and is reached at exactly T<sub>stop</sub> =
-   V<sub>0,x</sub>. So we could also say xstop =
+   we will be at x<sub>stop</sub> = V<sub>0,x</sub>(V<sub>0,x</sub> + 1)/2,
+   which is a triangular number, and is reached at exactly T<sub>stop</sub> =
+   V<sub>0,x</sub>. So we could also say x<sub>stop</sub> =
    T<sub>stop</sub>(T<sub>stop</sub> + 1)/2.
 
 8. Therefore, if there is a triangular number between x<sub>min</sub> and
    x<sub>max</sub> (the horizontal bounds of the target), and that triangular
-   number is generated by a T<sub>stop</sub> value that is lower or equal than
-   T<sub>hi</sub>, we are guaranteed to hit the target. This is because we will
+   number is generated by a T<sub>stop</sub> value that is lower or equal to
+   T<sub>hit</sub>, we are guaranteed to hit the target. This is because we will
    find ourselves falling down right above the target in a horizontal line with
    the right downwards velocity and acceleration, as we figured out in the
    previous paragraph.
@@ -3788,7 +3786,7 @@ go ahead and check them out if the above is not clear.
 
 As per the "split", this means dividing the number by two and replacing it with
 a pair where the left part is the rounded down result of the division, while the
-right part is what is the rounded up result:
+right part is the rounded up result:
 
 ```
 [10,[1,2]] --- split the 10 --> [[5,5],[1,2]]
@@ -3810,7 +3808,7 @@ operations:
 
 - The "explode" operation will reduce the maximum depth of the pair by at most
   1, and at least 0. This is because exploding means getting rid of a pair and
-  replacing with with `0` (and possibly modifying two other numbers).
+  replacing it with `0` (and possibly modifying two other numbers).
 - The "split" operation will increase the maximum depth of the pair by at most
   1, and at least 0.
 
@@ -3853,8 +3851,8 @@ the most sense to me:
 2. Slightly more complex: build a binary tree and parse the input pairs as trees
    where each node can either be a number or another node with two children.
    Explosion can be implemented recursively without much effort with parent
-   references thinking using this method, and node addition/removal is only a
-   matter of updating some "pointers".
+   references using this method, and node addition/removal is only a matter of
+   updating some "pointers".
 
    This is a good improvement on just scanning strings/lists of tokens (unless
    those tokens are organized in a linked list, then it's pretty similar), but
@@ -4005,21 +4003,21 @@ the *left* part of some pair. We have two possible cases:
 1. `[left, 123]`: the exploded left part of our `pair` has a number on the
    right. We can simply add `right_num` to this number.
 2. `[left, [...]]`: the exploded left part of our `pair` has another pair to the
-   right (`[...]`). We will need to add `right_num` to the rightmost number that
+   right (`[...]`). We will need to add `right_num` to the leftmost number that
    we find in this other pair. Keep in mind that this other pair could consist
    of other nested pairs.
 
 In both cases though, we have no idea what's *on the left of `left`* (outside
 the current `pair` we are looking at), hence
 **we cannot possibly know where `left_num` needs to end up**...
-only the calling function has knowledge of this, so we'll have to
-return it to the caller! If we were recursively called to explode the *right*
-part of a pair, then the caller will know how where to place `left_num`. Indeed,
-any `left_num` can only ever be added if there is some number something on the
-right (at any level), in which case a right recursive call is made. If no right
-recursive call is ever made, `left_num` will simply get returned back to the
-first call and be discarded entirely. The same reasoning goes for `right_num` if
-no left recursive call is performed.
+only the calling unction has knowledge of this, so we'll have to return it to
+the caller! If we were recursively called to explode the *right* part of a pair,
+then the caller will know where to place `left_num`. Indeed, any `left_num` can
+only ever be added if there is some number on the right (at any level), in which
+case a right recursive call is made. If no right recursive call is ever made,
+`left_num` will simply get returned back to the first call and be discarded
+entirely. The same reasoning goes for `right_num` if no left recursive call is
+performed.
 
 Interestingly enough, given the way the pairs are structured, there will never
 be a case in which both the left and the right number are discarded after an
@@ -4179,7 +4177,7 @@ def explode(pair, depth=0):
     return None, pair, None, False
 ```
 
-That was... as complex to write as it was to explain it.
+That was... twice as complex to write as it was to explain.
 
 Let's implement the "splitting" now, again as a recursive function. This is
 easy:
@@ -4350,7 +4348,7 @@ to be applied *simultaneously* to every pixel of the image, two times in a row.
 After doing so, we want to know how many pixels are ON in the final image.
 
 The tricky part of today's puzzle resides in the *first rule*. This rule is
-special, as it's ad index `0` and therefore represents the value which OFF
+special, as it's at index `0` and therefore represents the value which OFF
 pixels surrounded by 8 other OFF pixels should assume after the transformation.
 If this special rule is set to `#`, since our image is infinite, and the outer
 space is filled with OFF pixels... this means that after only one iteration of
@@ -4362,7 +4360,7 @@ represents `111111111`). The last rule in our input is `.`, therefore all the
 infinitely many outside pixels will turn off. In general, on every *odd* number
 of transformations we will have infinitely many ON pixels, and on every *even*
 number of transformations we will go back to a "normal" scenario with only the
-"central" part of the image has pixels that are ON.
+"central" part of the image having pixels that are ON.
 
 If both the first and the last rule are `#` though, we would be in trouble!
 Well, at that point the problem wouldn't even make any sense: after the first
@@ -4386,12 +4384,12 @@ possibly have both the first and last rules set to `#`, we might as well
 assert not (rules[0] and rules[-1]), 'Invalid rules!'
 ```
 
-Now the image. We are dealing with an expanding grid of pixels, so using a
-matrix (e.g. `list` of `list`) is not practical at all, as it would require
-either starting with a huge matrix or adding rows/columns as we go. Instead, our
-image will simply be a `set` only containing coordinates of the pixels that are
-ON. We can use [`enumerate()`][py-builtin-enumerate] in a classical a double
-`for` loop to easily get both coordinates and values of the pixels.
+We are dealing with an expanding grid of pixels, so using a matrix (e.g. `list`
+of `list`) is not practical at all, as it would require either starting with a
+huge matrix or adding rows/columns as we go. Instead, our image will simply be a
+`set` only containing coordinates of the pixels that are ON. We can use
+[`enumerate()`][py-builtin-enumerate] in a classical a double `for` loop to
+easily get both coordinates and values of the pixels.
 
 ```python
 next(fin) # skip empty line of input
@@ -4561,7 +4559,7 @@ print('Part 2:', n_on)
 
 Today is a sad day for [CPython][wiki-cpython] apparently. My solution runs in
 around 2 seconds, which I find kind of annoying. Unfortunately, there isn't much
-to optimize in the code, apart from the obvious bounding-box calculation which
+to optimize in the code, apart from the obvious bounding-box calculation, which
 as I said does not really represent a performance bottleneck. I believe the
 large amount of set insertions and checks is what makes the whole thing as slow
 as it is. Using [PyPy][misc-pypy] 7.3.5 gives me a speedup of about 2.55x (780ms
@@ -4596,9 +4594,9 @@ rolls the numbers from 1 to 100 in order, cyclically (not really that cool of a
 die, to be honest).
 
 The two players are starting from two given slots (our input). Player 1 plays
-first, and the first player who reaches a score greater or equal to 1000 wins.
-We need to calculate the total number of rolls in the whole game multiplied by
-the score of the losing player.
+first, and the first player who reaches a score greater than or equal to 1000
+wins. We need to calculate the total number of rolls in the whole game
+multiplied by the score of the losing player.
 
 We don't have to put much effort into it, we can just emulate the whole game!
 Let's start with the die: we could model it as a
@@ -4643,12 +4641,11 @@ game:
 
 We need to be careful when moving the player positions: game tiles are numbered
 from 1 to 10. Each time we increase a player's position we need to then decrease
-it in steps of 10 until it reaches a value below 10. To make it easier, we could
+it in steps of 10 until it reaches a value below 10. To make it easier, we will
 use tile numbers from 0 to 9 instead: this way we can simply use the modulus
 operator (`%`) to wrap the player's position around after increasing it. When
-adding to the total score, we'll simply add the current position *plus 1* to
-account for the fact that our tiles are all numbered 1 lower than the original
-ones.
+adding to the total score, we'll add the current position *plus 1* to account
+for the fact that our tiles are all numbered 1 lower than the original ones.
 
 ```python
 from itertools import cycle
@@ -4708,7 +4705,9 @@ rolls the die *3 times*, meaning that every single turn we are looking at 3x3x3
 those, we are looking at 27x27 universes. In general, after N turns we will have
 a total of 27<sup>N</sup> possible different universes. If N is 21, that is
 1'144'561'273'430'837'494'885'949'696'427, which is... a little bit too large
-for us to handle!
+for us to handle (though that's an overstimation since players don't merely
+score 1 point every single turn, the actual number would still be insanely
+large)!
 
 The logic behind the solution is quite similar to the one we used for
 [day 6 part 2][d06-p2] and also [day 14 part 2][d14-p2]. We cannot advance all
@@ -4737,7 +4736,7 @@ We can solve this in two different ways:
 
 We are going to implement the second option. My
 [original solution][d21-original] for today's part 2 implements the first option
-though. and while the code is definitely not that "clean", it's still
+though, and while the code is definitely not that "clean", it's still
 comprehensible enough to be easily understood, in case you are curious.
 
 As we said, our game state is defined as the current positions and scores of the
@@ -4850,7 +4849,7 @@ and we definitely need to do that to instantly return the known outcome
 associated with that state in case we do, avoiding *a lot* of unnecessary
 calculations.
 
-Normally this can be done through the use of a dictionary:
+This can be done "manually" through the use of a dictionary:
 
 ```python
 # The cache={} dictionary here is only created once at the time of definition of
@@ -4867,12 +4866,12 @@ def expensive_function(a, b, c, cache={}):
     result = ...
 
     # Save the result for the current state before returning, so that it can be
-    # re-used to avoid the expensive_calculation() later on:
+    # re-used to avoid the expensive calculation later on:
     cache[state] = result
     return result
 ```
 
-As it turns out, Python has (>= 3.2) has a very cool way of painlessly handling
+As it turns out, Python (>= 3.2) has a very cool way of painlessly handling
 memoization. All we need is the [`@lru_cache`][py-functools-lru_cache]
 [decorator][py-decorator] from the [`functools`][py-functools] module, which
 automagically does all of the above for us with a single line of code.
@@ -4881,7 +4880,7 @@ value when too many values are cached. If we don't need to disregard old values,
 we can also use the [`@cache`][py-functools-cache] decorator as a shortcut for
 `@lru_cache(maxsize=None)`.
 
-We can apply the decorator our function like this:
+We can apply the decorator to our function like this:
 
 ```python
 @lru_cache(maxsize=None)
@@ -5065,10 +5064,10 @@ case of overlaps, any intersection with positive segments needs to be added to
 the negative segments, and any intersection with negative segments needs to be
 added to the positive segments instead, again to correct for double-counting.
 
-Some visual examples can help us a lot. For simplicity, we'll add 1 to the
-second number of each command (the end of the range), in order to be able to
-compute the number of unit segments with a simple subtraction later
-(`end - start`). Here it is:
+Some visual examples can help us a lot. For simplicity, only in this example,
+we'll add 1 to the second number of each command (the end of the range), in
+order to be able to compute the number of unit segments with a simple
+subtraction later (`end - start`). Here it is:
 
 ```none
            0   1   2   3   4   5
@@ -5119,7 +5118,7 @@ dimensions, as long as we are able to correctly detect overlaps and calculate
 intersections. The intersection of two segments is straightforward: we take the
 maximum of the two starting points as starting point and the minimum of the two
 ending as ending point; if the calculated starting point is greater or equal to
-the ending point, it means there is no intersection so we can just discard it.
+the ending points, it means there is no intersection so we can just discard it.
 In 3D it's pretty much the same, the only difference is that we need to do these
 calculations and checks for all 3 dimensions.
 
@@ -5196,7 +5195,7 @@ from itertools import starmap
 total = sum(starmap(volume, positive)) - sum(starmap(volume, negative))
 ```
 
-We ahve the answer we were looking for, however there is one significant
+We have the answer we were looking for, however there is one significant
 optimization that can be made. As we saw with the pretty small example on 1D
 segments, it's quite common to end up calculating the same intersection more
 than once. Since we are iterating over the entire list of negative and positive
@@ -5286,12 +5285,12 @@ Day 23 - Amphipod
 
 ### Part 1
 
-Today we're dealing with an [NP-complete][wiki-np-complete] problem, woah. We
-are given a very small ASCII-art grid representing an hallway plus four rooms
-which all contain two objects. There are four different kinds of objects
-(letters from `A` to `D`), and two of each kind. Each kind of object should go
-in its corresponding room (`A`s in the first, `B`s in the second, etc), but they
-are initially misplaced into different rooms.
+Today we're dealing with a [NP-complete][wiki-np-complete] problem, woah. We are
+given a very small ASCII-art grid representing a hallway plus four rooms which
+all contain two objects. There are four different kinds of objects (letters from
+`A` to `D`), and two of each kind. Each kind of object should go in its
+corresponding room (`A`s in the first, `B`s in the second, etc), but they are
+initially misplaced into different rooms.
 
 Each kind of object also has a different associated cost to be moved from one
 cell to an adjacent one. Our task is to move these objects around, one at a
@@ -5612,7 +5611,7 @@ using the magic [`lru_cache`][py-functools-lru_cache] decorator:
 ```
 
 We left input parsing as the last thing to do, and indeed today's input is kind
-of annoying to parse to be honest. We're already assuming an hallway with 7 free
+of annoying to parse to be honest. We're already assuming a hallway with 7 free
 spots (see hardcoded values in the `ROOM_DISTANCE` dictionary), let's just
 assume only four rooms are present. We can convert an object `ABCD` to its
 corresponding number `0123` with a little trick using `'ABCD'.index(object)`.
@@ -5748,7 +5747,7 @@ We are given an assembly program as input. This program runs on a custom machine
 whose CPU has 4 registers named `x`, `y`, `z` and `w`. There are 6 different
 opcodes available:
 
-- `inp DST`: takes a number as input and store it in register `DST`.
+- `inp DST`: takes a number as input and stores it in register `DST`.
 - `add DST SRC`: store the value of `DST + SRC` into `DST`. In this case `SRC`
   can either be another register name or an immediate integer value (positive or
   negative).
@@ -5771,7 +5770,7 @@ possibilities to guess, and testing them all would take ages. It's also not
 possible to do any kind of binary search, as there could be multiple "local"
 solutions in the input range.
 
-There are three main approaches for solving the problem:
+There are three main approaches to solve the problem:
 
 1. Manually look at the program code and figure out which constraints are being
    checked on the input. Then, we can either fully solve them by hand, or write
@@ -5793,7 +5792,7 @@ There are three main approaches for solving the problem:
 I'm going to proceed with option number 1 in today's waklthrough. It's fun and
 also the most optimal solution, however the code we are going to write highly
 relies on the input format, so it will only work for AoC inputs, and not for any
-possible input programs.
+possible input program.
 
 Let's start analyzing the program. Right off the bat, we can notice some
 interesting characteristics:
@@ -5923,17 +5922,17 @@ that was "pushed" into `z`, which in our case was `w+7` i.e. the previous digit
 plus `7`. It seems that `z` is being used as a simple *stack* of base 26
 numbers.
 
-Instructions 6 to 8 then perform another addition and compare `x` (which is the
-value of the previously pushed digit plus some constants) with the current
-digit. If they are equal, the final value of `x` becomes `0`. In such case, the
-rest of the operations do *nothing:* we have ops 9 to 13 which compute `z *= 1`
-and instructions 14 to 18 which compute `z += 0`. Otherwise, if after
-instruction 8 we end up with `x = 1` (the two numbers did not match), we have
-the rest of the operations which push some other value into `z`.
+Instructions 6 to 8 then perform an addition and compare `x` (i.e. the value of
+the previously pushed digit plus some constants) with the current digit. If they
+are equal, the final value of `x` becomes `0`. In such case, the rest of the
+operations do *nothing:* we have ops 9 to 13 that compute `z *= 1`, and
+instructions 14 to 18 that compute `z += 0`. Otherwise, if after instruction 8
+we end up with `x = 1` (the two numbers did not match), the rest of the
+operations will push some other value into `z`.
 
 In the entire program, we have two different kinds of 18-instruction chunks:
 
-1. 7 chunks arf of the first kind we analyzed, they simply push the current
+1. 7 chunks are of the first kind we analyzed: they simply push the current
    input digit plus some constant into `z`. This kind of chunk can be seen as:
 
    ```none
@@ -6083,10 +6082,10 @@ For the second part we are asked to find the minimum possible accepted number
 instead.
 
 Well, we already have all we need. Let's modify `find_max()` to calculate both
-the maximum and minimum accepted values. Finding minimum is analogous to what we
-did to find the maximum: given a pair of digits and their difference, one of the
-two will just be the lowest possible (`1`), and the other will be `1 + diff` in
-case `diff` is positive, and `1 - diff` otherwise.
+the maximum and minimum accepted values. Finding the minimum is analogous to
+what we did to find the maximum: given a pair of digits and their difference,
+one of the two will just be the lowest possible (`1`), and the other will be
+`1 + diff` in case `diff` is positive, and `1 - diff` otherwise.
 
 ```python
 def find_max_min(constraints):
@@ -6127,7 +6126,7 @@ Day 25 - Sea Cucumber
 
 [Problem statement][d25-problem] — [Complete solution][d25-solution] — [Back to top][top]
 
-Not a hard ptoblem for this years' Christmas day. We are givn an ASCII-art grid
+Not a hard problem for this years' Christmas day. We are givn an ASCII-art grid
 where we can have three kind of cells: `>` (a sea cucumber facing right), `v` (a
 sea cucumber facing down), `.` (empty). We need to evolve the grid according to
 the following rules to be applied every evolution step:
@@ -6359,7 +6358,7 @@ As always, there is no part 2 for day 25. Merry Christmas!
 [d25-alternative]:         misc/day25/sparse_matrix.py
 [d22-alternative]:         misc/day22/coord_compression.py
 [d22-alternative-2]:       misc/day22/octree.py
-[d06-p2]:                  #part-2-7
+[d06-p2]:                  #part-2-5
 [d14-p2]:                  #part-2-13
 <!-- TODO: change this when adding d19! -->
 [d21-p2]:                  #part-2-19
