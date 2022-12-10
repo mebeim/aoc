@@ -13,6 +13,7 @@ Table of Contents
 - [Day 7 - No Space Left On Device][d07]
 - [Day 8 - Treetop Tree House][d08]
 - [Day 9 - Rope Bridge][d09]
+- [Day 10 - Cathode-Ray Tube][d10]
 
 Day 1 - Calorie Counting
 ------------------------
@@ -1578,6 +1579,195 @@ print('Part 1:', answer1)
 print('Part 2:', answer2)
 ```
 
+
+Day 10 - Cathode-Ray Tube
+------------------------
+
+[Problem statement][d10-problem] — [Complete solution][d10-solution] — [Back to top][top]
+
+### Part 1
+
+It wouldn't be Advent of Code without some kind of virtual machine to implement!
+Today's puzzle requires us to implement a VM that only has one register `X` and
+knows two instructions: `noop` and `addx n`. The first one has a duration of
+1 cycle and does nothing, while the second one has a duration of 2 cycles and
+adds the immediate value `n` to `X` *after* the two cycles have passed.
+
+We start at the first cycle, and need to emulate a list of instructions. Then,
+starting from cycle 20 and every 40 cycles after that (60, 100, 140, ...) we
+need to calculate the product of the current value of `X` and the current cycle
+number. Summing up all these products together will give us the answer for part
+1.
+
+Seems quite simple. The only pitfall is that the `addx` instruction takes ***2
+cycles*** instead of 1, and one of those could be the one we are interested in
+(where we need to compute the product). Not a real problem: whenever we
+encounter an `addx` we'll just need to repeat the cycle increment twice and
+check its value in between these two increments.
+
+We don't need to do much input parsing, let's just get everything into a list
+with [`.readlines()`][py-file-readlines]. We could also wrap our main loop
+inside a `with` statement as we did [yesterday][d09] and read the file one line
+at a time if we want.
+
+```python
+with open(...) as fin:
+    program = fin.readlines()
+```
+
+Now we'll start a simple loop `for instr in program`, incrementing a cycles
+counter at the start of each iteration. We'll skip the `noop` instructions
+completely as they do nothing else, while for `addx` we'll need to increment the
+counter a second time and perform the addition on the `X` register.
+
+```python
+total = 0
+cycle = 1
+x     = 1
+
+for instr in program:
+    cycle += 1
+
+    if instr.startswith('addx'):
+        # Check cycle and calculate product
+
+        # Increment again and perform the operation
+        cycle += 1
+        x += int(instr[5:])
+
+    # Check cycle and calculate product
+```
+
+In between each increment of the cycle counter, we need to check whether it is
+one of the wanted values and perform the multiplication. The values we have are
+all of the form *40n + 20* with *n ≥ 0*, so a simple modulus operation will
+suffice:
+
+```python
+for instr in program:
+    cycle += 1
+
+    if instr.startswith('addx'):
+        if cycle % 40 == 20:
+            total += cycle * x
+
+        cycle += 1
+        x     += int(instr[5:])
+
+    if cycle % 40 == 20:
+        total += cycle * x
+
+print('Part 1:', total)
+```
+
+### Part 2
+
+We are now told that this weird VM has a [CRT monitor][wiki-crt], and that each
+cycle a pixel is drawn. Each line on the monitor consists of 40 pixels, so a new
+line of pixels begins every 40 pixels drawn. This means that the second line of
+the monitor starts at the 41st pixel, the third line at the 81st, and so on.
+
+Whether the pixel drawn each cycle is lit or not depends on the value of the `X`
+register, which indicates the position of the left side of a 3-pixel wide,
+1-pixel tall sprite. Whenever the pixel currently being drawn falls within this
+sprite, the pixel is lit.
+
+After emulating the display, a 40-by-6 image should appear, representing 8
+capital letters: our part 2 answer. This seems fun, as we actually need to
+"draw" these pixels in our terminal to see the answer.
+
+We'll implement part 2 within the same loop used for part 1. The only two
+additional things we need to do *each cycle* are:
+
+1. Check whether we need to advance to the next line. This again can be easily
+   done with a modulo operation since the beginning of each line will be at
+   *40n + 1* cycles (with *n ≥ 0*).
+2. Check whether we need to draw a lit pixel or not. This means checking whether
+   the column of the current pixel to draw falls within the "sprite". A row is
+   40 pixels wide, so the column within the current row is simply the cycle
+   counter *modulo 40*, and the sprite position within the current row is
+   represented by the `X` register. This means that a lit pixel is drawn any
+   time the cycle counter *modulo 40* is within `X` and `X + 2` (extremes
+   included).
+
+It really takes 10 times the amount of lines to explain it than to write it. To
+emulate the CRT monitor we'll use a list of strings, where each string is a row
+of pixels, and we'll keep track of the current row in a separate string
+variable. We'll use `'#'` to represent lit pixels, and `' '` (a space) for dark
+pixels. Any time a new row needs to be added, well [`.append()`][py-list-append]
+the current one to the list and reset it to an empty string.
+
+Here's the code to add to the main loop we already wrote:
+
+```diff
++crt = []
++row = ''
+
+ for instr in program:
++    if x <= cycle % 40 <= x + 2:
++        row += '#'
++    else:
++        row += ' '
++
+     cycle += 1
+
+     if instr.startswith('addx'):
+         if cycle % 40 == 20:
+             total += cycle * x
++        elif cycle % 40 == 1:
++            crt.append(row)
++            row = ''
++
++        if x <= cycle % 40 <= x + 2:
++            row += '#'
++        else:
++            row += ' '
+
+         cycle += 1
+         x += int(instr[5:])
+
+     if cycle % 40 == 20:
+         total += cycle * x
++    elif cycle % 40 == 1:
++        crt.append(row)
++        row = ''
+```
+
+The [3-way comparison][py-3-way-comparison] `x <= y <= z` is equivalent to
+`x <= y and y <= z`, but only evaluates `y` once, and only evaluates `z` if
+`x <= y` is not satisfied. This is a nice little feature that makes bound
+checking in Python much cooler than in other languages.
+
+The addition of new pixels to the `row` variable (representing the current row as a
+string) can also be done using a [tristate operator][py-cond-expr]:
+
+```python
+row += '#' if x <= cycle % 40 <= x + 2 else ' '
+```
+
+Now all that's left to do is print the rows in the `crt` list we populated and
+read out the answer. We can do this with a good ol' `for` loop, or we could
+[`.join()`][py-str-join] them together with a newline as a separator and print
+them all at once.
+
+```python
+print('Part 2:\n', '\n'.join(crt), sep='')
+```
+
+The output will look something like this:
+
+```none
+Part 2:
+###   ##   ##  #### #  # #    #  # ####
+#  # #  # #  # #    # #  #    #  # #
+###  #  # #    ###  ##   #    #### ###
+#  # #### #    #    # #  #    #  # #
+#  # #  # #  # #    # #  #    #  # #
+###  #  #  ##  #### #  # #### #  # #
+```
+
+And here we go, 20/50 stars!
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -1594,6 +1784,7 @@ print('Part 2:', answer2)
 [d07]: #day-7---no-space-left-on-device
 [d08]: #day-8---treetop-tree-house
 [d09]: #day-9---rope-bridge
+[d10]: #day-10---cathode-ray-tube
 
 [d01-problem]: https://adventofcode.com/2022/day/1
 [d02-problem]: https://adventofcode.com/2022/day/2
@@ -1604,6 +1795,7 @@ print('Part 2:', answer2)
 [d07-problem]: https://adventofcode.com/2022/day/7
 [d08-problem]: https://adventofcode.com/2022/day/8
 [d09-problem]: https://adventofcode.com/2022/day/9
+[d10-problem]: https://adventofcode.com/2022/day/10
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -1614,10 +1806,12 @@ print('Part 2:', answer2)
 [d07-solution]: solutions/day07.py
 [d08-solution]: solutions/day08.py
 [d09-solution]: solutions/day09.py
+[d10-solution]: solutions/day10.py
 
 [d02-alternative]: misc/day02/mathematical.py
 [d08-alternative]: misc/day08/faster_part1.py
 
+[py-3-way-comparison]:   https://docs.python.org/3/reference/expressions.html#comparisons
 [py-cond-expr]:          https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-generator-expr]:     https://www.python.org/dev/peps/pep-0289/
 [py-lambda]:             https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
@@ -1642,8 +1836,10 @@ print('Part 2:', answer2)
 [py-bytes-splitlines]:        https://docs.python.org/3/library/stdtypes.html#bytes.splitlines
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
+[py-file-readlines]:          https://docs.python.org/3/library/io.html#io.IOBase.readlines
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
 [py-list]:                    https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
 [py-str-lstrip]:              https://docs.python.org/3/library/stdtypes.html#str.lstrip
@@ -1656,6 +1852,7 @@ print('Part 2:', answer2)
 [algo-quickselect]: https://en.wikipedia.org/wiki/Quickselect
 
 [wiki-ascii]:              https://en.wikipedia.org/wiki/ASCII
+[wiki-crt]:                https://en.wikipedia.org/wiki/Cathode-ray_tube
 [wiki-euclidean-distance]: https://en.wikipedia.org/wiki/Euclidean_distance
 [wiki-linear-time]:        https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-memoization]:        https://en.wikipedia.org/wiki/Memoization
