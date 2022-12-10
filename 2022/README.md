@@ -139,7 +139,7 @@ The [`with`][py-with] statement used above is useful to auto-close the file once
 done using it. We can also avoid decoding the input by opening it with
 `open(..., 'rb')` since we already know we'll only be reading simple ASCII
 characters, but in that case we'd also need to use `bytes.maketrans()` and
-`bytes.translat()` instead.
+`bytes.translate()` instead.
 
 Now that we read and translated the input moves into integer values, we can
 iterate on each line of input, split it, parse the two integers, and use them to
@@ -486,8 +486,8 @@ Day 5 - Supply Stacks
 ### Part 1
 
 Do you like simulations? Today we're gonna need to simulate a crane moving
-crates stacked on top of each other. We start with a few stacks of crates, which
-is given as input in the following form:
+crates stacked on top of each other. We start with a few stacks of crates, given
+as input in the following form:
 
 ```none
     [D]
@@ -497,7 +497,7 @@ is given as input in the following form:
 ```
 
 This represents the initial configuration of N stacks of crates (in the above
-example we have N = 3, but in the real input N = 10). Following the initial
+example we have N = 3, but in the real input N = 9). Following the initial
 configuration is an empty line followed by a list of instructions, one per line,
 of the form `move <n> from <i> to <j>`, meaning "move the top `n` crates from
 stack `i` to stack `j`, one at a time.
@@ -565,7 +565,7 @@ brackets) and keep the rest, turning good columns into strings through
 [`str.join()`][py-str-join] and discarding leading whitespace with
 [`str.lstrip()`][py-str-lstrip].
 
-Fortunately, all we need to do to identify good columns is
+Fortunately, all we need to identify good columns is
 [`enumerate()`][py-builtin-enumerate], skip the first column and then only keep
 one every 4, which can be achieved using the modulo (`%`) operator.
 
@@ -607,15 +607,15 @@ for n, i, j in moves:
         stacks[j] = crate + stacks[j] # Add it to top of stacks[j]
 ```
 
-We optimize the above operation by extracting all `n` crates at once and then
-reversing their order doing `crate[::-1]`, a common Python trick to reverse an
+We can optimize the above operation by extracting all `n` crates at once and
+reversing their order with `crates[::-1]`, a common Python trick to reverse an
 indexable iterable through [slicing][py-slicing]:
 
 ```python
 for n, i, j in moves:
-    chunk = stacks[i][:n][::-1]
+    crates = stacks[i][:n][::-1]
     stacks[i] = stacks[i][n:]
-    stacks[j] = chunk + stacks[j]
+    stacks[j] = crates + stacks[j]
 ```
 
 Finally, we can extract the topmost element of each stack using a simple
@@ -634,7 +634,7 @@ this time moving *all* of the topmost `n` crates from a given stack to another
 at once, meaning that their final order on top of the second stack will *not* be
 reversed.
 
-Well, given the code we already wrote, this is really child's play: we can use
+Well, given the code we already wrote, this is really child's play. We can use
 the same code as part 1, removing the reversing operation (`[::-1]`):
 
 ```python
@@ -642,9 +642,9 @@ the same code as part 1, removing the reversing operation (`[::-1]`):
 stacks = original
 
 for n, i, j in moves:
-    chunk = stacks[i][:n] # <- removed [::-1] from here
+    crates = stacks[i][:n] # <- removed [::-1] from here
     stacks[i] = stacks[i][n:]
-    stacks[j] = chunk + stacks[j]
+    stacks[j] = crates + stacks[j]
 
 top = ''.join(s[0] for s in stacks[1:])
 print('Part 2:', top)
@@ -658,7 +658,7 @@ Day 6 - Tuning Trouble
 
 ### Part 1
 
-Today's problem feels like it could have been an day 1 problem. In fact, I
+Today's problem feels like it could have been a day 1 problem. In fact, I
 believe it was even easiest than this year's day 1. We are given a long string
 of seemingly random characters as input, and we need to find the first group of
 4 consecutive characters that are all different, called the "start-of-packet".
@@ -699,7 +699,7 @@ We need to... do the same thing as before, only that we are looking for a
 Well, the code is the same as part 1, so let's just move it into a function. We
 also know for a fact that our "start-of-message" cannot appear before the
 "start-of-packet" (we do not have 4 consecutive different characters before the
-start-of-packet, let alone 14), so let's also give our functionm the ability to
+start-of-packet, let alone 14), so let's also give our function the ability to
 skip the start of the data for performance.
 
 ```python
@@ -836,7 +836,7 @@ already present in `fs`. A [`deque`][py-collections-deque] is also useful to
 process the input line by line while being able to peek at the next line without
 consuming it, since we want to stop parsing the output of the `ls` command
 whenever we encounter a line starting with `$`. We can peek the first element of
-a `deque` with `d[0]`, and consume it by popping it `d.popleft()`. The same
+a `deque` with `d[0]`, and consume it by popping it with `d.popleft()`. The same
 could be done with a normal list through `l.pop(0)`, but the operation is much
 more expensive as it internally requires to move all elements of the list back
 one position after removing the first one.
@@ -859,7 +859,7 @@ def parse_filesystem(fin):
 
         if command == 'ls':
             # The `ls` command outputs a list of directory contents, keep going
-            # until we either run out of lines or the next line is not a command
+            # until we either run out of lines or the next line is a command
             while lines and not lines[0].startswith('$'):
                 # Get the size of the file
                 size = lines.popleft().split()[0]
@@ -893,11 +893,11 @@ earlier should be something like this:
 with open(...) as fin:
     fs = parse_filesystem(fin)
 
-fs = {
-    ()        : [('/',)]
-    ('/',)    : [1000, 699, ('/', 'a')]
-    ('/', 'a'): [100, 200]
-}
+# fs = {
+#     ()        : [('/',)],
+#     ('/',)    : [('/', 'a'), 1000, 699],
+#     ('/', 'a'): [100, 200]
+# }
 ```
 
 The extra empty tuple `()` is an artifact of the fact that we start with an
@@ -930,7 +930,7 @@ def directory_size(fs, path):
             size += subdir_or_size
         else:
             # Directory, recursively calculate size
-            size += directory_size(subdir_or_size)
+            size += directory_size(fs, subdir_or_size)
 
     return size
 ```
@@ -979,7 +979,9 @@ Alternativelt, we could also use [memoization][wiki-memoization] to cache the
 results of `directory_size()` calls, and keep calling the function regardless.
 This is an easy to implement solution since Python 3 already provides us with a
 decorator to implement memoization out of the box:
-[`functools.lru_cache`][py-functools-lru_cache].
+[`functools.lru_cache`][py-functools-lru_cache]. For those who are interested, I
+explained memoization and the use of `lru_cache` in more detail towards the end
+of [2019 day 18 part 1][2019-d18-p1].
 
 ```python
 @lru_cache(maxsize=None)
@@ -997,7 +999,7 @@ def directory_size(path):
 
 Now no matter how many times we call `directory_size()`, the calculation is only
 performed *once* for any given `path` on the first call and cached automatically
-by `lru_cache` to be reused for subsequent calls.
+by `lru_cache` to be reused for subsequent calls. This however
 
 In any case, we finally have our solution:
 
@@ -1808,6 +1810,7 @@ And here we go, 20/50 stars!
 [d09-solution]: solutions/day09.py
 [d10-solution]: solutions/day10.py
 
+[2019-d18-p1]:     ../2019/README.md#part-1-17
 [d02-alternative]: misc/day02/mathematical.py
 [d08-alternative]: misc/day08/faster_part1.py
 
