@@ -13,7 +13,7 @@ checks = {
 	'byr': lambda v: 1920 <= int(v) <= 2002,
 	'iyr': lambda v: 2010 <= int(v) <= 2020,
 	'eyr': lambda v: 2020 <= int(v) <= 2030,
-	'pid': lambda v: len(v) == 9 and all(c.isdigit() for c in v),
+	'pid': lambda v: len(v) == 9 and v.isdigit(),
 	'hcl': lambda v: len(v) == 7 and all(c.isdigit() or c in 'abcdef' for c in v[1:]),
 	'ecl': lambda v: v in ('amb', 'blu', 'brn', 'gry', 'grn', 'hzl', 'oth'),
 	'cid': lambda v: True,
