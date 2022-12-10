@@ -213,9 +213,9 @@ Day 3 - Toboggan Trajectory
 ### Part 1
 
 First grid of ASCII characters of the year! I was just waiting for that. Today's
-puzzle input consists of a rectangular grid of characters. Each character can be
+puzzle input consists of a rectangular grid of characters. Each character can
 either be a dot (`.`) meaning "open square" or a hash (`#`) representing a tree.
-The grid we are given is quite tall but very thin (i.e. `height >> width`).
+The grid we are given is quite tall, but very thin (i.e. `height >> width`).
 However, we are told that the rows of the real grid are actually periodic and
 they extend indefinitely to the right.
 
@@ -332,18 +332,18 @@ passports = fin.read().split('\n\n')
 
 Easy enough, after splitting the input data on empty lines, we can just check if
 all the required fields above are present in each passport. Since we don't know
-what the `value` of a field could contain, we cannot simply just check if each
-field key is present in the string representation of a passport: we also need to
-make sure it's present *as a key*. We could parse each passport, but I'm going
-to cheat and solve this check by just adding a colon (`:`) after each field key,
-since keys must be followed by colons.
+what the `value` of a field could contain, we cannot simply check if each
+field's `key` is present in the string representation of a passport: we also
+need to make sure it's present *as a key*. We could parse each passport, but I'm
+going to cheat and solve this check by just adding a colon (`:`) after each
+key, since keys must be followed by colons.
 
 ```python
 KEYS = ('byr:', 'iyr:', 'eyr:', 'hgt:', 'hcl:', 'ecl:', 'pid:')
 n_valid = 0
 
 for passport in passports:
-    valid = False
+    valid = True
     for k in KEYS:
         if k not in passport:
             valid = False
@@ -6087,7 +6087,7 @@ A movement *east* or *west* using such a coordinate system is nothing special,
 we stay on same row, and just need to change the `x` coordinate. However, a
 north or south movement could either change one coordinate only or both
 coordinates, depending on the direction. Moving *south west* only changes `y`,
-while moving or *south east* changes both `x` and `y`! Similarly, moving
+while moving *south east* changes both `x` and `y`! Similarly, moving
 *north east* changes only `y`, while moving *north west* changes both `x` and
 `y`!
 
@@ -6766,7 +6766,6 @@ journey for this year is over. Merry Christmas!
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 
 [algo-manhattan]:          https://en.wikipedia.org/wiki/Taxicab_geometry#Formal_definition
-[algo-dijkstra]:           https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
 [algo-extended-euclidean]: https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
 [algo-bfs]:                https://en.wikipedia.org/wiki/Breadth-first_search
 [algo-dfs]:                https://en.wikipedia.org/wiki/Depth-first_search
