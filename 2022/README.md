@@ -12,7 +12,7 @@ Table of Contents
 - [Day 6 - Tuning Trouble][d06]
 - [Day 7 - No Space Left On Device][d07]
 - [Day 8 - Treetop Tree House][d08]
-
+- [Day 9 - Rope Bridge][d09]
 
 Day 1 - Calorie Counting
 ------------------------
@@ -1320,6 +1320,264 @@ compute the view distance from any encountered tree in the current scanning
 direction. This requires a bit more effort though, and I did not have time to
 re-implement my part 2 solution using this approach.
 
+
+Day 9 - Rope Bridge
+-------------------
+
+[Problem statement][d09-problem] — [Complete solution][d09-solution] — [Back to top][top]
+
+### Part 1
+
+2D grids again, huh? Today we're not really taking a grid as input, but moving
+through one instead. Given a list of moves of the form `<direction> <N>` (e.g.
+`R 5`) we need to simulate the movements of a small piece of rope by tracking
+the position of its head and tail in a grid. The rope moves head first one step
+at a time in any of the four cardinal directions, and the tail will always stay
+"attached" to the head, meaning in one of the 8 neighboring cells. Whenever the
+head makes a movement that separates it from the tail, the tail also moves
+toward the head in the nearest cell that is directly above, below, left or right
+of the head. We need to count the number of different positions the tail will
+occupy while simulating all the moves in our input.
+
+An example makes it easier to understand what is going on. Let's analyze the
+movement of the head and tail, given that they start in the same spot and the
+moves to perform are `R 2` followed by `U 2`:
+
+```none
+...      ...      ...      ...      ..H
+...  ->  ...  ->  ...  ->  ..H  ->  ..T
+H..      TH.      .TH      .T.      ...
+```
+
+As can be seen above, when the head (`H`) moves up one cell, the tail (`T`) is
+still "attached" to it. However, the second movement of the head would cause the
+tail to disconnect, thus it moves *towards the head*.
+
+If we zoom in and break a single transition in two steps, the movement of the
+tail will be clearer:
+
+```none
+.   .   .      .   .   .      .   .   .
+
+.   .   .  =>  .   .   .  =>  .   .   .
+
+T   H   .      T-------H      .   T   H
+```
+
+In the simple case where the head moves, but stays on the same horizontal or
+vertical line as the tail, the movement of the tail is straightforward: it wants
+to move towards the head following the segment depicted above, and so it simply
+needs to move one unit in the right direction.
+
+The second, not-so-obvious case is when the head moves while not on the same
+horizontal/vertical line as the tail:
+
+```none
+.   .   .      .   .   H      .   .   H
+                      /
+.   .   H  =>  .   . / .  =>  .   .   T
+                    /
+.   T   .      .   T   .      .   .   .
+```
+
+Again, the instant after the head moves up, the tail becomes disconnected, and
+thus must move towards the head. The tail wants to follow the straight segment
+plotted above, thus it moves up one unit and right one unit, ending up right
+below the head.
+
+To generalize: whenever the tail becomes disconnected, it will move in the
+direction "suggested" by the imaginary segment connecting it straight to the
+head. Thus, if this segment is parallel to the grid axes, the movement is a
+simple step (up, down, left or right), otherwise the movement will be a larger
+*diagonal* step in the same direction as the segment.
+
+Oookay. Now that we (hopefully) understood how this dance of head and tail rope
+movements works, let's start coding. First of all, since for each input move
+we'll have to simulate all the steps, let's make things easier with a dictionary
+of deltas to apply to make a single step given a direction:
+
+```python
+# {direction: (deltax, deltay)}
+DELTA = {'U': (0, 1), 'D': (0, -1), 'L': (-1, 0), 'R': (1, 0)}
+```
+
+In order to keep track of head and tail positions we'll use 4 variables as two
+2D coordinates. Parsing the input is only a matter of [`.split()`][py-str-split]
+and conversion to `int`, and the movement of the head can be done with an
+addition after looking up the right delta on both axes using the dictionary we
+just defined.
+
+```python
+hx, hy = 0, 0
+tx, ty = 0, 0
+
+with open(...) as fin:
+    for line in fin:
+        direction, steps = line.split()
+        steps = int(steps)
+
+        for _ in range(steps):
+            deltax, deltay = DELTA[direction]
+            hx += deltax
+            hy += deltay
+
+            # Move the tail somehow...
+```
+
+Okay, now we are simulating the movement of the head, but we also need the tail
+to follow along. We can represent the segment that the tail wants to follow as
+2D vector, meaning another couple of variables: `dx` and `dy`, which can be
+easily calculated:
+
+```python
+dx = hx - tx
+dy = hy - ty
+```
+
+Now, how do we know if the head moved too far from the tail? We can use
+[Euclidean distance][wiki-euclidean-distance] for that. The 8 possible cells
+surrounding the head will always be at an Euclidean distance of at most *√(2)*
+(square root of 2) units. That is, the four cells above, below, left and right
+will have a distance of *1* unit, while the other four cells will have a
+distance of *√(1<sup>2</sup>+1<sup>2</sup>) = √(2)* units. Thus, the tail needs
+to move and follow the head *IFF √(dx<sup>2</sup>+dy<sup>2</sup>) > √(2)*. If we
+emove the square root by elevating everything to the power of two, we are left
+with the condition *dx<sup>2</sup>+dy<sup>2</sup> > 2*.
+
+How does the tail need to move? Well, following `dx` and `dy`. If `dx` is
+positive, it moves one unit to the right, while if it's negative it moves one
+unit to the left. If `dx` is zero it means that either the tail is right on top
+of the head, or that it's on its same horizontal line: either way, it does not
+need to move along the *x* axis (left or right). The same reasoning applies to
+`dy`.
+
+Following these conclusions, and using a [`set`][py-set] to keep track of all
+the different coordinates visited by the tail, we have the complete solution:
+
+```python
+hx, hy = 0, 0
+tx, ty = 0, 0
+seen = {(0, 0)}
+
+with open(...) as fin:
+    for line in fin:
+        direction, steps = line.split()
+        steps = int(steps)
+
+        for _ in range(steps):
+            deltax, deltay = DELTA[direction]
+            hx += deltax
+            hy += deltay
+            dx = hx - tx
+            dy = hy - ty
+
+            if dx**2 + dy**2 > 2:
+                if dx != 0:
+                    tx += 1 if dx > 0 else -1
+                if dy != 0:
+                    ty += 1 if dy > 0 else -1
+
+                seen.add((tx, ty))
+```
+
+The use of the [conditional expression][py-cond-expr] `1 if dx > 0 else -1`
+could be simplified. After all, what we are doing is merely taking the *sign* of
+`dx`. As it turns out though, Python does not have a built-in for the sign of a
+number, apparently because [the authors of the language could not
+agree][misc-py-sign] on what such a function would return in special cases (e.g.
+`0` or `NaN`). We can however write our own `sign()` function to take care of
+this, and make it return `0` in case the given value is `0`.
+
+```python
+# Intuitive implementation, the first one you'd probably think of
+def sign(x):
+    if x == 0:
+        return 0
+    return 1 if x > 0 else -1
+
+# More clever, branchless implementation:
+def sign(x):
+    return (x > 0) - (x < 0)
+```
+
+And now we have:
+
+```python
+            # ...
+            if dx**2 + dy**2 > 2:
+                tx += sign(dx)
+                ty += sign(dy)
+            # ...
+```
+
+In any case, after the main loop is done, we have all the different coordinates
+visited by the tail in our `seen` set, and the solution is one `len()` away:
+
+```python
+different_tail_positions = len(seen)
+print('Part 1:', different_tail_positions)
+```
+
+### Part 2
+
+Now our rope becomes longer. It's composed of 10 pieces in total (including the
+head). The rules to follow are the same as before, but now every piece follows
+the one in front of it. The tail is the last piece, and we still need to
+count the number of different positions occupied by it.
+
+We can re-write our solution to keep track of a `list` of 2D coordinates instead
+of just four variables. Furthermore, we can solve both parts together, since
+part 1 fundamentally asks us to keep track of the second piece of the rope, and
+part 2 asks us to keep track of the tenth:
+
+```python
+rope  = [(0, 0)] * 10
+seen1 = {(0, 0)}
+seen9 = {(0, 0)}
+```
+
+The only thing that actually changes is that the logic used to move the tail for
+part 1 now needs to be applied 9 times (once per piece following the head).
+Each time, any given piece follows the one in front of it. Instead of going
+through each step again, I'll just let the code speak for itself with the help
+of a few comments:
+
+```python
+with open(...) as fin:
+    for line in fin:
+        direction, steps = line.split()
+        steps = int(steps)
+
+        for _ in range(steps):
+            hx, hy = rope[0]
+            dx, dy = DELTA[direction]
+
+            # Move the head
+            rope[0] = hx + dx, hy + dy
+
+            for i in range(9):
+                # Consider this piece as the "head"
+                hx, hy = rope[i]
+                # And the one after it as the "tail"
+                tx, ty = rope[i + 1]
+
+                # Do the exact same thing we did for part 1
+                dx, dy = hx - tx, hy - ty
+                if dx**2 + dy**2 > 2:
+                    tx += sign(dx)
+                    ty += sign(dy)
+                    rope[i + 1] = (tx, ty)
+
+            # Keep track of both the second and the last pieces
+            seen1.add(tuple(rope[1]))
+            seen9.add(tuple(rope[9]))
+
+answer1 = len(seen1)
+answer2 = len(seen9)
+print('Part 1:', answer1)
+print('Part 2:', answer2)
+```
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -1335,6 +1593,7 @@ re-implement my part 2 solution using this approach.
 [d06]: #day-6---tuning-trouble
 [d07]: #day-7---no-space-left-on-device
 [d08]: #day-8---treetop-tree-house
+[d09]: #day-9---rope-bridge
 
 [d01-problem]: https://adventofcode.com/2022/day/1
 [d02-problem]: https://adventofcode.com/2022/day/2
@@ -1344,6 +1603,7 @@ re-implement my part 2 solution using this approach.
 [d06-problem]: https://adventofcode.com/2022/day/6
 [d07-problem]: https://adventofcode.com/2022/day/7
 [d08-problem]: https://adventofcode.com/2022/day/8
+[d09-problem]: https://adventofcode.com/2022/day/9
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -1353,6 +1613,7 @@ re-implement my part 2 solution using this approach.
 [d06-solution]: solutions/day06.py
 [d07-solution]: solutions/day07.py
 [d08-solution]: solutions/day08.py
+[d09-solution]: solutions/day09.py
 
 [d02-alternative]: misc/day02/mathematical.py
 [d08-alternative]: misc/day08/faster_part1.py
@@ -1361,6 +1622,7 @@ re-implement my part 2 solution using this approach.
 [py-generator-expr]:     https://www.python.org/dev/peps/pep-0289/
 [py-lambda]:             https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
 [py-list-comprehension]: https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions
+[py-set]:                https://docs.python.org/3/tutorial/datastructures.html#sets
 [py-slicing]:            https://docs.python.org/3/glossary.html#term-slice
 [py-tuple]:              https://docs.python.org/3/tutorial/datastructures.html#tuples-and-sequences
 [py-unpacking]:          https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
@@ -1393,10 +1655,12 @@ re-implement my part 2 solution using this approach.
 [algo-dfs]:         https://en.wikipedia.org/wiki/Depth-first_search
 [algo-quickselect]: https://en.wikipedia.org/wiki/Quickselect
 
-[wiki-ascii]:       https://en.wikipedia.org/wiki/ASCII
-[wiki-linear-time]: https://en.wikipedia.org/wiki/Time_complexity#Linear_time
-[wiki-memoization]: https://en.wikipedia.org/wiki/Memoization
-[wiki-tree]:        https://en.wikipedia.org/wiki/Tree_(data_structure)
+[wiki-ascii]:              https://en.wikipedia.org/wiki/ASCII
+[wiki-euclidean-distance]: https://en.wikipedia.org/wiki/Euclidean_distance
+[wiki-linear-time]:        https://en.wikipedia.org/wiki/Time_complexity#Linear_time
+[wiki-memoization]:        https://en.wikipedia.org/wiki/Memoization
+[wiki-tree]:               https://en.wikipedia.org/wiki/Tree_(data_structure)
 
 [misc-numpy]:       https://numpy.org
 [misc-numpy-views]: https://numpy.org/doc/stable/user/basics.copies.html
+[misc-py-sign]:     https://stackoverflow.com/a/1986776/3889449
