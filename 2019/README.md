@@ -28,7 +28,7 @@ Table of Contents
 - [Day 22 - Slam Shuffle][d22]
 - [Day 23 - Category Six][d23]
 - [Day 24 - Planet of Discord][d24]
--  Day 25 - Cryostasis: *TODO*
+- Day 25 - Cryostasis: *TODO*
 
 Day 1 - The Tyranny of the Rocket Equation
 ------------------------------------------
@@ -3108,7 +3108,7 @@ visit with their associated distances. Initially, this queue will only contain
 the neighbor cells around the starting position, with a distance of `1`. We will
 use a [`deque`][py-collections-deque] from the [`collections`][py-collections]
 module as our queue. A `deque` (double-ended queue) is nothing more than a list
-that supports very fast append and remove operations from each of its ends.
+that supports very fast append and remove operations on both ends.
 
 To determine which neighbors of a cell can be visited (excluding walls), we can
 write a simple helper function (we'll make it a generator, since it's usually
@@ -3242,7 +3242,7 @@ it, really. Here it is:
 ```python
 from math import inf as INFINITY
 
-def minimum_steps(src, n_find, mykeys=set()):
+def explore(src, n_find, mykeys=set()):
     # src   : starting node
     # n_find: number of keys that I still need to find
     # mykeys: set of keys that I already found
@@ -3262,7 +3262,7 @@ def minimum_steps(src, n_find, mykeys=set()):
         dist    = d
 
         # See what's the solution to find all other keys having taken k.
-        dist += minimum_steps(newsrc, n_find - 1, newkeys)
+        dist += explore(newsrc, n_find - 1, newkeys)
 
         # Update the current solution if this one is better.
         if dist < best:
@@ -3271,7 +3271,7 @@ def minimum_steps(src, n_find, mykeys=set()):
     return best
 ```
 
-It seems pretty clear that all we have left do now is writing a good
+It seems pretty clear that all we have left to do now is writing a good
 `reachable_keys()` function. We have a graph with weighted edges: [Dijkstra's
 algorithm][algo-dijkstra] is for sure the easiest way to find all reachable keys
 and the smallest amount of steps to reach each of them.
@@ -3347,7 +3347,7 @@ maze = tuple(list(l.strip()) for l in fin)
 
 G, startpos = build_graph(maze)
 total_keys  = sum(node.islower() for node in G)
-min_steps   = minimum_steps('@', total_keys)
+min_steps   = explore('@', total_keys)
 
 print('Part 1:', min_steps)
 ```
@@ -3372,10 +3372,10 @@ To work this out, we need to notice a couple of interesting facts first:
    `reachable_keys()` function will always return the same result.
 2. If we ever find ourselves at the same node with the same keys, the minimum
    number of steps to collect all the remaining keys will always be the same.
-   Therefore for the same arguments, the `minimum_steps()` function will always
-   return the same result.
+   Therefore for the same arguments, the `explore()` function will always return
+   the same result.
 
-As it turns out, the `reachable_keys()` and `minimum_steps()` functions will get
+As it turns out, the `reachable_keys()` and `explore()` functions will get
 called a very large amount of times, and due to the nature of our exploration,
 most of the times they will end up being called with the exact same arguments.
 This means that they will do the same heavy computation each time, resulting in
@@ -3389,7 +3389,7 @@ then we'll return it, otherwise we'll do the computation and add it to the
 dictionary before returning it.
 
 The technique of caching the result of a function based on its arguments to
-avoid to reapeat work is called
+avoid repeated work is called
 [*memoization*](https://en.wikipedia.org/wiki/Memoization). The Wikipedia page
 does a good job of explaining why memoization is important in recursive
 functions like this, so I'd suggest to read it in case you are not familiar with
@@ -3434,13 +3434,13 @@ turns out, since a `set` is a mutable collection, it cannot be hashed. For this,
 the [`frozenset`][py-frozenset] comes to the rescue! It's basically the same as
 a `set`, but it does not support removing or adding values: it is immutable, and
 therefore can be hashed. Given the way we have written our functions, we just
-need to change the only occurrence of `set()` in the definition of
-`minimum_steps()` and everything will work out of the box. Let's be generous and
-cache ~1 million most recently used values for each function:
+need to change the only occurrence of `set()` in the definition of `explore()`
+and everything will work out of the box. Let's be generous and cache ~1 million
+most recently used values for each function:
 
 ```python
 @lru_cache(2**20)
-def minimum_steps(src, n_find, mykeys=frozenset()):
+def explore(src, n_find, mykeys=frozenset()):
     # ... unchanged ...
 
 @lru_cache(2**20)
@@ -3451,7 +3451,7 @@ def reachable_keys(src, mykeys):
 Let's try it again:
 
 ```python
-min_steps = minimum_steps('@', total_keys)
+min_steps = explore('@', total_keys)
 print('Part 1:', min_steps)
 ```
 
@@ -3512,10 +3512,10 @@ modifications to our functions and data structures used for part 1:
    all the four isolated graphs.
 2. The path finding algorithm implemented in `reachable_keys()` does not change,
    we will only need to call it multiple times now (one for each bot).
-3. The recursive solution function `minimum_steps()` needs to be changed. In
-   addition to not knowing which key is best to pick at any given time, we now
-   also don't know which bot is best to move. *However* we can easily test all
-   of them just like we did for different keys!
+3. The recursive solution function `explore()` needs to be changed. In addition
+   to not knowing which key is best to pick at any given time, we now also don't
+   know which bot is best to move. *However* we can easily test all of them just
+   like we did for different keys!
 
 Point number 3 is the culprit here: the only *real* difference from part 1 is
 that now our search space is multiplied by the number of robots. In other words,
@@ -3524,15 +3524,15 @@ code, this means adding another `for` loop in the function, and taking a
 collection of starting positions instead of just a single one.
 
 Since a source in our graph is identified by a single character, if we pass a
-string to our updated `minimum_steps()` function, we can treat each character as
-a source iterating over the string without a problem, and a simple string
+string to our updated `explore()` function, we can treat each character as a
+source iterating over the string without a problem, and a simple string
 `.replace()` is all we'll need to move one of the bots.
 
 Here's the updated function:
 
 ```python
 @lru_cache(2**20)
-def minimum_steps(sources, n_find, mykeys=frozenset()):
+def explore(sources, n_find, mykeys=frozenset()):
     if n_find == 0:
         return 0
 
@@ -3559,8 +3559,8 @@ def minimum_steps(sources, n_find, mykeys=frozenset()):
 ```
 
 You know what's the cool part? Given the way we call the above function for part
-1 (`minimum_steps('@', total_keys)`), the part 1 code doesn't even need to be
-edited: a string of length 1 can already be iterated over!
+1 (`explore('@', total_keys)`), the part 1 code doesn't even need to be edited:
+a string of length 1 can already be iterated over!
 
 We now need to edit the grid removing the starting position and adding the new
 starting positions and walls. This is where the `startpos` that was previously
@@ -3589,7 +3589,7 @@ to clear all the data previously cached by `@lru_cache`. This can be easily done
 by calling `.cache_clear()` on every decorated function that we used.
 
 ```python
-minimum_steps.cache_clear()
+explore.cache_clear()
 reachable_keys.cache_clear()
 distance_for_keys.cache_clear()
 ```
@@ -4040,7 +4040,7 @@ def find_adjacent(grid, src):
 ```
 
 Now our `build_graph()` function can just call `find_adjacent()` for each portal
-if finds in the maze grid, and save everything in our graph dictionary. Pretty
+it finds in the maze grid, and save everything in our graph dictionary. Pretty
 straightforward:
 
 ```python
@@ -4235,7 +4235,7 @@ Now we only need to tell our `dijkstra()` function to use
 very cleanly, we can pass the function that we want to use to get neighbors as
 an argument, falling back to the `.get()` method of the graph dictionary if
 nothing is passed. This also makes it so we don't need to change the code for
-part 2.
+part 1.
 
 ```python
 def dijkstra(G, src, dst, get_neighbors=None):
