@@ -14,6 +14,8 @@ Table of Contents
 - [Day 8 - Treetop Tree House][d08]
 - [Day 9 - Rope Bridge][d09]
 - [Day 10 - Cathode-Ray Tube][d10]
+- [Day 11 - Monkey in the Middle][d11]
+
 
 Day 1 - Calorie Counting
 ------------------------
@@ -832,14 +834,14 @@ As already said, we'll use a dictionary to keep track of the contents of each
 path we encounter. More precisely, to make things easier, a
 [`defaultdict`][py-collections-defaultdict] of `list` comes in handy, so that we
 can just do `fs[path].append(...)` without worrying about `path` not being
-already present in `fs`. A [`deque`][py-collections-deque] is also useful to
-process the input line by line while being able to peek at the next line without
-consuming it, since we want to stop parsing the output of the `ls` command
-whenever we encounter a line starting with `$`. We can peek the first element of
-a `deque` with `d[0]`, and consume it by popping it with `d.popleft()`. The same
-could be done with a normal list through `l.pop(0)`, but the operation is much
-more expensive as it internally requires to move all elements of the list back
-one position after removing the first one.
+already present in `fs`. A [`deque`][py-collections-deque] (double-ended queue)
+is also useful to process the input line by line while being able to peek at the
+next line without consuming it, since we want to stop parsing the output of the
+`ls` command whenever we encounter a line starting with `$`. We can peek the
+first element of a `deque` with `d[0]`, and consume it by popping it with
+`d.popleft()`. The same could be done with a normal list through `l.pop(0)`, but
+the operation is much more expensive as it internally requires to move all
+elements of the list back one position after removing the first one.
 
 Here's a function that implements the above logic taking advantage of
 `defaultdict` and `deque`:
@@ -1770,6 +1772,315 @@ Part 2:
 
 And here we go, 20/50 stars!
 
+
+Day 11 - Monkey in the Middle
+-----------------------------
+
+[Problem statement][d11-problem] — [Complete solution][d11-solution] — [Back to top][top]
+
+### Part 1
+
+Today's problem is more of a reading comprehension challenge than a real
+problem, at least for part 1. We need to simulate some sort of game happening
+between a number of monkeys. Each monkey has some specific attributes that are
+listed in our input:
+
+- A *list of items* (positive integers) it currently holds.
+- An *operation* to perform when inspecting an item: this is either an addition
+  or a multiplication, of which the first operand is always the item value.
+- The *second operand* of the operation: either a fixed integer or the item
+  value again.
+- A *divisor* to check the item value against after inspecting it and performing
+  the operation on it: if the calculated value is divisible by this number, the
+  item is passed to a given monkey, otherwise to another.
+- Two *indices* of the monkeys to pass items to, as explained in the previous
+  point.
+
+The game to simulate happens in rounds, and each round every monkey plays one
+turn, consisting of the following operations:
+
+1. Inspect the first item in the list of items, applying the operation to its
+   value.
+2. Divide the result by 3.
+3. Check whether the obtained value is divisible by the divisor.
+
+   - If so, pass the item (with the new value) to a given monkey (the index of
+     the monkey to pass to is a property of the monkey itself).
+   - Otherwise, pass it to another given monkey.
+
+After simulating 20 rounds, we need to find the two monkeys who inspected the
+most items and calculate the product of the total number of inspections they
+performed.
+
+Since we are dealing with complex objects with different properties to remember,
+let's write a class to represent a single monkey. This class will hold all the
+properties defined above. We don't really need to pass a code review, so we'll
+assign all attributes after creating the class. For now, let's just define its
+attributes with a [`__slots__`][py-class-slots] class variable. This allows for
+faster attribute lookup and less memory usage, but the class will only be able
+to hold the properties defined in `__slots__` (which is fine by us).
+
+```python
+class Monkey:
+    __slots__ = (
+        'items', 'op', 'op_value', 'divisor',
+        'pass_if_true', 'pass_if_false', 'inspections'
+    )
+```
+
+Now, for the input parsing... this is going to be painful. Here's the
+description of a single monkey in our input:
+
+```none
+Monkey 0:
+  Starting items: 98, 97, 98, 55, 56, 72
+  Operation: new = old * 13
+  Test: divisible by 11
+    If true: throw to monkey 4
+    If false: throw to monkey 7
+```
+
+All monkey descriptions are divided by an empty line, so we can initially
+[`.read()`][py-file-read] the whole input file and [`.split()`][py-str-split]
+the resulting string on empty lines to obtain a list of "raw" monkey
+description strings:
+
+```python
+with open(...) as fin:
+    raw_monkeys = fin.read().split('\n\n')
+```
+
+Now we can iterate over the strings in `raw_monkeys`, split them into single
+lines through [`.splitlines()`][py-str-splitlines], and parse the properties on
+each line. Since every line contains different text, a
+[regular expression][misc-regexp] to extract integers on each line is probably
+the simplest way to go. We can create one with the `re` module, and then use its
+[`.findall()`][py-re-pattern-findall] method to extract a list of matches from a
+string.
+
+```python
+import re
+regexp = re.compile(r'\d+') # r is for "raw string"
+
+>>> regexp.findall("Hello 123 World 456, today is December 11th, 2022")
+['123', '456', '11', '2022']
+```
+
+The item list contains one or more integers, so we can keep the matches as a
+list and transform them to `int` with [`map()`][py-builtin-map]. Since we will
+be removing/adding items to/from this list a lot, a
+[`deque`][py-collections-deque] from the [`collections`][py-collections] module
+is a better choice than `list`, as it provides fast insertion and deletion from
+either of its ends (while `list` does not).
+
+Other lines contain only one integer, so we can simply do `[0]` on the obtained
+list of matches. The operation to perform (e.g. `new = old * 13`) can be either
+an addition or a multiplication. We can import those two as functions from the
+[`operator`][py-operator] module: `operator.add()` and `operator.mul()`.
+
+The only "annoying" line is the third, which can either contain an integer (e.g.
+`Operation: new = old * 13`) or not (e.g. `Operation: new = old + old`): for
+this, we'll have to first check if we have any match, and if not, it means the
+operation uses `old` as operand on both sides.
+
+```python
+from collections import deque
+
+monkeys = []
+
+for raw_monkey in raw_monkeys:
+    lines   = raw_monkey.splitlines()
+    matches = regexp.findall(lines[2])
+
+    m = Monkey()
+    m.items         = deque(map(int, regexp.findall(lines[1])))
+    m.op            = add if '+' in lines[2] else mul
+    m.op_value      = int(matches[0]) if matches else None
+    m.divisor       = int(regexp.findall(lines[3])[0])
+    m.pass_if_true  = int(regexp.findall(lines[4])[0])
+    m.pass_if_false = int(regexp.findall(lines[5])[0])
+    m.inspections   = 0
+    monkeys.append(m)
+```
+
+As promised, we initialized all attributes of each instance of `Monkey` from
+outside the class. You would normally do this by passing all the values to the
+class constructor (i.e. its [`__init__()`][py-class-init] method), but there are
+a lot of them and I did not want to write a function taking so many parameters.
+
+Now that we have a list of objects to work with, let's actually simulate the
+game. To make things simpler, let's implement the basic "inspection" operation
+that a monkey performs as a method of the `Monkey` class:
+
+```python
+class Monkey:
+    # ... unchanged ...
+
+    def inspect(self):
+        # Remove the first item from the items we have (we'll pass it on to
+        # another monkey anyway)
+        item = self.items.popleft()
+
+        if self.op_value is None:
+            # Operation to perform is `old + old` or `old * old`
+            return self.op(item, item)
+
+        # Operation to perform is `old + VALUE` or `old * VALUE`
+        return self.op(item, self.op_value)
+```
+
+The rules of each round, as explained in the numbered list a few paragraphs
+above, are pretty straightforward. Let's write a function to play a given number
+of rounds in a row and return the answer we want.
+
+After simulating all the requested rounds, we can extract the `.inspections`
+attribute of each monkey class using `map()` plus a [`lambda`][py-lambda], or
+better `map()` plus [`attrgetter()`][py-operator-attrgetter]. Then, the top two
+values can be extracted after sorting in descending order with
+[`sorted()`][py-builtin-sorted] (not a good idea in general if we only need the
+top two, but we have a very small list, so it's fine).
+
+```python
+def simulate(monkeys, n_rounds):
+    for _ in range(n_rounds):
+        for m in monkeys:
+            # This monkey will inspect all of its items in this round
+            m.inspections += len(m.items)
+
+            while m.items:
+                # Pop the first item and apply the needed operation to it, then
+                # divide by 3
+                item = m.inspect() // 3
+
+                # Check if the new value is divisible by m.divisor and pass it
+                # on to the correct monkey by appending it to its items
+                if item % m.divisor == 0:
+                    monkeys[m.pass_if_true].items.append(item)
+                else:
+                    monkeys[m.pass_if_false].items.append(item)
+
+    # Get the two highest total number of inspected items
+    a, b = sorted(map(attrgetter('inspections'), monkeys), reverse=True)[:2]
+    return a * b
+```
+
+All that's left to do is call the function we just wrote:
+
+```python
+answer = simulate(monkeys, 20)
+print('Part 1:', answer)
+```
+
+### Part 2
+
+We need to do the same thing we did for part 1, but the rules change slightly:
+we no longer need to perform the division by 3 after a monkey "inspects" an
+item, and we need to simulate 10000 (ten thousand) rounds. This is interesting.
+
+The first requirement is not a problem, we can just remove the `// 3` from the
+code of our `simulate()` function. The second requirement is a bit of a pain
+though. We are dealing with additions and multiplications, this means that the
+value of an item can only ever increase, and doing *10000* rounds means doing *a
+lot* of additions and multiplications... we will never be able to work with such
+large numbers, at least not in a reasonably fast way.
+
+Apart from the multiplication and addition done by each monkey when "inspecting"
+an item, the only other operation we perform is a divisibility check (`item %
+m.divisor == 0`). In other words, at the end of the day, the only thing that
+matters about a given item value, is whether it can be divided by the divisor of
+any given monkey. This is what "drives" the game in different directions since
+it's used to choose the next monkey to pass an item to. We need a way to keep a
+value small enough to be able to work with it, while still being able to check
+whether it is divisible by a given set of integers (the divisors of each
+monkey).
+
+How do we do this? With a bit of modular arithmetic:
+
+- Clearly, if there only was *one* monkey, instead of `item` we could keep the
+  much smaller `item % m.divisor` around. After all, we don't care about the
+  real value, only about its divisibility by `m.divisor`. The divisibility would
+  then be preserved since [*congruence*][wiki-congruence] to a fixed modulus is
+  preserved by addition and multiplication, which are the only two operations we
+  perform. In other words, `(x + a) % d == ((x % d) + (a % d)) % d`, or in
+  mathematical terms *a + b ≡ (a mod d) + (b mod d)  (mod d)*.
+- In the case of *two* monkeys with divisors `d` and `q`, in order to preserve
+  the divisibility by both, we only need to keep `item % (d * q)` around, since
+  a number divisible by `d` will also always be divisible by `d * q`, and vice
+  versa.
+- In the general case of N monkeys with N different divisors, we only need to
+  keep item values *modulo the product of all the divisors*. This product is
+  small enough and is also pre-computable and fixed through the entire
+  simulation (since divisors are fixed). To be precise, we actually only need
+  the [least common multiple][wiki-lcm] of the divisors.
+
+Knowing all of the above, we can get our part 2 solution almost for free with
+only a couple of modifications to our `simulate()` function:
+
+```diff
+-def simulate(monkeys, n_rounds):
++def simulate(monkeys, n_rounds, part2=False):
++    modulus = lcm(*map(attrgetter('divisor'), monkeys))
++
+     for _ in range(n_rounds):
+         for m in monkeys:
+             m.inspections += len(m.items)
+
+             while m.items:
+-                item = m.inspect() // 3
++                item = m.inspect()
++                item = (item if part2 else item // 3) % modulus
+
+                 if item % m.divisor == 0:
+                     monkeys[m.pass_if_true].items.append(item)
+                 else:
+                     monkeys[m.pass_if_false].items.append(item)
+
+     a, b = sorted(map(attrgetter('inspections'), monkeys), reverse=True)[:2]
+     return a * b
+```
+
+The [`lcm()`][py-math-lcm] function (used above to compute the least common
+multiple of all the `.divisor`s) is available in the `math` module from Python 3.9
+onwards. If we are on a lower Python version, we can implement it ourselves
+using [`gcd()`][py-math-gcd], available in the `math` module from Python 3.5
+onwards.
+
+```python
+# Python >= 3.5: from math import gcd
+def gcd(a, b):
+    while b:
+        a, b = b, a % b
+    return a
+
+# Python >= 3.9: from math import lcm
+def lcm(*integers):
+    it  = iter(integers)
+    res = next(it)
+
+    for x in it:
+        res = res * x // gcd(res, x)
+    return res
+```
+
+One last thing before computing the answer: since we are modifying the `.items`
+of each monkey while simulating, we need to keep a copy of the original values
+in order to perform the simulation again. We can do this with
+[`copy.deepcopy()`][py-copy-deepcopy].
+
+We finally have a complete solution:
+
+```python
+from copy import deepcopy
+
+original = deepcopy(monkeys)
+
+answer1 = simulate(monkeys, 20)
+print('Part 1:', answer1)
+
+answer2 = simulate(original, 10000, True)
+print('Part 2:', answer2)
+```
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -1787,8 +2098,9 @@ And here we go, 20/50 stars!
 [d08]: #day-8---treetop-tree-house
 [d09]: #day-9---rope-bridge
 [d10]: #day-10---cathode-ray-tube
+[d11]: #day-11---monkey-in-the-middle
 
-[d01-problem]: https://adventofcode.com/2022/day/1
+[d01-problem]: https://adventofcode.defaultdictcom/2022/day/1
 [d02-problem]: https://adventofcode.com/2022/day/2
 [d03-problem]: https://adventofcode.com/2022/day/3
 [d04-problem]: https://adventofcode.com/2022/day/4
@@ -1798,6 +2110,7 @@ And here we go, 20/50 stars!
 [d08-problem]: https://adventofcode.com/2022/day/8
 [d09-problem]: https://adventofcode.com/2022/day/9
 [d10-problem]: https://adventofcode.com/2022/day/10
+[d11-problem]: https://adventofcode.com/2022/day/11
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -1809,12 +2122,15 @@ And here we go, 20/50 stars!
 [d08-solution]: solutions/day08.py
 [d09-solution]: solutions/day09.py
 [d10-solution]: solutions/day10.py
+[d11-solution]: solutions/day11.py
 
 [2019-d18-p1]:     ../2019/README.md#part-1-17
 [d02-alternative]: misc/day02/mathematical.py
 [d08-alternative]: misc/day08/faster_part1.py
 
 [py-3-way-comparison]:   https://docs.python.org/3/reference/expressions.html#comparisons
+[py-class-init]:         https://docs.python.org/3/reference/datamodel.html#object.__init__
+[py-class-slots]:        https://docs.python.org/3/reference/datamodel.html#slots
 [py-cond-expr]:          https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-generator-expr]:     https://www.python.org/dev/peps/pep-0289/
 [py-lambda]:             https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
@@ -1834,29 +2150,41 @@ And here we go, 20/50 stars!
 [py-builtin-min]:             https://docs.python.org/3/library/functions.html#min
 [py-builtin-ord]:             https://docs.python.org/3/library/functions.html#ord
 [py-builtin-range]:           https://docs.python.org/3/library/functions.html#range
+[py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
 [py-builtin-type]:            https://docs.python.org/3/library/functions.html#type
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
 [py-bytes-splitlines]:        https://docs.python.org/3/library/stdtypes.html#bytes.splitlines
+[py-collections]:             https://docs.python.org/3/library/collections.html
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
+[py-copy-deepcopy]:           https://docs.python.org/3/library/copy.html#copy.deepcopy
+[py-file-read]:               https://docs.python.org/3/library/io.html#io.BufferedIOBase.read
 [py-file-readlines]:          https://docs.python.org/3/library/io.html#io.IOBase.readlines
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
 [py-list]:                    https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
+[py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
+[py-math-lcm]:                https://docs.python.org/3/library/math.html#math.lcm
+[py-operator]:                https://docs.python.org/3/library/operator.html
+[py-operator-attrgetter]:     https://docs.python.org/3/library/operator.html#operator.attrgetter
+[py-re-pattern-findall]:      https://docs.python.org/3/library/re.html#re.Pattern.findall
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
 [py-str-lstrip]:              https://docs.python.org/3/library/stdtypes.html#str.lstrip
 [py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
 [py-str-rstrip]:              https://docs.python.org/3/library/stdtypes.html#str.rstrip
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
+[py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 
 [algo-dfs]:         https://en.wikipedia.org/wiki/Depth-first_search
 [algo-quickselect]: https://en.wikipedia.org/wiki/Quickselect
 
 [wiki-ascii]:              https://en.wikipedia.org/wiki/ASCII
+[wiki-congruence]:         https://en.wikipedia.org/wiki/Congruence_relation
 [wiki-crt]:                https://en.wikipedia.org/wiki/Cathode-ray_tube
 [wiki-euclidean-distance]: https://en.wikipedia.org/wiki/Euclidean_distance
+[wiki-lcm]:                https://en.wikipedia.org/wiki/Least_common_multiple
 [wiki-linear-time]:        https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-memoization]:        https://en.wikipedia.org/wiki/Memoization
 [wiki-tree]:               https://en.wikipedia.org/wiki/Tree_(data_structure)
@@ -1864,3 +2192,4 @@ And here we go, 20/50 stars!
 [misc-numpy]:       https://numpy.org
 [misc-numpy-views]: https://numpy.org/doc/stable/user/basics.copies.html
 [misc-py-sign]:     https://stackoverflow.com/a/1986776/3889449
+[misc-regexp]:      https://www.regular-expressions.info/
