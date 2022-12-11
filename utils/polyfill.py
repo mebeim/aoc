@@ -1,4 +1,4 @@
-__all__ = ['gcd', 'lcm', 'prod', 'comb', 'perm', 'pow']
+__all__ = ['gcd', 'lcm', 'prod', 'comb', 'perm', 'pow', 'isqrt']
 
 import sys
 from math import factorial
@@ -121,28 +121,45 @@ def _pow(base, exp, mod=None):
 	# Polyfill for Python < 3.8
 	return real_pow(_modinv(base, mod), -exp, mod)
 
+def _isqrt(n):
+	'''Return the integer part of the square root of n.'''
+	# https://code.activestate.com/recipes/577821-integer-square-root-function/
+	if n > 0:
+		x = 1 << (n.bit_length() + 1 >> 1)
+		while True:
+			y = (x + n // x) >> 1
+			if y >= x:
+				return x
+			x = y
+	elif n == 0:
+		return 0
+	raise ValueError('square root not defined for negative numbers')
+
+
 real_pow = pow
 pow = real_pow
 
 if sys.version_info >= (3, 9):
 	from math import (
-		gcd,  # accepts > 2 arguments since 3.9
-		lcm,  # since 3.9
-		prod, # since 3.8
-		comb, # since 3.8
-		perm, # since 3.8
+		gcd  , # accepts > 2 arguments since 3.9
+		lcm  , # since 3.9
+		prod , # since 3.8
+		comb , # since 3.8
+		perm , # since 3.8
+		isqrt, # since 3.8
 	)
 
 	pow = real_pow
 elif sys.version_info >= (3, 8):
-	from math import prod, comb, perm
+	from math import prod, comb, perm, isqrt
 	gcd = _gcd
 	lcm = _lcm
 	pow = _pow
 else:
-	gcd = _gcd
-	lcm = _lcm
-	prod = _prod
-	comb = _comb
-	perm = _perm
-	pow = _pow
+	gcd   = _gcd
+	lcm   = _lcm
+	prod  = _prod
+	comb  = _comb
+	perm  = _perm
+	pow   = _pow
+	isqrt = _isqrt
