@@ -30,15 +30,18 @@ def lcm(*integers):
 	return res
 
 def simulate(monkeys, n_rounds, part2=False):
-	modulus = lcm(*map(attrgetter('divisor'), monkeys))
+	if part2:
+		modulus = lcm(*map(attrgetter('divisor'), monkeys))
 
 	for _ in range(n_rounds):
 		for m in monkeys:
 			m.inspections += len(m.items)
 
 			while m.items:
-				item = m.inspect()
-				item = (item if part2 else item // 3) % modulus
+				if part2:
+					item = m.inspect() % modulus
+				else:
+					item = m.inspect() // 3
 
 				if item % m.divisor == 0:
 					monkeys[m.pass_if_true].items.append(item)
