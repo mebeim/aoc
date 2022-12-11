@@ -111,7 +111,7 @@ othertool = {
 	(NARROW, NEITHER): TORCH
 }
 
-depth, tx, ty = get_ints(fin, True)
+depth, tx, ty = read_ints(fin)
 global_target = (tx, ty)
 log('depth: {} target: {}\n', depth, global_target)
 

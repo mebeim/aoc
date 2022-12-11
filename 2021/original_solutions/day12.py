@@ -20,11 +20,11 @@ eprint(*fin, sep='', end='----- end of input -----\n\n'); fin.seek(0, 0)
 timer_start()
 
 ans = 0
-try: ints = get_ints(fin, True); fin.seek(0, 0)
+try: ints = read_ints(fin); fin.seek(0, 0)
 except: pass
 try: lines = get_lines(fin); fin.seek(0, 0)
 except: pass
-try: mat = get_char_matrix(fin, rstrip=False, lstrip=False); fin.seek(0, 0)
+try: mat = read_char_matrix(fin); fin.seek(0, 0)
 except: pass
 
 G = defaultdict(list)

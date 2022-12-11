@@ -128,7 +128,7 @@ def search2(bots, mykeys=frozenset()):
 	return best
 
 
-grid = get_char_matrix(fin)
+grid = read_char_matrix(fin)
 
 G = {}
 keys = {}

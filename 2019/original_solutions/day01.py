@@ -10,7 +10,7 @@ timer_start()
 
 ##################################################
 
-nums = get_ints(fin, True)
+nums = read_ints(fin)
 
 f = []
 

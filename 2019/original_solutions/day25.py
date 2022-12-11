@@ -9,7 +9,7 @@ timer_start()
 ##################################################
 
 from lib.intcode import IntcodeVM
-prog = get_ints(fin, True)
+prog = read_ints(fin)
 vm = IntcodeVM(prog)
 
 Q = deque()

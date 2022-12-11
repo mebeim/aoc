@@ -283,7 +283,7 @@ timer_start()
 
 ##################################################
 
-ints = get_ints(fin, True)
+ints = read_ints(fin)
 
 vms = []
 vms.append(IntcodeVM(ints))

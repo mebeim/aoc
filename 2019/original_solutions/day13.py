@@ -9,7 +9,7 @@ timer_start()
 
 ##################################################
 
-program = get_ints(fin, True)
+program = read_ints(fin)
 
 vm = IntcodeVM(program)
 screen = set()

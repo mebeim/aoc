@@ -279,7 +279,7 @@ fin = advent.get_input()
 # eprint(*fin, sep='')
 timer_start()
 
-prog = get_ints(fin, True)
+prog = read_ints(fin)
 vm = IntcodeVM(prog)
 
 print('Input 1 for part1!')

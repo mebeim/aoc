@@ -23,7 +23,7 @@ else:
 # eprint(*fin, sep='', end='----- end of input -----\n\n'); fin.seek(0, 0)
 timer_start()
 
-try: mat = get_char_matrix(fin, rstrip=False, lstrip=False); fin.seek(0, 0)
+try: mat = read_char_matrix(fin); fin.seek(0, 0)
 except: pass
 
 ans = 0

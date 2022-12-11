@@ -5,7 +5,7 @@ from utils.all import *
 fin = advent.get_input()
 eprint(*fin, sep=''); fin.seek(0, 0)
 
-ints = get_ints(fin, True)
+ints = read_ints(fin)
 
 print(ints)
 for i, x in enumerate(ints):

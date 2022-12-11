@@ -9,7 +9,7 @@ timer_start()
 
 ##################################################
 
-orig_grid = get_char_matrix(fin)
+orig_grid = read_char_matrix(fin)
 
 # orig_grid = [
 # 	list('....#'),

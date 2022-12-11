@@ -15,7 +15,7 @@ if TESTPLZ:
 	fin = ftest
 timer_start()
 
-startgrid = get_char_matrix(fin)
+startgrid = read_char_matrix(fin)
 cube = defaultdict(lambda: '.')
 
 for x, row in enumerate(startgrid):

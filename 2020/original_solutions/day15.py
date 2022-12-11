@@ -9,7 +9,7 @@ advent.setup(2020, 15)
 fin = advent.get_input()
 timer_start()
 
-nums = get_ints(fin, True)
+nums = read_ints(fin)
 # nums = [1,3,2]
 # nums = [0,3,6]
 

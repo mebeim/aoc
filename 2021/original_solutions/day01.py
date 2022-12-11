@@ -5,7 +5,7 @@ from utils.all import *
 advent.setup(2021, 1)
 fin = advent.get_input()
 
-ints = get_ints(fin)
+ints = read_ints(fin)
 ans = 0
 
 for a, b in zip(ints, ints[1:]):

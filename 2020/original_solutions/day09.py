@@ -6,7 +6,7 @@ advent.setup(2020, 9)
 fin = advent.get_input()
 timer_start()
 
-ints = get_ints(fin, True)
+ints = read_ints(fin)
 
 for k in range(25, len(ints)):
 	ok = False

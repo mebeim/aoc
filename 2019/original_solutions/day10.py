@@ -9,7 +9,7 @@ timer_start()
 
 ##################################################
 
-charmat = get_char_matrix(fin)
+charmat = read_char_matrix(fin)
 
 def frac(x1, y1, x2, y2):
 	if x1 == x2:

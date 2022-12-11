@@ -21,7 +21,7 @@ fin = advent.get_input()
 # eprint(*fin, sep=''); fin.seek(0, 0)
 timer_start()
 
-orig_grid = get_char_matrix(fin)
+orig_grid = read_char_matrix(fin)
 grid = copy.deepcopy(orig_grid)
 
 while 1:

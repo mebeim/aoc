@@ -15,7 +15,7 @@ def dist1d(a, b):
 def manhattan(ax, ay, az, at, bx, by, bz, bt):
 	return dist1d(ax, bx) + dist1d(ay, by) + dist1d(az, bz) + dist1d(at, bt)
 
-intmat = get_int_matrix(fin, True, as_tuples=True)
+intmat = read_ints_lines(fin, tuple, tuple)
 consts = defaultdict(set)
 
 for p in intmat:

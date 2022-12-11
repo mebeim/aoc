@@ -14,7 +14,7 @@ NORTH, SOUTH, WEST, EAST = 1, 2, 3, 4
 HITWALL, MOVED, FOUNDOXYGEN = 0, 1, 2
 
 from lib.intcode import IntcodeVM
-prog = get_ints(fin, True)
+prog = read_ints(fin)
 vm = IntcodeVM(prog)
 
 def path_to_moves(path):

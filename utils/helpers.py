@@ -1,7 +1,8 @@
 __all__ = [
 	'log', 'rlog', 'eprint', 'wait',
 	'dump_iterable', 'dump_dict', 'dump_char_matrix', 'dump_sparse_matrix',
-	'get_ints', 'get_int_matrix', 'get_lines', 'get_char_matrix',
+	'extract_ints', 'read_lines', 'read_ints',
+	'read_int_matrix', 'read_char_matrix',
 	'autorange'
 ]
 
@@ -130,67 +131,74 @@ def dump_sparse_matrix(mat, chars='# ', transpose=False, header=False):
 				sys.stderr.write(char_at((r, c)))
 			sys.stderr.write('\n')
 
-def get_ints(file, use_regexp=False, regexp=r'-?\d+', as_tuple=False):
-	'''Parse file containing whitespace delimited integers into a list of
-	integers.
+def extract_ints(str_or_bytes, container=list, negatives=True):
+	'''Extract integers within a string or a bytes object using a regular
+	expression and return a list of int.
 
-	If use_regexp=True, parse the entire file using regexp to extract integers.
-	Returns a list of list by default, or a tuple of tuple if as_tuple=True.
+	With negative=False, discard any leading hypen, effectively extracting
+	positive integer values even when perceded by hypens.
+
+	The container= class is instantiated to hold the ints.
 	'''
-	kind = tuple if as_tuple else list
+	exp = r'-?\d+' if negatives else r'\d+'
+	if isinstance(str_or_bytes, bytes):
+		exp = exp.encode()
+	return container(map(int, re.findall(exp, str_or_bytes)))
 
-	if use_regexp:
-		exp = re.compile(regexp)
-		return kind(map(int, exp.findall(file.read())))
-	return kind(map(int, file.read().split()))
+def read_lines(file, rstrip=True, lstrip=True, container=list):
+	'''Read file into a list of lines. Strips lines on both ends by default
+	unless rstrip=False or lstrip=False.
 
-def get_int_matrix(file, use_regexp=False, regexp=r'-?\d+', as_tuples=False):
-	'''Parse file containing lines of whitespace delimited decimal integers into
-	a matrix of integers, one line = one row.
-
-	If use_regexp=True, uses regexp to parse each line to extract integers.
-	Returns a list of list by default, or a tuple of tuple if as_tuples=True.
+	The container= class is instantiated to hold the lines.
 	'''
-	kind = tuple if as_tuples else list
-
-	if use_regexp:
-		exp = re.compile(regexp)
-		return kind(kind(map(int, exp.findall(l))) for l in file)
-	return kind(kind(map(int, l.split())) for l in file)
-
-def get_lines(file, rstrip=True, lstrip=True, as_tuple=False):
-	'''Read file into a list (or tuple) of lines
-
-	Strips lines on both ends by default unless rstrip=False or lstrip=False.
-	Returns a list of strings by default, or a tuple if as_tuple=True.
-	'''
-	kind  = tuple if as_tuple else list
 	lines = map(lambda l: l.rstrip('\n'), file)
 
 	if rstrip and lstrip:
-		return kind(map(str.strip, lines))
+		return container(map(str.strip, lines))
 	if rstrip:
-		return kind(map(str.rstrip, lines))
+		return container(map(str.rstrip, lines))
 	if lstrip:
-		return kind(map(str.lstrip, lines))
-	return kind(lines)
+		return container(map(str.lstrip, lines))
+	return container(lines)
 
-def get_char_matrix(file, rstrip=True, lstrip=True, as_tuples=False):
-	'''Read file into a matrix of characters.
+def read_ints(file, container=list, negatives=True):
+	'''Parse file containing integers into a list of integers.
 
-	Strips lines on both ends by default unless rstrip=False or lstrip=False.
-	Returns a list of list by default, or a tuple of tuple if as_tuples=True.
+	With negative=False, discard any leading hypen, effectively extracting
+	positive integer values even when perceded by hypens.
+
+	The container= class is instantiated to hold the ints.
 	'''
-	kind  = tuple if as_tuples else list
+	return extract_ints(file.read(), container, negatives)
+
+def read_int_matrix(file, container=list, outer_container=list, negatives=True):
+	'''Parse file containing lines containing integers into a list of lists of
+	int. Integers are extracted using a regular expression.
+
+	With negative=False, discard any leading hypen, effectively extracting
+	positive integer values even when perceded by hypens.
+
+	The container= class is instantiated to hold the ints in each line.
+	The outer_container= class is instantiate to hold the lines.
+	'''
+	return outer_container(extract_ints(l, container, negatives) for l in file)
+
+def read_char_matrix(file, rstrip=False, lstrip=False, container=list, outer_container=list):
+	'''Read file into a matrix of characters (effectively a grid). Avoids
+	stripping whitespace other than newlines, unless rstrip=True or lstrip=True.
+
+	The container= class is instantiated to hold the characters in each line.
+	The outer_container= class is instantiate to hold the lines.
+	'''
 	lines = map(lambda l: l.rstrip('\n'), file)
 
 	if rstrip and lstrip:
-		return kind(kind(l.strip()) for l in lines)
+		return outer_container(container(l.strip()) for l in lines)
 	if rstrip:
-		return kind(kind(l.rstrip()) for l in lines)
+		return outer_container(container(l.rstrip()) for l in lines)
 	if lstrip:
-		return kind(kind(l.lstrip()) for l in lines)
-	return kind(map(kind, lines))
+		return outer_container(container(l.lstrip()) for l in lines)
+	return outer_container(map(container, lines))
 
 def autorange(start, end, step=1):
 	'''Range from start to end (included) in steps of +/- step regardless if

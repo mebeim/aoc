@@ -16,7 +16,7 @@ else:
 35390
 ''')
 
-mat = get_char_matrix(fin, rstrip=True, lstrip=True)
+mat = read_char_matrix(fin)
 
 imat = []
 for l in mat:

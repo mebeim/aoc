@@ -10,7 +10,7 @@ timer_start()
 
 ##################################################
 
-intmat = get_int_matrix(fin, True)
+intmat = read_ints_lines(fin)
 bots = []
 
 for l in intmat:

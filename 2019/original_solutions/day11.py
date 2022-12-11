@@ -9,7 +9,7 @@ timer_start()
 
 ##################################################
 
-program = get_ints(fin, True)
+program = read_ints(fin)
 
 BLACK, WHITE = 0, 1
 LEFT, RIGHT = 0, 1

@@ -10,7 +10,7 @@ timer_start()
 
 ##################################################
 
-inp = get_ints(fin, True)
+inp = read_ints(fin)
 
 pc = 0
 prog = inp[:]

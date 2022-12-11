@@ -20,7 +20,7 @@ v.v..>>v.v
 ....v..v.>
 ''')
 
-mat = get_char_matrix(fin, rstrip=False, lstrip=False)
+mat = read_char_matrix(fin)
 
 def step(mat):
 	n = 0

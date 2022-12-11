@@ -8,7 +8,7 @@ timer_start()
 ##################################################
 
 from lib.intcode import IntcodeVM
-prog = get_ints(fin, True)
+prog = read_ints(fin)
 
 Q = []
 for i in range(50):

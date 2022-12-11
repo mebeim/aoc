@@ -7,7 +7,7 @@ fin = advent.get_input()
 # eprint(*fin, sep=''); fin.seek(0, 0)
 timer_start()
 
-orig = get_char_matrix(fin)
+orig = read_char_matrix(fin)
 
 h = len(orig)
 w = len(orig[0])
