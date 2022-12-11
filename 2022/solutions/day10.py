@@ -7,30 +7,27 @@ advent.setup(2022, 10)
 total = 0
 cycle = 1
 x     = 1
-crt   = []
-row   = ''
+crt   = ''
 
 with advent.get_input() as fin:
 	for instr in fin:
-		row   += '#' if x <= cycle % 40 < x + 3 else ' '
+		crt   += '#' if x <= cycle % 40 < x + 3 else ' '
 		cycle += 1
 
 		if instr.startswith('addx'):
 			if cycle % 40 == 20:
 				total += cycle * x
 			elif cycle % 40 == 1:
-				crt.append(row)
-				row = ''
+				crt += '\n'
 
-			row   += '#' if x <= cycle % 40 < x + 3 else ' '
+			crt   += '#' if x <= cycle % 40 < x + 3 else ' '
 			cycle += 1
 			x     += int(instr[5:])
 
 		if cycle % 40 == 20:
 			total += cycle * x
 		elif cycle % 40 == 1:
-			crt.append(row)
-			row = ''
+			crt += '\n'
 
 advent.print_answer(1, total)
-print('Part 2:\n', '\n'.join(crt), sep='')
+print('Part 2:', crt, sep='\n', end='')

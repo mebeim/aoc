@@ -1695,23 +1695,20 @@ additional things we need to do *each cycle* are:
    included).
 
 It really takes 10 times the amount of lines to explain it than to write it. To
-emulate the CRT monitor we'll use a list of strings, where each string is a row
-of pixels, and we'll keep track of the current row in a separate string
-variable. We'll use `'#'` to represent lit pixels, and `' '` (a space) for dark
-pixels. Any time a new row needs to be added, well [`.append()`][py-list-append]
-the current one to the list and reset it to an empty string.
+emulate the CRT monitor we'll use a simple string, where each character is a
+pixel. We'll use `'#'` to represent lit pixels, `' '` (a space) for dark
+pixels and we'll add a newline (`'\n'`) each time a new row is needed.
 
 Here's the code to add to the main loop we already wrote:
 
 ```diff
-+crt = []
-+row = ''
++crt = ''
 
  for instr in program:
 +    if x <= cycle % 40 <= x + 2:
-+        row += '#'
++        crt += '#'
 +    else:
-+        row += ' '
++        crt += ' '
 +
      cycle += 1
 
@@ -1719,13 +1716,12 @@ Here's the code to add to the main loop we already wrote:
          if cycle % 40 == 20:
              total += cycle * x
 +        elif cycle % 40 == 1:
-+            crt.append(row)
-+            row = ''
++            crt += '\n'
 +
 +        if x <= cycle % 40 <= x + 2:
-+            row += '#'
++            crt += '#'
 +        else:
-+            row += ' '
++            crt += ' '
 
          cycle += 1
          x += int(instr[5:])
@@ -1733,8 +1729,7 @@ Here's the code to add to the main loop we already wrote:
      if cycle % 40 == 20:
          total += cycle * x
 +    elif cycle % 40 == 1:
-+        crt.append(row)
-+        row = ''
++        crt += '\n'
 ```
 
 The [3-way comparison][py-3-way-comparison] `x <= y <= z` is equivalent to
@@ -1742,20 +1737,19 @@ The [3-way comparison][py-3-way-comparison] `x <= y <= z` is equivalent to
 `x <= y` is not satisfied. This is a nice little feature that makes bound
 checking in Python much cooler than in other languages.
 
-The addition of new pixels to the `row` variable (representing the current row as a
-string) can also be done using a [tristate operator][py-cond-expr]:
+The addition of new pixels to the `crt` variable can also be done using a
+[tristate operator][py-cond-expr]:
 
 ```python
-row += '#' if x <= cycle % 40 <= x + 2 else ' '
+crt += '#' if x <= cycle % 40 <= x + 2 else ' '
 ```
 
-Now all that's left to do is print the rows in the `crt` list we populated and
-read out the answer. We can do this with a good ol' `for` loop, or we could
-[`.join()`][py-str-join] them together with a newline as a separator and print
-them all at once.
+Now all that's left to do is print the solution. We'll tell
+[`print()`][py-builtin-print] to add an extra newline between the prompt and the
+answer using `sep='\n'` so that the contents of `crt` are printed nicely:
 
 ```python
-print('Part 2:\n', '\n'.join(crt), sep='')
+print('Part 2:', crt, sep='\n')
 ```
 
 The output will look something like this:
