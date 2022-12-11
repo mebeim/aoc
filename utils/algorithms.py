@@ -680,10 +680,10 @@ def bisection(fn, y, lo=None, hi=None, tolerance=1e-9, upper=False):
 	```
 	'''
 	if type(y) not in (int, float):
-		raise TypeError('y must be int or float, got {}'.format(type(y)))
+		raise TypeError('y must be int or float, got {}'.format(type(y).__name__))
 
-	if lo is not None and hi is not None:
-		assert fn(lo) <= fn(hi), 'fn(x) not monotonically increasing'
+	if lo is not None and hi is not None and fn(lo) <= fn(hi):
+		raise TypeError('fn(x) must be a monotonically increasing function, but have fn(lo) > fn(hi)')
 
 	if lo is None:
 		# Optimistic check
@@ -713,9 +713,7 @@ def bisection(fn, y, lo=None, hi=None, tolerance=1e-9, upper=False):
 
 		return None
 
-	if type(y) is not float:
-		raise TypeError('y must be int or float, got {}'.format(type(y).__name__))
-
+	# y is float
 	if upper:
 		while hi - lo >= tolerance:
 			x = (lo + hi) / 2
