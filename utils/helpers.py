@@ -2,7 +2,7 @@ __all__ = [
 	'log', 'rlog', 'eprint', 'wait',
 	'dump_iterable', 'dump_dict', 'dump_char_matrix', 'dump_sparse_matrix',
 	'extract_ints', 'read_lines', 'read_ints',
-	'read_int_matrix', 'read_char_matrix',
+	'read_int_matrix', 'read_char_matrix', 'read_digit_matrix',
 	'autorange'
 ]
 
@@ -199,6 +199,13 @@ def read_char_matrix(file, rstrip=False, lstrip=False, container=list, outer_con
 	if lstrip:
 		return outer_container(container(l.lstrip()) for l in lines)
 	return outer_container(map(container, lines))
+
+def read_digit_matrix(file, rstrip=False, lstrip=False, container=list, outer_container=list):
+	'''Same as read_char_matrix, but each character is assumed to be an ASCII
+	digit and is therefore transformed to int.
+	'''
+	mat = read_char_matrix(file, rstrip, lstrip)
+	return outer_container(container(map(int, l)) for l in mat)
 
 def autorange(start, end, step=1):
 	'''Range from start to end (included) in steps of +/- step regardless if
