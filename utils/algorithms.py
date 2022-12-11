@@ -175,7 +175,7 @@ def bfs(G, src, weighted=False, get_neighbors=None):
 	breadth-first search.
 
 	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
-	in case weighted=True (weights are discarded).
+	if weighted=True, in which case weights are discarded.
 
 	get_neighbors(node) is called to determine node neighbors (default is G.get)
 
@@ -204,7 +204,7 @@ def connected_components(G, weighted=False, get_neighbors=None):
 	'''Find and return a list of all the connected components of G.
 
 	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
-	in case weighted=True (weights are discarded).
+	if weighted=True, in which case weights are discarded.
 
 	get_neighbors(node) is called to determine node neighbors (default is G.get)
 
@@ -227,8 +227,8 @@ def dijkstra(G, src, dst, get_neighbors=None):
 	'''Find the length of the shortest path from src to dst in G using
 	Dijkstra's algorithm.
 
-	G is a "graph dictionary" of the form {src: [(dst, weight)]}
-	get_neighbors(node) is called to determine node neighbors (default is G.get)
+	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
+	if weighted=True, in which case weights are discarded.
 
 	For memoization, use: djk = dijkstra_lru(G); djk(src, dst).
 	'''
@@ -545,41 +545,49 @@ def kruskal(G):
 
 	return mst
 
-def _toposort_dependencies(G, reverse):
+def _toposort_dependencies(G, reverse, weighted):
 	'''Calculate forward and reverse dependencies of the nodes in the directed
 	graph G. If reverse=True, edges of G are considered inverted.
+
+	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
+	if weighted=True, in which case weights are discarded.
 
 	Returns two defaultdict:
 		dep: maps each node to its number of dependencies (0 for root nodes)
 		revdep: maps each node to a list of nodes that depend on it
 	'''
+	unweight = itemgetter(0) if weighted else lambda x: x
+
 	if reverse:
 		dep = defaultdict(int, {p: len(c) for p, c in G.items()})
 		revdep = defaultdict(list)
 
 		for child, parents in G.items():
-			for parent in parents:
+			for parent in map(unweight, parents):
 				revdep[parent].append(child)
 				dep[parent] # make sure to have *all* nodes as keys in dep
 	else:
 		dep = defaultdict(int)
-		revdep = defaultdict(tuple, G)
+		revdep = defaultdict(tuple, {k: tuple(map(unweight, v)) for k, v in G.items()})
 
 		for parent, children in G.items():
 			dep[parent] # make sure to have *all* nodes as keys in dep
-			for child in children:
+			for child in map(unweight, children):
 				dep[child] += 1
 
 	return dep, revdep
 
-def toposort(G, reverse=False):
+def toposort(G, reverse=False, weighted=False):
 	'''Perform a topological sort of G. If reverse=True, edges of G are
 	considered inverted. No particular order is guaranteed whenever there are
 	multiple nodes with no dependencies that can be chosen as next.
 
+	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
+	if weighted=True, in which case weights are discarded.
+
 	Returns a list of nodes sorted in topological order.
 	'''
-	dep, revdep = _toposort_dependencies(G, reverse)
+	dep, revdep = _toposort_dependencies(G, reverse, weighted)
 	queue = deque(n for n, d in dep.items() if d == 0)
 	result = []
 
@@ -595,17 +603,20 @@ def toposort(G, reverse=False):
 
 	return result
 
-def lex_toposort(G, reverse=False):
+def lex_toposort(G, reverse=False, weighted=False):
 	'''Perform a lexicographical topological sort of G. If reverse=True, edges
 	of G are considered inverted. The smallest node is always chosen whenever
 	there are multiple nodes with no dependencies that can be chosen as next.
+
+	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
+	if weighted=True, in which case weights are discarded.
 
 	Returns a list of nodes sorted in lexicographical topological order.
 	'''
 	# Implemented with a min-heap as queue, so not the most efficient algorithm,
 	# see: https://en.wikipedia.org/wiki/Lexicographic_breadth-first_search
 
-	dep, revdep = _toposort_dependencies(G, reverse)
+	dep, revdep = _toposort_dependencies(G, reverse, weighted)
 	queue = [n for n, d in dep.items() if d == 0]
 	result = []
 
