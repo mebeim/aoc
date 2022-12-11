@@ -1885,6 +1885,7 @@ operation uses `old` as operand on both sides.
 
 ```python
 from collections import deque
+from operator import add, mul
 
 monkeys = []
 
@@ -1941,6 +1942,8 @@ values can be extracted after sorting in descending order with
 top two, but we have a very small list, so it's fine).
 
 ```python
+from operator import attrgetter
+
 def simulate(monkeys, n_rounds):
     for _ in range(n_rounds):
         for m in monkeys:
