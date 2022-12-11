@@ -2000,15 +2000,19 @@ How do we do this? With a bit of modular arithmetic:
   preserved by addition and multiplication, which are the only two operations we
   perform. In other words, `(x + a) % d == ((x % d) + (a % d)) % d`, or in
   mathematical terms *a + b ≡ (a mod d) + (b mod d)  (mod d)*.
+
 - In the case of *two* monkeys with divisors `d` and `q`, in order to preserve
-  the divisibility by both, we only need to keep `item % (d * q)` around, since
-  a number divisible by `d` will also always be divisible by `d * q`, and vice
-  versa.
-- In the general case of N monkeys with N different divisors, we only need to
-  keep item values *modulo the product of all the divisors*. This product is
-  small enough and is also pre-computable and fixed through the entire
-  simulation (since divisors are fixed). To be precise, we actually only need
-  the [least common multiple][wiki-lcm] of the divisors.
+  the divisibility by both, we only need to keep `item % (d * q)` around. This
+  is somewhat intuitive since a number divisible by `d * q` will also always be
+  divisible by both `d` and `q` separately. We have `(x % (d*q)) % d == x % d`
+  for any value of `q`, or in mathematical terms:
+  *x mod dq ≡ a (mod d) <=> x ≡ a (mod d)* for any positve integer *q*.
+
+- In the general case of multiple different divisors, we only need to keep item
+  values *modulo the product of all the divisors*. This product is small enough
+  and is also pre-computable and fixed through the entire simulation (since
+  divisors are fixed). To be precise, we actually only need the
+  [least common multiple][wiki-lcm] of the divisors.
 
 Knowing all of the above, we can get our part 2 solution almost for free with
 only a couple of modifications to our `simulate()` function:
@@ -2080,6 +2084,8 @@ print('Part 1:', answer1)
 answer2 = simulate(original, 10000, True)
 print('Part 2:', answer2)
 ```
+
+Smooth!
 
 ---
 
