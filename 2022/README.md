@@ -15,6 +15,7 @@ Table of Contents
 - [Day 9 - Rope Bridge][d09]
 - [Day 10 - Cathode-Ray Tube][d10]
 - [Day 11 - Monkey in the Middle][d11]
+- [Day 12 - Hill Climbing Algorithm][d12]
 
 
 Day 1 - Calorie Counting
@@ -2087,6 +2088,260 @@ print('Part 2:', answer2)
 
 Smooth!
 
+
+Day 12 - Hill Climbing Algorithm
+--------------------------------
+
+[Problem statement][d12-problem] — [Complete solution][d12-solution] — [Back to top][top]
+
+### Part 1
+
+Pathfinding on a grid! I was missing that on my [AoC bingo][misc-aoc-bingo] card
+this year :'). We are given a grid of letters ranging from `a` to `z`. The grid
+represents a [topographic map][wiki-topographic-map], and each letter is a
+different level of elevation: `a` is lower than `b`, which is lower than `c`,
+and so on until `z`. This grid also contains two uppercase letters, `S` and `E`,
+which are respectively the start cell and the destination to reach. The start is
+at elevation `a`, and the destination is at elevation `z`.
+
+We need to find the minimum number of steps in the four cardinal directions that
+are needed to reach the destination from the start, with the constraint that we
+can only move to cells that have an elevation not higher than the current
+elevation plus one.
+
+If you've ever done any problem similar to this, you already know that the
+answer to "what's the minimum distance from A to B on a grid" is always
+[breadth-first search][algo-bfs] (BFS) as the steps to perform are unitary. All
+we need to do is parse the input grid and create and perform an adequate BFS on
+the grid, taking into account the rules to move from one cell to another.
+
+Let's start with the BFS implementation right off the bat. We'll be working with
+coordinates of the form `(row, column)`. Given a cell's coordinates, we need to
+explore all the reachable cells using BFS, avoiding neighboring cells that are
+too high in elevation, and stopping whenever we reach the coordinates of the
+destination. Here's a commented function that implements BFS, using a
+[`deque`][py-collections-deque] as queue and [`math.inf`][py-math-inf] to
+indicate that no solution is found:
+
+```python
+from collections import deque
+from math import inf as INFINITY
+
+def bfs(grid, src, dst):
+    h, w    = len(grid), len(grid[0]) # pre-calculate height and width for simplicity
+    queue   = deque([(0, src)])       # queue of tuples (distance_from_src, coords)
+    visited = set()
+
+    # While there are coordinates to visit
+    while queue:
+        # Get the first one in the queue
+        distance, rc = queue.popleft()
+        # If we reached the desination, return the distance traveled so far
+        if rc == dst:
+            return distance
+
+        # Skip already vsited coordinates
+        if rc not in visited:
+            visited.add(rc)
+
+            # For each neighboring cell that wasn't already visited
+            for n in get_neighbors(grid, r, c, h, w):
+                if n in visited:
+                    continue
+
+                # Add it to the back of the queue with a distance equal to the
+                # current one plus 1
+                queue.append((distance + 1, n))
+
+    return INFINITY
+```
+
+So far, this is just plain and simple BFS. The `get_neighbors()` used above will
+contain the actual logic to solve the problem, let's write it as a
+[generator][py-generators] function that will `yield` all the coordinates of
+reachable neighboring cells according to the elevation rules. We will assume to
+be working with a `grid` where each cell contains integers representing
+elevation values. Given a position `(r, c)`, the maximum elevation reachable
+will therefore `grid[r][c] + 1`, and the neighboring cells in the 4 cardinal
+directions will be at `(r+1, c)`, `(r-1, c)`, `(r, c+1)` and `(r, c-1)`.
+
+```python
+def get_neighbors(grid, r, c, h, w): # get h, w as parameters for simplicity
+    max_el = grid[r][c] + 1
+
+    for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
+        if 0 <= nr < h and 0 <= nc < w: # ensure we are within the grid
+            if grid[nr][nc] <= max_el:  # ensure this neighbor is reachable
+                yield nr, nc
+```
+
+We are almost done. Let's parse the input now: since we are working with ASCII
+characters, we can do what we did for [day 8 part 1][d08-p1] and open the input
+file in binary mode (`'rb'`) to get a free conversion from characters to
+elevation values. The lines can be extracted as `bytes` with
+[`.splitlines()`][py-bytes-splitlines] after reading the whole file, and we can
+then transform each line into a list of `int` with [`map()`][py-builtin-map]
+(pretty easy since iterating over `bytes` already yields `int`s).
+
+```python
+with open(..., 'rb') as fin:
+    lines = fin.read().splitlines()
+    grid = list(map(list, lines))
+```
+
+A couple of constants to represent the source, the destination and the
+highest/lowest elevations will help us make the code more human readable:
+
+```python
+# These will all be ints since iterating bytes yields ints
+START, END, LOWEST, HIGHEST = b'SEaz'
+```
+
+Now we need to find the source and destination coordinates. A simple scan of the
+grid with a double `for` loop gets the job done, and I will also throw a couple
+of [`enumerate()`][py-builtin-enumerate] in there for ease. Since our
+`get_neighbors()` function looks at grid cells assuming they all represent
+elevation values, after finding the source and the destination, we will edit the
+grid replacing their value with the actual elevation.
+
+```python
+src = dst = None
+
+for r, row in enumerate(grid):
+    for c, cell in enumerate(row):
+        if cell == START:
+            src = r, c
+            grid[r][c] = LOWEST
+        elif cell == END:
+            dst = r, c
+            grid[r][c] = HIGHEST
+
+    if src and dst:
+        break
+```
+
+Perfect, we've got all we need. The answer is one `bfs()` call away:
+
+```python
+min_dist = bfs(grid, src, dst)
+print('Part 1:', min_dist)
+```
+
+### Part 2
+
+For part 2, we are told that all cells at elevation `a` are valid starting
+points: we need to find the minimum possible distance to travel to get to the
+destination (`E`) starting from any `a`.
+
+The instinctive thing to do here is to just call `bfs()` in a loop passing the
+grid coordinates of any `a` cell as source, and keep the minimum returned value.
+We can do better though. Since we are using BFS on a graph where arcs have all
+the same weight (i.e. all steps we make are one unit of distance), we know for a
+fact that whenever we visit a given cell for the first time, we have also
+traveled the shortest possible distance to do so. This means that if we perform
+BFS backward from the destination, we can simply stop at the first cell with
+elevation `a` that we encounter, and we'll have found the minimum distance from
+any `a` to the destination.
+
+There's a catch though. If we want to move backward from the destination (`E`),
+we also need to write a different `get_neighbors()` function, since now the
+check to perform on the elevation is the opposite: we can only move to
+neighboring cells that have an elevation *higher than or equal to* the current
+cell's elevation plus one.
+
+We still need the original `get_neighbors()` function. Let's split it into three
+different functions: a generic `neighbors4()` function that only returns the
+coordinates of any valid neighboring cell, a second one that checks elevation
+constraints assuming we are moving forward, and a third one that checks elevation constraints
+assuming we are moving backward.
+
+```python
+def neighbors4(grid, r, c, h, w):
+    for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
+        if 0 <= nr < h and 0 <= nc < w:
+            yield nr, nc
+
+def neighbors_forward(grid, r, c, h, w):
+    max_el = grid[r][c] + 1
+    neigh = neighbors4(grid, r, c, h, w)
+
+    for nr, nc in neighbors4(grid, r, c, h, w):
+        if grid[nr][nc] <= max_el:
+            yield nr, nc
+
+def neighbors_backward(grid, r, c, h, w):
+    min_el = grid[r][c] - 1
+
+    for nr, nc in neighbors4(grid, r, c, h, w):
+        if grid[nr][nc] >= min_el:
+            yield nr, nc
+```
+
+We can further simplify the last two functions using a *filtering*
+[generator expression][py-generator-expr] of the form
+`x for x in iterable if <condition on x>`, which will only yield items that
+satisfy a certain condition. Here it is:
+
+```python
+def neighbors_forward(grid, r, c, h, w):
+    max_el = grid[r][c] + 1
+    neigh = neighbors4(grid, r, c, h, w)
+    yield from ((nr, nc) for nr, nc in neigh if grid[nr][nc] <= max_el)
+
+def neighbors_backward(grid, r, c, h, w):
+    min_el = grid[r][c] - 1
+    neigh = neighbors4(grid, r, c, h, w)
+    yield from ((nr, nc) for nr, nc in neigh if grid[nr][nc] >= min_el)
+```
+
+The BFS code we wrote for part 1 only needs a couple of modifications to also
+work for part 2:
+
+- Since we want to use two different functions to get cell neighbors, we can
+  accept a function as an additional parameter.
+- Since for part 2 we also want to stop whenever we visit a cell containing a
+  given value, we can alter the condition used to `return` to also check whether
+  `grid[r][c] == dst`, and then pass the destination coordinates as `src`, and
+  the value `LOWEST` as `dst`. This won't break part 1 since `grid[r][c] == dst`
+  will never match when `dst` is a tuple of coordinates.
+
+```diff
+-def bfs(grid, src, dst):
++def bfs(grid, src, dst, get_neighbors):
+     h, w    = len(grid), len(grid[0])
+     queue   = deque([(0, src)])
+     visited = set()
+
+     while queue:
+         distance, rc = queue.popleft()
+-         if rc == dst or grid[r][c] == dst:
++         r, c = rc
++
++         if rc == dst or grid[r][c] == dst:
+             return distance
+
+         if rc not in visited:
+             visited.add(rc)
+
+             for n in get_neighbors(grid, r, c, h, w):
+                 if n in visited:
+                     continue
+
+                 queue.append((distance + 1, n))
+
+     return best
+```
+
+And here we go, we now have the solution for both parts:
+
+```python
+min_dist = bfs(grid, src, dst, neighbors_forward)
+print('Part 1:', min_dist)
+
+min_dist_from_any_a = bfs(grid, dst, LOWEST, neighbors_backward)
+print('Part 2:', min_dist_from_any_a)
+```
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -2105,6 +2360,7 @@ Smooth!
 [d09]: #day-9---rope-bridge
 [d10]: #day-10---cathode-ray-tube
 [d11]: #day-11---monkey-in-the-middle
+[d12]: #day-12---hill-climbing-algorithm
 
 [d01-problem]: https://adventofcode.defaultdictcom/2022/day/1
 [d02-problem]: https://adventofcode.com/2022/day/2
@@ -2117,6 +2373,7 @@ Smooth!
 [d09-problem]: https://adventofcode.com/2022/day/9
 [d10-problem]: https://adventofcode.com/2022/day/10
 [d11-problem]: https://adventofcode.com/2022/day/11
+[d12-problem]: https://adventofcode.com/2022/day/12
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -2129,8 +2386,10 @@ Smooth!
 [d09-solution]: solutions/day09.py
 [d10-solution]: solutions/day10.py
 [d11-solution]: solutions/day11.py
+[d12-solution]: solutions/day12.py
 
 [2019-d18-p1]:     ../2019/README.md#part-1-17
+[d08-p1]:          #part-1-7
 [d02-alternative]: misc/day02/mathematical.py
 [d08-alternative]: misc/day08/faster_part1.py
 
@@ -2139,6 +2398,7 @@ Smooth!
 [py-class-slots]:        https://docs.python.org/3/reference/datamodel.html#slots
 [py-cond-expr]:          https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-generator-expr]:     https://www.python.org/dev/peps/pep-0289/
+[py-generators]:         https://docs.python.org/3/howto/functional.html#generators
 [py-lambda]:             https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
 [py-list-comprehension]: https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions
 [py-set]:                https://docs.python.org/3/tutorial/datastructures.html#sets
@@ -2171,6 +2431,7 @@ Smooth!
 [py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
 [py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
+[py-math-inf]:                https://docs.python.org/3/library/math.html#math.inf
 [py-math-lcm]:                https://docs.python.org/3/library/math.html#math.lcm
 [py-operator]:                https://docs.python.org/3/library/operator.html
 [py-operator-attrgetter]:     https://docs.python.org/3/library/operator.html#operator.attrgetter
@@ -2183,6 +2444,7 @@ Smooth!
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 
+[algo-bfs]:         https://en.wikipedia.org/wiki/Breadth-first_search
 [algo-dfs]:         https://en.wikipedia.org/wiki/Depth-first_search
 [algo-quickselect]: https://en.wikipedia.org/wiki/Quickselect
 
@@ -2193,8 +2455,10 @@ Smooth!
 [wiki-lcm]:                https://en.wikipedia.org/wiki/Least_common_multiple
 [wiki-linear-time]:        https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-memoization]:        https://en.wikipedia.org/wiki/Memoization
+[wiki-topographic-map]:    https://en.wikipedia.org/wiki/Topographic_map
 [wiki-tree]:               https://en.wikipedia.org/wiki/Tree_(data_structure)
 
+[misc-aoc-bingo]:   https://www.reddit.com/r/adventofcode/comments/k3q7tr/
 [misc-numpy]:       https://numpy.org
 [misc-numpy-views]: https://numpy.org/doc/stable/user/basics.copies.html
 [misc-py-sign]:     https://stackoverflow.com/a/1986776/3889449
