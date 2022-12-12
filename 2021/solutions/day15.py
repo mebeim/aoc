@@ -9,7 +9,7 @@ from itertools import filterfalse
 def neighbors4(r, c, h, w):
 	for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
 		rr, cc = (r + dr, c + dc)
-		if 0 <= rr < w and 0 <= cc < h:
+		if 0 <= rr < h and 0 <= cc < w:
 			yield rr, cc
 
 def dijkstra(grid):
