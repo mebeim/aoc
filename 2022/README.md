@@ -16,6 +16,7 @@ Table of Contents
 - [Day 10 - Cathode-Ray Tube][d10]
 - [Day 11 - Monkey in the Middle][d11]
 - [Day 12 - Hill Climbing Algorithm][d12]
+- [Day 13 - Distress Signal][d13]
 
 
 Day 1 - Calorie Counting
@@ -2342,6 +2343,255 @@ min_dist_from_any_a = bfs(grid, dst, LOWEST, neighbors_backward)
 print('Part 2:', min_dist_from_any_a)
 ```
 
+
+Day 13 - Distress Signal
+------------------------
+
+[Problem statement][d13-problem] — [Complete solution][d13-solution] — [Back to top][top]
+
+### Part 1
+
+Today we're dealing with nested lists of integers, called "packets" in the
+problem statement. We are given a list of packet *pairs*, and we need to compare
+the two packets in each pair to determine if they are in the correct order or
+not. In other words, we need to establish an order for all the given pairs.
+
+The order of a pair of packets is based on some arbitrarily given rules that
+need to be applied recursively:
+
+1. If both values are integers, the lower integer should come first. If they are
+   equal, we don't know which one should come first.
+
+2. If both values are lists, check the order between each pair of items in the
+   lists. The first pair of items for which the order can be determined also
+   determines the order of the two lists. Whichever list runs out of items
+   before a decision can be made should come first. If instead no order can be
+   determined for any of the pairs, and both lists have the same length, we
+   don't know which list should come first.
+
+3. If one of the values is a list and the other is an integer, transform the
+   integer into a 1-item list (containing only said integer), and re-perform the
+   check.
+
+We need to find the sum of the (1-based) indices of the pairs of packets that
+are in the right order.
+
+Let's start with an example to understand the rules. Let's say we have the
+following pair of packets:
+
+```python
+[[1],[2,3,4],9]
+[[1],4,0]
+```
+
+These are the checks that would be performed, and their outcome, according to
+the above rules:
+
+- Compare `[[1],[2,3,4],9]` with `[[1],4,0]`. Both are lists, so compare their
+  items pairwise:
+  - Compare `[1]` with `[1]`:
+    - Compare `1` with `1`:
+      - They are equal, order is unknown.
+  - Compare `[2,3,4]` with `4`. One is a list and one is an integer. Transform
+    `4` into `[4]` and retry:
+    - Compare `[2,3,4]` with `[4]`:
+      - Compare `2` with `4`:
+        - `2` is less than `4` so `2` should come first, and indeed it does.
+          This means that the original packets were in the right order. Stop.
+
+As can be seen from the above example, Whenever we are able to make a decision
+about the order of two items, at any nesting level, we should stop and
+"propagate" that decision back to the original packets. It does not matter
+what's in the rest of the packets. In fact, the two packets above also contained
+a `9` and a `0`, which were never compared because we could determine the order
+before getting to them.
+
+As yesterday, we'll use a bottom-up approach. Let's implement a recursive
+function to compare two packets. We'll assume to have two parameters `a` and
+`b`, both of which can either be `list` or `int`, and apply the rules to
+determine which one should come first. For simplicity, we'll make the function
+return an integer: negative if `a` should come before `b`, positive if `b`
+should come before `a`, and zero otherwise. This is also known as a "cmp"
+function (which [actually was a built-in function][misc-py2-cmp] in Python 2).
+
+- In case both parameters are `int`, we can simply return `b - a`. In fact,
+  `a - b` will be negative if `a < b`, positive if `a > b` and zero if `a == b`.
+
+- In case only one is an `int`, we'll wrap it into a list and make a recursive
+  call to re-perform the comparison.
+
+- In case both parameters are `list`, to compare their items pairwise we can
+  iterate over the lists with [`zip(a, b)`][py-builtin-zip] and make a recursive
+  call for each pair of items. If any of the recursive calls we make is
+  conclusive (i.e. the result is not `0`), we are done. Otherwise, we'll keep
+  going.
+
+  If we run out of items to compare, we'll need to check the length of the two
+  lists instead: the shorter one should come first (same logic as the one for
+  two integers), so we can just return `len(a) - len(b)`.
+
+To check whether a variable is an `int`, we can either use
+[`type(x)`][py-builtin-type] or [`isinstance(x, int)`][py-builtin-isinstance]).
+I'll go with the former.
+
+```python
+def compare(a, b):
+    a_is_int = type(a) is int
+    b_is_int = type(b) is int
+
+    # Both integers.
+    if a_is_int and b_is_int:
+        return a - b
+
+    # One is an integer, wrap it into a list and re-check.
+    if a_is_int != b_is_int:
+        if a_is_int:
+            return compare([a], b)
+        else:
+            return compare(a, [b])
+
+    # Both lists, check their items pairwise, stop at the first conclusive result.
+    for x, y in zip(a, b):
+        res = compare(x, y)
+        if res != 0:
+            return res
+
+    # We ran out of items before coming to a conclusion. Now what matters is
+    # which list was longer (according to rule number 2).
+    return len(a) - len(b)
+```
+
+Okay, now to the input parsing. The first thing to do is read each packet in the
+input as a string. We can skip empty lines delimiting packet pairs either
+iterating over the input line by line or reading it all at once and using
+[`.replace()`][py-str-replace]. Then, [`.splitlines()`][py-str-splitlines] will
+give us a list of raw packets (strings) to later parse.
+
+```python
+with open(...) as fin:
+    lines = fin.read().replace('\n\n', '\n').splitlines()
+```
+
+We chose to read all packets at once into a list in order to easily parse them
+all at once with a single call to [`map()`][py-builtin-map], given a function
+able to parse one packet.
+
+As you probably already noticed, the packets are valid Python lists, meaning
+that if we pasted them into a Python interpreter they would evaluate to actual
+lists. There's a function that can do exactly this: [`eval()`][py-builtin-eval].
+
+```python
+>>> eval('[[1],[2,3,4],9]')
+[[1], [2, 3, 4], 9]
+```
+
+It must be noted that using `eval()` for input parsing is in general a *really
+bad idea*, as it can evaluate arbitrary Python code and therefore do unexpected
+things. If the input comes from an untrusted source, we should never `eval()` it
+before making sure it's safe to do so.
+
+```python
+# Example of "unexpected things"
+eval('__import__("os").system("arbitrary shell commands here")')
+```
+
+We could write an actual input parsing function, which takes a string
+representing a packet and transforms it in a list without `eval()`, but... I am
+honestly too lazy for that, at least today. Since we can manually inspect the
+contents of our input, `eval()` is safe to use (but yeah, do not just trust me,
+open your input file and make sure it only contains lists of integers).
+
+Anyway... all of these paragraphs to finally just write a single line of code:
+
+```python
+packets = list(map(eval, lines))
+```
+
+Now we can group our packets in pairs:
+
+```python
+pairs = []
+
+for i in range(0, len(packets), 2):
+    pairs.append(packets[i:i + 2])
+```
+
+Which can be simplified to a single [generator expression][py-generator-expr]:
+
+```python
+pairs = (packets[i:i + 2] for i in range(0, len(packets), 2))
+```
+
+Note that the above does not actually create a list or tuple, but rather a
+generator that will `yield` pairs on the fly, and which is thus only iterable
+*once*, which is enough for us.
+
+Now we can finally iterate over the pairs and `compare()` them. Since we need to
+provide the sum of 1-based indices of correctly ordered pairs as the answer,
+we'll also use [`enumearte()`][py-builtin-enumerate].
+
+```python
+answer = 0
+
+for i, (a, b) in enumerate(packets, 1):
+    if compare(a, b) < 0: # a should come before b
+        answer += i
+
+print('Part 1:', answer)
+```
+
+All the above loop is doing is calculating a sum, so we can also re-write the
+entire thing using [`sum()`][py-builtin-sum] plus a filtereg generator
+expression (`x for x in ... if <condition>`):
+
+```python
+answer = sum(i for i, (a, b) in enumerate(pairs, 1) if compare(a, b) > 0)
+print('Part 1:', answer)
+```
+
+### Part 2
+
+Now that we have a "primitive" to establish the order between two packets, why
+not use it to *sort* all the packets? That's exactly what we are asked to do,
+after adding to our packets two "divider" packets: `[[2]]` and `[[6]]`. Once
+sorted, we need to find the product of the two 1-based indices of the divider
+packets.
+
+Well. This is easy. We already have a comparison function, and we have
+[`list.sort()`][py-list-sort]. The only hiccup is that `list.sort()` does not
+take a comparison function... it used to in Python 2 with the `cmp=` argument,
+but in Python 3 that was replaced with `key=`, which only takes a single value
+and is expected to somehow transform it.
+
+Transforming a `cmp` function into a `key` function and vice-versa is not really
+straightforward. Thankfully, Python developers thought about this for us:
+[`functools.cmp_to_key()`][py-functools-cmp_to_key] is a function that takes a
+`cmp`-style function (taking two arguments and returning an integer) and
+magically transforms it into a `key`-style function (taking one argument and
+returning an arbitrary object). The way the conversion is performed is actually
+quite interesting and clever, you can read about it [in this Stack Overflow
+post][misc-so-cmp_to_key] if curious.
+
+Okay, let's do this:
+
+```python
+packets.extend(([[2]], [[6]]))
+packets.sort(key=cmp_to_key(compare))
+```
+
+Now we can use [`.index()`][py-list-index] to find the indices of the dividers
+and multiply them together. We also know that the second divider (`[[6]]`) must
+come *after* the first as per the ordering rules, so we can pass a second
+argument to `.index()` (the index to start from) to skip already checked items.
+
+```python
+answer = packets.index([[2]]) + 1
+answer *= packets.index([[6]]) + 1
+print('Part 2:', answer)
+```
+
+Like a walk in the park!
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -2361,6 +2611,7 @@ print('Part 2:', min_dist_from_any_a)
 [d10]: #day-10---cathode-ray-tube
 [d11]: #day-11---monkey-in-the-middle
 [d12]: #day-12---hill-climbing-algorithm
+[d13]: #day-13---distress-signal
 
 [d01-problem]: https://adventofcode.defaultdictcom/2022/day/1
 [d02-problem]: https://adventofcode.com/2022/day/2
@@ -2374,6 +2625,7 @@ print('Part 2:', min_dist_from_any_a)
 [d10-problem]: https://adventofcode.com/2022/day/10
 [d11-problem]: https://adventofcode.com/2022/day/11
 [d12-problem]: https://adventofcode.com/2022/day/12
+[d13-problem]: https://adventofcode.com/2022/day/13
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -2387,6 +2639,7 @@ print('Part 2:', min_dist_from_any_a)
 [d10-solution]: solutions/day10.py
 [d11-solution]: solutions/day11.py
 [d12-solution]: solutions/day12.py
+[d13-solution]: solutions/day13.py
 
 [2019-d18-p1]:     ../2019/README.md#part-1-17
 [d08-p1]:          #part-1-7
@@ -2409,6 +2662,7 @@ print('Part 2:', min_dist_from_any_a)
 
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
+[py-builtin-eval]:            https://docs.python.org/3/library/functions.html#eval
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-isinstance]:      https://docs.python.org/3/library/functions.html#isinstance
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
@@ -2417,6 +2671,7 @@ print('Part 2:', min_dist_from_any_a)
 [py-builtin-ord]:             https://docs.python.org/3/library/functions.html#ord
 [py-builtin-range]:           https://docs.python.org/3/library/functions.html#range
 [py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
+[py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-type]:            https://docs.python.org/3/library/functions.html#type
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
 [py-bytes-splitlines]:        https://docs.python.org/3/library/stdtypes.html#bytes.splitlines
@@ -2426,9 +2681,11 @@ print('Part 2:', min_dist_from_any_a)
 [py-copy-deepcopy]:           https://docs.python.org/3/library/copy.html#copy.deepcopy
 [py-file-read]:               https://docs.python.org/3/library/io.html#io.BufferedIOBase.read
 [py-file-readlines]:          https://docs.python.org/3/library/io.html#io.IOBase.readlines
+[py-functools-cmp_to_key]:    https://docs.python.org/3/library/functools.html#functools.cmp_to_key
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
 [py-list]:                    https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-list-index]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
 [py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
 [py-math-inf]:                https://docs.python.org/3/library/math.html#math.inf
@@ -2439,6 +2696,7 @@ print('Part 2:', min_dist_from_any_a)
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
 [py-str-lstrip]:              https://docs.python.org/3/library/stdtypes.html#str.lstrip
 [py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
+[py-str-replace]:             https://docs.python.org/3/library/stdtypes.html#str.replace
 [py-str-rstrip]:              https://docs.python.org/3/library/stdtypes.html#str.rstrip
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
@@ -2458,8 +2716,10 @@ print('Part 2:', min_dist_from_any_a)
 [wiki-topographic-map]:    https://en.wikipedia.org/wiki/Topographic_map
 [wiki-tree]:               https://en.wikipedia.org/wiki/Tree_(data_structure)
 
-[misc-aoc-bingo]:   https://www.reddit.com/r/adventofcode/comments/k3q7tr/
-[misc-numpy]:       https://numpy.org
-[misc-numpy-views]: https://numpy.org/doc/stable/user/basics.copies.html
-[misc-py-sign]:     https://stackoverflow.com/a/1986776/3889449
-[misc-regexp]:      https://www.regular-expressions.info/
+[misc-aoc-bingo]:     https://www.reddit.com/r/adventofcode/comments/k3q7tr/
+[misc-numpy]:         https://numpy.org
+[misc-numpy-views]:   https://numpy.org/doc/stable/user/basics.copies.html
+[misc-py-sign]:       https://stackoverflow.com/a/1986776/3889449
+[misc-py2-cmp]:       https://docs.python.org/2/library/functions.html#cmp
+[misc-regexp]:        https://www.regular-expressions.info/
+[misc-so-cmp_to_key]: https://stackoverflow.com/q/32752739/3889449
