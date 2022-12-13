@@ -2479,39 +2479,37 @@ able to parse one packet.
 As you probably already noticed, the packets are valid Python lists, meaning
 that if we pasted them into a Python interpreter they would evaluate to actual
 lists. There's a function that can do exactly this: [`eval()`][py-builtin-eval].
-
-```python
->>> eval('[[1],[2,3,4],9]')
-[[1], [2, 3, 4], 9]
-```
-
-It must be noted that using `eval()` for input parsing is in general a *really
-bad idea*, as it can evaluate arbitrary Python code and therefore do unexpected
-things. If the input comes from an untrusted source, we should never `eval()` it
-before making sure it's safe to do so.
+It must be noted however that using `eval()` for input parsing is in general a
+*really bad idea*, as it can evaluate arbitrary Python code and therefore do
+unexpected things. If the input comes from an untrusted source, we should never
+`eval()` it before making sure it's safe to do so, and we should avoid `eval()`
+in general.
 
 ```python
 # Example of "unexpected things"
 eval('__import__("os").system("arbitrary shell commands here")')
 ```
 
-We could write an actual input parsing function, which takes a string
-representing a packet and transforms it in a list without `eval()`, but... I am
-honestly too lazy for that, at least today. Since we can manually inspect the
-contents of our input, `eval()` is safe to use (but yeah, do not just trust me,
-open your input file and make sure it only contains lists of integers).
+As it turns out though, our packets are also valid [JSON][wiki-json] objects,
+and we have [`json.loads()`][py-json-loads] that parses a string representing a
+JSON object into a Python object. JSON arrays (`[...]`) are turned into `list`
+and integers into `int`, so this function is all we need to parse a packet
+without worrying about evaluating random Python code. We could write an actual
+parsing function ourselves without the use of `eval()` or `json.loads()`, but...
+I am honestly too lazy for that, at least today. Also, why do it in 10 lines of
+code when you can do it in one (said no sane programmer ever)?
 
-Anyway... all of these paragraphs to finally just write a single line of code:
+Anyway... here goes nothing:
 
 ```python
-packets = list(map(eval, lines))
+from json import loads
+packets = list(map(loads, lines))
 ```
 
 Now we can group our packets in pairs:
 
 ```python
 pairs = []
-
 for i in range(0, len(packets), 2):
     pairs.append(packets[i:i + 2])
 ```
@@ -2532,7 +2530,6 @@ we'll also use [`enumearte()`][py-builtin-enumerate].
 
 ```python
 answer = 0
-
 for i, (a, b) in enumerate(packets, 1):
     if compare(a, b) < 0: # a should come before b
         answer += i
@@ -2683,6 +2680,7 @@ Like a walk in the park!
 [py-file-readlines]:          https://docs.python.org/3/library/io.html#io.IOBase.readlines
 [py-functools-cmp_to_key]:    https://docs.python.org/3/library/functools.html#functools.cmp_to_key
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
+[py-json-loads]:              https://docs.python.org/3/library/json.html#json.loads
 [py-list]:                    https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-index]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
@@ -2710,6 +2708,7 @@ Like a walk in the park!
 [wiki-congruence]:         https://en.wikipedia.org/wiki/Congruence_relation
 [wiki-crt]:                https://en.wikipedia.org/wiki/Cathode-ray_tube
 [wiki-euclidean-distance]: https://en.wikipedia.org/wiki/Euclidean_distance
+[wiki-json]:               https://en.wikipedia.org/wiki/JSON
 [wiki-lcm]:                https://en.wikipedia.org/wiki/Least_common_multiple
 [wiki-linear-time]:        https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-memoization]:        https://en.wikipedia.org/wiki/Memoization

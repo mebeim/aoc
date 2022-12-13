@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 
+from json import loads
 from functools import cmp_to_key
 
 from utils import advent
-
-def check_and_eval(s, ok=set('[]0123456789,')):
-	assert set(s) <= ok
-	return eval(s, {}, {})
 
 def compare(a, b):
 	a_is_int = type(a) is int
@@ -31,7 +28,7 @@ advent.setup(2022, 13)
 with advent.get_input() as fin:
 	lines = fin.read().replace('\n\n', '\n').splitlines()
 
-packets = list(map(check_and_eval, lines))
+packets = list(map(loads, lines))
 pairs   = (packets[i:i + 2] for i in range(0, len(packets), 2))
 answer  = sum(i for i, p in enumerate(pairs, 1) if compare(*p) < 0)
 
