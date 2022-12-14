@@ -17,6 +17,7 @@ Table of Contents
 - [Day 11 - Monkey in the Middle][d11]
 - [Day 12 - Hill Climbing Algorithm][d12]
 - [Day 13 - Distress Signal][d13]
+- [Day 14 - Regolith Reservoir][d14]
 
 
 Day 1 - Calorie Counting
@@ -2589,6 +2590,424 @@ print('Part 2:', answer)
 
 Like a walk in the park!
 
+
+Day 14 - Regolith Reservoir
+---------------------------
+
+[Problem statement][d14-problem] — [Complete solution][d14-solution] — [Back to top][top]
+
+### Part 1
+
+Today we are dealing with a cave that fills with sand. As the problem statement
+remings us, a similar (although more intricate) concept was explored in
+[2018 day 17][2018-d17-problem] (of which unfortunately I did not write a
+walkthrough for... *yet*).
+
+The cave we are in is a 2D grid, and our input is a list of segments in the form
+`ax,ay -> bx,by -> ...`, which represent sequances of vertical and horizontal
+segments of cave cells occupied by rocks. Units of sand, each occupying one grid
+cell, start pouring into the cave *one at a time* from `x=500,y=0` (`y=0` is the
+top) and fall down the cave obeying four simple rules:
+
+1. If the cell immediately below is free, the unit of sand falls one step
+   straight down.
+2. If instead that cell is occupied, it falls one step diagonally, one cell down
+   and one to the left.
+3. If instead that cell is occupied, it falls one step diagonally, one cell down
+   and one to the right.
+4. Otherwise (the three cells under the unit of sand are all occupied), it stops
+   falling and settles down where it is.
+
+Our cave is infinitely deep (`y` does not have an upper bound), but there is a
+limited number of cells occupied by rocks (our input) forming platforms that
+sand can rest on. At some point though, sand will inevitably fill all the
+platforms it is able to reach, at which point the next unit that is poured will
+start falling down indefinitely into the void. We want to know *how many units
+of sand will fall and settle down* before this happens.
+
+To make the above rules a little bit clearer, here's a simple diagram:
+
+```none
+...s...
+..213..
+```
+
+A unit of sand (`s` above) first tries to fall to the cell labeled `1`; if
+that's occupied it tries `2`; if that's also occupied it tries `3`. If all of them
+are occupied, it settles down where it is. In other words, a unit of sand can
+only settle down above the middle of a 3-cell platform (whether it is sand,
+rock, or a mix of the two). More examples that can help better understand the
+problem are provided in the [problem statement][d14-problem], so I won't go
+deeper with the explanation and dive directly into the solution.
+
+It's tempting to create a matrix as a `list` of `list` to represent our 2D cave.
+However, we don't know its size before parsing the entire input, and even then,
+it could potentially need expansion due to the sand being poured in the cave
+(spoiler, we'll be dealing with a lot more sand in part 2). Instead, we'll use a
+`set` of points (i.e. tuples of the form `(x, y)`), which is a lot simpler to
+manage: if a point is in the set, that cave cell will be considered occupied.
+
+```python
+cave = set() # Any point (x, y) in this set is occupied (by either a rock or a sand unit)
+```
+
+Let's parse the input. Each line consists of a list of 2D coordinates separated
+by `' -> '`, and each point has its x and y components separated by a comma.
+Parsing a single line is therefore only a matter of a couple of
+[`.split()`][py-str-split] operations:
+
+```python
+fin = open(...)
+
+for line in fin:
+    points = []
+
+    for p in line.split(' -> '):
+        x, y = p.split(',')
+        points.append(int(x), int(y))
+```
+
+The internal loop above can be further simplified with the use of
+[`map()`][py-builtin-map] and a couple [`lambda`][py-lambda] functions:
+
+```python
+for line in fin:
+    points = line.split(' -> ')
+    points = map(lambda p: p.split(','), points)
+    points = map(lambda p: (int(p[0]), int(p[1])), points)
+```
+
+Note that we did not actually need to create a `list` of points for each parsed
+line, we can keep the generator returned by `map()` as we don't need to iterate
+on the points more than once.
+
+Each pair `ax,ay -> bx,by` in the lists of points we get on each line indicates
+a segment of cells occupied by rocks. These segments are always either vertical
+or horizontal, never diagonal. In the first case all the cells with `x == ax`
+(`== bx`) and `y` from `ay` to `by` are occupied by rocks, while in the second
+case all the cells with `y == ay` (`== by`) and `x` from `ax` to `bx` are
+occupied with rocks. Therefore, to add rocks to our cave, we need to do
+something like this for each pair of points on each line:
+
+```python
+if ax == bx: # vertical segment
+    for x in range(ax, bx + 1):
+        cave.add((x, ay))
+else: # horizontal segment
+    for y in range(ay, by + 1):
+        cave.add((ax, y))
+```
+
+There's a problem though: we have no guarantee on the order of the coordinates,
+so we don't know if `ax < bx` or `ay < by`. We need to distinguish between the
+two cases and iterate over a different [`range()`][py-builtin-range]
+accordingly. Let's write a function to do that:
+
+```python
+def autorange(start, end):
+    if start > end:
+        return range(start, end - 1, -1)
+    return range(start, end + 1)
+
+# Or, alternatively (this range always does steps of +1)
+def autorange(start, end):
+    return range(min(start, end), max(start, end) + 1)
+```
+
+For simplicity, we can now also create a `range2d()`
+[generator function][py-generators] that takes two *points* and uses
+`autorange()` to `yield` all the points of the horizontal or vertical segment
+connecting them:
+
+```python
+def range2d(a, b):
+    ax, ay = a
+    bx, by = b
+
+    if ax == bx:
+        # yield all points in the vertical segment
+        for y in autorange(ay, by):
+            yield ax, y
+    else:
+        # yield all points in the horizontal segment
+        for x in autorange(ax, bx):
+            yield x, ay
+```
+
+Now we can add rocks to our cave. To iterate on points pairwise we'll just have
+two variables `prev` and `cur`, and initialize `prev` with the first point
+yielded returned by the `map()` generator using [`next()`][py-builtin-next].
+The [`.update()`][py-set-update] method of `set` can take any iterable and add
+all its elements to the set, which means we can avoid explicitly looping over
+the points yielded by `range2d(prev, cur)`.
+
+```python
+for line in fin:
+    points = line.split(' -> ')
+    points = map(lambda p: p.split(','), points)
+    points = map(lambda p: (int(p[0]), int(p[1])), points)
+    prev   = next(points)
+
+    for cur in points:
+        cave.update(range2d(cur, prev))
+        prev = cur
+```
+
+In Python >= 3.10, we have [`itertools.pairwise()`][py-itertools-pairwise] that
+can be used to achieve the same thing:
+
+```python
+for line in fin:
+    # ...
+    for prev, cur in pairwise(points):
+        cave.update(range2d(cur, prev))
+```
+
+Or, even more concisely, with the help of
+[`itertools.starmap()`][py-itertools-starmap] to unpack the pairs:
+
+```python
+for line in fin:
+    # ...
+    cave.update(*starmap(range2d, pairwise(points)))
+```
+
+Before we can simulate the sand pouring into the cave, we know that at some
+point sand will fill all the rock platforms in the cave and start falling down
+to oblivion, we need to detect this in order to avoid ending up in an infinite
+loop. We can do this by pre-calculating the `y` coordinate of the deepest rock
+in the cave and making sure to never exceed it. This means iterating over all
+the points initially in the `cave` set and finding the max `y`, which we can do
+in one line with a simple [`max()`][py-builtin-max] plus `map()` + `lambda`,
+or better `map()` + [`itemgetter()`][py-operator-itemgetter].
+
+```python
+from operator import itemgetter
+maxy = max(map(itemgetter(1), cave))
+```
+
+Good, now let's start pouring some sand into this cave. The rules are quite
+simple, it's only a matter of following them. Let's write a function to pour a
+single unit of sand down the cave from the source (`(500, 0)`), adding the final
+coordinates to our `cave` set if the unit settles down. Since we'll need to call
+this function multiple times in a loop, let's also make it return `True` if the
+sand unit settles and `False` otherwise, so we'll know when to stop pouring.
+
+```python
+def pour_sand(cave, maxy):
+    x, y = 500, 0
+
+    while y < maxy:
+        # Can this unit of sand fall directly down?
+        if (x, y + 1) not in cave:
+            y = y + 1
+            continue
+
+        # Can it fall one unit down and one to the left (diagonally)?
+        if (x - 1, y + 1) not in cave:
+            x, y = x - 1, y + 1
+            continue
+
+        # Can it fall one unit down and one to the right (diagonally)?
+        if (x + 1, y + 1) not in cave:
+            x, y = x + 1, y + 1
+            continue
+
+        # This unit of sand cannot fall anymore, so it settles.
+        cave.add((x, y))
+        return True
+
+    # This unit will keep falling down the infinitely deep cave without settling
+    return False
+```
+
+We are doing quite a number of repeated calculations with those `x` and `y`
+coordinates. Since we are performing the same fundamental operation
+(`if ... in cave`) 3 times each iteration of the `while` loop, we can simplify
+things with a `for`:
+
+```python
+def pour_sand(cave, maxy):
+    x, y = 500, 0
+
+    while y < maxy:
+        newy = y + 1
+
+        for newx in (x, x - 1, x + 1):
+            if (newx, newy) not in cave:
+                x, y = newx, newy
+                break
+        else:
+            cave.add((x, y))
+            return True
+
+    return False
+```
+
+Yep, in Python [`for ... else`][py-loop-else] is a thing. The `else` block is
+only entered if no `break` is performed during the loop, meaning that our sand
+unit could not continue falling down. All we need to do now is call
+`pour_sand()` repeatedly until it returns `False`, counting the number of sand
+units poured.
+
+```python
+sand = 0
+while pour_sand(cave, maxy):
+    sand += 1
+
+print('Part 1:', sand)
+```
+
+### Part 2
+
+Now we also need to account for sand that overflows the rock platforms (after
+filling them all). The cave does actually have a bottom: exactly two units under
+the lowest piece of rock lies a flat horizontal and infinitely wide surface. Any
+sand unit that previously overflowed will now settle and pile up because of this
+horizontal floor. At some point, the pile of sand will become so high that it
+will obstruct the source (at `500,0`). We want to know exactly how many units of
+sand will it take for this to happen.
+
+There are a few ways to solve this second part:
+
+1. The simplest: keep doing what we did for part 1 and pour a single unit of
+   sand, this time accounting for the cave floor, until some unit settles right
+   at `500,0`.
+
+2. Using [breadth-first search][algo-bfs]. We can in fact find the solution in
+   a much faster way using BFS without having to simulate every single sand
+   unit. If we stop and think about it for a moment, the problem we are facing
+   now is merely *identifying all grid cells that can be reached by sand units
+   starting from the source*. A simple BFS on the entire cave, starting from the
+   source and exploring for each cell the three cells below it, will effectively
+   explore all the cells reachable by sand.
+
+3. Using [depth-first search][algo-dfs]. Analogously, DFS is just another way of
+   exploring all the cells reachable by sand in the cave. However, while BFS is
+   only useful to solve part 2 due to the order in which cave cells would be
+   explored, DFS could also be used to solve part 1. This is because DFS allows
+   us to more closely emulate the behavior of the falling sand units, with the
+   opportunity to stop and [backtrack][wiki-backtracking] whenever a unit
+   overflows and falls under the lowest rock (`maxy` we calculated in part 1).
+
+   In fact, the `pour_sand()` function we wrote for part 1 is exploring a single
+   path to an unique final grid cell in a depth-first manner every time it is
+   called. If the path until a certain sand unit settles is 100 steps long,
+   calling the function a second time means re-traveling along 99 of those
+   steps! To avoid this, each time a unit of sand settles, we should in theory
+   be able to backtrack going back to all the previous positios in the path and
+   find the first one where we can either settle another unit of sand or from
+   which we can start exploring a different sub-path.
+
+Admittedly, I was tired enough this morning (AoC happens at 6 AM in Italy) to
+just choose option 1 above and call it a day. However, as it turns out,
+[posting your solution to Reddit][d14-italyinformatica] saying you know there's
+some optimization to make but you are lazy to implement it, actually attracts
+other smart and helpful programmers that at the end of the day convince you to
+optimize your solution. I'm going to go with option number 3 above, scrapping
+the `pour_sand()` function we wrote for part 1 in favor of a simpler, concise
+recursive DFS implementation.
+
+Now that we are familiar with the problem, the logic should be quite clear in
+our mind. DFS is very easy to implement recursively, and the Wikipedia page
+linked above has an example implementation that looks a lot like Python code.
+
+There is however a small difference between the "standard" DFS algorithm and the
+one we need to write now: normally a "node" would be marked as visited as soon
+as it is reached (i.e. as the first operation in the function), before visiting
+its neighbors. In our case though, "visiting" a given cell does **not**
+necessarily mean settling a unit of sand there! Whether or not that's the case
+can only be decided after making sure that the three cells under it are
+occupied. This means that marking a unit of sand as settled (adding its
+coordinates to our `grid`) is in fact the *last* thing we'll do before returning
+from the function, *after* first recursively exploring the 3 cells immediately
+below.
+
+Let's first implement the function with only part 1 in mind. If the above
+paragraph is clear, there isn't much more to say. Our new `pour_sand()` function
+still directly adds coordinates to `cave`, returning `True` when a unit settles
+at the given coordinates, and `False` otherwise.
+
+```python
+def pour_sand(cave, maxy, x=500, y=0):
+    # We are overflowing to the bottom of the cave!
+    # This unit of sand will not settle anywhere, stop.
+    if y == maxy:
+        return False
+
+    newy = y + 1
+
+    # Check the 3 cells below this one: straight down, down & left, down & right
+    for newx in (x, x - 1, x + 1):
+        # If this cell (newx, newy) is not already occupied...
+        if (newx, newy) not in cave:
+            # ... will another unit of sand settle here?
+            if not pour_sand(cave, maxy, newx, newy):
+                # If not, the current unit cannot settle at (x, y).
+                return False
+
+    # All three cells below this unit of sand are occupied (otherwise we would
+    # have already returned False), so it can settle here.
+    cave.add((x, y))
+    return True
+```
+
+Now we can modify the function to also take into account the bottom of the cave
+for part 2. We know the cave floor is a horizontal line at depth `maxy + 2`,
+which means that sand will only ever settle *at most* at `maxy + 1`. The
+addition of a boolean `floor` parameter indicating whether the cave floor is
+present or not is enough to adapt our function to solve both parts:
+
+- In case `floor=False` (part 1), we need to give up if `y == maxy`, which is
+  exactly the check we are making at the beginning of the function above.
+- In case `floor=True` (part 2), we can actually exceed `maxy`, so we can skip
+  the initial check. Additionally, since we know that every single cell at
+  depth `maxy + 2` will be occupied, if we find ourselves at some `y > maxy`, we
+  already know that the current unit will settle here (the only value of `y`
+  higher than `maxy` that we can get is `maxy + 1`, as we'll mark settled any
+  unit that gets there.
+
+Here's the new version of the function:
+
+```python
+def pour_sand(cave, maxy, floor=False, x=500, y=0):
+    # For part 2 (floor=True), this check is not needed
+    if not floor and y == maxy:
+        return False
+
+    # For part 1 (floor=False) we always need to do a recursive check of the
+    # three cells below us. However, for part 2 (floor=True) we only need to do
+    # this when y <= maxy. At y = maxy + 1 we can skip the check.
+    if not floor or y <= maxy:
+        newy = y + 1
+
+        for newx in (x, x - 1, x + 1):
+            if (newx, newy) not in cave:
+                if not pour_sand(cave, maxy, floor, newx, newy):
+                    return False
+
+    cave.add((x, y))
+    return True
+```
+
+Now we can solve both parts with single call to `pour_sand()`. To know the
+number of settled sand units we can simply calculate the size of the `cave` set
+before pouring the sand (when it only includes rocks) and after.
+
+```python
+rocks = len(cave)
+
+pour_sand(cave, maxy)
+sand = len(cave) - rocks
+print('Part 1:', sand)
+
+pour_sand(cave, maxy, True)
+sand = len(cave) - rocks
+print('Part 2:', sand)
+```
+
+This was a fun one! Let's continue our journey...
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -2609,9 +3028,10 @@ Like a walk in the park!
 [d11]: #day-11---monkey-in-the-middle
 [d12]: #day-12---hill-climbing-algorithm
 [d13]: #day-13---distress-signal
+[d14]: #day-14---regolith-reservoir
 
 [d01-problem]: https://adventofcode.defaultdictcom/2022/day/1
-[d02-problem]: https://adventofcode.com/2022/day/2
+[d02-problem]: https://advpairwiseentofcode.com/2022/day/2
 [d03-problem]: https://adventofcode.com/2022/day/3
 [d04-problem]: https://adventofcode.com/2022/day/4
 [d05-problem]: https://adventofcode.com/2022/day/5
@@ -2623,6 +3043,7 @@ Like a walk in the park!
 [d11-problem]: https://adventofcode.com/2022/day/11
 [d12-problem]: https://adventofcode.com/2022/day/12
 [d13-problem]: https://adventofcode.com/2022/day/13
+[d14-problem]: https://adventofcode.com/2022/day/14
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -2637,20 +3058,24 @@ Like a walk in the park!
 [d11-solution]: solutions/day11.py
 [d12-solution]: solutions/day12.py
 [d13-solution]: solutions/day13.py
+[d14-solution]: solutions/day14.py
 
-[2019-d18-p1]:     ../2019/README.md#part-1-17
-[d08-p1]:          #part-1-7
-[d02-alternative]: misc/day02/mathematical.py
-[d08-alternative]: misc/day08/faster_part1.py
+[2018-d17-problem]:     https://adventofcode.com/2018/day/17
+[2019-d18-p1]:          ../2019/README.md#part-1-17
+[d08-p1]:               #part-1-7
+[d02-alternative]:      misc/day02/mathematical.py
+[d08-alternative]:      misc/day08/faster_part1.py
+[d14-italyinformatica]: https://www.reddit.com/r/ItalyInformatica/comments/zlj7dj/adventofcode_2022_giorno_14/j05rz5p/
 
 [py-3-way-comparison]:   https://docs.python.org/3/reference/expressions.html#comparisons
 [py-class-init]:         https://docs.python.org/3/reference/datamodel.html#object.__init__
-[py-class-slots]:        https://docs.python.org/3/reference/datamodel.html#slots
+[py-class-slots]:        https://docs.python.oattrgetterrg/3/reference/datamodel.html#slots
 [py-cond-expr]:          https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-generator-expr]:     https://www.python.org/dev/peps/pep-0289/
 [py-generators]:         https://docs.python.org/3/howto/functional.html#generators
 [py-lambda]:             https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
 [py-list-comprehension]: https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions
+[py-loop-else]:          https://docs.python.org/3/tutorial/controlflow.html#break-and-continue-statements-and-else-clauses-on-loops
 [py-set]:                https://docs.python.org/3/tutorial/datastructures.html#sets
 [py-slicing]:            https://docs.python.org/3/glossary.html#term-slice
 [py-tuple]:              https://docs.python.org/3/tutorial/datastructures.html#tuples-and-sequences
@@ -2665,6 +3090,7 @@ Like a walk in the park!
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
 [py-builtin-min]:             https://docs.python.org/3/library/functions.html#min
+[py-builtin-next]:            https://docs.python.org/3/library/functions.html#next
 [py-builtin-ord]:             https://docs.python.org/3/library/functions.html#ord
 [py-builtin-range]:           https://docs.python.org/3/library/functions.html#range
 [py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
@@ -2680,7 +3106,9 @@ Like a walk in the park!
 [py-file-readlines]:          https://docs.python.org/3/library/io.html#io.IOBase.readlines
 [py-functools-cmp_to_key]:    https://docs.python.org/3/library/functools.html#functools.cmp_to_key
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
-[py-json-loads]:              https://docs.python.org/3/library/json.html#json.loads
+[py-itertools-pairwise]:      https://docs.python.org/3/library/itertools.html#itertools.pairwise
+[py-itertools-starmap]:       https://docs.python.org/3/library/itertools.html#itertools.starmap
+[py-json-loads]:         pairwise     https://docs.python.org/3/library/json.html#json.loads
 [py-list]:                    https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-index]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
@@ -2690,7 +3118,9 @@ Like a walk in the park!
 [py-math-lcm]:                https://docs.python.org/3/library/math.html#math.lcm
 [py-operator]:                https://docs.python.org/3/library/operator.html
 [py-operator-attrgetter]:     https://docs.python.org/3/library/operator.html#operator.attrgetter
+[py-operator-itemgetter]:     https://docs.python.org/3/library/operator.html#operator.itemgetter
 [py-re-pattern-findall]:      https://docs.python.org/3/library/re.html#re.Pattern.findall
+[py-set-update]:              https://docs.python.org/3/library/stdtypes.html#frozenset.update
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
 [py-str-lstrip]:              https://docs.python.org/3/library/stdtypes.html#str.lstrip
 [py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
@@ -2705,6 +3135,7 @@ Like a walk in the park!
 [algo-quickselect]: https://en.wikipedia.org/wiki/Quickselect
 
 [wiki-ascii]:              https://en.wikipedia.org/wiki/ASCII
+[wiki-backtracking]:       https://en.wikipedia.org/wiki/Backtracking
 [wiki-congruence]:         https://en.wikipedia.org/wiki/Congruence_relation
 [wiki-crt]:                https://en.wikipedia.org/wiki/Cathode-ray_tube
 [wiki-euclidean-distance]: https://en.wikipedia.org/wiki/Euclidean_distance

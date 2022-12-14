@@ -5,7 +5,7 @@ from operator import itemgetter
 from utils import advent
 
 def autorange(a, b):
-	return range(a, b - 1, -1) if a > b else range(a, b + 1)
+	return range(a, b + 1) if a <= b else range(a, b - 1, -1)
 
 def range2d(a, b):
 	ax, ay = a
@@ -14,48 +14,27 @@ def range2d(a, b):
 	if ax == bx:
 		for y in autorange(ay, by):
 			yield ax, y
-	elif ay == by:
+	else:
 		for x in autorange(ax, bx):
 			yield x, ay
-	else:
-		raise ValueError('diagonal line?')
 
-def pour(occupied, floory, fill=False):
-	p = 500, 0
-
-	if fill and p in occupied:
-		return False
-
-	while 1:
-		x, y = p
-		y += 1
-
-		if y == floory:
-			if fill:
-				occupied.add(p)
-			return fill
-
-		d = (x, y)
-		if d not in occupied:
-			p = d
-			continue
-
-		dl = (x - 1, y)
-		if dl not in occupied:
-			p = dl
-			continue
-
-		dr = (x + 1, y)
-		if dr not in occupied:
-			p = dr
-			continue
-
-		occupied.add(p)
+def pour_sand(cave, maxy, floor=False, x=500, y=0):
+	if y == maxy and not floor:
 		return True
+
+	if y <= maxy or not floor:
+		newy = y + 1
+
+		for newx in (x, x - 1, x + 1):
+			if (newx, newy) not in cave and pour_sand(cave, maxy, floor, newx, newy):
+				return True
+
+	cave.add((x, y))
+	return False
 
 
 advent.setup(2022, 14)
-occupied = set()
+cave = set()
 
 with advent.get_input() as fin:
 	for line in fin:
@@ -63,19 +42,17 @@ with advent.get_input() as fin:
 		prev   = next(points)
 
 		for cur in points:
-			occupied.update(range2d(cur, prev))
+			cave.update(range2d(prev, cur))
 			prev = cur
 
-floory = max(map(itemgetter(1), occupied)) + 2
+rocks = len(cave)
+maxy  = max(map(itemgetter(1), cave))
 
-ans = 0
-while pour(occupied, floory):
-	ans += 1
-
-advent.print_answer(1, ans)
+pour_sand(cave, maxy)
+sand = len(cave) - rocks
+advent.print_answer(1, sand)
 
 
-while pour(occupied, floory, True):
-	ans += 1
-
-advent.print_answer(2, ans)
+pour_sand(cave, maxy, True)
+sand = len(cave) - rocks
+advent.print_answer(2, sand)
