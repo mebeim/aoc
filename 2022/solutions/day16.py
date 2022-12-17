@@ -32,14 +32,14 @@ def score(rates, valves):
 		s += rates[v] * t
 	return s
 
-def choices(distance, rates, valves, time=30, cur='AA', chosen={}):
+def solutions(distance, rates, valves, time=30, cur='AA', chosen={}):
 	for nxt in valves:
 		new_time = time - distance[cur][nxt] - 1
 		if new_time < 2:
 			continue
 
 		new_chosen = chosen | {nxt: new_time}
-		yield from choices(distance, rates, valves - {nxt}, new_time, nxt, new_chosen)
+		yield from solutions(distance, rates, valves - {nxt}, new_time, nxt, new_chosen)
 
 	yield chosen
 
@@ -66,14 +66,14 @@ with advent.get_input() as fin:
 good     = frozenset(filter(rates.get, graph))
 distance = floyd_warshall(graph)
 score    = partial(score, rates)
-best     = max(map(score, choices(distance, rates, good)))
+best     = max(map(score, solutions(distance, rates, good)))
 
 advent.print_answer(1, best)
 
 
 maxscore = defaultdict(int)
 
-for solution in choices(distance, rates, good, 26):
+for solution in solutions(distance, rates, good, 26):
 	k = frozenset(solution)
 	s = score(solution)
 

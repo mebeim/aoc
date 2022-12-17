@@ -3030,7 +3030,7 @@ want to maximize the total amount of pressure to relieve during this time.
 It's clear from the problem statement that what we are dealing with is an
 undirected [graph][wiki-graph], where the nodes are valves and the edges are the
 pipes connecting them. What we essentially want to do is find the best "path" of
-actions that take at most 30 mintues and give the best pressure release value
+actions that take at most 30 mintues and give the best total pressure release
 possible.
 
 Let's parse the input into a graph structure then. I will use a dictionary of
@@ -3062,7 +3062,7 @@ with open(...) as fin:
 
 The `graph` dictionary we just created is of the form `{valve: [<connected
 valves>...]}`, so doing `graph['AA']` will give us the list of graph nodes
-adjacent to the valve named `'AA'`. Additionally, the `rates`` dictionary, kept
+adjacent to the valve named `'AA'`. Additionally, the `rates` dictionary, kept
 separate from `graph` for simplicity, will tell us what's the pressure release
 rate of any valve.
 
@@ -3103,13 +3103,13 @@ possible path between any pair of valves.
 
 Say we want to choose valves `AA` and `XX`, but they are *not* directly
 connected to each other: we'd need to find the shortest path from `AA` to `XX`.
-Given that in order to enumerate all valid solutions we will need to perform
-this action an awful lot of times! Thankfully, there's an algorithm that can
-help us. The [Floyd-Warshall][algo-floyd-warshall] algorithm does exactly what
-we need: it calculates the minimum distance between any possible pair of nodes
-of a given graph. In our case, since all the arcs of the graph have the same
-weight, this would be equivalent to performing a [BFS][algo-bfs] scan starting
-from every single node and saving all the distances found, so that could also be
+In order to enumerate all valid solutions we will need to perform this action an
+awful lot of times! Thankfully, there's an algorithm that can help us. The
+[Floyd-Warshall][algo-floyd-warshall] algorithm does exactly what we need: it
+calculates the minimum distance between any possible pair of nodes of a given
+graph. In our case, since all the arcs of the graph have the same weight, this
+would be equivalent to performing a [BFS][algo-bfs] scan starting from every
+single node and saving all the distances found, so that could also be
 implemented instead.
 
 I'll be using standard Floyd-Warshall, implemented as a function returning a
@@ -3147,7 +3147,7 @@ the other possibilities of chosen valves explored by deeper recursive calls.
 Here's the commented code to do this:
 
 ```python
-def choices(distance, rates, valves, time=30, cur='AA', chosen={}):
+def solutions(distance, rates, valves, time=30, cur='AA', chosen={}):
     res = [chosen]
 
     # We can't reach any other valve in less than 2m, as it would take minimum
@@ -3165,12 +3165,12 @@ def choices(distance, rates, valves, time=30, cur='AA', chosen={}):
         # The new valves to choose from will not include this one
         new_valves = valves - {nxt}
         # Collect all possible choices having taken this valve
-        res += choices(distance, rates, new_valves, new_time, nxt, new_chosen)
+        res += solutions(distance, rates, new_valves, new_time, nxt, new_chosen)
 
     return res
 ```
 
-Now the above `choices()` function will return *all possible combinations* of
+Now the above `solutions()` function will return *all possible combinations* of
 valves that we can open in under 30 minutes, along with the amount of time each
 one will stay open. There are a couple of optimizations to be made though.
 
@@ -3180,7 +3180,7 @@ all we need to do is `yield` each possible choice as soon as we get ahold of it
 instead of accumulating them in a list:
 
 ```python
-def choices(distance, rates, valves, time=30, cur='AA', chosen={}):
+def solutions(distance, rates, valves, time=30, cur='AA', chosen={}):
     yield chosen
 
     if time < 2:
@@ -3190,35 +3190,35 @@ def choices(distance, rates, valves, time=30, cur='AA', chosen={}):
         new_time   = time - (distance[cur][nxt] + 1)
         new_chosen = chosen | {nxt: new_time}
         new_valves = valves - {nxt}
-        yield from choices(distance, rates, new_valves, new_time, nxt, new_chosen)
+        yield from solutions(distance, rates, new_valves, new_time, nxt, new_chosen)
 ```
 
 
 ```python
 valves = set(graph.keys())
 
-for choice in choices(distance, rates, valves):
+for choice in solutions(distance, rates, valves):
     pass # calculate max score
 ```
 
 Now, the above works fine, however it's very slow. The function does not even
 seem to terminate soon. Indeed, even for the small example input we have, it
-generates over *9 million* possible choices. We can reduce this number by a lot
-if we notice one very important thing: there seem to be a lot of valves with a
-pressure release rate of *zero* in our input. It is pointless to open any of
-them, since they will contribute nothing and only make us waste time to reach
-them. We can therefore avoid them. If we pass a `valves` set that excludes them,
-the number of possible choices in each recursive call (`for nxt in valves`) will
-be greatly reduced, which will in turn exponentially decrease the total number
-of solutions returned.
+generates over *9 million* possible solutions. We can reduce this number by a
+lot if we notice one very important thing: **there seem to be a lot of valves
+with a pressure release rate of *zero* in our input**. It is pointless to open
+any of them, since they will contribute nothing and only make us waste time to
+reach them. We can therefore avoid them. If we pass a `valves` set that excludes
+them, the number of possible choices for each recursive call (`for nxt in
+valves`) will be greatly reduced, which will in turn exponentially decrease the
+total number of solutions returned.
 
 We can use [`filter`][py-builtin-filter] and the rates in the `rates` dictionary
 to exclude useless valves, and re-perform the call:
 
 ```python
-good = frozenset(filter(rates.get, graph))
+good = set(filter(rates.get, graph.keys()))
 
-for choice in choices(distance, rates, valves):
+for choice in solutions(distance, rates, good):
     pass # calculate max score
 ```
 
@@ -3228,9 +3228,9 @@ enough to open any other valve. This means moving the `time < 2` check inside
 the loop:
 
 ```diff
- def choices(distance, rates, valves, time=30, cur='AA', chosen={}):
-     yield chosen
-
+ def solutions(distance, rates, valves, time=30, cur='AA', chosen={}):
+-     yield chosen
+-
 -    if time < 2:
 -        return
 -
@@ -3241,14 +3241,16 @@ the loop:
 +
          new_chosen = chosen | {nxt: new_time}
          new_valves = valves - {nxt}
-         yield from choices(distance, rates, new_valves, new_time, nxt, new_chosen)
+         yield from solutions(distance, rates, new_valves, new_time, nxt, new_chosen)
++
++     yield chosen
 ```
 
 We have all we need to get the answer now:
 
 ```python
 best = 0
-for choice in choices(distance, rates, valves):
+for choice in solutions(distance, rates, valves):
     cur = score(rates, choice)
     if cur > best:
         best = cur
@@ -3258,7 +3260,7 @@ And since all we are doing is calculating a maximum, we can use `max()` plus a
 generator expression for it:
 
 ```python
-best = max(score(rates, c) for c in choices(distance, rates, good))
+best = max(score(rates, s) for s in solutions(distance, rates, good))
 print('Part 1:', best)
 ```
 
@@ -3274,29 +3276,28 @@ in theory, all we would need to do is try every possible combination of two
 solutions, more or less like this:
 
 ```python
-solutions = list(choices(distance, rates, good, 26))
+sols = list(solutions(distance, rates, good, 26))
 best = 0
 
-for s1 in solutions:
-    for s2 in solutions:
+for s1 in sols:
+    for s2 in sols:
         if ...: # s1 and s2 do not have valves in common
             cur = score(rates, s1) + score(rates, s2)
             if cur > best:
                 best = cur
 ```
 
-However... `len(solutions)` above for our input is `18676`, and a double nested
-`for` loop means around 18676<sup>2</sup> = around 350 million solutions to test
-(okay in theory half of that, since we do not care about the order of `s1` and
-`s1`, but still). That is... a bit too much. We need to somehow find another
-simplification.
+However... `len(sols)` for our input is `18676`, and a double nested `for` loop
+means 18676<sup>2</sup> = ~350 million solutions to test (half of that in
+theory, since we do not care about the order of `s1` and `s1`, but still). That
+is... a bit too much. We need to somehow find another simplification.
 
-There are a lot of solutions, but we know that among all the solution, there
-will only be one *some* of them that achieve the maximum score. What about among
-*all the solutions that involve the same valves?* Well, given a set of valves to
-open, there will be a lot of different possible orders in which to open them...
-however, analogously, only *some* of those orders will yield the maximum score,
-therefore only a single maximum score *per subset of chosen valves* is possible.
+There are a lot of solutions, but we know that only *some* of them will achieve
+the maximum score. What about among *all the solutions that involve the same
+valves?* Well, given a set of valves to open, there will be a lot of different
+possible orders in which to open them... however, analogously, only *some* of
+those orders will yield the maximum score, therefore only a single maximum score
+*per subset of chosen valves* is possible.
 
 We can iterate over the solutions for a single player once and pre-calculate the
 maximum score possible for any given set of valves to open (regardless of the
@@ -3308,7 +3309,7 @@ mutable, but we can use a `frezenset` (the immutable variant of a `set`).
 ```python
 maxscore = defaultdict(int)
 
-for solution in choices(distance, rates, good, 26):
+for solution in solutions(distance, rates, good, 26):
     k = frozenset(choice)
     s = score(rates, choice)
 
@@ -3319,10 +3320,10 @@ for solution in choices(distance, rates, good, 26):
 Now `maxscore[set_of_valves]` will hold the maximum possible score attainable by
 opening `set_of_valves`, irrespective of the order they are opened. The size of
 this dictionary is a lot smaller than the number of different solutions returned
-by `choices()`:
+by `solutions()`:
 
 ```python
-print(len(list(choices(distance, rates, good, 26)))) # 18676
+print(len(list(solutions(distance, rates, good, 26)))) # 18676
 print(len(maxscore)) # 2342
 ```
 
