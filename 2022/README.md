@@ -18,6 +18,8 @@ Table of Contents
 - [Day 12 - Hill Climbing Algorithm][d12]
 - [Day 13 - Distress Signal][d13]
 - [Day 14 - Regolith Reservoir][d14]
+- Day 15 - Beacon Exclusion Zone: *TODO*
+- [Day 16 - Proboscidea Volcanium][d16]
 
 
 Day 1 - Calorie Counting
@@ -3008,6 +3010,358 @@ print('Part 2:', sand)
 
 This was a fun one! Let's continue our journey...
 
+
+Day 16 - Proboscidea Volcanium
+------------------------------
+
+[Problem statement][d16-problem] — [Complete solution][d16-solution] — [Back to top][top]
+
+### Part 1
+
+We are inside a volcano that is about to erupt, and we want to stop it. We can
+control the internal pressure of the volcano by means of a series of [pressure
+relief valves][wiki-relief-valve] connected together in a network of pipes. All
+valves start closed, and each one will release a given amount of pressure per
+minute if opened. Opening a valve takes 1 minute, and traveling from a valve to
+another that is connected to it also takes 1 minute. We initially start at the
+valve with identifier `AA` and have 30 minutes until the volcano erupts, and we
+want to maximize the total amount of pressure to relieve during this time.
+
+It's clear from the problem statement that what we are dealing with is an
+undirected [graph][wiki-graph], where the nodes are valves and the edges are the
+pipes connecting them. What we essentially want to do is find the best "path" of
+actions that take at most 30 mintues and give the best pressure release value
+possible.
+
+Let's parse the input into a graph structure then. I will use a dictionary of
+lists for this purpose. A [`defaultdict`][py-collections-defaultdict] comes in
+handy as usual in these cases, so that we don't have to check whether a key is
+already present or not. The lines of input are a bit annoying to parse, but if
+we simply [`.split()`][py-str-split] each on whitespace one we'll notice that
+the second field contains the name of a valve, and the fifth contains its
+"pressure released per minute". Fields from the 10th onwards contain other
+valves connected to the first one: we can use [`map()`][py-builtin-map] with a
+[`lambda`][py-lambda] to easily extract those by [`.strip()`][py-str-strip]ping
+away commas where needed.
+
+```python
+rates = {}
+graph = defaultdict(list)
+
+with open(...) as fin:
+    for fields in map(str.split, fin):
+        src  = fields[1]                                      # name of this valve
+        dsts = list(map(lambda x: x.rstrip(','), fields[9:])) # valves connected to it
+        rate = int(fields[4][5:-1])                           # pressure release rate (per minute)
+
+        rates[src] = rate
+
+        for dst in dsts:
+            graph[src].append(dst)
+```
+
+The `graph` dictionary we just created is of the form `{valve: [<connected
+valves>...]}`, so doing `graph['AA']` will give us the list of graph nodes
+adjacent to the valve named `'AA'`. Additionally, the `rates`` dictionary, kept
+separate from `graph` for simplicity, will tell us what's the pressure release
+rate of any valve.
+
+There are several ways to solve the problem: most notably, this problem is a
+good candidate for a [dynamic programming][wiki-dp]. This is the solution I
+initially had in mind (but miserably failed to implement for whatever reason)
+and also the one that a lot of other people used. The first instinctive thought
+however when reading such a problem would be: can we brute-force the solution?
+Well, as it turns out, *yes*, almost, if we are smart about it.
+
+The first thing to usually do to brute-force something is understand what's the
+space of the solutions we are looking to brute-force. We can represent a
+solution as a dictionary of the form `{valve_id: time_of_release}`, which
+contains all the valves we decided to open and the time at which they were
+opened. Better yet, `{valve_id: time_remaining}` where `time_remaining` is the
+amount of minutes remaining before the volcano erupts: this is much nicer since
+the total pressure release of a valve can then simply be computed as
+`rates[valve_id] * time_remaining`. Summing this up for all the valves in a
+given solution will yield the total pressure release of the solution (i.e. the
+value whose maximum we are looking for).
+
+Let's implement a function to calculate the score of a solution:
+
+```python
+def score(rates, chosen_valves):
+    tot = 0
+    for valve, time_left in chosen_valves.items():
+        tot += rates[valve] * time_left
+    return tot
+```
+
+How can we enumerate all the possible solutions (i.e. choices of valves to open
+and when)? In order to choose a set of valves, we need to also make sure we do
+not exceed the 30 minutes time limit, and therefore the path taken to choose a
+given set of valves to open is very important. Clearly, it doesn't make sense to
+loop around and waste time, so ideally we would want to follow the shortest
+possible path between any pair of valves.
+
+Say we want to choose valves `AA` and `XX`, but they are *not* directly
+connected to each other: we'd need to find the shortest path from `AA` to `XX`.
+Given that in order to enumerate all valid solutions we will need to perform
+this action an awful lot of times! Thankfully, there's an algorithm that can
+help us. The [Floyd-Warshall][algo-floyd-warshall] algorithm does exactly what
+we need: it calculates the minimum distance between any possible pair of nodes
+of a given graph. In our case, since all the arcs of the graph have the same
+weight, this would be equivalent to performing a [BFS][algo-bfs] scan starting
+from every single node and saving all the distances found, so that could also be
+implemented instead.
+
+I'll be using standard Floyd-Warshall, implemented as a function returning a
+dictionary of dictionaries of the form `{a: {b: dist, ...}, ...}`. I'm not going
+to copy-paste my implementation here as it's nothing special (check it out in
+[the full solution][d16-solution] if you need), let's just say that we have a
+`floyd_warshall()` function that returns what we need.
+
+```python
+distance = floyd_warshall(graph)
+# distance['AA']['BB'] -> minimum distance from valve AA to BB
+```
+
+The minimum distance from one valve to another represents the time it takes to
+travel between the two. Now that we have all the distances between any pair of
+valves, it's easy to know how much it'd cost to choose an arbitrary valve at any
+point in time.
+
+Now we can start enumerating all the possible solutions as choices of valves
+that respect the timing constraint. One simple way to do it is through
+[depth-first search][algo-dfs], starting from valve `AA`.
+
+1. Start at `AA` with `30` minutes remaining and no valves chosen.
+2. For each of the valves we did not already choose: try choosing it. Choosing
+   a valve means spending some time traveling to it (which we already calculated
+   for all pairs of valves), plus 1 minute to open it.
+3. Make a recursive call with the updated remaining time, valves to choose from
+   and valves chosen. Save the returned choices to return them later.
+
+As already said, we'll keep track of the valves chosen to be released through a
+dictionary `{valve: time_of_release}`, and return value of our function will be
+a list of dictionaries representing the currently chosen valves along with all
+the other possibilities of chosen valves explored by deeper recursive calls.
+
+Here's the commented code to do this:
+
+```python
+def choices(distance, rates, valves, time=30, cur='AA', chosen={}):
+    res = [chosen]
+
+    # We can't reach any other valve in less than 2m, as it would take minimum
+    # 1m to reach it plus 1m to open it, and therefore it'd be stay open for 0m.
+    if time < 2:
+        return res
+
+    # For all the valves we can currently choose
+    for nxt in valves:
+        # Choosing this valve will take distance[cur][nxt] to reach it 1m to open it
+        new_time   = time - (distance[cur][nxt] + 1)
+        # Choose this valve, it will stay open exactly for new_time (i.e. the time
+        # we have now minus the time it takes to reach and open it).
+        new_chosen = chosen | {nxt: new_time}
+        # The new valves to choose from will not include this one
+        new_valves = valves - {nxt}
+        # Collect all possible choices having taken this valve
+        res += choices(distance, rates, new_valves, new_time, nxt, new_chosen)
+
+    return res
+```
+
+Now the above `choices()` function will return *all possible combinations* of
+valves that we can open in under 30 minutes, along with the amount of time each
+one will stay open. There are a couple of optimizations to be made though.
+
+First of all, let's convert it into a [generator][py-generators]. Lists are
+slow to work with, especially when you have a lot of them. This is very simple,
+all we need to do is `yield` each possible choice as soon as we get ahold of it
+instead of accumulating them in a list:
+
+```python
+def choices(distance, rates, valves, time=30, cur='AA', chosen={}):
+    yield chosen
+
+    if time < 2:
+        return
+
+    for nxt in valves:
+        new_time   = time - (distance[cur][nxt] + 1)
+        new_chosen = chosen | {nxt: new_time}
+        new_valves = valves - {nxt}
+        yield from choices(distance, rates, new_valves, new_time, nxt, new_chosen)
+```
+
+
+```python
+valves = set(graph.keys())
+
+for choice in choices(distance, rates, valves):
+    pass # calculate max score
+```
+
+Now, the above works fine, however it's very slow. The function does not even
+seem to terminate soon. Indeed, even for the small example input we have, it
+generates over *9 million* possible choices. We can reduce this number by a lot
+if we notice one very important thing: there seem to be a lot of valves with a
+pressure release rate of *zero* in our input. It is pointless to open any of
+them, since they will contribute nothing and only make us waste time to reach
+them. We can therefore avoid them. If we pass a `valves` set that excludes them,
+the number of possible choices in each recursive call (`for nxt in valves`) will
+be greatly reduced, which will in turn exponentially decrease the total number
+of solutions returned.
+
+We can use [`filter`][py-builtin-filter] and the rates in the `rates` dictionary
+to exclude useless valves, and re-perform the call:
+
+```python
+good = frozenset(filter(rates.get, graph))
+
+for choice in choices(distance, rates, valves):
+    pass # calculate max score
+```
+
+And finally, another important optimization to make is avoiding unnecessary
+recursive calls when we already know the remaining time we are passing is not
+enough to open any other valve. This means moving the `time < 2` check inside
+the loop:
+
+```diff
+ def choices(distance, rates, valves, time=30, cur='AA', chosen={}):
+     yield chosen
+
+-    if time < 2:
+-        return
+-
+     for nxt in valves:
+         new_time   = time - (distance[cur][nxt] + 1)
++        if new_time < 2:
++            continue
++
+         new_chosen = chosen | {nxt: new_time}
+         new_valves = valves - {nxt}
+         yield from choices(distance, rates, new_valves, new_time, nxt, new_chosen)
+```
+
+We have all we need to get the answer now:
+
+```python
+best = 0
+for choice in choices(distance, rates, valves):
+    cur = score(rates, choice)
+    if cur > best:
+        best = cur
+```
+
+And since all we are doing is calculating a maximum, we can use `max()` plus a
+generator expression for it:
+
+```python
+best = max(score(rates, c) for c in choices(distance, rates, good))
+print('Part 1:', best)
+```
+
+### Part 2
+
+For the second part of today's problem, we are told that now we work in *two* at
+the same problem. Both "players" move together, and the total time is now 26
+minutes instead of 30. The answer we need to find is the same.
+
+Okay... clearly the fact that we have two players means that they are going to
+open different valves, since a valve cannot be opened twice. Therefore, at least
+in theory, all we would need to do is try every possible combination of two
+solutions, more or less like this:
+
+```python
+solutions = list(choices(distance, rates, good, 26))
+best = 0
+
+for s1 in solutions:
+    for s2 in solutions:
+        if ...: # s1 and s2 do not have valves in common
+            cur = score(rates, s1) + score(rates, s2)
+            if cur > best:
+                best = cur
+```
+
+However... `len(solutions)` above for our input is `18676`, and a double nested
+`for` loop means around 18676<sup>2</sup> = around 350 million solutions to test
+(okay in theory half of that, since we do not care about the order of `s1` and
+`s1`, but still). That is... a bit too much. We need to somehow find another
+simplification.
+
+There are a lot of solutions, but we know that among all the solution, there
+will only be one *some* of them that achieve the maximum score. What about among
+*all the solutions that involve the same valves?* Well, given a set of valves to
+open, there will be a lot of different possible orders in which to open them...
+however, analogously, only *some* of those orders will yield the maximum score,
+therefore only a single maximum score *per subset of chosen valves* is possible.
+
+We can iterate over the solutions for a single player once and pre-calculate the
+maximum score possible for any given set of valves to open (regardless of the
+order in which they are opened). Let's do this using a dictionary, more
+precisely a `defaultdict` of `int` for commodity. The "key" to remember will be
+the set of valves in a given solution. We cannot use a `set` as key since it is
+mutable, but we can use a `frezenset` (the immutable variant of a `set`).
+
+```python
+maxscore = defaultdict(int)
+
+for solution in choices(distance, rates, good, 26):
+    k = frozenset(choice)
+    s = score(rates, choice)
+
+    if s > maxscore[k]:
+        maxscore[k] = s
+```
+
+Now `maxscore[set_of_valves]` will hold the maximum possible score attainable by
+opening `set_of_valves`, irrespective of the order they are opened. The size of
+this dictionary is a lot smaller than the number of different solutions returned
+by `choices()`:
+
+```python
+print(len(list(choices(distance, rates, good, 26)))) # 18676
+print(len(maxscore)) # 2342
+```
+
+Iterating over all possible pairs of solutions, we can then discard those that
+have common keys (since as we already said both players cannot open the same
+valve), and calculate the maximum of the scores of the remaining ones:
+
+```python
+best = 0
+
+for s1, score1 in maxscore.items():
+    for s2, score2 in maxscore.items():
+        if len(s1 & s2) == 0: # a & b == intersection of the sets a and b
+            continue
+
+        cur = score1 + score2
+        if cur > best:
+            best = cur
+```
+
+We are doing a bit too many iterations as we don't care about the order of `a`
+and `b`. We can use [`itertools.combinations()`][py-itertools-combinations] to
+iterate over all possible pairs without taking the order into account:
+
+```python
+from itertools import combinations
+
+best = 0
+
+for (s1, score1), (s2, score2) in combinations(maxscore.items(), 2):
+    if len(s1 & s2) == 0:
+        continue
+
+    cur = score1 + score2
+    if cur > best:
+        best = cur
+
+print('Part 2:', best)
+```
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -3029,6 +3383,7 @@ This was a fun one! Let's continue our journey...
 [d12]: #day-12---hill-climbing-algorithm
 [d13]: #day-13---distress-signal
 [d14]: #day-14---regolith-reservoir
+[d16]: #day-16---proboscidea-volcanium
 
 [d01-problem]: https://adventofcode.defaultdictcom/2022/day/1
 [d02-problem]: https://advpairwiseentofcode.com/2022/day/2
@@ -3044,6 +3399,7 @@ This was a fun one! Let's continue our journey...
 [d12-problem]: https://adventofcode.com/2022/day/12
 [d13-problem]: https://adventofcode.com/2022/day/13
 [d14-problem]: https://adventofcode.com/2022/day/14
+[d16-problem]: https://adventofcode.com/2022/day/16
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -3059,6 +3415,7 @@ This was a fun one! Let's continue our journey...
 [d12-solution]: solutions/day12.py
 [d13-solution]: solutions/day13.py
 [d14-solution]: solutions/day14.py
+[d16-solution]: solutions/day16.py
 
 [2018-d17-problem]:     https://adventofcode.com/2018/day/17
 [2019-d18-p1]:          ../2019/README.md#part-1-17
@@ -3108,18 +3465,14 @@ This was a fun one! Let's continue our journey...
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
 [py-itertools-pairwise]:      https://docs.python.org/3/library/itertools.html#itertools.pairwise
 [py-itertools-starmap]:       https://docs.python.org/3/library/itertools.html#itertools.starmap
-[py-json-loads]:         pairwise     https://docs.python.org/3/library/json.html#json.loads
+[py-itertools-combinations]:  https://docs.python.org/3/library/itertools.html#itertools.combinations
+[py-json-loads]:              https://docs.python.org/3/library/json.html#json.loads
 [py-list]:                    https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-index]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
 [py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
-[py-math-inf]:                https://docs.python.org/3/library/math.html#math.inf
-[py-math-lcm]:                https://docs.python.org/3/library/math.html#math.lcm
-[py-operator]:                https://docs.python.org/3/library/operator.html
-[py-operator-attrgetter]:     https://docs.python.org/3/library/operator.html#operator.attrgetter
-[py-operator-itemgetter]:     https://docs.python.org/3/library/operator.html#operator.itemgetter
-[py-re-pattern-findall]:      https://docs.python.org/3/library/re.html#re.Pattern.findall
+[py-math-inf]:                hthttps://en.wikipedia.org/wiki/NP-completenessps://docs.python.org/3/library/re.html#re.Pattern.findall
 [py-set-update]:              https://docs.python.org/3/library/stdtypes.html#frozenset.update
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
 [py-str-lstrip]:              https://docs.python.org/3/library/stdtypes.html#str.lstrip
@@ -3130,23 +3483,27 @@ This was a fun one! Let's continue our journey...
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 
-[algo-bfs]:         https://en.wikipedia.org/wiki/Breadth-first_search
-[algo-dfs]:         https://en.wikipedia.org/wiki/Depth-first_search
-[algo-quickselect]: https://en.wikipedia.org/wiki/Quickselect
+[algo-bfs]:            https://en.wikipedia.org/wiki/Breadth-first_search
+[algo-dfs]:            https://en.wikipedia.org/wiki/Depth-first_search
+[algo-floyd-warshall]: https://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm
+[algo-quickselect]:    https://en.wikipedia.org/wiki/Quickselect
 
 [wiki-ascii]:              https://en.wikipedia.org/wiki/ASCII
 [wiki-backtracking]:       https://en.wikipedia.org/wiki/Backtracking
 [wiki-congruence]:         https://en.wikipedia.org/wiki/Congruence_relation
 [wiki-crt]:                https://en.wikipedia.org/wiki/Cathode-ray_tube
 [wiki-euclidean-distance]: https://en.wikipedia.org/wiki/Euclidean_distance
+[wiki-graph]:              https://en.wikipedia.org/wiki/Graph_(discrete_mathematics)
 [wiki-json]:               https://en.wikipedia.org/wiki/JSON
 [wiki-lcm]:                https://en.wikipedia.org/wiki/Least_common_multiple
 [wiki-linear-time]:        https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-memoization]:        https://en.wikipedia.org/wiki/Memoization
+[wiki-relief-valve]:       https://en.wikipedia.org/wiki/Relief_valve
 [wiki-topographic-map]:    https://en.wikipedia.org/wiki/Topographic_map
 [wiki-tree]:               https://en.wikipedia.org/wiki/Tree_(data_structure)
 
 [misc-aoc-bingo]:     https://www.reddit.com/r/adventofcode/comments/k3q7tr/
+[wiki-dp]:            https://en.wikipedia.org/wiki/Dynamic_programming
 [misc-numpy]:         https://numpy.org
 [misc-numpy-views]:   https://numpy.org/doc/stable/user/basics.copies.html
 [misc-py-sign]:       https://stackoverflow.com/a/1986776/3889449
