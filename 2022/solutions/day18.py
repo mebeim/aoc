@@ -61,9 +61,7 @@ rangez  = range(min(map(itemgetter(2), cubes)), max(map(itemgetter(2), cubes)) +
 for c in product(rangex, rangey, rangez):
 	if c not in cubes and c not in allseen:
 		touched, seen = escape(cubes, c, rangex, rangey, rangez)
+		surface -= touched
 		allseen |= seen
-
-		if touched:
-			surface -= touched
 
 advent.print_answer(2, surface)

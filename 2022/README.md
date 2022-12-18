@@ -3584,10 +3584,8 @@ for c in product(rangex, rangey, rangez):
     if c not in cubes: # this is an empty unit cube of space
         if c not in allseen: # this is not in an internal pocket we already found
             touched, seen = escape(cubes, c, rangex, rangey, rangez)
+            surface -= touched
             allseen |= seen
-
-            if touched > 0:
-                surface -= touched
 
 print('Part 2:', surface)
 ```
