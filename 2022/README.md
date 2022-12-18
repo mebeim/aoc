@@ -20,6 +20,8 @@ Table of Contents
 - [Day 14 - Regolith Reservoir][d14]
 - Day 15 - Beacon Exclusion Zone: *TODO*
 - [Day 16 - Proboscidea Volcanium][d16]
+- Day 17 - Pyroclastic Flow: *TODO*
+- [Day 18 - Boiling Boulders][d18]
 
 
 Day 1 - Calorie Counting
@@ -3363,6 +3365,233 @@ for (s1, score1), (s2, score2) in combinations(maxscore.items(), 2):
 
 print('Part 2:', best)
 ```
+
+
+Day 18 - Boiling Boulders
+-------------------------
+
+[Problem statement][d18-problem] — [Complete solution][d18-solution] — [Back to top][top]
+
+### Part 1
+
+Today we are dealing with 3D space and cubes. We are given a list of `x,y,z`
+coordinates, each one representing a unit cube (1x1x1) in space, and we want to
+find out how many faces in total do not touch other cubes.
+
+Let's start by quickly parsing the input. We have lines of integers separated by
+commas, so just [`.split()`][py-str-split] them and [`map()`][py-builtin-map]
+them to `int`. We want to keep a count of cube faces, so let's add the
+coordinates of each cube we scan to a dictionary of the form
+`{coords: free_faces}`, initially filled with all `6`.
+
+```python
+cubes = {}
+
+with open(...) as fin:
+    for line in fin:
+        coords = tuple(map(int, line.split(',')))
+        cubes[coords] = 6
+```
+
+A unit cube at `x,y,z` can be in contact with any of its immediate neighbors, at
+`x±1,y,z`, `x,y±1,z` and `x,y,z±1`. Let's write a
+[generator function][py-generators] to calculate and `yield` the coordinates of
+the neighbors of a cube. We only need to go forward one step in any of the 6
+possible directions:
+
+```python
+def neighbors(x, y, z):
+    yield (x + 1, y    , z    )
+    yield (x - 1, y    , z    )
+    yield (x    , y + 1, z    )
+    yield (x    , y - 1, z    )
+    yield (x    , y    , z + 1)
+    yield (x    , y    , z - 1)
+```
+
+For any given unit cube, we can know how many faces touch other cubes by simply
+checking how many of the 6 neighbors were present in our input. For each
+present neighbor, we will have exactly one face touching it, and therefore we
+can decrement our initial count of `6` free faces. Since the function we
+just wrote takes 3 arguments, we can use [unpack][py-unpacking] (`*`) each
+cube's coordinates when calling it.
+
+```python
+for c in cubes:
+    for n in neighbors(*c):
+        if n in cubes:
+            cubes[c] -= 1
+```
+
+The internal `for` is only performing a sum over a condition, so we can turn it
+into a call to [`sum()`][py-builtin-sum] plus a
+[generator expression][py-generator-expr]:
+
+```python
+for c in cubes:
+    cubes[c] -= sum(n in cubes for n in neighbors(*c))
+```
+
+Finally, summing up all the values in `cubes` will yield the total number of
+"free" faces that are not in contact with other cubes:
+
+```python
+surface = sum(cubes.values())
+print('Part 1:', surface)
+```
+
+### Part 2
+
+What we were actually trying to compute in part 1 was the total external surface
+area of the cubes we have, counting connected cubes together as a single 3D
+shape. However, the naïve approach of counting how many faces are "free" (not
+touching other cubes) is not enough, as we can have a structure of cubes that
+completely surrounds an empty portion of space, and the free faces in the inside
+should not be counted. This is what we need to do for part 2: figure out how
+many faces we over-counted and calculate the real external surface area.
+
+This is intimidating at first, but things will get much clearer with a few
+examples. For simplicity, we can reason in 2D, and then apply the same concepts
+to 3D. Take for example the following structures where `#` means we have a
+*square* there and `.` means empty space:
+
+```none
+  A       B       C       D
+..#..   .###.   #####   #####
+.#.#.   #..#.   #...#   #.#.#
+..#..   #.#..   .##.#   ###.#
+        .#...   .....   ..###
+```
+
+We have:
+
+- Structure A above composed of 4 squares, of which none of them touch each
+  other on any side, so we have a total of 16 free sides. However, these 4
+  squares completely surround an empty square, and therefore we can distinguish
+  between 4 *internal* sides and 12 *external* sides. The external perimeter
+  is 12.
+
+- Similarly, for B, we have a "hole" of 3 contiguous squares. The total number
+  of free sides is 23, but the external perimeter is 16.
+
+- Structure C does not have an internal perimeter, as it does not completely
+  surround any region of 2D space.
+
+- Structure D has two "holes" and traps two different regions of space on its
+  inside. It has an internal perimeter of 10 and an external perimeter of 18.
+
+Now it should be clear what we are dealing with. The same concepts apply in 3D
+space where we have surface areas instead of perimeters, it's just harder to
+visualize. Given a solid structure of unit cubes, some regions of spaces could
+be trapped inside it, and therefore not contribute to the external surface area.
+
+How can we detect these pockets of empty space? The simplest solution is to
+check every single unit of space in the 3D [bounding box][wiki-bounding-box]
+that includes all the unit cubes in our input. The 3D bounding box (you could
+actually call it a "bounding cube") we are looking for will have coordinates
+spanning from the minimum to the maximum coordinates we have one on each axis.
+These can be calculated easily:
+
+```python
+minx = miny = minz = float('inf')
+maxx = maxy = maxz = 0
+
+for x, y, z in cubes:
+    minx, maxx = min(x, minx), max(x, maxx)
+    miny, maxy = min(y, miny), max(y, maxy)
+    minz, maxz = min(z, minz), max(z, maxz)
+```
+
+To simplify any bound checks to perform later, we can create a
+[`range`][py-builtin-range] object for each axis, and then use `x in rangex`
+instead of `minx <= x <= maxx` (which is exactly the check made when doing
+`x in rangex`):
+
+```python
+rangex = range(minx, maxx + 1)
+rangey = range(miny, maxy + 1)
+rangez = range(minz, maxz + 1)
+```
+
+For each unit cube of *free space* inside the bounding box, we can try
+"escaping" the bounding box by visiting any other *free* unit cubes of space
+that we can reach (i.e. coordinates that are not in our input). This can be done
+through either [BFS][algo-bfs] or [DFS][algo-dfs]. If we manage to escape the
+bounding box, it means that we were not inside an internal "pocket" of space. On
+the other hand, if we cannot escape, it means we found such a pocket, and we are
+surrounded by non-empty unit cubes. To count the number of "internal" faces we
+can perform our exploration and increment a counter whenever we are prevented
+from moving in any of the 6 directions by a non-empty unit cube.
+
+Let's implement an `escape()` function that does exactly this, using iterative
+DFS with a [`deque`][py-collections-deque] as queue. We'll keep track of the
+number of "touched" internal faces with a counter, and return `0` if we manage
+to escape, otherwise the counter.
+
+```python
+def escape(cubes, src, rangex, rangey, rangez):
+    seen = set()
+    queue = deque([src])
+    faces_touched = 0
+
+    while queue:
+        p = queue.pop()
+        if p in seen:
+            continue
+
+        seen.add(p)
+        x, y, z, = p
+
+        # Did we escape the bounding box?
+        if x not in rangex or y not in rangey or z not in rangez:
+            # If so, we are not trapped in an internal pocket
+            return 0, seen
+
+        # Try exploring all 6 directions
+        for n in neighbors(x, y, z):
+            # If we are blocked in this direction, it means we touched an internal face
+            if n in cubes:
+                faces_touched += 1
+            else:
+                # Otherwise, keep going
+                if n not in seen:
+                    queue.append(n)
+
+    # We ran out of free space to visit, which means we are trapped in an internal pocket
+    return faces_touched, seen
+```
+
+You may have noticed that the above function also returns a `seen` set of
+visited coordinates. This is because we *need* to keep track of all the visited
+coordinates of free space: if an exploration finds an internal pocket starting
+from a given point in space, we do not need to perform a second redundant
+exploration for any of the points we have visited during the first. Most
+importantly, doing so would also make us double-count the number of internal
+faces we touch, and we don't want that!
+
+Now that we have a function able to identify and count internal faces, we can
+call it for every *empty* unit cube inside our bounding box, and accumulate the
+results. We need three nested `for` loops to iterate over all possible `x,y,z`
+coordinates, so we can use [`itertools.product()`][py-itertools-product] to
+make our life easier.
+
+Let's get our part 2 answer:
+
+```python
+allseen = set()
+
+for c in product(rangex, rangey, rangez):
+    if c not in cubes: # this is an empty unit cube of space
+        if c not in allseen: # this is not in an internal pocket we already found
+            touched, seen = escape(cubes, c, rangex, rangey, rangez)
+            allseen |= seen
+
+            if touched > 0:
+                surface -= touched
+
+print('Part 2:', surface)
+```
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -3385,6 +3614,7 @@ print('Part 2:', best)
 [d13]: #day-13---distress-signal
 [d14]: #day-14---regolith-reservoir
 [d16]: #day-16---proboscidea-volcanium
+[d18]: #day-18---boiling-boulders
 
 [d01-problem]: https://adventofcode.defaultdictcom/2022/day/1
 [d02-problem]: https://advpairwiseentofcode.com/2022/day/2
@@ -3401,6 +3631,7 @@ print('Part 2:', best)
 [d13-problem]: https://adventofcode.com/2022/day/13
 [d14-problem]: https://adventofcode.com/2022/day/14
 [d16-problem]: https://adventofcode.com/2022/day/16
+[d18-problem]: https://adventofcode.com/2022/day/18
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -3417,6 +3648,7 @@ print('Part 2:', best)
 [d13-solution]: solutions/day13.py
 [d14-solution]: solutions/day14.py
 [d16-solution]: solutions/day16.py
+[d18-solution]: solutions/day18.py
 
 [2018-d17-problem]:     https://adventofcode.com/2018/day/17
 [2019-d18-p1]:          ../2019/README.md#part-1-17
@@ -3465,6 +3697,7 @@ print('Part 2:', best)
 [py-functools-cmp_to_key]:    https://docs.python.org/3/library/functools.html#functools.cmp_to_key
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
 [py-itertools-pairwise]:      https://docs.python.org/3/library/itertools.html#itertools.pairwise
+[py-itertools-product]:       https://docs.python.org/3/library/itertools.html#itertools.product
 [py-itertools-starmap]:       https://docs.python.org/3/library/itertools.html#itertools.starmap
 [py-itertools-combinations]:  https://docs.python.org/3/library/itertools.html#itertools.combinations
 [py-json-loads]:              https://docs.python.org/3/library/json.html#json.loads
@@ -3491,8 +3724,10 @@ print('Part 2:', best)
 
 [wiki-ascii]:              https://en.wikipedia.org/wiki/ASCII
 [wiki-backtracking]:       https://en.wikipedia.org/wiki/Backtracking
+[wiki-bounding-box]:       https://en.wikipedia.org/wiki/Minimum_bounding_box
 [wiki-congruence]:         https://en.wikipedia.org/wiki/Congruence_relation
 [wiki-crt]:                https://en.wikipedia.org/wiki/Cathode-ray_tube
+[wiki-dp]:                 https://en.wikipedia.org/wiki/Dynamic_programming
 [wiki-euclidean-distance]: https://en.wikipedia.org/wiki/Euclidean_distance
 [wiki-graph]:              https://en.wikipedia.org/wiki/Graph_(discrete_mathematics)
 [wiki-json]:               https://en.wikipedia.org/wiki/JSON
@@ -3504,7 +3739,6 @@ print('Part 2:', best)
 [wiki-tree]:               https://en.wikipedia.org/wiki/Tree_(data_structure)
 
 [misc-aoc-bingo]:     https://www.reddit.com/r/adventofcode/comments/k3q7tr/
-[wiki-dp]:            https://en.wikipedia.org/wiki/Dynamic_programming
 [misc-numpy]:         https://numpy.org
 [misc-numpy-views]:   https://numpy.org/doc/stable/user/basics.copies.html
 [misc-py-sign]:       https://stackoverflow.com/a/1986776/3889449
