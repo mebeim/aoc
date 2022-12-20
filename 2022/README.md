@@ -22,6 +22,7 @@ Table of Contents
 - [Day 16 - Proboscidea Volcanium][d16]
 - Day 17 - Pyroclastic Flow: *TODO*
 - [Day 18 - Boiling Boulders][d18]
+- [Day 19 - Not Enough Minerals][d19]
 
 
 Day 1 - Calorie Counting
@@ -3590,6 +3591,505 @@ for c in product(rangex, rangey, rangez):
 print('Part 2:', surface)
 ```
 
+
+Day 19 - Not Enough Minerals
+----------------------------
+
+[Problem statement][d19-problem] — [Complete solution][d19-solution] — [Back to top][top]
+
+### Part 1
+
+For today's problem we are building robots to mine some minerals... interesting.
+There are 4 mineral types: ore, clay, obsidian and geodes. Additionally, there
+are also 4 robot types, each of which can mine the corresponding mineral. We are
+given a list of blueprints: each blueprint tells us which minerals (and how many
+units) are needed to build a robot of a given type. We start with only one
+ore-mining robot, and we have 24 minutes of time. Each robot we have can mine
+one unit of its mineral per minute, and building a new robot takes 1 minute. We
+need to figure out the maximum number of geodes we can mine with each of the
+given blueprints, and calculate the best score among the blueprints we have,
+which is given by the blueprint id multiplied by the maximum number of geodes
+achievable with it.
+
+Let's get input parsing out of the way. Each line of input is a quite long
+sentence containing some positive integer quantities. We know all sentences are
+formatted in the same way, so we can just extract all the integers on each line
+with a regular expression using [`.findall()`][py-re-pattern-findall], and
+accumulate these numbers in a list:
+
+```python
+import re
+
+exp = re.compile(r'\d+')
+blueprints = []
+
+with open(...) as fin:
+    for line in fin:
+        blueprints.append(tuple(map(int, exp.findall(line))))
+```
+
+We are dealing with a [search problem][wiki-search-problem]. Given four things,
+we can *theoretically* solve any search problem:
+
+1. A consistent definition of a "state".
+2. A start state.
+3. A way to find successors of a given state (i.e. transition from one state to
+   any other possible state).
+4. A way to check if a state is a goal.
+
+Let's see what we have for our problem:
+
+- First, we need to define what exactly is a state. In our case, a state could
+  be represented by the current time left, the amount of resources we have of
+  each type, and the number of robots we have of each type. If at any given time
+  two different sequences of choices bring us to the same state, we know both
+  those choice sequences are equivalent, and the reachable states from now on
+  are the same.
+
+- Given the above, for our start state we have `24` minutes left, `0` of each
+  material and `0` of each robot type, except for `1` ore-mining robot.
+
+- A transition from one state to another can be of two different kinds:
+
+  - Wait one minute without building any robot, and let the current robots we
+    have mine resources.
+  - Build one robot of some type (assuming we have resources to do so), while
+    also having pre-existing ones mine resources. There are 4 different
+    transitions of this kind (one per robot type).
+
+- A goal state is any state where the time left is `0`, and its "score" is the
+  number of geodes we have in such a state.
+
+States can be seen as *nodes* in a graph, actions that change state can be seen
+as *edges* of the graph, and goal states can be seen as nodes with no outgoing
+edges. A search problem can therefore be solved using different graph
+exploration techniques like [BFS][algo-bfs], [DFS][algo-dfs],
+[A-star][algo-a-star], and so on.
+
+Let's go with iterative DFS, which is pretty simple to implement. We'll write a
+`search()` function that takes the parameters of a blueprint as input and
+explores the state space finding the best goal states it comes across. As with
+normal DFS, it's pointless to visit the same state multiple times, so we'll keep
+a set of `visited` states to avoid this. As usual, we'll use a
+[`deque`][py-collections-deque] for the queue of states to visit.
+
+As said above, each state will be a `tuple` of the following form:
+
+```python
+(time_left, ore, clay, obsidian, geodes, robots_ore, robots_clay, robots_obsidian, robots_geode)
+```
+
+```python
+def search(blueprint):
+    (rore_cost,      # Cost in ore to build an ore-mining robot.
+     rclay_cost,     # Cost in ore to build a clay-mining robot.
+     robs_cost_ore,  # Cost in ore to build an obsidian-mining robot.
+     robs_cost_clay, # Cost in clay to build an obsidian-mining robot.
+     rgeo_cost_ore,  # Cost in ore to build a geode-mining robot.
+     rgeo_cost_obs   # Cost in obsidian to build a geode-mining robot.
+    ) = blueprint
+
+    time    = 24
+    best    = 0     # Best number of geodes we are able to collect.
+    visited = set() # Visited states.
+
+    # The "frontier" of our search, containing states to explore next.
+    # In the initial state we only have 1 ore-mining robot.
+    q = deque([(time, 0, 0, 0, 0, 1, 0, 0, 0)])
+
+    while q:
+        time, ore, clay, obs, geo, rore, rclay, robs, rgeo = state = q.pop()
+        if state in visited:
+            continue
+
+        visited.add(state)
+
+        # Each robot we have mines 1 resource of its type, taking 1 minute.
+        newore  = ore  + rore
+        newclay = clay + rclay
+        newobs  = obs  + robs
+        newgeo  = geo  + rgeo
+        time -= 1
+
+        # If we run out of time, we reached a "goal" state. Update the best
+        # number of geodes we were able to mine.
+        if time == 0:
+            best = max(best, newgeo)
+            continue
+
+        # Following are the possible actions (transitions) to take...
+
+        # We can always just spend one minute only mining without building any robot.
+        q.append((time, newore, newclay, newobs, newgeo, rore, rclay, robs, rgeo))
+
+        # If we have enough materials for a geode-mining robot, we could also build that.
+        if obs >= rgeo_cost_obs and ore >= rgeo_cost_ore:
+            q.append((
+                time,
+                newore - rgeo_cost_ore,
+                newclay,
+                newobs - rgeo_cost_obs,
+                newgeo,
+                rore, rclay, robs, rgeo + 1
+            ))
+
+        # If we have enough materials for an obsidian-mining robot, we could also build that.
+        if clay >= robs_cost_clay and ore >= robs_cost_ore:
+            q.append((
+                time,
+                newore - robs_cost_ore,
+                newclay - robs_cost_clay,
+                newobs,
+                newgeo,
+                rore, rclay, robs + 1, rgeo
+            ))
+
+        # If we have enough materials for a clay-mining robot, we could also build that.
+        if ore >= rclay_cost:
+            q.append((
+                time,
+                newore - rclay_cost,
+                newclay,
+                newobs,
+                newgeo,
+                rore, rclay + 1, robs, rgeo
+            ))
+
+        # If we have enough materials for an ore-mining robot, we could also build that.
+        if ore >= rore_cost:
+            q.append((
+                time,
+                newore - rore_cost,
+                newclay,
+                newobs,
+                newgeo,
+                rore + 1, rclay, robs, rgeo
+            ))
+
+    return best
+```
+
+The above DFS search is theoretically correct... however, if we try to run it,
+we'll notice that it does take a while to finish. A relatively long while. This
+is because the search space that we are trying to explore is currently very
+large. Taking a look above, for *every single state we branch out 5 times*. We
+need to somehow reduce the search space. This is one of the most important
+aspects of a search problem. It's rather straightforward to code a DFS search on
+any given search problem once you have identified states and transitions, the
+real work is optimizing it, finding a way to *prune* away paths that lead to
+sub-optimal goals as much as possible and as early as possible.
+
+A lot of smart people have listed different assumptions and optimizations that
+can be applied while searching in today's
+[Reddit solution megathread][d19-reddit], some of which are rather
+straightforward. I'm going to apply some here, until we reach a state where our
+program is efficient enough.
+
+The first thing to notice is that we can set an upper limit to the number of
+robots to build. If the maximum amount of ore we need to build a robot is *N*,
+then we'll never need more than *N* ore-mining robots. Having *N* is enough to
+build the most expensive robot (ore-wise) every single minute. The same can be
+applied to other minerals: we don't need more clay robots than the amount of
+clay needed for obsidian robots, and we don't need more obsidian robots than the
+amount of obsidian needed for geode robots.
+
+We can calculate these maximum needed amounts of minerals at the start of our
+function:
+
+```python
+def search(blueprint):
+    # ...
+    max_ore_needed  = max(rore_cost, rclay_cost, robs_cost_ore, rgeo_cost_ore)
+    max_clay_needed = robs_cost_clay
+    max_obs_needed  = rgeo_cost_obs
+    # ...
+```
+
+Before trying to build a robot of any kind, let's stop and ask ourselves: do
+we really need to? If not, we can avoid it and prune the branch. This simple
+optimization cuts down the search space by a considerable amount. In terms of
+code, it means adding a condition to the `if` for each branch. The only branch
+that does not need this is the one for building geode-mining robots, as we
+always want the most we can.
+
+```python
+def search(blueprint):
+        # ... unchanged ...
+
+        if clay >= robs_cost_clay and ore >= robs_cost_ore:
+            # Avoid building more obsidian robots than the max obsidian per minute needed.
+            if obs < max_obs_needed:
+                q.append((...)) # unchanged
+
+        if ore >= rclay_cost:
+            # Avoid building more clay robots than the max clay per minute needed.
+            if rclay < max_clay_needed:
+                q.append((...)) # unchanged
+
+        if ore >= rore_cost:
+            # Avoid building more ore robots than the max ore per minute needed.
+            if rore < max_ore_needed:
+                q.append((...)) # unchanged
+
+    return best
+```
+
+Of course, those `if` conditions can be merged for simplicity:
+
+```python
+def search(blueprint):
+        # ... unchanged ...
+
+        if obs < max_obs_needed and clay >= robs_cost_clay and ore >= robs_cost_ore:
+            q.append((...))
+
+        if rclay < max_clay_needed and ore >= rclay_cost:
+            q.append((...))
+
+        if rore < max_ore_needed and ore >= rore_cost:
+            q.append((...))
+
+    return best
+```
+
+This already cuts the execution time in half (at least on the example input),
+but we can keep improving.
+
+Let's now ask ourselves: when does it make sense to wait for some minerals to
+be mined? Currently, our code *always* tries to explore a new state with a
+transition that just waits one minute of time to only mine. Exactly here:
+
+```python
+        # We can always just spend one minute only mining without building any robot.
+        q.append((time, newore, newclay, newobs, newgeo, rore, rclay, robs, rgeo))
+```
+
+This can sometimes be a waste of time. Similarly to what we discussed for the
+previous optimization above, there is a certain maximum amount of any given
+mineral type above which we'll never need to go. That is the maximum amount
+needed to build one robot per minute using that mineral. It only makes sense to
+wait for some mineral if we have less than the maximum needed *and* if we also
+have at least one robot to mine it.
+
+We already calculated these maximum needed amounts. Let's also use them to
+perform this check and avoid spending one turn only mining if needed. The above
+line becomes:
+
+```python
+        # Does it make sense to wait for a resource? I.E. do I have less than
+        # the max needed and do I also have robots to produce it?
+        if (robs and obs < max_obs_needed) or (rclay and clay < max_clay_needed) or ore < max_ore_needed:
+            # If so, we can also try just spending one minute only mining without building any robot.
+            q.append((time, newore, newclay, newobs, newgeo, rore, rclay, robs, rgeo))
+```
+
+A little faster, nice, let's keep going!
+
+The third thing to notice is that we can *estimate* how good of a state we are
+in, and prune away any paths passing through sub-optimal states. In the
+best-case scenario (assuming we have robots and resources), we can build exactly
+1 geode-mining robot per minute, and keep all the other geode-mining robots
+mining. For example, if we find ourselves at `time=3` minutes left, and we have
+`0` geodes and `3` geode-mining robots, in the best-case scenario (building one
+more geode-mining robot per minute) we can mine another `3 + 2 + 1 = 6` geodes.
+**The same reasoning can be applied to all minerals.**
+
+In general, if we find ourselves with *t* time left, *n* minerals of a given
+type already mined, and *r* mining robots for that mineral, in the best-case
+scenario we can get a maximum of *n + r + (r + 1) + (r + 2) + ... + (r + t)*
+minerals, which can also be written (grouping *r*) as *n + (t + 1)r + 1 + 2 + 3
++ ... + t*. That last part consisting of the sum of the first *t* natural
+numbers is exactly the *t-th* (lol) [triangular number][wiki-triangular-number],
+so the formula can be further simplified to *n + (t + 1)r + t(t + 1)/2*.
+
+Let's write a small helper function to calculate the maximum number of minerals
+of a given type achievable in the best-case scenario:
+
+```python
+def best_case_scenario(initial_amount, robots, t):
+    return initial_amount + robots * (t + 1) + t * (t + 1) // 2
+```
+
+We can now use it to perform three optimizations of the same kind any time we
+visit a new state:
+
+1. If the amount of geodes achievable in the best-case scenario number is lower
+   than the current `best` we have, we can discard the state and any of its
+   successors.
+2. If the amount of obsidian achievable in the best-case scenario is lower than
+   the amount needed to build a geode robot, we know we'll never be able to
+   build geode robots anymore, so we can calculate the final score as
+   `newgeodes + rgeo * time` and avoid exploring any further.
+3. Likewise, this also applies to "ore", as geode robots need both ore and
+   obsidian to be built.
+
+```python
+def search(blueprint):
+    # ... unchanged ...
+
+    while q:
+        # ... unchanged ...
+
+        if time == 0:
+            best = max(best, newgeo)
+            continue
+
+        # If we can't mine more geodes in the best-case scenario, bail out.
+        if best_case_scenario(newgeo, rgeo, time) < best:
+            continue
+
+        # If we can't mine enough obsidian to build new geode robots even in the
+        # best-case scenario, we already know how many geodes we'll be able to get.
+        if best_case_scenario(newobs, robs, time) < rgeo_cost_obs:
+            best = max(best, newgeo + rgeo * time)
+            continue
+
+        # Likewise for ore.
+        if best_case_scenario(newore, rore, time) < rgeo_cost_ore:
+            best = max(best, newgeo + rgeo * time)
+            continue
+
+        # ... unchanged ...
+```
+
+We are getting there. There is only one last optimization I will make, which is
+also the one that improves our solution the most. Credit goes to
+[u/Coffee_Doggo][d19-reddit-user] for figuring this out and
+[commenting about it][d19-reddit-comment].
+
+Fourth and final thing to notice: if we ever find ourselves with the ability to
+build a robot of a given type, *and* the previous minute we also had the chance
+to build it, *but* decided to not build anything instead... doing it now doesn't
+make much sense. We should have done it earlier! We can throw away this option.
+
+The above will require us to keep track of which robots we were able to built at
+any given state and pass that information to the next state. We can do it by
+adding a simple list to our queue, containing numeric IDs:
+
+```python
+ORE, CLAY, OBS, GEO = range(4)
+```
+
+Here's are modifications that we need to apply:
+
+```python
+def search(blueprint):
+    # ...
+
+    # Add another element here, the list of robots we could have built, but
+    # decided not to build.
+    q = deque([(time, 0, 0, 0, 0, 1, 0, 0, 0, [])])
+
+    while q:
+        tmp = q.pop()
+
+        # This list we'll use doesn't make part of the state though
+        state = tmp[:-1]
+        if state in visited:
+            continue
+
+        visited.add(state)
+
+        time, ore, clay, obs, geo, rore, rclay, robs, rgeo, did_not_build = tmp
+
+        # ... unchanged ...
+
+        can_build = []
+
+        if obs >= rgeo_cost_obs and ore >= rgeo_cost_ore:
+            # Did we have the chance to build this robot type in the previous iteration
+            # but decided to not build anything instead? If so, we just wasted precious
+            # time, it's pointless to do it now that we are late, the result is inevitably
+            # going to be worse.
+            if GEO not in did_not_build:
+                can_build.append(GEO)
+                # Pass along an empyy list, we built a robot so we don't have a list
+                # of robots that we "could have built" but didn't.
+                q.append((..., []))
+
+        if robs < max_obs_needed and clay >= robs_cost_clay and ore >= robs_cost_ore:
+            # Likewise.
+            if OBS not in did_not_build:
+                can_build.append(OBS)
+                q.append((..., []))
+
+        if rclay < max_clay_needed and ore >= rclay_cost:
+            # Likewise.
+            if CLAY not in did_not_build:
+                can_build.append(CLAY)
+                q.append((..., []))
+
+        if rore < max_ore_needed and ore >= rore_cost:
+            # Likewise.
+            if ORE not in did_not_build:
+                can_build.append(ORE)
+                q.append((..., []))
+
+        # Pass along the list of robots we could have built, but decided to not build instead.
+        if (robs and obs < max_obs_needed) or (rclay and clay < max_clay_needed) or ore < max_ore_needed:
+            q.append((..., can_build))
+
+    return best
+```
+
+We can *finally* run the above function for each blueprint and collect the
+results:
+
+```python
+total = 0
+for bid, *blueprint in blueprints:
+    total += bid * search(blueprint)
+```
+
+Pardon me, but I cannot resist turning that loop into a
+[`sum()`][py-builtin-sum] + [generator expression][py-generator-expr]:
+
+```python
+total = sum(bid * search(b) for bid, *b in blueprints)
+print('Part 1:', total)
+```
+
+### Part 2
+
+We are now told to only consider the *first 3* blueprints, calculate the maximum
+amount of geodes achievable with them in *32* minutes, and then calculate the
+product of these three numbers.
+
+Thankfully, all those optimizations we made in part one were worth it! We have
+a reasonably fast function, and we can simply move our `time` variable in the
+function signature to be passed as a parameter:
+
+```diff
+-def search(blueprint):
++def search(blueprint, time=24):
+     rore_cost, rclay_cost, robs_cost_ore, robs_cost_clay, rgeo_cost_ore, rgeo_cost_obs = blueprint
+     max_ore_needed  = max(rore_cost, rclay_cost, robs_cost_ore, rgeo_cost_ore)
+     max_clay_needed = robs_cost_clay
+     max_obs_needed  = rgeo_cost_obs
+
+-    time = 24
+     best = 0
+     ...
+```
+
+All that's left to do is get our second star:
+
+```python
+total = 1
+for bid, *blueprint in blueprints[:3]:
+    total *= search(blueprint, 32)
+```
+
+Again, the above is simplifiable into a call to [`math.prod()`][py-math-prod]
+plus a generator expression:
+
+```python
+total = prod(search(b, 32) for _, *b in blueprints[:3])
+print('Part 2:', total)
+```
+
+Woah. Tough day, but definitely an entertaining one!
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -3613,6 +4113,7 @@ print('Part 2:', surface)
 [d14]: #day-14---regolith-reservoir
 [d16]: #day-16---proboscidea-volcanium
 [d18]: #day-18---boiling-boulders
+[d19]: #day-19---not-enough-minerals
 
 [d01-problem]: https://adventofcode.defaultdictcom/2022/day/1
 [d02-problem]: https://advpairwiseentofcode.com/2022/day/2
@@ -3654,6 +4155,9 @@ print('Part 2:', surface)
 [d02-alternative]:      misc/day02/mathematical.py
 [d08-alternative]:      misc/day08/faster_part1.py
 [d14-italyinformatica]: https://www.reddit.com/r/ItalyInformatica/comments/zlj7dj/adventofcode_2022_giorno_14/j05rz5p/
+[d19-reddit]:           https://www.reddit.com/r/adventofcode/comments/zpihwi/2022_day_19_solutions/?sort=confidence
+[d19-reddit-user]:      https://www.reddit.com/user/Coffee_Doggo
+[d19-reddit-comment]:   https://www.reddit.com/r/adventofcode/comments/zpihwi/2022_day_19_solutions/j0vvtdt/
 
 [py-3-way-comparison]:   https://docs.python.org/3/reference/expressions.html#comparisons
 [py-class-init]:         https://docs.python.org/3/reference/datamodel.html#object.__init__
@@ -3667,10 +4171,7 @@ print('Part 2:', surface)
 [py-set]:                https://docs.python.org/3/tutorial/datastructures.html#sets
 [py-slicing]:            https://docs.python.org/3/glossary.html#term-slice
 [py-tuple]:              https://docs.python.org/3/tutorial/datastructures.html#tuples-and-sequences
-[py-unpacking]:          https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
-[py-with]:               https://peps.python.org/pep-0343/
-
-[py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
+[py-unpacking]:        gcd      https://docs.python.org/3/library/functions.html#all
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-eval]:            https://docs.python.org/3/library/functions.html#eval
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
@@ -3705,6 +4206,8 @@ print('Part 2:', surface)
 [py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
 [py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
 [py-math-inf]:                hthttps://en.wikipedia.org/wiki/NP-completenessps://docs.python.org/3/library/re.html#re.Pattern.findall
+[py-math-prod]:               https://docs.python.org/3/library/math.html#math.prod
+[py-re-pattern-findall]:      https://docs.python.org/3/library/re.html#re.Pattern.findall
 [py-set-update]:              https://docs.python.org/3/library/stdtypes.html#frozenset.update
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
 [py-str-lstrip]:              https://docs.python.org/3/library/stdtypes.html#str.lstrip
@@ -3715,6 +4218,7 @@ print('Part 2:', surface)
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 
+[algo-a-star]:         https://en.wikipedia.org/wiki/A*_search_algorithm
 [algo-bfs]:            https://en.wikipedia.org/wiki/Breadth-first_search
 [algo-dfs]:            https://en.wikipedia.org/wiki/Depth-first_search
 [algo-floyd-warshall]: https://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm
@@ -3733,8 +4237,10 @@ print('Part 2:', surface)
 [wiki-linear-time]:        https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-memoization]:        https://en.wikipedia.org/wiki/Memoization
 [wiki-relief-valve]:       https://en.wikipedia.org/wiki/Relief_valve
+[wiki-search-problem]:     https://en.wikipedia.org/wiki/Search_problem
 [wiki-topographic-map]:    https://en.wikipedia.org/wiki/Topographic_map
-[wiki-tree]:               https://en.wikipedia.org/wiki/Tree_(data_structure)
+[wiki-tree]:  term             https://en.wikipedia.org/wiki/Tree_(data_structure)
+[wiki-triangular-number]:  https://en.wikipedia.org/wiki/Triangular_number
 
 [misc-aoc-bingo]:     https://www.reddit.com/r/adventofcode/comments/k3q7tr/
 [misc-numpy]:         https://numpy.org
