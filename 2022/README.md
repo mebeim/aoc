@@ -4090,6 +4090,9 @@ print('Part 2:', total)
 
 Woah. Tough day, but definitely an entertaining one!
 
+
+<!-- TODO: day 20 has a misc solution too! mention it. -->
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -4131,6 +4134,7 @@ Woah. Tough day, but definitely an entertaining one!
 [d14-problem]: https://adventofcode.com/2022/day/14
 [d16-problem]: https://adventofcode.com/2022/day/16
 [d18-problem]: https://adventofcode.com/2022/day/18
+[d19-problem]: https://adventofcode.com/2022/day/19
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -4148,6 +4152,8 @@ Woah. Tough day, but definitely an entertaining one!
 [d14-solution]: solutions/day14.py
 [d16-solution]: solutions/day16.py
 [d18-solution]: solutions/day18.py
+[d18-solution]: solutions/day18.py
+[d19-solution]: solutions/day19.py
 
 [2018-d17-problem]:     https://adventofcode.com/2018/day/17
 [2019-d18-p1]:          ../2019/README.md#part-1-17
@@ -4171,7 +4177,8 @@ Woah. Tough day, but definitely an entertaining one!
 [py-set]:                https://docs.python.org/3/tutorial/datastructures.html#sets
 [py-slicing]:            https://docs.python.org/3/glossary.html#term-slice
 [py-tuple]:              https://docs.python.org/3/tutorial/datastructures.html#tuples-and-sequences
-[py-unpacking]:        gcd      https://docs.python.org/3/library/functions.html#all
+
+[py-unpacking]:               https://docs.python.org/3/library/functions.html#all
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-eval]:            https://docs.python.org/3/library/functions.html#eval
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
@@ -4239,7 +4246,7 @@ Woah. Tough day, but definitely an entertaining one!
 [wiki-relief-valve]:       https://en.wikipedia.org/wiki/Relief_valve
 [wiki-search-problem]:     https://en.wikipedia.org/wiki/Search_problem
 [wiki-topographic-map]:    https://en.wikipedia.org/wiki/Topographic_map
-[wiki-tree]:  term             https://en.wikipedia.org/wiki/Tree_(data_structure)
+[wiki-tree]:               https://en.wikipedia.org/wiki/Tree_(data_structure)
 [wiki-triangular-number]:  https://en.wikipedia.org/wiki/Triangular_number
 
 [misc-aoc-bingo]:     https://www.reddit.com/r/adventofcode/comments/k3q7tr/
