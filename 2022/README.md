@@ -23,6 +23,7 @@ Table of Contents
 - Day 17 - Pyroclastic Flow: *TODO*
 - [Day 18 - Boiling Boulders][d18]
 - [Day 19 - Not Enough Minerals][d19]
+- [Day 20 - Grove Positioning System][d20]
 
 
 Day 1 - Calorie Counting
@@ -1908,8 +1909,9 @@ for raw_monkey in raw_monkeys:
 
 As promised, we initialized all attributes of each instance of `Monkey` from
 outside the class. You would normally do this by passing all the values to the
-class constructor (i.e. its [`__init__()`][py-class-init] method), but there are
-a lot of them and I did not want to write a function taking so many parameters.
+class constructor (i.e. its [`__init__()`][py-object-init] method), but there
+are a lot of them and I did not want to write a function taking so many
+parameters.
 
 Now that we have a list of objects to work with, let's actually simulate the
 game. To make things simpler, let's implement the basic "inspection" operation
@@ -4091,7 +4093,183 @@ print('Part 2:', total)
 Woah. Tough day, but definitely an entertaining one!
 
 
-<!-- TODO: day 20 has a misc solution too! mention it. -->
+Day 20 - Grove Positioning System
+---------------------------------
+
+[Problem statement][d20-problem] — [Complete solution][d20-solution] — [Back to top][top]
+
+### Part 1
+
+Simple problem today. We are given a list of integers, and we need to "shuffle"
+them moving each one around according to the same rule. Each number, *in the
+order they are originally given*, needs to be moved in the list a number of
+steps forward or backward equal to its value (negatives numbers move backward).
+The input list is cyclic, so moving forward past its end will mean wrapping back
+to the first spot. After performing this operation on every single number, we
+need to locate the number `0` and find the sum of the 1000th, 2000th and 3000th
+number after it (remembering that the list is cyclic).
+
+We mostly have to follow the rules here. The only problem with the algorithm we
+need to apply is that the mixing operation must be done for each number in the
+original order we are given, but the operation itself moves numbers around: we
+need to somehow keep track of them. It would be easy to do if all the numbers
+were different, but we have duplicates in our input, and we need to track
+duplicates separately. This can be done in different ways, but the simplest one
+is to "wrap" each number up in an object that stores additional information to
+help us unequivocally identify it.
+
+The wrapper object could be anything, for example, a tuple of the form
+`(original_index, number)` would suffice, as the original index will be unique
+for each number. This is what most people used today as it's intuitive and also
+one of the first things that come to mind. I implemented this approach too,
+[the code is here][d20-alternative-tuples], however, I'm going to use a
+wrapper `class`, which in my opinion makes things a bit more intuitive and is
+also slightly faster using CPython.
+
+By default, in Python all instances of a class are different from each other
+when compared, unless they implement special
+[`__eq__()` or `__ne__()`][py-object-eq] methods. We're going to define a class
+that only holds one property (the number we want to wrap) and implements no
+methods except the [`__init__()`][py-object-init] constructor. Since we're going
+to use this class a lot, listing the property name in the
+[`__slots__`][py-class-slots] class variable will speed things up a bit (follow
+the link to understand why).
+
+```python
+class Number:
+    __slots__ = 'value'
+
+    def __init__(self, value):
+        self.value = int(value)
+```
+
+Now let's parse the input. It's going to be very easy as we have one integer per
+line, just [`map()`][py-builtin-map] everything to a `Number`, which will also
+take care of `str` to `int` conversion (`self.value = int(value)`), and store
+all the objects in a `tuple`. To mix stuff around, we can later copy the content
+of said `tuple` into a `list`, which will allow us to remove and insert elements
+as we please, while still iterating over the elements in the original order.
+
+```python
+with open(...) as fin:
+    order = tuple(map(Number, fin))
+```
+
+Onto the actual mixing, let's write a function for it. The rules to follow are
+simple. For every number in the original order:
+
+1. Find its index in the list using [`.index()`][py-list-index].
+2. Remove it with [`.pop(index)`][py-list-pop].
+3. Calculate its new index and re-insert it with [`.insert()`][py-list-insert].
+
+Remember: the list we are dealing with is actually cyclic, so if we exceed the
+length we should wrap back around. This can be easily done with a modulo (`%`)
+operation: `index % len(numbers)` will always return an index between `0` and
+`len(numbers) - 1`, wrapping back to `0` when `index == len(numbers)`. What's
+even cooler is that this will also work out of the box with negative values,
+given the way Python's modulo is defined.
+
+Following the steps above, let's write a function to do the mixing and calculate
+the final result. After mixing the numbers one by one according to their
+original order, we'll simply scan the list to find the number whose `.value` is
+`0` and then calculate the sum of the 1000th, 2000th and 3000th number past it.
+
+```python
+def mix(order):
+    # Copy everything into a list to be able to move things around.
+    numbers = list(order)
+
+    for num in order:
+        # Find the number.
+        i = numbers.index(num)
+        # Remove it.
+        numbers.pop(i)
+        # Calculate its new position.
+        i = (i + num.value) % len(numbers)
+        # Re-insert it.
+        numbers.insert(i, num)
+
+    for zero_idx, num in enumerate(numbers):
+        if num.value == 0:
+            break
+
+    res  = numbers[(zero_idx + 1000) % len(numbers)].value
+    res += numbers[(zero_idx + 2000) % len(numbers)].value
+    res += numbers[(zero_idx + 3000) % len(numbers)].value
+    return res
+```
+
+**A little digression**. It's worth noting that we are doing a lot of `.pop()`
+and `.insert()` operations on a `list`. This is usually slow and requires
+re-scanning the entire list to fix the position of any elements past the
+insertion point. In fact, these operations take *O(n)* time. Another way of
+solving the problem would be using [`collections.deque`][py-collections-deque],
+which has fast pop and append operations on both ends, and exposes a
+[`.rotate()`][py-deque-rotate] method to cyclically rotate elements around *n*
+spots in *O(n)*.
+
+The `deque` data structure was used by a lot of people, and I also wrote
+[an alternative solution using it][d20-alternative-deque]. Even if at a first
+glance it seems like it should be a faster solution, it really is not. This is
+because we would still be doing 3 operations with complexity *O(n)* (one
+`.index()` and two `.rotate()`), which is fundamentally the same we are already
+doing with our list (one `.index()`, one `.pop()` and one `.insert()`). On top
+of that, since under the hood
+[`deque` is implemented as a doubly-linked list][misc-so-deque], the `.index()`
+method needs to traverse a linked list of pointers, which is an inherently
+slower operation compared to scanning a contiguous chunk of memory holding the
+elements.
+
+Now, getting back to the problem, we are basically done! All we need to do is
+call the function to get our answer:
+
+```python
+answer = mix(order)
+print('Part 1:', answer)
+```
+
+### Part 2
+
+The numbers we had now change. Every number needs to be multiplied by
+`811589153` before doing anything. Then, we need to do the same thing we did for
+part 1, but this time the mixing happens *10 times in a row*.
+
+Well, we already have the `mix()` function ready. We can effortlessly add a
+parameter to specify the number of times to mix, and wrap the mixing code in one
+more `for` loop:
+
+```python
+def mix(order, times=1): # Added times= parameter.
+    numbers = list(order)
+
+    for _ in range(times): # Mix as many times as needed.
+        for num in order:
+            i = numbers.index(num)
+            numbers.pop(i)
+            i = (i + num.value) % len(numbers)
+            numbers.insert(i, num)
+
+    for zero_idx, num in enumerate(numbers):
+        if num.value == 0:
+            break
+
+    res  = numbers[(zero_idx + 1000) % len(numbers)].value
+    res += numbers[(zero_idx + 2000) % len(numbers)].value
+    res += numbers[(zero_idx + 3000) % len(numbers)].value
+    return res
+```
+
+Now we can now modify the values of our numbers and run the algorithm again:
+
+```python
+for num in order:
+    num.value *= 811589153
+
+answer = mix(order, 10)
+print('Part 2:', answer)
+```
+
+As simple as that!
 
 ---
 
@@ -4117,6 +4295,7 @@ Woah. Tough day, but definitely an entertaining one!
 [d16]: #day-16---proboscidea-volcanium
 [d18]: #day-18---boiling-boulders
 [d19]: #day-19---not-enough-minerals
+[d20]: #day-20---grove-positioning-system
 
 [d01-problem]: https://adventofcode.defaultdictcom/2022/day/1
 [d02-problem]: https://advpairwiseentofcode.com/2022/day/2
@@ -4135,6 +4314,7 @@ Woah. Tough day, but definitely an entertaining one!
 [d16-problem]: https://adventofcode.com/2022/day/16
 [d18-problem]: https://adventofcode.com/2022/day/18
 [d19-problem]: https://adventofcode.com/2022/day/19
+[d20-problem]: https://adventofcode.com/2022/day/20
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -4154,19 +4334,21 @@ Woah. Tough day, but definitely an entertaining one!
 [d18-solution]: solutions/day18.py
 [d18-solution]: solutions/day18.py
 [d19-solution]: solutions/day19.py
+[d20-solution]: solutions/day20.py
 
-[2018-d17-problem]:     https://adventofcode.com/2018/day/17
-[2019-d18-p1]:          ../2019/README.md#part-1-17
-[d08-p1]:               #part-1-7
-[d02-alternative]:      misc/day02/mathematical.py
-[d08-alternative]:      misc/day08/faster_part1.py
-[d14-italyinformatica]: https://www.reddit.com/r/ItalyInformatica/comments/zlj7dj/adventofcode_2022_giorno_14/j05rz5p/
-[d19-reddit]:           https://www.reddit.com/r/adventofcode/comments/zpihwi/2022_day_19_solutions/?sort=confidence
-[d19-reddit-user]:      https://www.reddit.com/user/Coffee_Doggo
-[d19-reddit-comment]:   https://www.reddit.com/r/adventofcode/comments/zpihwi/2022_day_19_solutions/j0vvtdt/
+[2018-d17-problem]:       https://adventofcode.com/2018/day/17
+[2019-d18-p1]:            ../2019/README.md#part-1-17
+[d08-p1]:                 #part-1-7
+[d02-alternative]:        misc/day02/mathematical.py
+[d08-alternative]:        misc/day08/faster_part1.py
+[d14-italyinformatica]:   https://www.reddit.com/r/ItalyInformatica/comments/zlj7dj/adventofcode_2022_giorno_14/j05rz5p/
+[d19-reddit]:             https://www.reddit.com/r/adventofcode/comments/zpihwi/2022_day_19_solutions/?sort=confidence
+[d19-reddit-user]:        https://www.reddit.com/user/Coffee_Doggo
+[d19-reddit-comment]:     https://www.reddit.com/r/adventofcode/comments/zpihwi/2022_day_19_solutions/j0vvtdt/
+[d20-alternative-tuples]: misc/day20/tuples.py
+[d20-alternative-deque]:  misc/day20/deque.py
 
 [py-3-way-comparison]:   https://docs.python.org/3/reference/expressions.html#comparisons
-[py-class-init]:         https://docs.python.org/3/reference/datamodel.html#object.__init__
 [py-class-slots]:        https://docs.python.oattrgetterrg/3/reference/datamodel.html#slots
 [py-cond-expr]:          https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-generator-expr]:     https://www.python.org/dev/peps/pep-0289/
@@ -4186,7 +4368,7 @@ Woah. Tough day, but definitely an entertaining one!
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
 [py-builtin-min]:             https://docs.python.org/3/library/functions.html#min
-[py-builtin-next]:            https://docs.python.org/3/library/functions.html#next
+[py-builtin-next]:            https://docs.p[d20-alt-deque].ython.org/3/library/functions.html#next
 [py-builtin-ord]:             https://docs.python.org/3/library/functions.html#ord
 [py-builtin-range]:           https://docs.python.org/3/library/functions.html#range
 [py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
@@ -4198,6 +4380,7 @@ Woah. Tough day, but definitely an entertaining one!
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
 [py-copy-deepcopy]:           https://docs.python.org/3/library/copy.html#copy.deepcopy
+[py-deque-rotate]:            https://docs.python.org/3/library/collections.html#collections.deque.rotate
 [py-file-read]:               https://docs.python.org/3/library/io.html#io.BufferedIOBase.read
 [py-file-readlines]:          https://docs.python.org/3/library/io.html#io.IOBase.readlines
 [py-functools-cmp_to_key]:    https://docs.python.org/3/library/functools.html#functools.cmp_to_key
@@ -4210,10 +4393,14 @@ Woah. Tough day, but definitely an entertaining one!
 [py-list]:                    https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-index]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-list-insert]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-list-pop]:                https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
 [py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
 [py-math-inf]:                hthttps://en.wikipedia.org/wiki/NP-completenessps://docs.python.org/3/library/re.html#re.Pattern.findall
 [py-math-prod]:               https://docs.python.org/3/library/math.html#math.prod
+[py-object-init]:             https://docs.python.org/3/reference/datamodel.html#object.__init__
+[py-object-eq]:               https://docs.python.org/3/reference/datamodel.html#object.__eq__
 [py-re-pattern-findall]:      https://docs.python.org/3/library/re.html#re.Pattern.findall
 [py-set-update]:              https://docs.python.org/3/library/stdtypes.html#frozenset.update
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
@@ -4256,3 +4443,4 @@ Woah. Tough day, but definitely an entertaining one!
 [misc-py2-cmp]:       https://docs.python.org/2/library/functions.html#cmp
 [misc-regexp]:        https://www.regular-expressions.info/
 [misc-so-cmp_to_key]: https://stackoverflow.com/q/32752739/3889449
+[misc-so-deque]:      https://stackoverflow.com/a/6257048/3889449
