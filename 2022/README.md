@@ -24,6 +24,7 @@ Table of Contents
 - [Day 18 - Boiling Boulders][d18]
 - [Day 19 - Not Enough Minerals][d19]
 - [Day 20 - Grove Positioning System][d20]
+- [Day 21 - Monkey Math][d21]
 
 
 Day 1 - Calorie Counting
@@ -4273,6 +4274,286 @@ print('Part 2:', answer)
 
 As simple as that!
 
+
+Day 21 - Monkey Math
+--------------------
+
+[Problem statement][d21-problem] — [Complete solution][d21-solution] — [Back to top][top]
+
+**Note**: my solution for part 2 of today's solution relies on the fact that the
+input is a well-formed binary expression tree. This is not explicitly stated in
+the problem statement, and is an assumption I (and many others) made to solve
+the problem with a rather simple algorithm.
+
+### Part 1
+
+Today we are dealing with a [binary expression tree][wiki-expression-tree]. We
+are given a list of variables of the form `name: value`, where each `name` is a
+string, while each `value` can either be an expression to compute on two other
+variables (`a <op> b`), or an integer. We need to calculate the value of `root`.
+
+Let's start with input parsing. As already anticipated, we are dealing with a
+tree, and `root` represents the root of the tree. We aren't explicitly told that
+this is a tree (i.e. all nodes appear on the right at most once), we could
+actually be dealing with a graph where multiple nodes can have edges pointing to
+the same node. Nonetheless, as long as there are no loops, we are safe and the
+expression result can be easily computed. As a side note, the inputs for today's
+problem *do actually represent trees*.
+
+Each node can either be a binary expression node referencing other two nodes or
+a leaf (a simple integer). We'll create a dictionary of the form `{name: value}`
+where `value` is either an integer or a 3-element list of the form
+`[name1, op, name2]`. The way our input is given, creating this structure is
+trivial. All we need to do is [`.strip()`][py-str-strip] and
+[`.split()`][py-str-split] each line in the correct way. First split on `': '`
+to get the left and right side, then check if the right side is an integer
+(using e.g. [`.isdigit()`][py-str-isdigit]) to decide whether to parse it or
+`.split()` again.
+
+```python
+T = {}
+with open(...) as fin:
+    for line in fin:
+        a, b = line.strip().split(': ')
+        T[a] = int(b) if b.isdigit() else b.split()
+```
+
+Our tree `T` now contains all the information we need to calculate the value of
+the expression. Starting at `'root'`, we can perform a simple
+[depth-first][algo-dfs] traversal of the tree: if we encounter a "value" node we
+can just return the value; while if we encounter an "expresison" node we can
+first find the left and right operands' values recursively, then perform the
+needed operation and return its result.
+
+To make our life easier, we can use a `dict` as map for the operations. We need
+to perform addition (`+`), subtraction (`-`), multiplication (`*`) and division
+(`/`). The [`operator`][py-operator] module has all these in the form of
+functions taking two parameters. For the division, we'll use
+[`floordiv`][py-operator-floordiv] (equivalent to the `//` operator).
+
+```python
+from operator import add, sub, mul, floordiv
+
+OPMAP = {
+    '+': add,
+    '*': mul,
+    '-': sub,
+    '/': floordiv
+}
+```
+
+To distinguish whether we are dealing with a value or expression node, we can
+use [`isinstance()`][py-builtin-isinstance] to check whether `T[node]` is a
+`list` or an `int`. We will treat `T` as a global variable for simplicity, but
+it could also be passed as parameter.
+
+```python
+def calc(value, list):
+        # This is a value node, just return the value.
+        return value
+
+    # This is an expression node.
+    l, op, r = value
+    # Compute left and right value.
+    lvalue = calc(l)
+    rvalue = calc(r)
+    # Perform operation and return result.
+    return OPMAP[op](lvalue, rvalue)
+```
+
+Since our input seems to be a well-formed tree, we're only going to visit each
+node exactly once. If that was not the case though, and our input was an acyclic
+graph, we could optimize the above function with the help of
+[`@lru_cache()`][py-functools-lru_cache] to [memoize][wiki-memoization] node
+values and avoid wasting time computing them multiple times.
+
+To get our answer we can now simply call the function on `'root'`:
+
+```python
+answer = calc('root')
+print('Part 1:', answer)
+```
+
+### Part 2
+
+Now we are told that the `'root'` expression node is actually an equality check
+between its left and right operand. Furthermore, we do not know the value of the
+value node `'humn'`: we need to find a value for it such that the equality check
+at `'root'` is satisfied.
+
+The complexity of this second part of the problem depends on the form of the two
+expressions on the left and right side of the root equality check. We know that
+we are looking for exactly one solution, so we cannot be dealing with
+polynomials of degree higher than 1, meaning that we cannot find an expression
+node of the form `humn * humn`, or in general `A * b` where both `A` and `B`
+include `humn` in their subtrees.
+
+There's a small problem though: nobody technically guarantees that we cannot
+encounter expression nodes of the form `humn + humn` (or `A + B` where either of
+the two leads to `humn`) or similar. Encountering one of these would mean that
+the input does not form a tree, but a graph, which would make the problem harder
+to solve. Since as already stated in part 1, the inputs of today's problem are
+all well-formed binary expression trees, we will assume that something like this
+cannot happen. For this reason, I wrote an `is_tree()` check for this assumption
+in my [complete solution][d21-solution].
+
+What is happening now is that we essentially have one side of the tree at `root`
+with an unknown value, but *we know it must match the value of the other side*.
+Let's replace `T['humn']` with `None`, and modify the `calc()` function to tell
+us which side has unknown value: whenever we encounter a value that is `None` or
+an expression where one of the two operands has value `None`, we'll return
+`None` to propagate it back to the top. While we are at it, let's also decorate
+the function with [`@lru_cache()`][py-functools-lru_cache] since we're going to
+call it multiple times for the same nodes now.
+
+```diff
++@lru_cache()
+ def calc(node):
+     value = T[node]
+     if not isinstance(value, list):
+         return value
+
+     l, op, r = value
+     lvalue = calc(l)
+     rvalue = calc(r)
++
++    if lvalue is None or rvalue is None:
++        return Noner
+     return OPMAP[op](lvalue, rvalue)
+```
+
+**Note**: since we have decorated `calc` with `lru_cache`, we need to remember
+calling `calc.cache_clear()` after using it for part 1, otherwise the cache will
+hold the wrong values for part 2.
+
+Now we can check which side of the `root` node has value `None`, and we'll know
+that its expected value should be the one of the other side:
+
+```python
+T['humn'] = None
+
+l, _, r = T['root']
+lvalue = calc(l)
+rvalue = calc(r)
+
+if lvalue is None:
+    # 'humn' is on this side of the tree.
+    # The expected value of this side of the tree is rvalue.
+    ...
+else:
+    # 'humn' is on this side of the tree.
+    # The expected value of this side of the tree is lvalue.
+    ...
+```
+
+To solve the problem and find the unknown value of `humn`, we can navigate the
+tree recursively exploring the node whose value is unknown, keeping track of
+what value it should have:
+
+- If we are at `humn`, we just found its value: it's the expected value we are
+  carrying around.
+- Otherwise we must be at some expression node, where one of the two child nodes
+  (left or right) has unknown value. We know the expected value of the current
+  node. We can compute the expected value of the node with unknown value
+  performing the opposite of the expression.
+
+For example, assume that initially for `root` we have `lvalue = None` and
+`rvalue = 123`: we know that `humn` is somewhere on the left of `root`, and that
+the value of the left node should be `123`. We explore the left node, and find
+an expression with operation `+`, `lvalue = 100` and `rvalue = None`. We know
+that `lvalue + rvalue == 123`, and therefore `100 + rvalue == 123`. We can now
+perform the opposite operation to find out that
+`rvalue == 123 - lvalue == 123 - 100 == 23`. Now we can continue on the right
+node knowing its expected value is `23`.
+
+Each time we explore a new node, we can compute the new expected value of either
+of the two children as follows (let's call the expected value `E` for
+conciseness):
+
+- If the operation is `+`: we know `E = L + R`, so `L = E - R` and `R = E - L`.
+- If the operation is `*`: we know `E = L * R`, so `L = E / R` and `R = E / L`.
+- If the operation is `-`: we know `E = L - R`, so `L = E + R` and `R = L - E`.
+- If the operation is `/`: we know `E = L / R`, so `L = E * R` and `R = L / E`.
+
+Notice how in the above list we have two expressions that stand out. While in
+general we have `L_or_R = E <inverse_op> R_or_L`, for `-` and `/` we have
+different formulas to compute `L` and `R`. This is because these operations are
+not [commutative][wiki-commutative].
+
+Nonetheless, we can build another `dict` to use as mapping for the operations to
+perform in the same way we did for part 1. Each function will take `E` as first
+aprameter and the other side as second parameter. This time though we'll also
+need to know if the value that we want to calculate is the left or the right: we
+can do this with a `bool`. We can mostly still use the functions from the
+`operator` module, except for calculating the right side of `/` and `-`.
+
+```python
+# Calculate R or L knowing that E = L op R.
+# True  = need to calculate L given E and R as parameters.
+# False = need to calculate R given E and L as parameters.
+REV_OPMAP = {
+    ('+', True ): sub,
+    ('+', False): sub,
+    ('*', True ): floordiv,
+    ('*', False): floordiv,
+    ('-', True ): add,
+    ('-', False): lambda x, l: l - x,
+    ('/', True ): mul,
+    ('/', False): lambda x, l: l // x,
+}
+```
+
+We can now apply the logic explained above to recursively follow the side of the
+tree where our "unknown value" (`humn`) is located and update its expected value
+along the way:
+
+```python
+def find_value(node, expected):
+    if node == 'humn':
+        # We reached the node we wanted and we now know its value.
+        return expected
+
+    l, op, r = T[node]
+    lvalue = calc(l)
+    rvalue = calc(r)
+
+    # We know expected = L op R...
+
+    if lvalue is None:
+        # Left side has unknown value, calculate its expected value and keep going.
+        expected = REV_OPMAP[op, True](expected, rvalue)
+        return find_value(l, expected)
+
+    # Right side has unknown value, calculate its expected value and keep going.
+    expected = REV_OPMAP[op, False](expected, lvalue)
+    return find_value(r, expected)
+```
+
+We can now find the answer we were looking for:
+
+```python
+T['humn'] = None
+
+l, _, r = T['root']
+lvalue = calc(l)
+rvalue = calc(r)
+
+if lvalue is None:
+    answer = find_value(l, rvalue)
+else:
+    answer = find_value(r, rvalue)
+```
+
+Since `root` is `L == R`, we could also re-write it as `L - R`, knowing that the
+resoult should be `0`, and simplify the above logic:
+
+```python
+T['humn'] = None
+T['root'][1] = '-'
+answer = find_value('root', 0)
+print('Part 2:', answer)
+```
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -4298,6 +4579,7 @@ As simple as that!
 [d18]: #day-18---boiling-boulders
 [d19]: #day-19---not-enough-minerals
 [d20]: #day-20---grove-positioning-system
+[d21]: #day-21---monkey-math
 
 [d01-problem]: https://adventofcode.defaultdictcom/2022/day/1
 [d02-problem]: https://advpairwiseentofcode.com/2022/day/2
@@ -4317,6 +4599,7 @@ As simple as that!
 [d18-problem]: https://adventofcode.com/2022/day/18
 [d19-problem]: https://adventofcode.com/2022/day/19
 [d20-problem]: https://adventofcode.com/2022/day/20
+[d21-problem]: https://adventofcode.com/2022/day/21
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -4334,9 +4617,9 @@ As simple as that!
 [d14-solution]: solutions/day14.py
 [d16-solution]: solutions/day16.py
 [d18-solution]: solutions/day18.py
-[d18-solution]: solutions/day18.py
 [d19-solution]: solutions/day19.py
 [d20-solution]: solutions/day20.py
+[d21-solution]: solutions/day21.py
 
 [2018-d17-problem]:       https://adventofcode.com/2018/day/17
 [2019-d18-p1]:            ../2019/README.md#part-1-17
@@ -4403,8 +4686,13 @@ As simple as that!
 [py-math-prod]:               https://docs.python.org/3/library/math.html#math.prod
 [py-object-init]:             https://docs.python.org/3/reference/datamodel.html#object.__init__
 [py-object-eq]:               https://docs.python.org/3/reference/datamodel.html#object.__eq__
+[py-operator]:                https://docs.python.org/3/library/operator.html#
+[py-operator-attrgetter]:     https://docs.python.org/3/library/operator.html#operator.attrgetter
+[py-operator-floordiv]:       https://docs.python.org/3/library/operator.html#operator.floordiv
+[py-operator-itemgetter]:     https://docs.python.org/3/library/operator.html#operator.itemgetter
 [py-re-pattern-findall]:      https://docs.python.org/3/library/re.html#re.Pattern.findall
 [py-set-update]:              https://docs.python.org/3/library/stdtypes.html#frozenset.update
+[py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigic
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
 [py-str-lstrip]:              https://docs.python.org/3/library/stdtypes.html#str.lstrip
 [py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
@@ -4412,6 +4700,7 @@ As simple as that!
 [py-str-rstrip]:              https://docs.python.org/3/library/stdtypes.html#str.rstrip
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
+[py-str-strip]:               https://docs.python.org/3/library/stdtypes.html#str.strip
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 
 [algo-a-star]:         https://en.wikipedia.org/wiki/A*_search_algorithm
@@ -4423,6 +4712,7 @@ As simple as that!
 [wiki-ascii]:              https://en.wikipedia.org/wiki/ASCII
 [wiki-backtracking]:       https://en.wikipedia.org/wiki/Backtracking
 [wiki-bounding-box]:       https://en.wikipedia.org/wiki/Minimum_bounding_box
+[wiki-commutative]:        https://en.wikipedia.org/wiki/Commutative_property
 [wiki-congruence]:         https://en.wikipedia.org/wiki/Congruence_relation
 [wiki-crt]:                https://en.wikipedia.org/wiki/Cathode-ray_tube
 [wiki-dp]:                 https://en.wikipedia.org/wiki/Dynamic_programming
@@ -4437,6 +4727,7 @@ As simple as that!
 [wiki-topographic-map]:    https://en.wikipedia.org/wiki/Topographic_map
 [wiki-tree]:               https://en.wikipedia.org/wiki/Tree_(data_structure)
 [wiki-triangular-number]:  https://en.wikipedia.org/wiki/Triangular_number
+[wiki-expression-tree]:    https://en.wikipedia.org/wiki/Binary_expression_tree
 
 [misc-aoc-bingo]:     https://www.reddit.com/r/adventofcode/comments/k3q7tr/
 [misc-numpy]:         https://numpy.org
