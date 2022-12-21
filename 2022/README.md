@@ -3972,20 +3972,20 @@ adding a simple list to our queue, containing numeric IDs:
 ORE, CLAY, OBS, GEO = range(4)
 ```
 
-Here's are modifications that we need to apply:
+Here are the modifications that we need to apply:
 
 ```python
 def search(blueprint):
     # ...
 
-    # Add another element here, the list of robots we could have built, but
-    # decided not to build.
+    # Add another element here, the list of robots we could have built in the
+    # previous step, but decided not to build instead.
     q = deque([(time, 0, 0, 0, 0, 1, 0, 0, 0, [])])
 
     while q:
         tmp = q.pop()
 
-        # This list we'll use doesn't make part of the state though
+        # This last list we added is not part of the state.
         state = tmp[:-1]
         if state in visited:
             continue
@@ -4004,6 +4004,7 @@ def search(blueprint):
             # time, it's pointless to do it now that we are late, the result is inevitably
             # going to be worse.
             if GEO not in did_not_build:
+                # Remember that we could have built a geode robot.
                 can_build.append(GEO)
                 # Pass along an empyy list, we built a robot so we don't have a list
                 # of robots that we "could have built" but didn't.
@@ -4027,7 +4028,8 @@ def search(blueprint):
                 can_build.append(ORE)
                 q.append((..., []))
 
-        # Pass along the list of robots we could have built, but decided to not build instead.
+        # If we can also "wait" without building, pass along the list of robots
+        # we couldhave built, but decided to not build instead.
         if (robs and obs < max_obs_needed) or (rclay and clay < max_clay_needed) or ore < max_ore_needed:
             q.append((..., can_build))
 
