@@ -25,6 +25,9 @@ Table of Contents
 - [Day 19 - Not Enough Minerals][d19]
 - [Day 20 - Grove Positioning System][d20]
 - [Day 21 - Monkey Math][d21]
+- Day 22 - Monkey Map: *TODO*
+- Day 23 - Unstable Diffusion: *TODO*
+- [Day 24 - Blizzard Basin][d24]
 
 
 Day 1 - Calorie Counting
@@ -4280,7 +4283,7 @@ Day 21 - Monkey Math
 
 [Problem statement][d21-problem] — [Complete solution][d21-solution] — [Back to top][top]
 
-**Note**: my solution for part 2 of today's solution relies on the fact that the
+**Note**: my solution for part 2 of today's problem relies on the fact that the
 input is a well-formed binary expression tree. This is not explicitly stated in
 the problem statement, and is an assumption I (and many others) made to solve
 the problem with a rather simple algorithm.
@@ -4554,6 +4557,297 @@ answer = find_value('root', 0)
 print('Part 2:', answer)
 ```
 
+
+Day 24 - Blizzard Basin
+-----------------------
+
+[Problem statement][d24-problem] — [Complete solution][d24-solution] — [Back to top][top]
+
+### Part 1
+
+Today's problem involves pathfinding, but with a twist. We are in a rectangular
+grid surrounded by walls (`#`), where each cell is either free or represents *a
+blizzard* (`<`, `>`, `^`, `v`). Given a start (2nd column of the first row) and
+a destination (second-to-last column of the last row), we need to navigate the
+grid being careful not to step in a blizzard or into a wall.
+
+Problem is, each instant of time, every blizzard moves forward one step in the
+direction it is facing (i.e. `>` moves to the right). Whenever a blizzard
+reaches one of the four walls of the grid, it wraps around the same row/column,
+continuing from the opposite side. Furthermore, a single cell can contain more
+than one blizzard (each going in a different direction) at any given time.
+
+Each instant of time we can either move in one of the 4 cardinal directions
+(north, south, east, west) or wait in place. We need to calculate the minimum
+amount amount of time needed to reach the destination avoiding blizzards.
+
+Let's start by parsing the input into a grid: after reading the entire input,
+[`.splitlines()`][py-str-splitlines] is all we need.
+
+```python
+with open(...) as fin:
+    grid = fin.read().splitlines()
+```
+
+Now, if it weren't for the added difficulty of the moving blizzards, today's
+solution would be standard [BFS][algo-bfs] on a grid. However, we'll need to
+simulate the evolution of the blizzard in time. Keeping around the actual grid
+and editing its content each iteration is slow and error-prone. The simplest way
+to represent cells occupied by a blizzard would be a `set()` of coordinates so
+that we can easily check whether a certain position contains any blizzard with
+`(r, c) in blizzard`. However, this is not enough as we also need to keep track
+of the direction each blizzard is moving. To do this, we can use a dictionary of
+the form `{coords: list_of_directions}`: each cell (at a given coordinate) can
+contain more than one blizzard at a given time, so this is an easy way to track
+both the number of blizzards present and all their directions.
+
+A minimal example can help understand how multiple blizzards going in different
+directions can end up overlapping on the same cell:
+
+```none
+#.#####       #.#####       #.#####       #.#####
+#.>.<.#  ==>  #..2..#  ==>  #.<.>.#  ==>  #<...># ==> ...
+#####.#       #####.#       #####.#       #####.#
+```
+
+To easily advance each blizzard in the right direction, we can remember
+directions as tuples of the form `(delta_r, delta_c)`. Let's create a map that
+associates each character representing a blizzard with one of these:
+
+```python
+DIRMAP = {
+    '>': ( 0,  1),
+    '<': ( 0, -1),
+    'v': ( 1,  0),
+    '^': (-1,  0),
+}
+```
+
+We know that each blizzard will wrap around and continue from the opposite side
+of the row/column once it reaches a wall: if we discard all walls and only
+consider the internal rectangle (enclosed in the walls) as the grid to work on,
+the first row and column will start at `0`, and wrapping around can later be
+handled with a modulo operation, e.g. `(row + 1) % height`.
+
+```none
+  01234567
+0 #.######            012345
+1 #>>.<^<#          0 >>.<^<
+2 #.<..<<#  =====>  1 .<..<<
+3 #>v.><>#          2 >v.><>
+5 ######.#
+Actual grid      Simplified grid
+```
+
+Let's now iterate over the grid, ignoring the first and last row and the first
+and last column of each row (which we know are all going to be walls). For each
+blizzard we encounter, we'll remember its position and direction. The
+[`enumerate()`][py-builtin-enumerate] built-in comes in handy here.
+
+```python
+bliz = {}
+
+for r, row in enumerate(grid[1:-1]):
+    for c, cell in enumerate(row[1:-1]):
+        if cell in DIRMAP:
+            # There's a blizzard here (< > ^ v). Its directoin (delta_r, delta_c)
+            # is given by the DIRMAP we created above.
+            bliz[r, c] = [DIRMAP[cell]]
+```
+
+Since we discarded the external walls, the actual height and width of the
+internal rectangle are 2 units less than the original grid's height and width.
+The starting position is now at the first column of the row immediately above
+the first one, and the destination is at the last column of the row immediately
+below the last one. Let's calculate these values for later:
+
+```python
+height, width = len(grid) - 2, len(grid[0]) - 2
+src, dst = (-1, 0), (height, width - 1)
+```
+
+Now into the actual guts of the problem: let's write a function to "evolve" the
+current blizzards moving each of them one step forward, and returning a new
+dictionary representing the new state of the blizzards. Each key in the `bliz`
+dictionary we just created represents the coordinates of a cell containing one
+or more blizzards, and their directions are listed in the associated value (a
+`list`).
+
+We can iterate over the [`.items()`][py-dict-items] of the dictionary, applying
+the deltas listed in the directions for each coordinate. A
+[`defaultdict`][py-collections-defaultdict] of `list` makes the whole operation
+more convenient.
+
+```python
+from collections import defaultdict
+
+def evolve_blizzard(bliz, width, height):
+    newbliz = defaultdict(list)
+
+    for (r, c), directions in bliz.items():
+        for dr, dc in directions:
+            newr = (r + dr) % height
+            newc = (c + dc) % width
+            newbliz[newr, newc].append((dr, dc))
+
+    return newbliz
+```
+
+Given the coordinates of our position and current the state of the blizzards, we
+can now calculate all the possible neighboring coordinates we can move to. These
+will be the ones inside the bounds of our simplified grid and not overlapping
+with any blizzard. In addition to those, we can also stand still if a blizzard
+does not hit us. Finally, one last thing to consider is that our destination is
+at the last column and one row below the last row, which is technically out of
+bounds: we can special-case this check.
+
+Let's write a [generator function][py-generators] to `yield` all valid
+coordinates we can move to given the current position.
+
+```python
+def neighbors(bliz, r, c, height, width):
+    # Right above the destination? Even if out of bounds, that's also a valid position to move to.
+    if r == height - 1 and c == width - 1:
+        yield height, c
+
+    # For each of the 4 cardinal directions...
+    for dr, dc in ((0, 1), (1, 0), (0, -1), (-1, 0)):
+        rr, cc = r + dr, c + dc
+        # ... check if we are in bounds and if there is NO blizzard here...
+        if 0 <= rr < height and 0 <= cc < width and (rr, cc) not in bliz:
+            # ... if so, we can move here.
+            yield rr, cc
+
+    # We can also stand still if no blizzard hits us.
+    if (r, c) not in bliz:
+        yield r, c
+```
+
+Now for the heart of the problem: as anticipated, we can perform an iterative
+[breadth-first search][algo-bfs] from the starting position until we reach the
+destination, tracking *time* instead of *distance*. This works because each
+"step" we take is unitary, meaning it advances the time of exactly 1 unit.
+Contrary to a "traditional" BFS though, in this case we can re-visit cells more
+than once. In fact, merely standing still means only advancing the time,
+visiting the same cell two times in a row. We can therefore avoid keeping track
+of visited cells, but we still need to keep track of where we are.
+
+We'll keep track of all the possible positions we can be at the current time
+using a `set`. A `list` or another similar dat structure would still work, but
+we'd have to deal with unneeded duplicates, and a `set` takes care of those for
+us. Initially (`time = 0`) this will only include the start position. We'll then
+advance one step forward in time each iteration, evolving the blizzards and
+figuring out the new reachable positions given by applying the `neighbors`
+function to all the current positions we are tracking. If we ever find the
+destination among those, we can stop and return the current time.
+
+```python
+def bfs(bliz, src, dst, height, width):
+    positions = {src}
+    time = 0
+
+    # While the destination is not reached.
+    while dst not in positions:
+        # Advance time and evolve blizzards moving them around.
+        time += 1
+        bliz = evolve_blizzard(bliz, width, height)
+
+        # For each possible position we are tracking, calculate the next valid
+        # positions, and add them to a new set.
+        new_positions = set()
+        for pos in positions:
+            neighs = neighbors(bliz, *pos, height, width)
+            new_positions.update(neighs)
+
+        # Track these new positions in the next iteration.
+        positions = new_position
+
+    return time
+```
+
+We can also refactor the above inner loop into an `advance()` generator function
+that takes a set of positions and yields any new valid position:
+
+```python
+def advance(bliz, positions, height, width):
+    for pos in positions:
+        yield from neighbors(bliz, *pos, height, width)
+```
+
+This makes the body of our `bfs()` function slimmer:
+
+```python
+def bfs(bliz, src, dst, height, width):
+    positions = {src}
+    time = 0
+
+    while dst not in positions:
+        time += 1
+        bliz = evolve_blizzard(bliz, width, height)
+        positions = set(advance(bliz, positions, height, width))
+
+    return time
+```
+
+All that's left to do is call the above function with the right parameters:
+
+```python
+time = bfs(bliz, src, dst, height, width)
+print('Part 1:', time)
+```
+
+### Part 2
+
+After reaching the destination, we need to go back to the start, and then go
+back to the destination again. The end goal is still to figure out the minimum
+amount of time needed, but the path is now longer.
+
+No big deal, we already have almost all we need, we only need to make a few
+modifications to our functions. First of all, since now we can also go back to
+the starting position, we need to special-case that too in the `neighbors()`
+function:
+
+```diff
+ def neighbors(bliz, r, c, height, width):
+-    if r == height - 1 and c == width - 1:
++    if r == 0 and c == 0:
++        yield -1, 0
++     elif r == height - 1 and c == width - 1:
+         yield height, c
+
+     # ... unchanged ...
+```
+
+Secondly, we now need to remember the final state of all the blizzards after the
+first search. We can just return that along with the time in our `bfs()`
+function:
+
+```diff
+ def bfs(bliz, src, dst, height, width):
+     # ... unchanged ...
+
+-    return time
++    return time, bliz
+```
+
+After solving part 1, we'll overwrite the `bliz` variable with the new state:
+
+```python
+time1, bliz = bfs(bliz, src, dst, height, width)
+print('Part 1:', time1)
+```
+
+And for part 2, we'll now perform two more `bfs()` calls: one to go back to
+`src` from `dst`, and one to go back to `dst` again. The total time taken will
+will be the sum of the 3 times.
+
+```python
+time2, blitz = bfs(bliz, dst, src, height, width)
+time3, _     = bfs(bliz, src, dst, height, width)
+total_time = time1 + time2 + time3
+print('Part 2:', total_time)
+```
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -4580,6 +4874,7 @@ print('Part 2:', answer)
 [d19]: #day-19---not-enough-minerals
 [d20]: #day-20---grove-positioning-system
 [d21]: #day-21---monkey-math
+[d24]: #day-24---blizzard-basin
 
 [d01-problem]: https://adventofcode.defaultdictcom/2022/day/1
 [d02-problem]: https://advpairwiseentofcode.com/2022/day/2
@@ -4600,6 +4895,7 @@ print('Part 2:', answer)
 [d19-problem]: https://adventofcode.com/2022/day/19
 [d20-problem]: https://adventofcode.com/2022/day/20
 [d21-problem]: https://adventofcode.com/2022/day/21
+[d24-problem]: https://adventofcode.com/2022/day/24
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -4620,6 +4916,7 @@ print('Part 2:', answer)
 [d19-solution]: solutions/day19.py
 [d20-solution]: solutions/day20.py
 [d21-solution]: solutions/day21.py
+[d24-solution]: solutions/day24.py
 
 [2018-d17-problem]:       https://adventofcode.com/2018/day/17
 [2019-d18-p1]:            ../2019/README.md#part-1-17
@@ -4666,6 +4963,7 @@ print('Part 2:', answer)
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
 [py-copy-deepcopy]:           https://docs.python.org/3/library/copy.html#copy.deepcopy
 [py-deque-rotate]:            https://docs.python.org/3/library/collections.html#collections.deque.rotate
+[py-dict-items]:              https://docs.python.org/3/library/stdtypes.html#dict.items
 [py-file-read]:               https://docs.python.org/3/library/io.html#io.BufferedIOBase.read
 [py-file-readlines]:          https://docs.python.org/3/library/io.html#io.IOBase.readlines
 [py-functools-cmp_to_key]:    https://docs.python.org/3/library/functools.html#functools.cmp_to_key
