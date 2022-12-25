@@ -68,7 +68,7 @@ time, bliz = bfs(bliz, src, dst, height, width)
 advent.print_answer(1, time)
 
 
-time2, blitz = bfs(bliz, dst, src, height, width)
-time3, _     = bfs(bliz, src, dst, height, width)
+time2, bliz = bfs(bliz, dst, src, height, width)
+time3, _    = bfs(bliz, src, dst, height, width)
 time += time2 + time3
 advent.print_answer(2, time)
