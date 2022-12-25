@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from itertools import count
-
 from utils import advent
 
 VALUES = {'=': -2, '-': -1, '0': 0, '1': 1, '2': 2}
