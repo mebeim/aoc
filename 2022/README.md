@@ -28,6 +28,7 @@ Table of Contents
 - Day 22 - Monkey Map: *TODO*
 - Day 23 - Unstable Diffusion: *TODO*
 - [Day 24 - Blizzard Basin][d24]
+- [Day 25 - Full of Hot Air][d25]
 
 
 Day 1 - Calorie Counting
@@ -4848,6 +4849,144 @@ total_time = time1 + time2 + time3
 print('Part 2:', total_time)
 ```
 
+
+Day 25 - Full of Hot Air
+------------------------
+
+[Problem statement][d25-problem] — [Complete solution][d25-solution] — [Back to top][top]
+
+Last problem of the year, and a fairly simple one thankfully. We are given a
+list of numbers in a weird base-5 representation called "SNAFU"
+([LOL at this name choice][wiki-snafu]). The digits used are `210-=`, where `-`
+means *-1* and `=` means *-2*. We need to sum all these numbers, and calculate
+the total *in the same base* (i.e. using these digits).
+
+The first thing we'll need is a function to convert from SNAFU (weird base 5) to
+base 10. It's fairly straightforward: given a number, iterate over its digits,
+convert them to their actual values, and multiply by the appropriate power of 5,
+accumulating the result. For simplicity, let's use a `dict` to map SNAFU digits
+to their actual values:
+
+```python
+VALUES = {'=': -2, '-': -1, '0': 0, '1': 1, '2': 2}
+```
+
+Then, for the actual conversion, we can either start with *5<sup>0</sup>* (1) or
+and iterate over the digits in reverse order, or start with *5<sup>L-1</sup>*
+(where *L* is the total number of digits) and iterate normally. I chose the
+latter.
+
+```python
+def base10(n):
+    power = 5 ** (len(n) - 1)
+    res = 0
+
+    for digit in n:
+        res += VALUES[digit] * power
+        power //= 5
+
+    return res
+```
+
+We can now convert every number in our input to base 10 and calculate their sum.
+It's just a question of iterating and stripping input lines:
+
+```python
+total = 0
+with open(...) as fin:
+    for line in fin:
+        total += base10(line.strip())
+```
+
+Or more concisely, using [`map()`][py-builtin-map] + [`sum()`][py-builtin-sum],
+with the help of [`.splitlines()`][py-str-splitlines] to automatically trim away
+newlines:
+
+```python
+with open(...) as fin:
+    total = sum(map(base10, fin.read().split()))
+```
+
+The opposite conversion, from base 10 to SNAFU, is a little bit trickier. We
+cannot do a "normal" base conversion as we are used to (we are, right?), because
+we have negative digits (`-`, `=`). However, we can start with the code for a
+normal conversion and see how we can get there.
+
+This is what a normal base 10 to base 5 conversion would look like:
+
+```python
+def base10_to_base5(n):
+    res = ''
+
+    while n:
+        n, digit = divmod(n, 5)
+        res += str(digit)
+
+    return res[::-1]
+```
+
+The [`divmod()`][py-builtin-divmod] built-in used above simply calculates both
+quotient and remainder of a division, it's the same as
+`n, digit = n // 5, n % 5`.
+
+Now, the problem with the above conversion algorithm is that we will get digits
+higher than `2`, which are not contemplated in SNAFU notation and cannot be
+represented. However, `3` can be seen as `5 - 2` and `4` can be seen as `5 - 1`.
+In fact, we can represent `3` and `4` with two SNAFU digits: `3` is `1=`
+(*1×5<sup>1</sup> - 2×5<sup>0</sup>*) and `4` is `1-` (*1×5<sup>1</sup> -
+1×5<sup>0</sup>*). This also works for higher powers: *3×5<sup>7</sup> =
+1x5<sup>8</sup> - 2×5<sup>7</sup>*; *4×5<sup>9</sup> = 1x5<sup>10</sup> -
+1×5<sup>9</sup>*. Therefore, for any digit higher than `2`, we can *increment
+the next digit of the number, and then "borrow" from it*.
+
+Given the above, the function to convert a number from base 10 to SNAFU can be
+written as follows:
+
+```python
+def snafu(n):
+    res = ''
+
+    while n:
+        n, digit = divmod(n, 5)
+
+        if digit > 2:
+            # Add 1 more of the next (higher) power of 5
+            n += 1
+
+            # Borrow from it:
+            if digit == 3:
+                res += '=' # Take 2 x current power of 5.
+            else: # digit == 4
+                res += '-' # Take 1 x current power of 5.
+        else:
+            res += str(digit)
+
+    return res[::-1]
+```
+
+Compacting and simplifying the above logic, we have:
+
+```python
+def snafu(n):
+    res = ''
+
+    while n:
+        n, digit = divmod(n, 5)
+        res += '012=-'[digit]
+        n += digit > 2
+
+    return res[::-1]
+```
+
+All that's left to do is convert the total we previously calculated:
+
+```python
+answer = snafu(total)
+print('Part 1:', answer)
+```
+
+And as usual, no part 2 for day 25. ***Merry Christmas!***
+
 ---
 
 *Copyright &copy; 2022 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -4875,6 +5014,7 @@ print('Part 2:', total_time)
 [d20]: #day-20---grove-positioning-system
 [d21]: #day-21---monkey-math
 [d24]: #day-24---blizzard-basin
+[d25]: #day-25---full-of-hot-air
 
 [d01-problem]: https://adventofcode.defaultdictcom/2022/day/1
 [d02-problem]: https://advpairwiseentofcode.com/2022/day/2
@@ -4896,6 +5036,7 @@ print('Part 2:', total_time)
 [d20-problem]: https://adventofcode.com/2022/day/20
 [d21-problem]: https://adventofcode.com/2022/day/21
 [d24-problem]: https://adventofcode.com/2022/day/24
+[d25-problem]: https://adventofcode.com/2022/day/25
 
 [d01-solution]: solutions/day01.py
 [d02-solution]: solutions/day02.py
@@ -4917,6 +5058,7 @@ print('Part 2:', total_time)
 [d20-solution]: solutions/day20.py
 [d21-solution]: solutions/day21.py
 [d24-solution]: solutions/day24.py
+[d25-solution]: solutions/day25.py
 
 [2018-d17-problem]:       https://adventofcode.com/2018/day/17
 [2019-d18-p1]:            ../2019/README.md#part-1-17
@@ -4943,6 +5085,7 @@ print('Part 2:', total_time)
 [py-tuple]:              https://docs.python.org/3/tutorial/datastructures.html#tuples-and-sequences
 
 [py-unpacking]:               https://docs.python.org/3/library/functions.html#all
+[py-builtin-divmod]:          https://docs.python.org/3/library/functions.html#divmod
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-eval]:            https://docs.python.org/3/library/functions.html#eval
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
@@ -5022,6 +5165,7 @@ print('Part 2:', total_time)
 [wiki-memoization]:        https://en.wikipedia.org/wiki/Memoization
 [wiki-relief-valve]:       https://en.wikipedia.org/wiki/Relief_valve
 [wiki-search-problem]:     https://en.wikipedia.org/wiki/Search_problem
+[wiki-snafu]:              https://en.wikipedia.org/wiki/SNAFU
 [wiki-topographic-map]:    https://en.wikipedia.org/wiki/Topographic_map
 [wiki-tree]:               https://en.wikipedia.org/wiki/Tree_(data_structure)
 [wiki-triangular-number]:  https://en.wikipedia.org/wiki/Triangular_number
