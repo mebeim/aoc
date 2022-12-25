@@ -5,11 +5,11 @@ Personal repository of [Advent of Code](#about-advent-of-code) solutions.
 
 ### Quick links
 
-- **Advent of Code 2022: [walkthrough][2022-wal], [clean][2022-sol] / [original][2022-ori] solutions, [full leaderboard][2022-lea]**
-- Advent of Code 2021: [walkthrough][2021-wal], [clean][2021-sol] / [original][2021-ori] solutions, [full leaderboard][2021-lea]
-- Advent of Code 2020: [walkthrough][2020-wal], [clean][2020-sol] / [original][2020-ori] solutions, [full leaderboard][2020-lea]
-- Advent of Code 2019: [walkthrough][2019-wal], [clean][2019-sol] / [original][2019-ori] solutions, [full leaderboard][2019-lea]
-- Advent of Code 2018: [clean][2018-sol] / [original][2018-ori] solutions, [full leaderboard][2018-lea]
+- **Advent of Code 2022: [walkthrough][2022-wal], [clean][2022-sol] / [original][2022-ori] solutions, complete [calendar][2022-cal] and [leaderboard][2022-lea]**
+- Advent of Code 2021: [walkthrough][2021-wal], [clean][2021-sol] / [original][2021-ori] solutions, complete [calendar][2021-cal] and [leaderboard][2021-lea]
+- Advent of Code 2020: [walkthrough][2020-wal], [clean][2020-sol] / [original][2020-ori] solutions, complete [calendar][2020-cal] and [leaderboard][2020-lea]
+- Advent of Code 2019: [walkthrough][2019-wal], [clean][2019-sol] / [original][2019-ori] solutions, complete [calendar][2019-cal] and [leaderboard][2019-lea]
+- Advent of Code 2018: [clean][2018-sol] / [original][2018-ori] solutions, complete [calendar][2018-cal] and [leaderboard][2018-lea]
 
 
 About Advent of Code
@@ -95,26 +95,31 @@ license, which you can find in the file
 [2022-wal]: 2022/README.md
 [2022-sol]: 2022/solutions
 [2022-ori]: 2022/original_solutions
+[2022-cal]: 2022/misc/calendar.gif
 [2022-lea]: 2022/misc/full_leaderboard.md
 
 [2021-wal]: 2021/README.md
 [2021-sol]: 2021/solutions
 [2021-ori]: 2021/original_solutions
+[2021-cal]: 2021/misc/calendar.gif
 [2021-lea]: 2021/misc/full_leaderboard.md
 
 [2020-wal]: 2020/README.md
 [2020-sol]: 2020/solutions
 [2020-ori]: 2020/original_solutions
+[2020-cal]: 2020/misc/calendar.gif
 [2020-lea]: 2020/misc/full_leaderboard.md
 
 [2019-wal]: 2019/README.md
 [2019-sol]: 2019/solutions
 [2019-ori]: 2019/original_solutions
+[2019-cal]: 2019/misc/calendar.gif
 [2019-lea]: 2019/misc/full_leaderboard.md
 
 [2018-wal]: 2018/README.md
 [2018-sol]: 2018/solutions
 [2018-ori]: 2018/original_solutions
+[2018-cal]: 2018/misc/calendar.gif
 [2018-lea]: 2018/misc/full_leaderboard.md
 
 [contributing]: /CONTRIBUTING.md
