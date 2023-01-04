@@ -3969,7 +3969,7 @@ build a robot of a given type, *and* the previous minute we also had the chance
 to build it, *but* decided to not build anything instead... doing it now doesn't
 make much sense. We should have done it earlier! We can throw away this option.
 
-The above will require us to keep track of which robots we were able to built at
+The above will require us to keep track of which robots we were able to build at
 any given state and pass that information to the next state. We can do it by
 adding a simple list to our queue, containing numeric IDs:
 
@@ -4040,6 +4040,11 @@ def search(blueprint):
 
     return best
 ```
+
+NOTE: in my complete solution I use a bitmask instead of a list to remember the
+robots that could have been built, and I simply represent "none" as 0, and any
+other robot kind as a power of 2 (1, 2, 4, 8). A value of `0b1111` means all
+robot kinds could have been built.
 
 We can *finally* run the above function for each blueprint and collect the
 results:
@@ -5124,6 +5129,7 @@ And as usual, no part 2 for day 25. ***Merry Christmas!***
 [py-list-sort]:               https://docs.python.org/3/library/stdtypes.html#list.sort
 [py-math-gcd]:                https://docs.python.org/3/library/math.html#math.gcd
 [py-math-inf]:                hthttps://en.wikipedia.org/wiki/NP-completenessps://docs.python.org/3/library/re.html#re.Pattern.findall
+[py-math-lcm]:                https://docs.python.org/3/library/math.html#math.lcm
 [py-math-prod]:               https://docs.python.org/3/library/math.html#math.prod
 [py-object-init]:             https://docs.python.org/3/reference/datamodel.html#object.__init__
 [py-object-eq]:               https://docs.python.org/3/reference/datamodel.html#object.__eq__
