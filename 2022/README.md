@@ -18,7 +18,7 @@ Table of Contents
 - [Day 12 - Hill Climbing Algorithm][d12]
 - [Day 13 - Distress Signal][d13]
 - [Day 14 - Regolith Reservoir][d14]
-- Day 15 - Beacon Exclusion Zone: *TODO*
+- [Day 15 - Beacon Exclusion Zone][d15]
 - [Day 16 - Proboscidea Volcanium][d16]
 - Day 17 - Pyroclastic Flow: *TODO*
 - [Day 18 - Boiling Boulders][d18]
@@ -3021,6 +3021,402 @@ print('Part 2:', sand)
 This was a fun one! Let's continue our journey...
 
 
+Day 15 - Beacon Exclusion Zone
+------------------------------
+
+[Problem statement][d15-problem] — [Complete solution][d15-solution] — [Back to top][top]
+
+### Part 1
+
+Hmm bacon, yummy! Err, nope, sorry, it's *beacons* we have to deal with today.
+We are in 2D space, dealing with integer coordinates only, and measuring
+distances using [Manhattan geometry][wiki-manhattan]. We are given a list of
+sensors as input: each sensor sits at a given `x,y` point in space, and knows
+the position of its *closest* beacon, which is also given.
+
+For each sensor in our input, there cannot be any other beacons at a Manhattan
+distance lower than the distance of the closest one, however, there could very
+well be beacons farther away. Using this observation, we need to determine how
+many integer coordinates with `y=2000000` are *invalid* beacon positions.
+
+Let's start by parsing the input. Each line is a rather long string from which
+we should only extract four integers. Similarly to what we did for
+[day 11][d11], to make parsing simple, we can use the [`re`][py-re] module and a
+[regular expression][misc-regexp] that matches digits optionally preceded by a
+minus sign, transforming each match into an integer with
+[`map()`][py-builtin-map].
+
+We do not really care about the actual position of any beacon, but rather about
+the distance from the sensor that detected them, so we'll just calculate the
+Manhattan distance right away and save it for later.
+
+```python
+import re
+
+def manhattan(ax, ay, bx, by):
+    return abs(ax - bx) + abs(ay - by)
+
+exp = re.compile(r'-?\d+')
+sensors = []
+
+with open(...) as fin:
+    for line in fin:
+        sx, sy, bx, by = map(int, exp.findall(line))
+        sensors.append((sx, sy, manhattan(sx, sy, bx, by)))
+```
+
+The Manhattan distance we just calculated for each of the sensor we are dealing
+is effectively their *detection radius*. Since we know the coordinates of each
+sensor and the ones of its closest beacon, we also know that *there must be no
+other beacon at a distance lower than this detection radius*. Since we are
+working with Manhattan geometry, the area of detection will not be shaped like a
+circle, but rather like a *diamond* (or well, a square rotated 45 degrees). For
+example, a sensor at `3,0` that can see the closest beacon at `4,2` will have a
+detection radius of `3`:
+
+```none
+  3     #
+  2    ##B
+  1   #####
+Y 0  ###S###
+ -1   #####
+ -2    ###
+ -3     #
+     0123456
+        X
+```
+
+In the above example, apart from the point marked as `B`, we can be sure there
+is no other beacon within the detection radius of the sensor, meaning no beacon
+can be in any of the points marked as `#`.
+
+We are only interested in a single line at `y=2000000` though, and we want to
+know how many spots are impossible positions for beacons. We can visualize this
+as follows:
+
+```none
+                        .                           .
+                       ...                         ...
+                      .....                       .....
+                     .......     .          .      ...
+              .     .........   ...        ...      .
+             ...     .......   .....      .....
+            .....     .....   .......    .......
+y=200000:  #######     ###     #####    #########
+            .....       .       ...    ...........
+             ...             .   .      .........
+              .             ...          .......
+                           .....          .....
+                            ...            ...
+                             .              .
+```
+
+Out of all the diamonds "projected" by each sensor, some of them will intersect
+with the `y=200000` line, and some will not. For those that do, we can easily
+calculate the `x` coordinate of the start and end of the intersection. If the
+`y` coordinate of the sensor is exactly `200000`, the length is exactly double
+the intersection radius: from `sx - r` to `sx + r`. Otherwise, it will decrease
+linearly with the distance from the `y=200000` line on both sides, and we'll
+have a segment from `sx - r + dist` to `sx + r - dist`.
+
+Let's write a function to detect whether the diamond projected by a given sensor
+intersects with `y=200000` and if so, also calculate its extremes:
+
+```python
+def diamond_segment(sx, sy, r):
+    dist = abs(2000000 - sy)
+
+    if dist <= r:
+        return (sx - r + dist, sx + r - dist)
+    return None
+```
+
+We can now call the above function for all sensors, and collect the results that
+are not `None`. This will give us a "raw" list of segments of the form
+`(start, end)` where we know no beacon can be present. We can use
+[`itertools.starmap()`][py-itertools-starmap] to unpack the arguments correctly
+(as we parsed the sensors into tuples of 3 elements). Then, we can filter those
+that are `None` using the [`filter()`][py-builtin-filter] built-in.
+
+```python
+from itertools import starmap
+
+segments = list(filter(None, starmap(diamond_segment, sensors)))
+```
+
+Cool. All that's left to do is sum up all the segment lengths, right? Wrong!
+There's a small problem. We could be dealing with overlapping segments. Consider
+for example the following scenario:
+
+```none
+                   .
+                  ...
+                 .....
+              . .......
+             ...........
+            ...........
+y=200000:  ######X####
+            ..... ...
+             ...   .
+              .
+```
+
+In the above example, simply summing up the length of each segment, we would be
+over-counting the point marked as `X` because the segments from two diamonds
+overlap there.
+
+To avoid such a situation, we can detect and merge overlapping and contiguous
+segments into larger ones. We can do this by sorting the segments by their start
+and then iterating over them, "accumulating" them into a larger segment until we
+find a segment that is detached (i.e., it has start after the end of the current
+merged segment).
+
+Sorting is just a matter of calling the [`sorted()`][py-builtin-sorted]
+built-in. Then we can get an iterator over the sorted sequence with
+[`iter()`][py-builtin-iter], use [`next()`][py-builtin-next] to extract the
+first segment, and finally iterate over the rest to join them. Each time a new
+"detached" segment is encountered, we can add the length of the current merged
+segment to the total, update the current start and end, and keep going. Let's
+write a function to do all of this.
+
+```python
+def invalid_spots(sensors):
+    segments = iter(sorted(filter(None, starmap(diamond_segment, sensors))))
+    start, end = next(segments) # Current "merged" segment
+    total = 0
+
+    for s, e in segments:
+        if s > end + 1:
+            # This segment is detached from the current one: add current length
+            # to the total and use this as new initial segment to merge into.
+            total += end - start + 1
+            start, end = s, e
+        else:
+            # This segment overlaps with the current one: keep its end and keep going.
+            end = max(end, e)
+
+    # Account for the last segment
+    total += end - start + 1
+
+    return total
+```
+
+All that's left to do is call the above function!
+
+```python
+answer = invalid_spots(sensors)
+print('Part 1:', answer)
+```
+
+**But wait**, what? The returned value seems wrong! Indeed, there is still one
+thing we did not consider. If there *already is* any beacon detected on the
+`y=200000` line, we should not count its spot as invalid. We could simply
+subtract the number of beacons with `y=200000` from the total, but this won'w
+work, as multiple sensors could be detecting the same beacon, and we would be
+over-counting them. Instead, we can use a [`set`][py-set] of `x` coordinates to
+exclude for all the beacons that are on the target line.
+
+Let's modify the initial input-parsing code to also create this `set`:
+
+```diff
+ exp = re.compile(r'-?\d+')
+ sensors = []
++beacons_on_target = set()
+
+ with advent.get_input() as fin:
+     for line in fin:
+         sx, sy, bx, by = map(int, exp.findall(line))
+         sensors.append((sx, sy, manhattan(sx, sy, bx, by)))
++
++        if by == 2000000:
++            beacons_on_target.add(bx)
+```
+
+And we can finally calculate the correct answer:
+
+```python
+answer = invalid_spots(sensors) - len(beacons_on_target)
+print('Part 1:', answer)
+```
+
+### Part 2
+
+For part 2 our task becomes harder: we are told there is exactly *one* valid
+spot for a beacon with *X* and *Y* coordinates between *0* and *4000000*, and we
+need to find it. Our answer will then be `4000000 * x + y`.
+
+Technically, we could implement a very simple soluion by modifying the
+`diamond_segment()` function we wrote for part 1 and search from `y=0` to
+`y=4000000` until we find a line where we have exactly `4000000` invalid points.
+However, that's going to be just a little bit slow... so we better think of
+another approach.
+
+Given what we discussed above for part 1, it should be clear enough that
+wherever the magical spot we are looking for might be, it must be *outside* the
+detection diamonds of all our sensors. There are however a few additional
+observations we can make:
+
+- Since there is only *one* such spot, this also means that it will be
+  surrounded by invalid spots belonging to some detection diamonds.
+- Therefore, we can deduce that the spot we are looking for must be "touching"
+  the border of one or more detection diamonds.
+- Therefore, such a spot must be located at a distance of `radius + 1` from more
+  than one diamond.
+
+Given the above observations, we can use the following strategy:
+
+- For each detection diamond, find the linear equation of the four lines that
+  are just outside its perimeter, at `radius + 1` (exactly one more unit away
+  than the real radius). These will be 4: one per side.
+- For every possible pair of diamonds, try intersecting those lines. If there is
+  any intersection, that point is a candidate for the magic spot we are looking
+  for.
+- Test any such candidate to check whether it is within the *[0, 4000000]* range
+  for both *X* and *Y*: the first one that does is the one we want.
+
+The reason I am talking about [*linear equation*][wiki-linear-equation] above is
+that those are what is usually needed to find an intersection between two lines
+in space. For a given "diamond", the linear equations for its four sides can be
+easily calculated with the help of some pen and paper. Assuming that the center
+(i.e. the sensor) is at `0,0` and the radius is `r`, we have 4 lines that form a
+45-degree angle with both axes, with pretty simple equations.
+
+Here's an ASCII-art to illustrate this, with sides labeled `A`, `B`, `C`, `D` in
+clockwise order for reference:
+
+```none
+y = x + r + 1       A/\B    y = -x + r + 1
+                    /  \
+                    \  /
+y = -x - (r + 1)    D\/C    y = x - (r + 1)
+```
+
+For a sensor at an arbitrary `sx,sy` position, we only need to apply a
+[linear translation][wiki-euclidean-translation].
+
+```none
+y - sy = x - sx + r + 1         A/\B    y - sy = -(x - sx) + r + 1
+                                /  \
+                                \  /
+y - sy = -(x - sx) - (r + 1)    D\/C    y - sy = x - sx - (r + 1)
+```
+
+Now, how do we plan on "storing" these equations? Let's look at them more
+closely:
+
+- Side A: *y =  x - s<sub>x</sub> + s<sub>y</sub> + r + 1*
+- Side B: *y = -x + s<sub>x</sub> + s<sub>y</sub> + r + 1*
+- Side C: *y =  x - s<sub>x</sub> + s<sub>y</sub> - r - 1*
+- Side D: *y = -x + s<sub>x</sub> + s<sub>y</sub> - r - 1*
+
+The parts we care about are those following the *x* variable in the above
+equations. They are constants that depend on the sensor position (`sx,sy`) and
+its detection radius. We can easily calculate them for every sensor. Let's write
+a [generator function][py-generators] to do this:
+
+```python
+def sides(sx, sy, r):
+    r += 1
+    yield -sx + sy + r # a/\b  a: y =  x - sx + sy + r + 1
+    yield  sx + sy + r # /  \  b: y = -x + sx + sy + r + 1
+    yield -sx + sy - r # \  /  c: y =  x - sx + sy - r - 1
+    yield  sx + sy - r # d\/c  d: y = -x + sx + sy - r - 1
+```
+
+Now let's say we want to intersect the `A` side of a diamond with the `B` side
+of a second one, we will have the following equations (where the constants
+*a<sub>1</sub>* and b<sub>2</sub> have already been calculated using the above
+function):
+
+- Side A of diamond 1: *y = x + a<sub>1</sub>*
+- Side B of diamond 2: *y = -x + b<sub>2</sub>*
+
+The intersection can be calculated as follows:
+
+  - *x + a<sub>1</sub> = -x + b<sub>2</sub></sub>*
+  - *2x = b<sub>2</sub> - a<sub>1</sub>*
+  - *x = (b<sub>2</sub> - a<sub>1</sub>) / 2*
+  - *y = x + a<sub>1</sub>*
+
+We can now write a function to calculate the intersection given the two linear
+equation constants:
+
+```python
+def intersect(a, b):
+    x = (b - a) // 2
+    return x, x + a
+```
+
+Using the above function, given any pair of diamonds, we can now calculate all
+the possible intersections between pairs of their sides (or well, actually the
+sides at `radius + 1`). We saw side `A` intersected with side `B` above. The
+situation is analogous if we want to intersect side `A` and `D`, side `C` and
+`B`, or side `C` and `D`: the only thing that changes is the order of the
+operands in the subtraction. Additionally, it does not make sense to intersect
+sides that are parallel to each other (e.g., `A` and `C`) because such an
+intersection will either give infinite solutions (the two lines coincide) or no
+solutions at all.
+
+Let's write another generator function for this. It will take two sensors,
+extract the linear equation constants for the sides of their detection diamonds,
+and calculate all possible candidate points as intersections of perpendicular
+sides:
+
+```python
+def candidates(s1, s2):
+    a1, b1, c1, d1 = sides(*s1)
+    a2, b2, c2, d2 = sides(*s2)
+    yield intersect(a1, b2)
+    yield intersect(a1, d2)
+    yield intersect(c1, b2)
+    yield intersect(c1, d2)
+    yield intersect(a2, b1)
+    yield intersect(a2, d1)
+    yield intersect(c2, b1)
+    yield intersect(c2, d1)
+```
+
+We have almost all we need to solve the problem. The final function we'll write
+will find the magic spot for the missing (undetected) beacon by computing all
+possible candidate points as intersections between parallel sides of any pair of
+diamonds and checking their validity. To check the validity of a candidate
+point, we need to ensure its coordinates are within `0` and `4000000`, and that
+it is outside of all the detection diamonds of our sensors.
+
+We'll use [`itertools.combinations()`][py-itertools-combinations] to iterate
+over unique pairs of sensors. If a candidate point has coordinate within range,
+we'll check that the manhattan distance between the point and any sensor is
+greater than its detection radius, which can be done with
+[`all()`][py-builtin-all] plus a [generator expression][py-generator-expr]. The
+first candidate satisfying these conditions is the magic beacon spot we are
+looking for.
+
+```python
+from itertools import combinations
+
+def missing_beacon(sensors):
+    # For all unique pairs of different sensors
+    for s1, s2 in combinations(sensors, 2):
+        # Intersect the perpendicular sides of their detection diamonds (at radius + 1)
+        for x, y in candidates(s1, s2):
+            # Ensure the solution is within range
+            if x < 0 or x > 4000000 or y < 0 or y > 4000000:
+                continue
+
+            # Ensure the solution is outside the detection diamond of all sensors
+            if all(manhattan(sx, sy, x, y) > r for sx, sy, r in sensors):
+                return x, y
+```
+
+Finally, we can calculate the answer:
+
+```python
+x, y = missing_beacon(sensors)
+answer = x * 4000000 + y
+print('Part 2:', answer)
+```
+
+
 Day 16 - Proboscidea Volcanium
 ------------------------------
 
@@ -5013,6 +5409,7 @@ And as usual, no part 2 for day 25. ***Merry Christmas!***
 [d12]: #day-12---hill-climbing-algorithm
 [d13]: #day-13---distress-signal
 [d14]: #day-14---regolith-reservoir
+[d15]: #day-15---beacon-exclusion-zone
 [d16]: #day-16---proboscidea-volcanium
 [d18]: #day-18---boiling-boulders
 [d19]: #day-19---not-enough-minerals
@@ -5035,6 +5432,7 @@ And as usual, no part 2 for day 25. ***Merry Christmas!***
 [d12-problem]: https://adventofcode.com/2022/day/12
 [d13-problem]: https://adventofcode.com/2022/day/13
 [d14-problem]: https://adventofcode.com/2022/day/14
+[d15-problem]: https://adventofcode.com/2022/day/15
 [d16-problem]: https://adventofcode.com/2022/day/16
 [d18-problem]: https://adventofcode.com/2022/day/18
 [d19-problem]: https://adventofcode.com/2022/day/19
@@ -5057,6 +5455,7 @@ And as usual, no part 2 for day 25. ***Merry Christmas!***
 [d12-solution]: solutions/day12.py
 [d13-solution]: solutions/day13.py
 [d14-solution]: solutions/day14.py
+[d15-solution]: solutions/day15.py
 [d16-solution]: solutions/day16.py
 [d18-solution]: solutions/day18.py
 [d19-solution]: solutions/day19.py
@@ -5088,13 +5487,15 @@ And as usual, no part 2 for day 25. ***Merry Christmas!***
 [py-set]:                https://docs.python.org/3/tutorial/datastructures.html#sets
 [py-slicing]:            https://docs.python.org/3/glossary.html#term-slice
 [py-tuple]:              https://docs.python.org/3/tutorial/datastructures.html#tuples-and-sequences
+[py-unpacking]:          https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 
-[py-unpacking]:               https://docs.python.org/3/library/functions.html#all
+[py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-divmod]:          https://docs.python.org/3/library/functions.html#divmod
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-eval]:            https://docs.python.org/3/library/functions.html#eval
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
 [py-builtin-isinstance]:      https://docs.python.org/3/library/functions.html#isinstance
+[py-builtin-iter]:            https://docs.python.org/3/library/functions.html#iter
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
 [py-builtin-min]:             https://docs.python.org/3/library/functions.html#min
@@ -5137,6 +5538,7 @@ And as usual, no part 2 for day 25. ***Merry Christmas!***
 [py-operator-attrgetter]:     https://docs.python.org/3/library/operator.html#operator.attrgetter
 [py-operator-floordiv]:       https://docs.python.org/3/library/operator.html#operator.floordiv
 [py-operator-itemgetter]:     https://docs.python.org/3/library/operator.html#operator.itemgetter
+[py-re]:                      https://docs.python.org/3/library/re.html
 [py-re-pattern-findall]:      https://docs.python.org/3/library/re.html#re.Pattern.findall
 [py-set-update]:              https://docs.python.org/3/library/stdtypes.html#frozenset.update
 [py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigic
@@ -5156,26 +5558,30 @@ And as usual, no part 2 for day 25. ***Merry Christmas!***
 [algo-floyd-warshall]: https://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm
 [algo-quickselect]:    https://en.wikipedia.org/wiki/Quickselect
 
-[wiki-ascii]:              https://en.wikipedia.org/wiki/ASCII
-[wiki-backtracking]:       https://en.wikipedia.org/wiki/Backtracking
-[wiki-bounding-box]:       https://en.wikipedia.org/wiki/Minimum_bounding_box
-[wiki-commutative]:        https://en.wikipedia.org/wiki/Commutative_property
-[wiki-congruence]:         https://en.wikipedia.org/wiki/Congruence_relation
-[wiki-crt]:                https://en.wikipedia.org/wiki/Cathode-ray_tube
-[wiki-dp]:                 https://en.wikipedia.org/wiki/Dynamic_programming
-[wiki-euclidean-distance]: https://en.wikipedia.org/wiki/Euclidean_distance
-[wiki-graph]:              https://en.wikipedia.org/wiki/Graph_(discrete_mathematics)
-[wiki-json]:               https://en.wikipedia.org/wiki/JSON
-[wiki-lcm]:                https://en.wikipedia.org/wiki/Least_common_multiple
-[wiki-linear-time]:        https://en.wikipedia.org/wiki/Time_complexity#Linear_time
-[wiki-memoization]:        https://en.wikipedia.org/wiki/Memoization
-[wiki-relief-valve]:       https://en.wikipedia.org/wiki/Relief_valve
-[wiki-search-problem]:     https://en.wikipedia.org/wiki/Search_problem
-[wiki-snafu]:              https://en.wikipedia.org/wiki/SNAFU
-[wiki-topographic-map]:    https://en.wikipedia.org/wiki/Topographic_map
-[wiki-tree]:               https://en.wikipedia.org/wiki/Tree_(data_structure)
-[wiki-triangular-number]:  https://en.wikipedia.org/wiki/Triangular_number
-[wiki-expression-tree]:    https://en.wikipedia.org/wiki/Binary_expression_tree
+[wiki-ascii]:                 https://en.wikipedia.org/wiki/ASCII
+[wiki-backtracking]:          https://en.wikipedia.org/wiki/Backtracking
+[wiki-bounding-box]:          https://en.wikipedia.org/wiki/Minimum_bounding_box
+[wiki-commutative]:           https://en.wikipedia.org/wiki/Commutative_property
+[wiki-congruence]:            https://en.wikipedia.org/wiki/Congruence_relation
+[wiki-crt]:                   https://en.wikipedia.org/wiki/Cathode-ray_tube
+[wiki-dp]:                    https://en.wikipedia.org/wiki/Dynamic_programming
+[wiki-euclidean-distance]:    https://en.wikipedia.org/wiki/Euclidean_distance
+[wiki-euclidean-translation]: https://en.wikipedia.org/wiki/Euclidean_plane_isometry#Translations
+[wiki-graph]:                 https://en.wikipedia.org/wiki/Graph_(discrete_mathematics)
+[wiki-json]:                  https://en.wikipedia.org/wiki/JSON
+[wiki-lcm]:                   https://en.wikipedia.org/wiki/Least_common_multiple
+[wiki-linear-equation]:       https://en.wikipedia.org/wiki/Linear_equation
+[wiki-linear-time]:           https://en.wikipedia.org/wiki/Time_complexity#Linear_time
+[wiki-manhattan]:             https://en.wikipedia.org/wiki/Taxicab_geometry
+[wiki-memoization]:           https://en.wikipedia.org/wiki/Memoization
+[wiki-relief-valve]:          https://en.wikipedia.org/wiki/Relief_valve
+[wiki-search-problem]:        https://en.wikipedia.org/wiki/Search_problem
+[wiki-snafu]:                 https://en.wikipedia.org/wiki/SNAFU
+[wiki-topographic-map]:       https://en.wikipedia.org/wiki/Topographic_map
+[wiki-tree]:                  https://en.wikipedia.org/wiki/Tree_(data_structure)
+[wiki-triangular-number]:     https://en.wikipedia.org/wiki/Triangular_number
+[wiki-expression-tree]:       https://en.wikipedia.org/wiki/Binary_expression_tree
+
 
 [misc-aoc-bingo]:     https://www.reddit.com/r/adventofcode/comments/k3q7tr/
 [misc-numpy]:         https://numpy.org
