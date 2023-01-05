@@ -2,22 +2,21 @@
 
 from utils import advent
 
+
 def fuel2(nums, x):
-	tot = 0
-	for n in nums:
-		delta = abs(n - x)
-		tot += (delta * (delta + 1)) // 2
-	return tot
+    tot = 0
+    for n in nums:
+        delta = abs(n - x)
+        tot += (delta * (delta + 1)) // 2
+    return tot
 
 
 advent.setup(2021, 7)
 fin = advent.get_input()
 
-nums = list(map(int, fin.readline().split(',')))
-nums.sort()
-
+nums = sorted(map(int, fin.readline().split(',')))
 median = nums[len(nums) // 2]
-fuel   = sum(abs(x - median) for x in nums)
+fuel = sum(abs(x - median) for x in nums)
 
 advent.print_answer(1, fuel)
 

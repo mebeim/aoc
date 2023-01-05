@@ -3,38 +3,40 @@
 from utils import advent
 from collections import deque
 
+
 def check(s):
-	stack = deque()
+    stack = deque()
 
-	for c in s:
-		if c in '([{<':
-			stack.append(c.translate(TRANS_TABLE))
-		elif stack.pop() != c:
-			return SYNTAX_SCORE[c], 0
+    for c in s:
+        if c in '([{<':
+            stack.append(c.translate(TRANS_TABLE))
+        elif stack.pop() != c:
+            return SYNTAX_SCORE[c], 0
 
-	score2 = 0
-	while stack:
-		score2 *= 5
-		score2 += COMPL_SCORE[stack.pop()]
+    score2 = 0
+    while stack:
+        score2 *= 5
+        score2 += COMPL_SCORE[stack.pop()]
 
-	return 0, score2
+    return 0, score2
+
 
 advent.setup(2021, 10)
 fin = advent.get_input()
 
-TRANS_TABLE  = str.maketrans('([{<', ')]}>')
+TRANS_TABLE = str.maketrans('([{<', ')]}>')
 SYNTAX_SCORE = {')': 3, ']': 57, '}': 1197, '>': 25137}
-COMPL_SCORE  = {')': 1, ']': 2 , '}': 3   , '>': 4    }
+COMPL_SCORE = {')': 1, ']': 2, '}': 3, '>': 4}
 
 tot_syntax = 0
 autocompl_scores = []
 
 for l in map(str.rstrip, fin):
-	score1, score2 = check(l)
-	tot_syntax += score1
+    score1, score2 = check(l)
+    tot_syntax += score1
 
-	if score2 > 0:
-		autocompl_scores.append(score2)
+    if score2 > 0:
+        autocompl_scores.append(score2)
 
 autocompl_scores.sort()
 mid_autocompl = autocompl_scores[len(autocompl_scores) // 2]

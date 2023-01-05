@@ -8,16 +8,16 @@ fin = advent.get_input()
 aim = horiz = depth = 0
 
 for line in fin:
-	cmd, x = line.split()
-	x = int(x)
+    cmd, x = line.split()
+    x = int(x)
 
-	if cmd == 'down':
-		aim += x
-	elif cmd == 'up':
-		aim -= x
-	else:
-		horiz += x
-		depth += aim * x
+    if cmd == 'down':
+        aim += x
+    elif cmd == 'up':
+        aim -= x
+    else:
+        horiz += x
+        depth += aim * x
 
 answer1 = horiz * aim
 answer2 = horiz * depth

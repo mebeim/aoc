@@ -4,25 +4,27 @@ from utils import advent
 
 VALUES = {'=': -2, '-': -1, '0': 0, '1': 1, '2': 2}
 
+
 def base10(n):
-	power = 5 ** (len(n) - 1)
-	res = 0
+    power = 5 ** (len(n) - 1)
+    res = 0
 
-	for digit in n:
-		res += VALUES[digit] * power
-		power //= 5
+    for digit in n:
+        res += VALUES[digit] * power
+        power //= 5
 
-	return res
+    return res
+
 
 def snafu(n):
-	res = ''
+    res = ''
 
-	while n:
-		n, digit = divmod(n, 5)
-		res += '012=-'[digit]
-		n += digit > 2
+    while n:
+        n, digit = divmod(n, 5)
+        res += '012=-'[digit]
+        n += digit > 2
 
-	return res[::-1]
+    return res[::-1]
 
 
 advent.setup(2022, 25)
