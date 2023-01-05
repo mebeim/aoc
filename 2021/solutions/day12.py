@@ -3,45 +3,47 @@
 from utils import advent
 from collections import deque, defaultdict
 
+
 def n_paths(G, src, dst):
-	stack = deque([(src, {src})])
-	total = 0
+    stack = deque([(src, {src})])
+    total = 0
 
-	while stack:
-		node, visited = stack.pop()
-		if node == dst:
-			total += 1
-			continue
+    while stack:
+        node, visited = stack.pop()
+        if node == dst:
+            total += 1
+            continue
 
-		for n in G[node]:
-			if n in visited and n.islower():
-				continue
+        for n in G[node]:
+            if n in visited and n.islower():
+                continue
 
-			stack.append((n, visited | {n}))
+            stack.append((n, visited | {n}))
 
-	return total
+    return total
+
 
 def n_paths2(G, src, dst):
-	stack = deque([(src, {src}, False)])
-	total = 0
+    stack = deque([(src, {src}, False)])
+    total = 0
 
-	while stack:
-		node, visited, double = stack.pop()
-		if node == dst:
-			total += 1
-			continue
+    while stack:
+        node, visited, double = stack.pop()
+        if node == dst:
+            total += 1
+            continue
 
-		for n in G[node]:
-			if n not in visited or n.isupper():
-				stack.append((n, visited | {n}, double))
-				continue
+        for n in G[node]:
+            if n not in visited or n.isupper():
+                stack.append((n, visited | {n}, double))
+                continue
 
-			if double:
-				continue
+            if double:
+                continue
 
-			stack.append((n, visited, True))
+            stack.append((n, visited, True))
 
-	return total
+    return total
 
 
 advent.setup(2021, 12)
@@ -50,12 +52,12 @@ fin = advent.get_input()
 G = defaultdict(list)
 
 for edge in fin:
-	a, b = edge.rstrip().split('-')
+    a, b = edge.rstrip().split('-')
 
-	if b != 'start':
-		G[a].append(b)
-	if a != 'start':
-		G[b].append(a)
+    if b != 'start':
+        G[a].append(b)
+    if a != 'start':
+        G[b].append(a)
 
 n1 = n_paths(G, 'start', 'end')
 n2 = n_paths2(G, 'start', 'end')
