@@ -25,7 +25,7 @@ Table of Contents
 - [Day 19 - Not Enough Minerals][d19]
 - [Day 20 - Grove Positioning System][d20]
 - [Day 21 - Monkey Math][d21]
-- Day 22 - Monkey Map: *TODO*
+- [Day 22 - Monkey Map][d22]
 - Day 23 - Unstable Diffusion: *TODO*
 - [Day 24 - Blizzard Basin][d24]
 - [Day 25 - Full of Hot Air][d25]
@@ -2549,7 +2549,7 @@ print('Part 1:', answer)
 ```
 
 All the above loop is doing is calculating a sum, so we can also re-write the
-entire thing using [`sum()`][py-builtin-sum] plus a filtereg generator
+entire thing using [`sum()`][py-builtin-sum] plus a filtered generator
 expression (`x for x in ... if <condition>`):
 
 ```python
@@ -4959,6 +4959,503 @@ print('Part 2:', answer)
 ```
 
 
+Day 22 - Monkey Map
+-------------------
+
+[Problem statement][d22-problem] — [Complete solution][d22-solution] — [Back to top][top]
+
+### Part 1
+
+Ah, moving inside a 2D ASCII grid yet again. What's different this time? Let's
+see...
+
+We are given a 2D grid as input, which however looks kind of weird, it's not the
+usual rectangle, but instead, it has multiple rectangular sections connected
+together. There are walls (`#`) and free cells (`.`) we can walk on. Other than
+the map, we are given a list of movement instructions in the form of a single,
+long string. Instructions are of two types: turning 90 degrees in place (`L` or
+`R`) or moving forward a given number of steps. Whenever we bump into a wall, we
+need to stop advancing, and whenever we fall off of the grid we wrap around and
+continue on the opposite side (i.e. if there isn't a wall immediately stopping
+us there).
+
+We start facing right, and we need to determine our final position and facing
+direction after following all the instructions. The answer to provide is a
+linear combination of our row, column and facing direction expressed as a
+number: *1000r + 4c + d*.
+
+The task looks simple enough. The only annoying part is the wrapping around, but
+that can be solved quite easily once we understand how to represent the grid.
+
+Our input looks something like this (scaled down):
+
+```none
+    .#...#..
+    ...#....
+    ..#...#.
+    ##..
+    .#.#
+    .#..
+........
+#.#...#.
+#....#..
+.#..
+.#..
+....
+
+14R42L38R43L9L2L14L11...
+```
+
+We can only walk on free cells (`.`), but not on empty ones (spaces), and
+coordinates start from the top-left at row 1, column 1. We are initially on row
+1 on the first free cell (`.`). The final line of input contains the movement
+instructions to follow. They are all weirdly compressed together, so we'll
+somehow need to separate them later.
+
+As the problem statement mentions, directions can be considered integers. Let's
+create some global constants for directions, cell types and row/column deltas to
+apply to move in a given direction:
+
+```python
+WALL, FREE, EMPTY = '#. '
+RIGHT, DOWN, LEFT, UP = range(4)
+
+DIRMAP = [
+    (0, 1),  # moving right
+    (1, 0),  # moving down
+    (0, -1), # moving left
+    (-1, 0), # moving up
+]
+```
+
+For now, let's parse this weirdly shaped grid into a list of strings. We can
+just read the entire input and use [`.splitlines()`][py-str-splitlines], then
+extract the last line containing movement instructions and throw away the empty
+one.
+
+```python
+grid = []
+
+with open(...) as fin:
+    grid  = fin.read().splitlines()
+    moves = grid[-1]  # Take last line with movement instructions.
+    grid  = grid[:-2] # Throw away last two lines.
+```
+
+Because of the shape of the grid, not all lines of input are of the same length,
+and in fact, the top part of the grid is way wider than the bottom one. To make
+our life a lot easier, we can just take the maximum width and turn the grid into
+an actual rectangle, expanding shorter rows with empty spaces through
+[`.ljust()`][py-str-ljust]:
+
+```python
+HEIGHT, WIDTH = len(grid), max(map(len, grid))
+
+for i in range(HEIGHT):
+    grid[i] = grid[i].ljust(WIDTH, EMPTY)
+```
+
+Additionally, we will need an easy way to detect whether we are going out of
+bounds (and therefore need to wrap around). To avoid a bunch of annoying
+bound-checking `if` statements, we can simply add two rows of empty cells at the
+top and at the bottom of the grid, as weel as two columns of empty cells on the
+left and the right. This also makes the actual grid start at `grid[1][x]` (where
+`x` is the column of the leftmost free cell in the top row) instead of
+`grid[0][x]`, which is nice since the coordinate system used in the problem
+statement considers the top-left as row 1, column 1.
+
+```python
+for i in range(HEIGHT):
+    # Add two empty columns left and right.
+    grid[i] = EMPTY + grid[i].ljust(WIDTH, EMPTY) + EMPTY
+
+HEIGHT += 2
+WIDTH  += 2
+
+# Add two empty rows at the top and at the bottom.
+grid = [EMPTY * WIDTH] + grid + [EMPTY * WIDTH]
+```
+
+Now, in order to iterate over the movement instructions we'll need to separate
+turning instructions (`L`, `R`) from advancement instructions (numbers). We can
+do this with a silly hack: add spaces around any `L` and `R` using
+[`.replace()`][py-str-replace], and then split the whole thing. We can then use
+[`map()`][py-builtin-map] with a [lambda][py-lambda] to transform integers into
+actual `int`s as needed:
+
+```python
+moves = moves.replace('R', ' R ').replace('L', ' L ').split()
+moves = tuple(map(lambda m: m if m in 'LR' else int(m), moves))
+```
+
+To simulate walking around the grid, we'll need to handle wrapping around it.
+Let's write a function to simulate one single step, and handle the wrapping.
+
+The way our grid is shaped, wrapping around going in a certain direction means
+scanning the opposite side of our grid until we find the first cell that is not
+empty. We can do this with a simple `for` loop, for example, wrapping from the
+right side back to the left side while going right:
+
+```python
+for c in range(WIDTH):
+    if grid[r][c] != EMPTY:
+        break
+
+newc = c
+```
+
+The above `for` loop scans the grid until it finds a cell that satisfies a
+specific condition. With the help of a filtered
+[generator expression][py-generator-expr] and the [`next()`][py-builtin-next]
+built-in, this can be simplified to a single line of code:
+
+```python
+newc = next(c for c in range(WIDTH) if grid[r][c] != EMPTY)
+```
+
+We can apply the above logic for all four directions. Here's the final function:
+
+```python
+def step(r, c, direction):
+    dr, dc = DIRMAP[direction]
+    r += dr
+    c += dc
+
+    if grid[r][c] == EMPTY:
+        # We fell off the edge of the grid, we need to wrap to the opposite side.
+        if direction == RIGHT:
+            c = next(c for c in range(WIDTH) if grid[r][c] != EMPTY)
+        elif direction == LEFT:
+            c = next(c for c in range(WIDTH - 1, -1, -1) if grid[r][c] != EMPTY)
+        elif direction == DOWN:
+            r = next(r for r in range(HEIGHT) if grid[r][c] != EMPTY)
+        else:
+            r = next(r for r in range(HEIGHT - 1, -1, -1) if grid[r][c] != EMPTY)
+
+    return r, c
+```
+
+Since there's only one unique opposite cell for each border cell of our grid, we
+if we want we can also cache the results through
+[`lru_cache()`][py-functools-lru_cache] by moving the wrapping logic inside four
+different functions, for example like this:
+
+```python
+from functools import lru_cache
+
+@lru_cache()
+def leftmost_col(r):
+    return next(c for c in range(WIDTH) if grid[r][c] != EMPTY)
+```
+
+Now that we have a function to perform a single step in a given direction, we
+can write a function to follow all the movement instructions in order. The only
+thing we have to worry about is stopping at walls. The cell to start from will
+be the leftmost free cell (`.`) on row `1`, so we can use
+[`.index()`][py-list-index] to find the column.
+
+We'll be encoding directions as an integer modulo `4`, that is from `0` to `3`:
+each time we turn left (`L`) we'll decrement the number, and each time we turn
+right (`R`) we'll increment it. When moving forward, we'll advance one `step()`
+at a time until we either finish moving forward or hit a wall.
+
+```python
+def walk(grid, moves):
+    r = 1
+    c = grid[1].index(FREE)
+    d = RIGHT
+
+    for move in moves:
+        if move == 'L':
+            d = (d - 1) % 4
+        elif move == 'R':
+            d = (d + 1) % 4
+        else:
+            for _ in range(move):
+                newr, newc = step(r, c, d)
+
+                # Stop if we hit a wall.
+                if grid[newr][newc] == WALL:
+                    break
+
+                # Otherwise just keep going.
+                r, c = newr, newc
+
+    # Calculate the final answer.
+    return 1000 * r + 4 * c + d
+```
+
+All that's left to do is call the function we just wrote, which alredy calculates
+the final result as `1000 * r + 4 * c + d` for us:
+
+```python
+answer = walk(grid, moves)
+print('Part 1:', answer)
+```
+
+### Part 2
+
+For the second part of the problem, we are told that the weirdly-shaped grid we
+are working with is actually the [**net**][wiki-net] of a 3D cube (i.e. an
+"unfolded" cube laid out on a plane). The steps we need to make now take place
+*on the outer surface of the cube*, so wrapping around happens completely
+differently. The result we need to provide is the same as before: considering
+the grid we have, we want the value of *1000r + 4r + d* given the final row (r),
+column (c) and facing direction (d).
+
+"Falling off" of an edge now is a completely different story. It's very hard to
+visualize with only ASCII art, or even with just pen and paper, so I'd recommend
+drawing the net, cropping and folding an actual paper cube with uniquely
+numbered faces (from 1 to 6).
+[This is what I did while originally solving the problem][d22-paper-cube], and I
+doubt I would have been able to solve it without it.
+
+This is the numbering we'll use to identify faces:
+
+```none
+     +----+----+
+     | 1  | 2  |
+     |    |    |
+     +----+----+
+     | 3  |
+     |    |
++----+----+
+| 4  | 5  |
+|    |    |
++----+----+
+| 6  |
+|    |
++----+
+```
+
+Now, considering that the above is the 2D net of a 3D cube, the funny thing
+about wrapping around the edges of the cube is that we can end up on an entirely
+different face, *facing a different direction* (as seen from the 2D net
+perspective). For example, if we reach the right edge of face 2 going right,
+we'll end up on the right edge of face 5 *going left*! Even weirder, if we reach
+the top edge of face 1 going up, we'll end up *on the left edge of face 6 going
+right*!
+
+This is extremely counter-intuitive to reason about on the 2D net of our cube,
+but here's a diagram to illustrate it:
+
+```none
+x<<<<<<<<<<<x
+v           ^
+v        +--^-+----+
+v        | 1^ | 2  |
+v        |    |   >>>>x
+v        +----+----+  v
+v        | 3  |       v
+v        |    |       v
+v   +----+----+       v
+v   | 4  | 5  |       v
+v   |    |   <<<<<<<<<x
+v   +----+----+
+v   | 6  |
+x>>>>>   |
+    +----+
+```
+
+If we had to solve a more generalized version of the problem, we would also have
+to deal with the fact that a 3D cube can actually be represented by
+[*11 different 2D nets*][misc-cube-nets] (layed out in different shapes).
+Thankfully, we are given a fixed net layout, and thus we know which edges of
+which faces are adjacent to one another. If this wasn't the case, we would also
+need to detect that and act accordingly, figuring out the wrapping rules for any
+possible net.
+
+In any case, after building and inspecting our own paper cube with faces labeled
+as above, the wrapping becomes much simpler to understand. In terms of code,
+we'll need a `face()` function to understand on which face we are standing and
+a new `step()` function to apply the wrapping rules correctly.
+
+Our faces are 50x50, and we already know the minimum and maximum row/column for
+each of them:
+
+```none
+1    51   101  151
+|    |    |    |
+|    +----+----+--- 1
+|    | 1  | 2  |
+|    |    |    |
+|    +----+----+--- 51
+|    | 3  |
+|    |    |
++----+----+-------- 101
+| 4  | 5  |
+|    |    |
++----+----+-------- 151
+| 6  |
+|    |
++----+------------- 201
+```
+
+Accounting for the fact that we added one additional row/column on each side, we
+can build a simple global `tuple` of constants to identify the bounds of our six
+faces:
+
+```python
+FACES = (
+    # rmin, rmax, cmin, cmax
+    ( 1    , 50  , 51  , 100 ),
+    ( 1    , 50  , 101 , 150 ),
+    ( 51   , 100 , 51  , 100 ),
+    ( 101  , 150 , 1   , 50  ),
+    ( 101  , 150 , 51  , 100 ),
+    ( 151  , 200 , 1   , 50  )
+)
+```
+
+Given a row and column, we can now identify the face by iterating over the above
+tuple and checking the coordinates against the bounds.
+
+Another important thing to remember is that whenever we need to wrap around and
+switch faces, we will need to keep the correct offset on the edge of the new
+face. For example, if we are on face 1 going up, we'll wrap to the left edge of
+face 6. On this edge, the distance from the top of face 6 will be the same as
+the previous distance from the left of face 1.
+
+```none
+x<<<<<<<<<<<<<<<<<<x
+v   x<<<<<<<<<x    ^
+v   v        +^----^+
+v   v        |^    ^|
+v   v        |  1   |
+v   v        |      |
+v   v        +------+
+v   v
+v   v +------+
+v   x>>>     |
+v     |  6   |
+x>>>>>>>     |
+      +------+
+```
+
+Similarly, if we are on face 1 going left, we'll wrap to the left edge of face
+4: this time the distance from the top of face 4 will be the same as the
+previous distance from the *bottom* of face 1.
+
+```none
+             +------+
+x<<<<<<<<<<<<<<     |
+v            |  1   |
+v   x<<<<<<<<<<     |
+v   v        +------+
+v   v
+v   v +------+
+v   x>>>     |
+v     |  4   |
+x>>>>>>>     |
+      +------+
+```
+
+To take the above into account, in our `face()` function, in addition to
+identifying the face we are on, we'll also calculate the *relative* row and
+column within the face. This will later be useful to calculate the exact
+position on the edge of the new face after wrapping.
+
+To identify the face, we'll iterate over the previously created `FACE` global
+tuple, using [`enumerate()`][py-builtin-enumerate] to start counting from `1`:
+
+```python
+def face(r, c):
+    for face_id, (rmin, rmax, cmin, cmax) in enumerate(FACES, 1):
+        if rmin <= r <= rmax and cmin <= c <= cmax:
+            return face_id, r - rmin + 1, c - cmin + 1
+```
+
+Now we'll need a new `step()` function, let's call it `step_cube()`. First,
+we'll calculate the new position as if we don't need to wrap. If the new
+position is not an empty cell we're done, otherwise we'll need to wrap around.
+Using the `face()` function, we can identify the current face and calcualte the
+relative position within it. Then, the logic to apply is pretty boring and
+repetitive, but the reasoning is the same as explained above for face 1. I'm not
+going to copy-paste the entire function here as it's quite long, but you can
+check it out in my [complete solution][d22-solution].
+
+```python
+def step_cube(r, c, direction):
+    dr, dc = DIRMAP[direction]
+    newr = r + dr
+    newc = c + dc
+
+    if grid[newr][newc] != EMPTY:
+        return newr, newc, direction
+
+    # We fell off an edge, we need to wrap to another face...
+    face_id, fr, fc = face(r, c)
+    # fr = face-relative row (from the top left of the face)
+    # fc = face-relative column (from the top left of the face)
+
+    if face_id == 1:
+        if direction == UP:
+            # We'll end up on face 6 going right, the new row will be 150 + the
+            # distance from the left of face 1 (i.e. fr), and the new column is
+            # always 1.
+            return fc + 150, 1, RIGHT
+
+        # direction == LEFT -> we'll end up on face 4 going right, the new row
+        # will be 100 + the distance from the *bottom* of face 1 (i.e. 51 - fr),
+        # and the new column is always 1.
+        return (51 - fr) + 100, 1, RIGHT
+
+    if face_id == 2:
+        ...
+
+    # ... and so on for all the other faces...
+```
+
+As you may have noticed above, the new `step_cube()` function also returns the
+new direction to move in, since changing face also changes the direction we are
+facing from the perspective of our 2D net. We can generalize our existing
+`walk()` function to take the step function to use as an argument with a couple
+of modifications:
+
+```diff
+-def walk(grid, moves):
++def walk(grid, moves, step_func=step):
+     r = 1
+     c = grid[1].index(FREE)
+     d = RIGHT
+
+     for move in moves:
+         if move == 'L':
+             d = (d - 1) % 4
+         elif move == 'R':
+             d = (d + 1) % 4
+         else:
+             for _ in range(move):
+-                newr, newc = step(r, c, d)
++                newr, newc, newd = step_func(r, c, d)
+                 if grid[newr][newc] == WALL:
+                     break
+
+-                r, c = newr, newc
++                r, c, d = newr, newc, newd
+
+     return 1000 * r + 4 * c + d
+```
+
+Given the way we modified `walk()` we also need to return a direction from our
+original `step()` function, so let's do that:
+
+```diff
+ def step(r, c, direction):
+     # ...
+
+-    return r, c
++    return r, c, direction
+```
+
+The final solution is again only one function call away:
+
+```python
+answer = walk(grid, moves, step_cube)
+print('Part 2:', answer)
+```
+
+
 Day 24 - Blizzard Basin
 -----------------------
 
@@ -5414,6 +5911,7 @@ And as usual, no part 2 for day 25. ***Merry Christmas!***
 [d19]: #day-19---not-enough-minerals
 [d20]: #day-20---grove-positioning-system
 [d21]: #day-21---monkey-math
+[d22]: #day-22---monkey-map
 [d24]: #day-24---blizzard-basin
 [d25]: #day-25---full-of-hot-air
 
@@ -5437,6 +5935,7 @@ And as usual, no part 2 for day 25. ***Merry Christmas!***
 [d19-problem]: https://adventofcode.com/2022/day/19
 [d20-problem]: https://adventofcode.com/2022/day/20
 [d21-problem]: https://adventofcode.com/2022/day/21
+[d22-problem]: https://adventofcode.com/2022/day/22
 [d24-problem]: https://adventofcode.com/2022/day/24
 [d25-problem]: https://adventofcode.com/2022/day/25
 
@@ -5460,6 +5959,7 @@ And as usual, no part 2 for day 25. ***Merry Christmas!***
 [d19-solution]: solutions/day19.py
 [d20-solution]: solutions/day20.py
 [d21-solution]: solutions/day21.py
+[d22-solution]: solutions/day22.py
 [d24-solution]: solutions/day24.py
 [d25-solution]: solutions/day25.py
 
@@ -5474,6 +5974,7 @@ And as usual, no part 2 for day 25. ***Merry Christmas!***
 [d19-reddit-comment]:     https://www.reddit.com/r/adventofcode/comments/zpihwi/2022_day_19_solutions/j0vvtdt/
 [d20-alternative-tuples]: misc/day20/tuples.py
 [d20-alternative-deque]:  misc/day20/deque.py
+[d22-paper-cube]:         misc/day22/paper_cube.jpg
 
 [py-3-way-comparison]:   https://docs.python.org/3/reference/expressions.html#comparisons
 [py-class-slots]:        https://docs.python.oattrgetterrg/3/reference/datamodel.html#slots
@@ -5542,6 +6043,7 @@ And as usual, no part 2 for day 25. ***Merry Christmas!***
 [py-set-update]:              https://docs.python.org/3/library/stdtypes.html#frozenset.update
 [py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigic
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
+[py-str-ljust]:               https://docs.python.org/3/library/stdtypes.html#str.ljust
 [py-str-lstrip]:              https://docs.python.org/3/library/stdtypes.html#str.lstrip
 [py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
 [py-str-replace]:             https://docs.python.org/3/library/stdtypes.html#str.replace
@@ -5573,6 +6075,7 @@ And as usual, no part 2 for day 25. ***Merry Christmas!***
 [wiki-linear-time]:           https://en.wikipedia.org/wiki/Time_complexity#Linear_time
 [wiki-manhattan]:             https://en.wikipedia.org/wiki/Taxicab_geometry
 [wiki-memoization]:           https://en.wikipedia.org/wiki/Memoization
+[wiki-net]:                   https://en.wikipedia.org/wiki/Net_(polyhedron)
 [wiki-relief-valve]:          https://en.wikipedia.org/wiki/Relief_valve
 [wiki-search-problem]:        https://en.wikipedia.org/wiki/Search_problem
 [wiki-snafu]:                 https://en.wikipedia.org/wiki/SNAFU
@@ -5590,3 +6093,4 @@ And as usual, no part 2 for day 25. ***Merry Christmas!***
 [misc-regexp]:        https://www.regular-expressions.info/
 [misc-so-cmp_to_key]: https://stackoverflow.com/q/32752739/3889449
 [misc-so-deque]:      https://stackoverflow.com/a/6257048/3889449
+[misc-cube-nets]:     https://en.wikipedia.org/wiki/Net_(polyhedron)#/media/File:The_11_cubic_nets.svg
