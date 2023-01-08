@@ -2343,7 +2343,7 @@ work for part 2:
 
                  queue.append((distance + 1, n))
 
-     return best
+     return INFINITY
 ```
 
 And here we go, we now have the solution for both parts:

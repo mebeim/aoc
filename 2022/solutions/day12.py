@@ -42,7 +42,7 @@ def bfs(grid, src, dst, get_neighbors):
 
 				queue.append((distance + 1, n))
 
-	return best
+	return INFINITY
 
 
 advent.setup(2022, 12)
