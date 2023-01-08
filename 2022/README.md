@@ -1460,8 +1460,8 @@ surrounding the head will always be at an Euclidean distance of at most *√(2)*
 will have a distance of *1* unit, while the other four cells will have a
 distance of *√(1<sup>2</sup>+1<sup>2</sup>) = √(2)* units. Thus, the tail needs
 to move and follow the head *IFF √(dx<sup>2</sup>+dy<sup>2</sup>) > √(2)*. If we
-emove the square root by elevating everything to the power of two, we are left
-with the condition *dx<sup>2</sup>+dy<sup>2</sup> > 2*.
+get rid of the square root by squaring both sides, we are left with the
+condition *dx<sup>2</sup>+dy<sup>2</sup> > 2*.
 
 How does the tail need to move? Well, following `dx` and `dy`. If `dx` is
 positive, it moves one unit to the right, while if it's negative it moves one
@@ -2021,7 +2021,7 @@ How do we do this? With a bit of modular arithmetic:
   is somewhat intuitive since a number divisible by `d * q` will also always be
   divisible by both `d` and `q` separately. We have `(x % (d*q)) % d == x % d`
   for any value of `q`, or in mathematical terms:
-  *x mod dq ≡ a (mod d) <=> x ≡ a (mod d)* for any positve integer *q*.
+  *x mod dq ≡ a (mod d) ⇔ x ≡ a (mod d)* for any positve integer *q*.
 
 - In the general case of multiple different divisors, we only need to keep item
   values *modulo the product of all the divisors*. This product is small enough
@@ -2277,7 +2277,6 @@ def neighbors4(grid, r, c, h, w):
 
 def neighbors_forward(grid, r, c, h, w):
     max_el = grid[r][c] + 1
-    neigh = neighbors4(grid, r, c, h, w)
 
     for nr, nc in neighbors4(grid, r, c, h, w):
         if grid[nr][nc] <= max_el:
@@ -2328,9 +2327,8 @@ work for part 2:
 
      while queue:
          distance, rc = queue.popleft()
--         if rc == dst or grid[r][c] == dst:
+-         if rc == dst:
 +         r, c = rc
-+
 +         if rc == dst or grid[r][c] == dst:
              return distance
 
@@ -2596,7 +2594,7 @@ argument to `.index()` (the index to start from) to skip already checked items.
 
 ```python
 answer = packets.index([[2]]) + 1
-answer *= packets.index([[6]]) + 1
+answer *= packets.index([[6]], answer) + 1
 print('Part 2:', answer)
 ```
 
@@ -3211,7 +3209,7 @@ print('Part 1:', answer)
 **But wait**, what? The returned value seems wrong! Indeed, there is still one
 thing we did not consider. If there *already is* any beacon detected on the
 `y=200000` line, we should not count its spot as invalid. We could simply
-subtract the number of beacons with `y=200000` from the total, but this won'w
+subtract the number of beacons with `y=200000` from the total, but this won't
 work, as multiple sensors could be detecting the same beacon, and we would be
 over-counting them. Instead, we can use a [`set`][py-set] of `x` coordinates to
 exclude for all the beacons that are on the target line.
@@ -3443,8 +3441,8 @@ Let's parse the input into a graph structure then. I will use a dictionary of
 lists for this purpose. A [`defaultdict`][py-collections-defaultdict] comes in
 handy as usual in these cases, so that we don't have to check whether a key is
 already present or not. The lines of input are a bit annoying to parse, but if
-we simply [`.split()`][py-str-split] each on whitespace one we'll notice that
-the second field contains the name of a valve, and the fifth contains its
+we simply [`.split()`][py-str-split] each one on whitespace one we'll notice
+that the second field contains the name of a valve, and the fifth contains its
 "pressure released per minute". Fields from the 10th onwards contain other
 valves connected to the first one: we can use [`map()`][py-builtin-map] with a
 [`lambda`][py-lambda] to easily extract those by [`.strip()`][py-str-strip]ping
@@ -3563,7 +3561,7 @@ def solutions(distance, rates, valves, time=30, cur='AA', chosen={}):
 
     # For all the valves we can currently choose
     for nxt in valves:
-        # Choosing this valve will take distance[cur][nxt] to reach it 1m to open it
+        # Choosing this valve will take distance[cur][nxt] to reach it, plus 1m to open it
         new_time   = time - (distance[cur][nxt] + 1)
         # Choose this valve, it will stay open exactly for new_time (i.e. the time
         # we have now minus the time it takes to reach and open it).
@@ -3635,7 +3633,7 @@ the loop:
 
 ```diff
  def solutions(distance, rates, valves, time=30, cur='AA', chosen={}):
--     yield chosen
+-    yield chosen
 -
 -    if time < 2:
 -        return
@@ -3649,7 +3647,7 @@ the loop:
          new_valves = valves - {nxt}
          yield from solutions(distance, rates, new_valves, new_time, nxt, new_chosen)
 +
-+     yield chosen
++    yield chosen
 ```
 
 We have all we need to get the answer now:
@@ -3679,7 +3677,7 @@ minutes instead of 30. The answer we need to find is the same.
 Okay... clearly the fact that we have two players means that they are going to
 open different valves, since a valve cannot be opened twice. Therefore, at least
 in theory, all we would need to do is try every possible combination of two
-solutions, more or less like this:
+solutions that do not have valves in common, more or less like this:
 
 ```python
 sols = list(solutions(distance, rates, good, 26))
@@ -3695,15 +3693,15 @@ for s1 in sols:
 
 However... `len(sols)` for our input is `18676`, and a double nested `for` loop
 means 18676<sup>2</sup> = ~350 million solutions to test (half of that in
-theory, since we do not care about the order of `s1` and `s1`, but still). That
+theory, since we do not care about the order of `s1` and `s2`, but still). That
 is... a bit too much. We need to somehow find another simplification.
 
-There are a lot of solutions, but we know that only *some* of them will achieve
-the maximum score. What about among *all the solutions that involve the same
-valves?* Well, given a set of valves to open, there will be a lot of different
-possible orders in which to open them... however, analogously, only *some* of
-those orders will yield the maximum score, therefore only a single maximum score
-*per subset of chosen valves* is possible.
+There are a lot of solutions, but we know that only *some* among them will
+achieve the maximum score. What about among *all the solutions that involve the
+same valves?* Well, given a set of valves to open, there will be a lot of
+different possible orders in which to open them... however, analogously, only
+*some* among them will yield the maximum score, therefore only a single maximum
+score *per subset of chosen valves* is possible.
 
 We can iterate over the solutions for a single player once and pre-calculate the
 maximum score possible for any given set of valves to open (regardless of the
@@ -4300,8 +4298,8 @@ more geode-mining robot per minute) we can mine another `3 + 2 + 1 = 6` geodes.
 In general, if we find ourselves with *t* time left, *n* minerals of a given
 type already mined, and *r* mining robots for that mineral, in the best-case
 scenario we can get a maximum of *n + r + (r + 1) + (r + 2) + ... + (r + t)*
-minerals, which can also be written (grouping *r*) as *n + (t + 1)r + 1 + 2 + 3
-+ ... + t*. That last part consisting of the sum of the first *t* natural
+minerals, which can also be written (grouping *r*) as *n + (t + 1)r + 1 + 2 +
+3 + ... + t*. That last part consisting of the sum of the first *t* natural
 numbers is exactly the *t-th* (lol) [triangular number][wiki-triangular-number],
 so the formula can be further simplified to *n + (t + 1)r + t(t + 1)/2*.
 
@@ -4438,9 +4436,10 @@ def search(blueprint):
 ```
 
 NOTE: in my complete solution I use a bitmask instead of a list to remember the
-robots that could have been built, and I simply represent "none" as 0, and any
-other robot kind as a power of 2 (1, 2, 4, 8). A value of `0b1111` means all
-robot kinds could have been built.
+robots that could have been built. I simply represent "none" as 0, and any other
+robot kind as a power of 2 (1, 2, 4, 8). Then I can *bitwise or* robot kinds
+together. A value of `0b1111` for example means all robot kinds could have been
+built.
 
 We can *finally* run the above function for each blueprint and collect the
 results:
