@@ -37,7 +37,14 @@ def play2(my_pos, my_score, other_pos, other_score, score_limit):
 
 	for roll in QUANTUM_ROLLS:
 		new_pos   = (my_pos + roll) % 10
-		new_score = my_score + new_pos + 1
+
+        if new_pos == 0:
+            # Handle the case where new_pos is 100 or 200 etc. In that case, it should land on 10 and not zero !!
+            new_pos = 10
+
+        assert  0 < new_pos < 11, f'{new_pos=} {my_pos=}'
+
+        new_score = my_score + new_pos
 
 		ow, mw = play2(other_pos, other_score, new_pos, new_score, score_limit)
 		my_wins    += mw
