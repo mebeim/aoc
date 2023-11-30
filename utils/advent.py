@@ -3,7 +3,8 @@ import sys
 import re
 from importlib import find_loader
 from datetime import datetime, timedelta
-from time import sleep
+
+from .helpers import wait
 
 def log(s, *a):
 	sys.stderr.write('[advent] ' + s.format(*a))
@@ -150,6 +151,11 @@ def submit_answer(part, answer):
 
 	log('Wrong answer :(\n')
 	return False
+
+def print_and_submit(part, answer, ask=True):
+	print_answer(part, answer)
+	wait('Press [ENTER] to submit, [CTRL+C] to cancel...')
+	submit_answer(part, answer)
 
 URL       = 'https://adventofcode.com/{:d}/day/{:d}/{:s}'
 SESSION   = ''
