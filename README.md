@@ -48,7 +48,6 @@ In each year's folder you will find:
   first time. These solutions may use helpers I defined in my own `utils`
   module, as well as other external modules to make things easier. Do not expect
   the code in here to be sane/readable/fast<sup>**[1]**</sup>.
-- `inputs/`: my puzzle inputs.
 - `lib/`: small library of utilities written for this specific year. There are
   recurring concepts and problems each year. If needed, this folder will hold
   common code used by multiple solutions.
