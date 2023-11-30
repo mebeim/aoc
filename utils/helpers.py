@@ -1,5 +1,5 @@
 __all__ = [
-	'log', 'rlog', 'eprint', 'wait',
+	'log', 'rlog', 'eprint', 'reprint', 'wait',
 	'dump_iterable', 'dump_dict', 'dump_char_matrix', 'dump_sparse_matrix',
 	'extract_ints', 'read_lines', 'read_ints',
 	'read_int_matrix', 'read_char_matrix', 'read_digit_matrix',
@@ -27,25 +27,74 @@ def rlog(recursion_depth):
 			log = rlog(depth)
 			log('n={}\n', n)
 			if n == 0 or n == 1:
+				log('{}\n', n, last=1)
 				return n
-			return n + fib(n - 1, depth + 1) + fib(n - 2, depth + 1)
+			res = n + fib(n - 1, depth + 1) + fib(n - 2, depth + 1)
+			log('{}\n', res, last=1)
+			return res
 
 		>>> fib(3)
 		n=3
-		| n=2
-		| | n=1
-		| | n=0
-		| n=1
+		│ n=2
+		│ │ n=1
+		│ └ 1
+		│ │ n=0
+		│ └ 0
+		└ 3
+		│ n=1
+		└ 1
+		7
 	'''
 	@wraps(log)
-	def fn(s, *a):
-		log(' |' * recursion_depth + ' ' + s, *a)
+	def fn(s, *a, last=False):
+		pre = ' │' * (recursion_depth - 1)
+		if recursion_depth: pre += ' └' if last else ' │'
+		if pre: pre += ' '
+		log(pre + s, *a)
 
 	return fn
 
 def eprint(*a, **kwa):
 	'''Wrapper for print() that prints on standard error.'''
 	print(*a, **kwa, file=sys.stderr)
+
+def reprint(recursion_depth):
+	'''Create a printing function that behaves like eprint(), but adds
+	recursion_depth levels of indentation to each logged string.
+
+	Useful for debugging recursive function calls, for example:
+
+		def fib(n, depth=0):
+			ep = reprint(depth)
+			ep('n =', n)
+			if n == 0 or n == 1:
+				ep(n, last=1)
+				return n
+			res = n + fib(n - 1, depth + 1) + fib(n - 2, depth + 1)
+			ep(res, last=1)
+			return res
+
+		>>> fib(3)
+		n = 3
+		│ n = 2
+		│ │ n = 1
+		│ └ 1
+		│ │ n = 0
+		│ └ 0
+		└ 3
+		│ n = 1
+		└ 1
+		7
+	'''
+	@wraps(log)
+	def fn(*a, last=False, **kwa):
+		pre = ' │' * (recursion_depth - 1)
+		if recursion_depth: pre += ' └' if last else ' │'
+		if pre: pre += ' '
+		eprint(pre, end='')
+		eprint(*a, **kwa)
+
+	return fn
 
 def wait(msg='Press [ENTER] to continue...'):
 	'''Wait for user interaction by printing a message to standard error and
