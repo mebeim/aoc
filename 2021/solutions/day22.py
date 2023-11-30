@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 import re
 from collections import defaultdict
 
@@ -29,25 +29,25 @@ def volume_small(x1, x2, y1, y2, z1, z2):
 	return volume(x1, x2, y1, y2, z1, z2)
 
 
-advent.setup(2021, 22)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 exp      = re.compile(r'-?\d+')
 commands = []
 counts   = defaultdict(int)
 
-with advent.get_input() as fin:
-	for line in fin:
-		cuboid = tuple(map(int, exp.findall(line)))
+for line in fin:
+	cuboid = tuple(map(int, exp.findall(line)))
 
-		for other, count in tuple(counts.items()):
-			inter = intersection(cuboid, other)
-			if inter is None:
-				continue
+	for other, count in tuple(counts.items()):
+		inter = intersection(cuboid, other)
+		if inter is None:
+			continue
 
-			counts[inter] -= count
+		counts[inter] -= count
 
-		if line.startswith('on'):
-			counts[cuboid] += 1
+	if line.startswith('on'):
+		counts[cuboid] += 1
 
 total = total_small = 0
 
@@ -55,5 +55,5 @@ for cuboid, n in counts.items():
 	total       += n * volume(*cuboid)
 	total_small += n * volume_small(*cuboid)
 
-advent.print_answer(1, total_small)
-advent.print_answer(2, total)
+print('Part 1:', total_small)
+print('Part 2:', total)

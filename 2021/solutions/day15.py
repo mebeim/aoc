@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 import heapq
 from math import inf as INFINITY
 from collections import defaultdict
@@ -44,13 +44,13 @@ def dijkstra(grid):
 	return INFINITY
 
 
-advent.setup(2021, 15)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 grid    = list(list(map(int, row)) for row in map(str.rstrip, fin))
 minrisk = dijkstra(grid)
 
-advent.print_answer(1, minrisk)
+print('Part 1:', minrisk)
 
 
 tilew = len(grid)
@@ -67,4 +67,4 @@ for _ in range(4):
 		grid.append(row)
 
 minrisk = dijkstra(grid)
-advent.print_answer(2, minrisk)
+print('Part 2:', minrisk)

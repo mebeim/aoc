@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from fractions import gcd
 from math import atan2, pi as PI
 
@@ -18,8 +18,8 @@ def angle(ax, ay, bx, by):
 	return rad if rad >= 0 else 2*PI + rad
 
 
-advent.setup(2019, 10)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 grid = [l.rstrip() for l in fin]
 asteroids = set()
@@ -46,7 +46,7 @@ for src in asteroids:
 		max_in_sight = in_sight
 		station = src
 
-advent.print_answer(1, max_in_sight)
+print('Part 1:', max_in_sight)
 
 
 closest = {}
@@ -70,4 +70,4 @@ ordered = sorted(closest.values(), key=lambda am: angle(*station, *am[0]))
 chosen_x, chosen_y = ordered[target - 1][0]
 ans = 100 * chosen_x + chosen_y
 
-advent.print_answer(2, ans)
+print('Part 2:', ans)

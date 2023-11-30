@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 import re
 
 def simulate(pts, t):
@@ -33,8 +33,9 @@ def search(pts):
 
 	return t1
 
-advent.setup(2018, 10)
-fin = advent.get_input()
+
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 points = []
 for line in fin:
@@ -52,5 +53,5 @@ for j in range(y, y + h + 1):
 	word += '\n'
 
 # Can't really print this nicely, but whatever
-advent.print_answer(1, '\n' + word)
-advent.print_answer(2, t)
+print('Part 1:', '\n' + word)
+print('Part 2:', t)

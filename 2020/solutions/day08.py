@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from math import inf
 
 class VM:
@@ -42,8 +42,8 @@ class VM:
 			steps -= 1
 
 
-advent.setup(2020, 8)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 source = fin.read()
 vm     = VM(source)
@@ -53,7 +53,7 @@ while vm.pc not in seen:
 	seen.add(vm.pc)
 	vm.run(1)
 
-advent.print_answer(1, vm.acc)
+print('Part 1:', vm.acc)
 
 
 for i in range(1, vm.prog_len):
@@ -78,4 +78,4 @@ for i in range(1, vm.prog_len):
 
 	vm.prog[i] = original
 
-advent.print_answer(2, vm.acc)
+print('Part 2:', vm.acc)

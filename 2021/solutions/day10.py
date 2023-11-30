@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from collections import deque
 
 def check(s):
@@ -19,8 +19,8 @@ def check(s):
 
 	return 0, score2
 
-advent.setup(2021, 10)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 TRANS_TABLE  = str.maketrans('([{<', ')]}>')
 SYNTAX_SCORE = {')': 3, ']': 57, '}': 1197, '>': 25137}
@@ -39,5 +39,5 @@ for l in map(str.rstrip, fin):
 autocompl_scores.sort()
 mid_autocompl = autocompl_scores[len(autocompl_scores) // 2]
 
-advent.print_answer(1, tot_syntax)
-advent.print_answer(2, mid_autocompl)
+print('Part 1:', tot_syntax)
+print('Part 2:', mid_autocompl)

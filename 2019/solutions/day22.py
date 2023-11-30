@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
 DEAL_NEW, DEAL_INC, CUT = 0, 1, 2
 
@@ -42,8 +42,8 @@ def repeat(start, step, size, repetitions):
 	return final_start, final_step
 
 
-advent.setup(2019, 22, 1)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 moves = build_moves(fin)
 start, step, size = 0, 1, 10007
@@ -52,7 +52,7 @@ target_card = 2019
 start, step = transform(start, step, size, moves)
 position = ((target_card - start) * pow(step, size - 2, size)) % size
 
-advent.print_answer(1, position)
+print('Part 1:', position)
 
 
 start, step, size = 0, 1, 119315717514047
@@ -63,4 +63,4 @@ start, step = transform(start, step, size, moves)
 start, step = repeat(start, step, size, repetitions)
 card = (start + step * target_position) % size
 
-advent.print_answer(2, card)
+print('Part 2:', card)

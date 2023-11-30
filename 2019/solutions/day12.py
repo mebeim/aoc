@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 import re
 from math import gcd
 from functools import reduce
@@ -11,8 +11,8 @@ def lcm(a, b):
 	return abs(a * b) // gcd(a, b)
 
 
-advent.setup(2019, 12)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 exp = re.compile(r'-?\d+')
 initial_positions = [list(map(int, exp.findall(line))) for line in fin]
@@ -38,7 +38,7 @@ potential = (sum(map(abs, m.pos)) for m in moons)
 kinetic   = (sum(map(abs, m.vel)) for m in moons)
 total     = sum(p * k for p, k in zip(potential, kinetic))
 
-advent.print_answer(1, total)
+print('Part 1:', total)
 
 
 periods = []
@@ -63,4 +63,4 @@ for dim in range(3):
 	periods.append(period)
 
 total_steps = 2 * reduce(lcm, periods, 1)
-advent.print_answer(2, total_steps)
+print('Part 2:', total_steps)

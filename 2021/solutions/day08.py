@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
 def deduce_mapping(patterns):
 	p2d = {} # pattern to digit
@@ -41,8 +41,8 @@ def deduce_mapping(patterns):
 	return p2d
 
 
-advent.setup(2021, 8)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 total    = 0
 count    = 0
@@ -60,5 +60,5 @@ for line in fin:
 	total += p2d[digits[2][0]] * 10
 	total += p2d[digits[3][0]]
 
-advent.print_answer(1, count)
-advent.print_answer(2, total)
+print('Part 1:', count)
+print('Part 2:', total)

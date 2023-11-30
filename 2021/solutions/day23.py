@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from math import inf as INFINITY
 from functools import lru_cache
 
@@ -96,14 +96,14 @@ def parse_rooms(fin):
 	return tuple(zip(*rooms))
 
 
-advent.setup(2021, 23)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 hallway  = (None,) * 7
 rooms    = parse_rooms(fin)
 min_cost = solve(rooms, hallway)
 
-advent.print_answer(1, min_cost)
+print('Part 1:', min_cost)
 
 
 newobjs  = [(3, 3), (2, 1), (1, 0), (0, 2)]
@@ -115,4 +115,4 @@ for room, new in zip(rooms, newobjs):
 rooms    = tuple(newrooms)
 min_cost = solve(rooms, hallway, len(rooms[0]))
 
-advent.print_answer(2, min_cost)
+print('Part 2:', min_cost)

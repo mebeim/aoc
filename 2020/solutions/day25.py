@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from math import ceil, sqrt
 
 def bsgs(base, n, p):
@@ -23,11 +23,11 @@ def bsgs(base, n, p):
 	return res
 
 
-advent.setup(2020, 25)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 A, B = map(int, fin)
 a    = bsgs(7, A, 20201227)
 key  = pow(B, a, 20201227)
 
-advent.print_answer(1, key)
+print('Part 1:', key)

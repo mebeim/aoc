@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
 VALUES = {'=': -2, '-': -1, '0': 0, '1': 1, '2': 2}
 
@@ -25,8 +25,8 @@ def snafu(n):
 	return res[::-1]
 
 
-advent.setup(2022, 25)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 answer = snafu(sum(map(base10, fin.read().split())))
-advent.print_answer(1, answer)
+print('Part 1:', answer)

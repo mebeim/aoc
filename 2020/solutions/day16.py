@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 import re
 from math import prod
 
@@ -59,13 +59,13 @@ def simplify(possible):
 	return assigned
 
 
-advent.setup(2020, 16)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 ranges, my_ticket, tickets = parse_input(fin)
 total = sum(map(sum, map(invalid_fields, tickets)))
 
-advent.print_answer(1, total)
+print('Part 1:', total)
 
 
 tickets.append(my_ticket)
@@ -81,4 +81,4 @@ for ticket in filter(is_valid, tickets):
 indexes = simplify(possible)[:6]
 total = prod(my_ticket[i] for i in indexes)
 
-advent.print_answer(2, total)
+print('Part 2:', total)

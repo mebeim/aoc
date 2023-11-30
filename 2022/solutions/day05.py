@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
-advent.setup(2022, 5)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 raw    = []
 stacks = [None]
@@ -30,7 +30,7 @@ for n, i, j in moves:
 	stacks[j] = chunk + stacks[j]
 
 top = ''.join(s[0] for s in stacks[1:])
-advent.print_answer(1, top)
+print('Part 1:', top)
 
 
 stacks = original
@@ -41,4 +41,4 @@ for n, i, j in moves:
 	stacks[j] = chunk + stacks[j]
 
 top = ''.join(s[0] for s in stacks[1:])
-advent.print_answer(2, top)
+print('Part 2:', top)

@@ -3,7 +3,7 @@
 import re
 from itertools import starmap, combinations
 
-from utils import advent
+import sys
 
 def manhattan(ax, ay, bx, by):
 	return abs(ax - bx) + abs(ay - by)
@@ -61,23 +61,23 @@ def missing_beacon(sensors):
 				return x, y
 
 
-advent.setup(2022, 15)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 exp = re.compile(r'-?\d+')
 sensors = []
 beacons_on_target = set()
 
-with advent.get_input() as fin:
-	for line in fin:
-		sx, sy, bx, by = map(int, exp.findall(line))
-		sensors.append((sx, sy, manhattan(sx, sy, bx, by)))
+for line in fin:
+	sx, sy, bx, by = map(int, exp.findall(line))
+	sensors.append((sx, sy, manhattan(sx, sy, bx, by)))
 
-		if by == 2000000:
-			beacons_on_target.add(bx)
+	if by == 2000000:
+		beacons_on_target.add(bx)
 
 answer = invalid_spots(sensors) - len(beacons_on_target)
-advent.print_answer(1, answer)
+print('Part 1:', answer)
 
 x, y = missing_beacon(sensors)
 answer = x * 4000000 + y
-advent.print_answer(2, answer)
+print('Part 2:', answer)

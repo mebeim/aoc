@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from collections import defaultdict
 
 def parse_input(fin):
@@ -58,15 +58,15 @@ def simplify(possible_allers):
 	return assigned
 
 
-advent.setup(2020, 21)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 recipes, possible_allers, recipes_with = parse_input(fin)
 
 safe = safe_ingredients(recipes, possible_allers, recipes_with)
 tot  = sum(ingr in r for r in recipes for ingr in safe)
 
-advent.print_answer(1, tot)
+print('Part 1:', tot)
 
 
 for ingr in safe:
@@ -75,4 +75,4 @@ for ingr in safe:
 assigned = simplify(possible_allers)
 lst = ','.join(map(assigned.get, sorted(assigned)))
 
-advent.print_answer(2, lst)
+print('Part 2:', lst)

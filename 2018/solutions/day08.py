@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from collections import namedtuple
 
 Node = namedtuple('Node', ['length', 'children', 'metadata'])
@@ -33,15 +33,15 @@ def node_value(node):
 	return value
 
 
-advent.setup(2018, 8)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 nums = list(map(int, fin.read().split()))
 root = build_tree(nums)
 meta_sum = sum_meta(root)
 
-advent.print_answer(1, meta_sum)
+print('Part 1:', meta_sum)
 
 
 value = node_value(root)
-advent.print_answer(2, value)
+print('Part 2:', value)

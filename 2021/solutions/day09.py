@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from collections import deque
 
 def neighbors4(r, c, h, w):
@@ -27,8 +27,8 @@ def component_size(grid, src, h, w):
 	return len(visited)
 
 
-advent.setup(2021, 9)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 lines = map(str.rstrip, fin)
 grid  = tuple(tuple(map(int, row)) for row in lines)
@@ -42,11 +42,11 @@ for r, row in enumerate(grid):
 			sinks.append((r, c))
 			total += cell + 1
 
-advent.print_answer(1, total)
+print('Part 1:', total)
 
 
 sizes  = map(lambda s: component_size(grid, s, h, w), sinks)
 sizes  = sorted(sizes, reverse=True)
 answer = sizes[0] * sizes[1] * sizes[2]
 
-advent.print_answer(2, answer)
+print('Part 2:', answer)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from functools import lru_cache
 from collections import deque, defaultdict
 
@@ -40,11 +40,10 @@ def directory_size(path):
 	return size
 
 
-advent.setup(2022, 7)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
-with advent.get_input() as fin:
-	fs = parse_filesystem(fin)
-
+fs = parse_filesystem(fin)
 used = directory_size(('/',))
 free = 70000000 - used
 need = 30000000 - free
@@ -64,5 +63,5 @@ for path in fs:
 # small_dir_total  = sum(filter(lambda s: s <= 100000, map(directory_size, fs)))
 # min_size_to_free = min(filter(lambda s: s >= need, map(directory_size, fs)))
 
-advent.print_answer(1, small_dir_total)
-advent.print_answer(2, min_size_to_free)
+print('Part 1:', small_dir_total)
+print('Part 2:', min_size_to_free)

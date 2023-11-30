@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from collections import deque, defaultdict
 
 def n_paths(G, src, dst):
@@ -44,8 +44,8 @@ def n_paths2(G, src, dst):
 	return total
 
 
-advent.setup(2021, 12)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 G = defaultdict(list)
 
@@ -60,5 +60,5 @@ for edge in fin:
 n1 = n_paths(G, 'start', 'end')
 n2 = n_paths2(G, 'start', 'end')
 
-advent.print_answer(1, n1)
-advent.print_answer(2, n2)
+print('Part 1:', n1)
+print('Part 2:', n2)

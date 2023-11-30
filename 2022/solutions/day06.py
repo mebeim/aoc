@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
 def find_start(data, header_len, start=0):
 	for i in range(start, len(data) - header_len):
@@ -8,13 +8,12 @@ def find_start(data, header_len, start=0):
 			return i + header_len
 
 
-advent.setup(2022, 6)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
-with advent.get_input() as fin:
-	data = fin.read()
-
+data = fin.read()
 sop = find_start(data, 4)
 som = find_start(data, 14, sop)
 
-advent.print_answer(1, sop)
-advent.print_answer(2, som)
+print('Part 1:', sop)
+print('Part 2:', som)

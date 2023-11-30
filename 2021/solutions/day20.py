@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
 def enhance_once(img, rules, outside_on):
 	minr, maxr = min(r for r, _ in img), max(r for r, _ in img)
@@ -28,8 +28,8 @@ def enhance(img, rules, steps):
 	return img
 
 
-advent.setup(2021, 20)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 
 rules = tuple(x == '#' for x in next(fin).rstrip())
@@ -46,9 +46,9 @@ for r, row in enumerate(fin):
 
 img = enhance(img, rules, 2)
 ans = len(img)
-advent.print_answer(1, ans)
+print('Part 1:', ans)
 
 
 img = enhance(img, rules, 48)
 ans = len(img)
-advent.print_answer(2, ans)
+print('Part 2:', ans)

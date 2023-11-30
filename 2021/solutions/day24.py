@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from collections import deque
 from functools import reduce
 
@@ -53,11 +53,11 @@ def find_max_min(constraints):
 	return nmax, nmin
 
 
-advent.setup(2021, 24)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 constraints = get_constraints(fin)
 nmax, nmin  = find_max_min(constraints)
 
-advent.print_answer(1, nmax)
-advent.print_answer(2, nmin)
+print('Part 1:', nmax)
+print('Part 2:', nmin)

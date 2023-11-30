@@ -3,7 +3,7 @@
 from json import loads
 from functools import cmp_to_key
 
-from utils import advent
+import sys
 
 def compare(a, b):
 	a_is_int = type(a) is int
@@ -23,16 +23,15 @@ def compare(a, b):
 	return len(a) - len(b)
 
 
-advent.setup(2022, 13)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
-with advent.get_input() as fin:
-	lines = fin.read().replace('\n\n', '\n').splitlines()
-
+lines   = fin.read().replace('\n\n', '\n').splitlines()
 packets = list(map(loads, lines))
 pairs   = (packets[i:i + 2] for i in range(0, len(packets), 2))
 answer  = sum(i for i, p in enumerate(pairs, 1) if compare(*p) < 0)
 
-advent.print_answer(1, answer)
+print('Part 1:', answer)
 
 
 packets.extend(([[2]], [[6]]))
@@ -41,4 +40,4 @@ packets.sort(key=cmp_to_key(compare))
 answer = packets.index([[2]]) + 1
 answer *= packets.index([[6]], answer) + 1
 
-advent.print_answer(2, answer)
+print('Part 2:', answer)

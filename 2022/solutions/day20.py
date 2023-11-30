@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
 class Number:
 	__slots__ = 'value'
@@ -24,17 +24,16 @@ def mix(order, times=1):
 	return sum(numbers[(i + delta) % sz].value for delta in (1000, 2000, 3000))
 
 
-advent.setup(2022, 20)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
-with advent.get_input() as fin:
-	order = tuple(map(Number, fin))
-
+order  = tuple(map(Number, fin))
 answer = mix(order)
-advent.print_answer(1, answer)
+print('Part 1:', answer)
 
 
 for num in order:
 	num.value *= 811589153
 
 answer = mix(order, 10)
-advent.print_answer(2, answer)
+print('Part 2:', answer)

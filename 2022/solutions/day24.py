@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 
-from utils import advent
+import sys
 
 DIRMAP = {
 	'>': ( 0,  1),
@@ -50,12 +50,12 @@ def bfs(bliz, src, dst, height, width):
 	return time, bliz
 
 
-advent.setup(2022, 24)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
-with advent.get_input() as fin:
-	grid = fin.read().splitlines()
-
+grid = fin.read().splitlines()
 bliz = defaultdict(list)
+
 for r, row in enumerate(grid[1:-1]):
 	for c, cell in enumerate(row[1:-1]):
 		if cell in DIRMAP:
@@ -65,10 +65,10 @@ height, width = len(grid) - 2, len(grid[0]) - 2
 src, dst = (-1, 0), (height, width - 1)
 
 time, bliz = bfs(bliz, src, dst, height, width)
-advent.print_answer(1, time)
+print('Part 1:', time)
 
 
 time2, bliz = bfs(bliz, dst, src, height, width)
 time3, _    = bfs(bliz, src, dst, height, width)
 time += time2 + time3
-advent.print_answer(2, time)
+print('Part 2:', time)

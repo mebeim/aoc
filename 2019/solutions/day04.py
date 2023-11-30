@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
-from utils import advent
-from itertools import islice
+import sys
 
-advent.setup(2019, 4)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 lo, hi = map(int, fin.read().split('-'))
 n_valid1 = 0
@@ -23,5 +22,5 @@ for pwd in range(lo, hi + 1):
 		if any(a != b and b == c and c != d for a, b, c, d in quadruplets):
 			n_valid2 += 1
 
-advent.print_answer(1, n_valid1)
-advent.print_answer(2, n_valid2)
+print('Part 1:', n_valid1)
+print('Part 2:', n_valid2)

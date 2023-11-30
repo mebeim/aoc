@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 import copy
 import heapq
 from collections import defaultdict
@@ -51,8 +51,8 @@ def work(graph, queue, duration, max_workers):
 	return total_time
 
 
-advent.setup(2018, 7)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 graph = defaultdict(lambda: [0, set()])
 
@@ -68,7 +68,7 @@ for letter, node in graph.items():
 		heapq.heappush(roots, letter)
 
 order = lex_toposort(copy.deepcopy(graph), roots[:])
-advent.print_answer(1, order)
+print('Part 1:', order)
 
 
 durations = {}
@@ -76,4 +76,4 @@ for c in graph:
 	durations[c] = ord(c) - ord('A') + 61
 
 total = work(graph, roots, durations, 5)
-advent.print_answer(2, total)
+print('Part 2:', total)

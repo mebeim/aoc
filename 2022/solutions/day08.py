@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
-advent.setup(2022, 8)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1], 'rb') if len(sys.argv) > 1 else sys.stdin.buffer
 
-with advent.get_input(mode='rb') as fin:
-	grid = fin.read().splitlines()
-
+grid          = fin.read().splitlines()
 height, width = len(grid), len(grid[0])
 maxr, maxc    = height - 1, width - 1
 visible       = height * 2 + width * 2 - 4
@@ -26,7 +25,7 @@ for r in range(1, maxr):
 		if all(e) or all(w) or all(s) or all(n):
 			visible += 1
 
-advent.print_answer(1, visible)
+print('Part 1:', visible)
 
 
 for r in range(1, maxr):
@@ -56,4 +55,4 @@ for r in range(1, maxr):
 		if score > best:
 			best = score
 
-advent.print_answer(2, best)
+print('Part 2:', best)

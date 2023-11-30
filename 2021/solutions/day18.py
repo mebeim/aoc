@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from functools import reduce
 from itertools import permutations
+from ast import literal_eval
 
 def is_number(p):
 	return type(p) is int
@@ -79,14 +80,14 @@ def magnitude(pair):
 	return 3 * magnitude(pair[0]) + 2 * magnitude(pair[0])
 
 
-advent.setup(2021, 18)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 trans = str.maketrans('[]', '()')
-pairs = tuple(eval(line.translate(trans) for line in fin))
+pairs = tuple(literal_eval(line.translate(trans)) for line in fin)
 mag   = magnitude(reduce(add, pairs))
-advent.print_answer(1, mag)
+print('Part 1:', mag)
 
 
 best = max(map(magnitude, map(simplify, permutations(pairs, 2))))
-advent.print_answer(2, best)
+print('Part 2:', best)

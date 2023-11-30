@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from collections import deque
 
 def score(deck):
@@ -42,8 +42,8 @@ def recursive_play(deck1, deck2):
 	return (True, deck1) if deck1 else (False, deck2)
 
 
-advent.setup(2020, 22)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 deck1, deck2 = map(str.splitlines, fin.read().split('\n\n'))
 deck1 = deque(map(int, deck1[1:]))
@@ -51,8 +51,8 @@ deck2 = deque(map(int, deck2[1:]))
 
 winner_deck  = play(deck1.copy(), deck2.copy())
 winner_score = score(winner_deck)
-advent.print_answer(1, winner_score)
+print('Part 1:', winner_score)
 
 _, winner_deck = recursive_play(deck1, deck2)
 winner_score   = score(winner_deck)
-advent.print_answer(2, winner_score)
+print('Part 2:', winner_score)

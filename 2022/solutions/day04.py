@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
-advent.setup(2022, 4)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 overlap = full_overlap = 0
 
@@ -20,5 +20,5 @@ for line in fin:
 		if o1 == a1 and o2 == a2 or o1 == b1 and o2 == b2:
 			full_overlap += 1
 
-advent.print_answer(1, full_overlap)
-advent.print_answer(2, overlap)
+print('Part 1:', full_overlap)
+print('Part 2:', overlap)

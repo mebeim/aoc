@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 import re
 
 # This program assumes that a situation like
@@ -87,8 +87,8 @@ def fill(sx, sy):
 
 SAND, WATER, MOVING_WATER, CLAY = range(4)
 
-advent.setup(2018, 17)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 numexp     = re.compile(r'-?\d+')
 minx, miny = +9999, +9999
@@ -145,7 +145,7 @@ for i in range(len(grid)):
 grid = [[SAND] * gridw] + grid
 
 filled = fill(500 - minx + padw, 0) - 1
-advent.print_answer(1, filled)
+print('Part 1:', filled)
 
 
 retained = filled
@@ -161,4 +161,4 @@ for y in range(1, gridh):
 			grid[y][x] = MOVING_WATER
 			retained -= 1
 
-advent.print_answer(2, retained)
+print('Part 2:', retained)

@@ -2,7 +2,7 @@
 
 from operator import itemgetter
 
-from utils import advent
+import sys
 
 def autorange(a, b):
 	return range(a, b + 1) if a <= b else range(a, b - 1, -1)
@@ -33,26 +33,27 @@ def pour_sand(cave, maxy, floor=False, x=500, y=0):
 	return False
 
 
-advent.setup(2022, 14)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
+
 cave = set()
 
-with advent.get_input() as fin:
-	for line in fin:
-		points = (tuple(map(int, p.split(','))) for p in line.split(' -> '))
-		prev   = next(points)
+for line in fin:
+	points = (tuple(map(int, p.split(','))) for p in line.split(' -> '))
+	prev   = next(points)
 
-		for cur in points:
-			cave.update(range2d(prev, cur))
-			prev = cur
+	for cur in points:
+		cave.update(range2d(prev, cur))
+		prev = cur
 
 rocks = len(cave)
 maxy  = max(map(itemgetter(1), cave))
 
 pour_sand(cave, maxy)
 sand = len(cave) - rocks
-advent.print_answer(1, sand)
+print('Part 1:', sand)
 
 
 pour_sand(cave, maxy, True)
 sand = len(cave) - rocks
-advent.print_answer(2, sand)
+print('Part 2:', sand)

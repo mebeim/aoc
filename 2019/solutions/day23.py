@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from lib.intcode import IntcodeVM
 from collections import deque
 
@@ -39,8 +39,8 @@ def vm_write_for(self):
 	return vm_write
 
 
-advent.setup(2019, 23)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 program = list(map(int, fin.read().split(',')))
 network = [IntcodeVM(program) for _ in range(50)]
@@ -59,7 +59,7 @@ while nat_packet is None:
 		vm.run(n_in=1, resume=True)
 
 last_nat_y = nat_packet[1]
-advent.print_answer(1, last_nat_y)
+print('Part 1:', last_nat_y)
 
 
 last_nat_y = None
@@ -80,4 +80,4 @@ while not done:
 			last_nat_y = nat_packet[1]
 			nat_packet = []
 
-advent.print_answer(2, last_nat_y)
+print('Part 2:', last_nat_y)

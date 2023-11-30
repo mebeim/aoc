@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from collections import defaultdict
 
-advent.setup(2018, 3)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 canvas = defaultdict(set)
 claim_ids = set()
@@ -24,7 +24,7 @@ for line in fin:
 	claim_ids.add(cid)
 
 overlapping = sum(map(lambda x: len(x) > 1, canvas.values()))
-advent.print_answer(1, overlapping)
+print('Part 1:', overlapping)
 
 
 for c in filter(lambda x: len(x) > 1, canvas.values()):
@@ -33,4 +33,4 @@ for c in filter(lambda x: len(x) > 1, canvas.values()):
 assert len(claim_ids) == 1
 
 good = claim_ids.pop()
-advent.print_answer(2, good)
+print('Part 2:', good)

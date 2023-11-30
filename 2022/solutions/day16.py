@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 
+import sys
 from math import inf as INFINITY
 from functools import partial
-from operator import itemgetter
 from itertools import combinations, product
 from collections import defaultdict
-
-from utils import advent
 
 def floyd_warshall(g):
 	distance = defaultdict(lambda: defaultdict(lambda: INFINITY))
@@ -44,31 +42,28 @@ def solutions(distance, rates, valves, time=30, cur='AA', chosen={}):
 	yield chosen
 
 
-advent.setup(2022, 16)
-
-from utils.timer import timer_start
-timer_start()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 graph = defaultdict(list)
 rates = {}
 
-with advent.get_input() as fin:
-	for fields in map(str.split, fin):
-		src  = fields[1]
-		dsts = list(map(lambda x: x.rstrip(','), fields[9:]))
-		rate = int(fields[4][5:-1])
+for fields in map(str.split, fin):
+	src  = fields[1]
+	dsts = list(map(lambda x: x.rstrip(','), fields[9:]))
+	rate = int(fields[4][5:-1])
 
-		rates[src] = rate
+	rates[src] = rate
 
-		for dst in dsts:
-			graph[src].append(dst)
+	for dst in dsts:
+		graph[src].append(dst)
 
 good     = frozenset(filter(rates.get, graph))
 distance = floyd_warshall(graph)
 score    = partial(score, rates)
 best     = max(map(score, solutions(distance, rates, good)))
 
-advent.print_answer(1, best)
+print('Part 1:', best)
 
 
 maxscore = defaultdict(int)
@@ -81,4 +76,4 @@ for solution in solutions(distance, rates, good, 26):
 		maxscore[k] = s
 
 best = max(sa + sb for (a, sa), (b, sb) in combinations(maxscore.items(), 2) if not a & b)
-advent.print_answer(2, best)
+print('Part 2:', best)

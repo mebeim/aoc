@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from collections import Counter, defaultdict
 
 def react(poly, rules, n, last):
@@ -26,8 +26,8 @@ def react(poly, rules, n, last):
 	return poly, max(counts.values()) - min(counts.values())
 
 
-advent.setup(2021, 14)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 template = next(fin).rstrip()
 rules = {}
@@ -41,5 +41,5 @@ poly = Counter(zip(template, template[1:]))
 poly, answer1 = react(poly, rules, 10, template[-1])
 poly, answer2 = react(poly, rules, 30, template[-1])
 
-advent.print_answer(1, answer1)
-advent.print_answer(2, answer2)
+print('Part 1:', answer1)
+print('Part 2:', answer2)

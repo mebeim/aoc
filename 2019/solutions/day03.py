@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
 MOVE_DX = {'U': 0, 'D':  0, 'R': 1, 'L': -1}
 MOVE_DY = {'U': 1, 'D': -1, 'R': 0, 'L':  0}
@@ -29,8 +29,9 @@ def manhattan(p):
 	return abs(p[0]) + abs(p[1])
 
 
-advent.setup(2019, 3)
-lines = advent.get_input().readlines()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
+lines = fin.readlines()
 
 all_visited = []
 all_steps = []
@@ -42,7 +43,7 @@ for l in lines:
 
 intersections = set.intersection(*all_visited)
 min_distance = min(map(manhattan, intersections))
-advent.print_answer(1, min_distance)
+print('Part 1:', min_distance)
 
 shortest_path = min(sum(l[p] for l in all_steps) for p in intersections)
-advent.print_answer(2, shortest_path)
+print('Part 2:', shortest_path)

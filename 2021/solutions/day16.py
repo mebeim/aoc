@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from math import prod
 
 class Bitstream:
@@ -78,13 +78,13 @@ def evaluate(packet):
 	raise NotImplementedError('Unimplemented tid={}'.format(tid))
 
 
-advent.setup(2021, 16)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 stream = Bitstream(fin)
 packet = stream.decode_one_packet()
 vsum   = sum_versions(packet)
 result = evaluate(packet)
 
-advent.print_answer(1, vsum)
-advent.print_answer(2, result)
+print('Part 1:', vsum)
+print('Part 2:', result)

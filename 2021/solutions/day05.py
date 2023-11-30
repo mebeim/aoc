@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from itertools import repeat, starmap, chain
 from collections import defaultdict
 
@@ -21,8 +21,8 @@ def diag(ax, ay, bx, by):
 		yield from zip(autorange(ax, bx), autorange(ay, by))
 
 
-advent.setup(2021, 5)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 lines = []
 space = defaultdict(int)
@@ -37,11 +37,11 @@ for p in chain(*starmap(horiz, lines)):
 	space[p] += 1
 
 overlapping = sum(x > 1 for x in space.values())
-advent.print_answer(1, overlapping)
+print('Part 1:', overlapping)
 
 
 for p in chain(*starmap(diag, lines)):
 	space[p] += 1
 
 overlapping = sum(x > 1 for x in space.values())
-advent.print_answer(2, overlapping)
+print('Part 2:', overlapping)

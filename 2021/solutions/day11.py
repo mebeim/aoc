@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from itertools import count, product
 
 def neighbors8(r, c, h, w):
@@ -42,8 +42,8 @@ def evolve(grid, h, w):
 	return flashes
 
 
-advent.setup(2021, 11)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 lines   = map(str.rstrip, fin)
 grid    = list(list(map(int, row)) for row in lines)
@@ -56,5 +56,5 @@ for sync_step in count(101):
 	if evolve(grid, h, w) == n_cells:
 		break
 
-advent.print_answer(1, tot_flashes)
-advent.print_answer(2, sync_step)
+print('Part 1:', tot_flashes)
+print('Part 2:', sync_step)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 import heapq
 from functools import lru_cache
 from collections import deque, defaultdict
@@ -103,15 +103,15 @@ def build_graph(grid):
 	return graph, startpos
 
 
-advent.setup(2019, 18)
-fin  = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 maze = tuple(list(l.strip()) for l in fin)
 
 G, startpos = build_graph(maze)
 total_keys  = sum(node.islower() for node in G)
 min_steps   = explore('@', total_keys)
 
-advent.print_answer(1, min_steps)
+print('Part 1:', min_steps)
 
 
 for r, c in neighbors4(maze, *startpos):
@@ -131,4 +131,4 @@ reachable_keys.cache_clear()
 G, _      = build_graph(maze)
 min_steps = explore('1234', total_keys)
 
-advent.print_answer(2, min_steps)
+print('Part 2:', min_steps)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 import re
 from itertools import product
 
@@ -31,8 +31,8 @@ def all_addrs(addr, mask):
 # 		yield int(addr, 2)
 
 
-advent.setup(2020, 14)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 lines = fin.readlines()
 rexp  = re.compile(r'mem\[(\d+)\] = (\d+)')
@@ -56,5 +56,5 @@ for line in lines:
 total1 = sum(mem1.values())
 total2 = sum(mem2.values())
 
-advent.print_answer(1, total1)
-advent.print_answer(2, total2)
+print('Part 1:', total1)
+print('Part 2:', total2)

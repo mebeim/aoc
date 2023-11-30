@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
 def build_list(cups, n=None):
 	initial_sz = max(cups) + 1
@@ -38,9 +38,8 @@ def play(cur, next_cup, n_rounds):
 		cur = next_cup[cur]
 
 
-advent.setup(2020, 23)
-
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 orig = tuple(map(int, fin.readline().rstrip()))
 
 next_cup = build_list(orig)
@@ -52,11 +51,11 @@ while cur != 1:
 	ans += str(cur)
 	cur = next_cup[cur]
 
-advent.print_answer(1, ans)
+print('Part 1:', ans)
 
 
 next_cup = build_list(orig, 1000000)
 play(orig[0], next_cup, 10000000)
 ans = next_cup[1] * next_cup[next_cup[1]]
 
-advent.print_answer(2, ans)
+print('Part 2:', ans)

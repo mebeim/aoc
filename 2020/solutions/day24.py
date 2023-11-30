@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from collections import Counter
 import re
 
@@ -29,8 +29,8 @@ def evolve(grid):
 	return set(p for p, n in near.items() if n == 2 or n == 1 and p in grid)
 
 
-advent.setup(2020, 24)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 grid = set() # coords of tiles with black side up
 rexp = re.compile(r'e|w|se|sw|ne|nw')
@@ -45,11 +45,11 @@ for line in fin:
 		grid.add(p)
 
 n_black = len(grid)
-advent.print_answer(1, n_black)
+print('Part 1:', n_black)
 
 
 for _ in range(100):
 	grid = evolve(grid)
 
 n_black = len(grid)
-advent.print_answer(2, n_black)
+print('Part 2:', n_black)

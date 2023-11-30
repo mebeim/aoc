@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from collections import defaultdict
 
 def get_hour(event):
@@ -16,8 +16,8 @@ def times_slept(guard_id, minute):
 	return sum(a <= minute < b for a, b in guards[guard_id])
 
 
-advent.setup(2018, 4)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 events = list(map(str.split, sorted(fin.readlines())))
 assert 'begins' in events[0]
@@ -38,11 +38,11 @@ worst_guard = max(guards, key=lambda g: sum_intervals(guards[g]))
 worst_guard_min = max(range(60), key=lambda m: times_slept(worst_guard, m))
 ans = worst_guard * worst_guard_min
 
-advent.print_answer(1, ans)
+print('Part 1:', ans)
 
 
 worst_guard = max(guards, key=lambda g: max(times_slept(g, m) for m in range(60)))
 worst_guard_min = max(range(60), key=lambda m: times_slept(worst_guard, m))
 ans2 = worst_guard * worst_guard_min
 
-advent.print_answer(2, ans2)
+print('Part 2:', ans2)

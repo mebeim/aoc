@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from copy import deepcopy
 
 def parse_input(fin):
@@ -49,8 +49,8 @@ def match(rules, string, rule=0, index=0):
 	return matches
 
 
-advent.setup(2020, 19)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 rules1 = parse_input(fin)
 rules2 = deepcopy(rules1)
@@ -65,5 +65,5 @@ for msg in map(str.rstrip, fin):
 	if len(msg) in match(rules2, msg):
 		valid2 += 1
 
-advent.print_answer(1, valid1)
-advent.print_answer(2, valid2)
+print('Part 1:', valid1)
+print('Part 2:', valid2)

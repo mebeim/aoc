@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from functools import lru_cache
 
 WALL, FREE, EMPTY = '#. '
@@ -133,14 +133,12 @@ def walk(grid, moves, step=step_grid):
 	return 1000 * r + 4 * c + d
 
 
-advent.setup(2022, 22)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
-grid = []
-
-with advent.get_input() as fin:
-	grid  = fin.read().splitlines()
-	moves = grid[-1]
-	grid  = grid[:-2]
+grid  = fin.read().splitlines()
+moves = grid[-1]
+grid  = grid[:-2]
 
 HEIGHT, WIDTH = len(grid), max(map(len, grid))
 
@@ -155,7 +153,7 @@ moves = moves.replace('R', ' R ').replace('L', ' L ').split()
 moves = tuple(map(lambda m: m if m in 'LR' else int(m), moves))
 
 answer = walk(grid, moves)
-advent.print_answer(1, answer)
+print('Part 1:', answer)
 
 answer = walk(grid, moves, step_cube)
-advent.print_answer(2, answer)
+print('Part 2:', answer)

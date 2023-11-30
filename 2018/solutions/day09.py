@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from collections import deque
 
 def play(nplayers, max_marble):
@@ -19,14 +19,14 @@ def play(nplayers, max_marble):
 	return max(scores)
 
 
-advent.setup(2018, 9)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 s = fin.read().split()
 nplayers, last_marble = int(s[0]), int(s[6])
 
 winner1 = play(nplayers, last_marble)
-advent.print_answer(1, winner1)
+print('Part 1:', winner1)
 
 winner2 = play(nplayers, last_marble * 100)
-advent.print_answer(2, winner2)
+print('Part 2:', winner2)

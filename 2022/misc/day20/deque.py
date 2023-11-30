@@ -32,11 +32,11 @@ with open('input.txt') as fin:
 numbers = deque(order)
 answer  = mix(order, numbers)
 
-advent.print_answer(1, answer)
+print('Part 1:', answer)
 
 
 order   = tuple((i, v * 811589153) for i, v in order)
 numbers = deque(order)
 answer  = mix(order, numbers, 10)
 
-advent.print_answer(2, answer)
+print('Part 2:', answer)

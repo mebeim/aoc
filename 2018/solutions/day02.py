@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
-from utils import advent
-from string import ascii_letters
+import sys
 from collections import Counter
 
-advent.setup(2018, 2)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 ids = list(map(str.rstrip, fin))
 counts = list(map(Counter, ids))
@@ -14,7 +13,7 @@ two_letters = sum(2 in c.values() for c in counts)
 three_letters = sum(3 in c.values() for c in counts)
 
 ans = two_letters * three_letters
-advent.print_answer(1, ans)
+print('Part 1:', ans)
 
 
 l = len(ids[0])
@@ -37,4 +36,4 @@ for i in range(l):
 	if done:
 		break
 
-advent.print_answer(2, s)
+print('Part 2:', s)

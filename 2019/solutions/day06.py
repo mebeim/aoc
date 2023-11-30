@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 import heapq
 from collections import defaultdict
 
@@ -37,14 +37,14 @@ def dijkstra(G, src, dst):
 	return float('inf')
 
 
-advent.setup(2019, 6)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 orbits = tuple(map(lambda l: l.strip().split(')'), fin.readlines()))
 
 T = {child: parent for parent, child in orbits}
 n_orbits = sum(map(count_orbits, T))
-advent.print_answer(1, n_orbits)
+print('Part 1:', n_orbits)
 
 
 G = defaultdict(set)
@@ -54,7 +54,7 @@ for a, b in orbits:
 	G[b].add(a)
 
 min_transfers = dijkstra(G, T['YOU'], T['SAN'])
-advent.print_answer(2, min_transfers)
+print('Part 2:', min_transfers)
 
 # Using networkx:
 # G = nx.DiGraph(orbits)

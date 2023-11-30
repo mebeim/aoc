@@ -3,7 +3,7 @@
 from functools import lru_cache
 from operator import add, sub, mul, floordiv
 
-from utils import advent
+import sys
 
 OPMAP = {
 	'+': add,
@@ -65,16 +65,17 @@ def find_value(node, expected):
 	return find_value(r, REV_OPMAP[op, False](expected, lvalue))
 
 
-advent.setup(2022, 21)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 T = {}
-with advent.get_input() as fin:
-	for line in fin:
-		a, b = line.strip().split(': ')
-		T[a] = int(b) if b.isdigit() else b.split()
+
+for line in fin:
+	a, b = line.strip().split(': ')
+	T[a] = int(b) if b.isdigit() else b.split()
 
 answer = calc('root')
-advent.print_answer(1, answer)
+print('Part 1:', answer)
 
 
 assert is_tree(T), 'This solution assumes the input is a well-formed tree!'
@@ -84,4 +85,4 @@ T['root'][1] = '-'
 calc.cache_clear()
 
 answer = find_value('root', 0)
-advent.print_answer(2, answer)
+print('Part 2:', answer)

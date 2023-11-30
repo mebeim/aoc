@@ -4,7 +4,7 @@ import re
 from math import prod
 from collections import deque
 
-from utils import advent
+import sys
 
 def best_case_scenario(initial_amount, robots, t):
 	return initial_amount + robots * (t + 1) + t * (t + 1) // 2
@@ -73,18 +73,18 @@ def search(blueprint, time=24):
 	return best
 
 
-advent.setup(2022, 19)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 exp = re.compile(r'\d+')
 blueprints = []
 
-with advent.get_input() as fin:
-	for line in fin:
-		blueprints.append(tuple(map(int, exp.findall(line))))
+for line in fin:
+	blueprints.append(tuple(map(int, exp.findall(line))))
 
 total = sum(bid * search(b) for bid, *b in blueprints)
-advent.print_answer(1, total)
+print('Part 1:', total)
 
 
 total = prod(search(b, 32) for _, *b in blueprints[:3])
-advent.print_answer(2, total)
+print('Part 2:', total)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from operator import itemgetter
 
 def fold(sheet, axis, vertical=False):
@@ -30,8 +30,8 @@ def print_sheet(sheet):
 	print(out, end='')
 
 
-advent.setup(2021, 13)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 sheet = set()
 
@@ -46,7 +46,7 @@ axis     = int(line[line.index('=') + 1:])
 sheet    = fold(sheet, axis, 'x' in line)
 n_points = len(sheet)
 
-advent.print_answer(1, n_points)
+print('Part 1:', n_points)
 
 
 for line in fin:

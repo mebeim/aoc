@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
-advent.setup(2019, 16)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 original_str = fin.read().strip()
 original = list(map(int, original_str))
@@ -33,7 +33,7 @@ for _ in range(100):
 		digits[i] = cusum % 10
 
 answer = ''.join(map(str, digits[:8]))
-advent.print_answer(1, answer)
+print('Part 1:', answer)
 
 
 # Enclosing part 2 inside a function works faster since the LOAD_FAST opcode
@@ -56,4 +56,4 @@ def part2(digits, skip):
 
 skip = int(''.join(original_str[:7]))
 answer = part2(original, skip)
-advent.print_answer(2, answer)
+print('Part 2:', answer)

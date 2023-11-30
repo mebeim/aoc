@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 import heapq
 from functools import lru_cache
 from collections import deque, defaultdict, namedtuple
@@ -140,8 +140,8 @@ def build_graph(grid):
 Portal = namedtuple('Portal', ['label', 'side', 'depth'])
 
 
-advent.setup(2019, 20)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 grid = tuple(l.strip('\n') for l in fin)
 
 MAXROW    = len(grid) - 1
@@ -161,9 +161,9 @@ for p1, p2 in combinations(G, 2):
 		G[p2].append((p1, 1))
 
 min_steps = dijkstra(G, ENTRANCE, EXIT)
-advent.print_answer(1, min_steps)
+print('Part 1:', min_steps)
 
 
 G = build_graph(grid)
 min_steps = dijkstra(G, ENTRANCE, EXIT, get_neighbors=recursive_neighbors)
-advent.print_answer(2, min_steps)
+print('Part 2:', min_steps)

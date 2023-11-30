@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
 def two_sum(nums, target):
 	compls = set()
@@ -14,8 +14,8 @@ def two_sum(nums, target):
 	return False
 
 
-advent.setup(2020, 9)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 nums = tuple(map(int, fin.readlines()))
 
@@ -23,7 +23,7 @@ for i, target in enumerate(nums[25:]):
 	if not two_sum(nums[i:i + 25], target):
 		break
 
-advent.print_answer(1, target)
+print('Part 1:', target)
 
 
 cusums = [0]
@@ -43,4 +43,4 @@ while 1:
 subseq = nums[a:b + 1]
 ans = min(subseq) + max(subseq)
 
-advent.print_answer(2, ans)
+print('Part 2:', ans)

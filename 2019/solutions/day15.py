@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from collections import deque
 from lib.intcode import IntcodeVM
 
@@ -93,8 +93,8 @@ def bfs_farthest(maze, src):
 	return dist
 
 
-advent.setup(2019, 15)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 program = list(map(int, fin.read().split(',')))
 vm = IntcodeVM(program)
@@ -102,7 +102,7 @@ vm = IntcodeVM(program)
 startpos = (0, 0)
 maze, oxygen = wall_follower(vm, startpos)
 min_dist = bfs_shortest(maze, startpos, oxygen)
-advent.print_answer(1, min_dist)
+print('Part 1:', min_dist)
 
 time = bfs_farthest(maze, oxygen)
-advent.print_answer(2, time)
+print('Part 2:', time)

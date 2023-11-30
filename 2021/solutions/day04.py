@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
 def into_matrix(raw):
 	lines = raw.strip().splitlines()
@@ -26,8 +26,8 @@ def winner_score(card, last_number):
 	return unmarked_tot * last_number
 
 
-advent.setup(2021, 4)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 drawn   = map(int, fin.readline().split(','))
 cards   = list(map(into_matrix, fin.read().split('\n\n')))
@@ -49,5 +49,5 @@ for number in drawn:
 
 			cards[i] = None
 
-advent.print_answer(1, first_winner_score)
-advent.print_answer(2, last_winner_score)
+print('Part 1:', first_winner_score)
+print('Part 2:', last_winner_score)

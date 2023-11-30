@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
 LEFT, RIGHT = 'LR'
 NORTH, SOUTH, EAST, WEST = 'NSEW'
@@ -24,8 +24,8 @@ ROTMAP = {
 }
 
 
-advent.setup(2020, 12)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 commands = tuple(map(lambda l: (l[0], int(l[1:])), fin))
 
@@ -42,7 +42,7 @@ for cmd, n in commands:
 		x, y = MOVEMAP[cmd](x, y, n)
 
 dist = abs(x) + abs(y)
-advent.print_answer(1, dist)
+print('Part 1:', dist)
 
 
 x, y = 0, 0
@@ -58,4 +58,4 @@ for cmd, n in commands:
 		dx, dy = MOVEMAP[cmd](dx, dy, n) # only change from the above code
 
 dist = abs(x) + abs(y)
-advent.print_answer(2, dist)
+print('Part 2:', dist)

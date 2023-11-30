@@ -6,7 +6,7 @@ from copy import deepcopy
 from collections import deque
 from operator import add, mul, attrgetter
 
-from utils import advent
+import sys
 
 class Monkey:
 	__slots__ = (
@@ -52,13 +52,12 @@ def simulate(monkeys, n_rounds, part2=False):
 	return a * b
 
 
-advent.setup(2022, 11)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
-regexp  = re.compile(r'\d+')
-monkeys = []
-
-with advent.get_input() as fin:
-	raw_monkeys = fin.read().split('\n\n')
+regexp      = re.compile(r'\d+')
+raw_monkeys = fin.read().split('\n\n')
+monkeys     = []
 
 for raw_monkey in raw_monkeys:
 	lines   = raw_monkey.splitlines()
@@ -77,7 +76,7 @@ for raw_monkey in raw_monkeys:
 original = deepcopy(monkeys)
 
 answer1 = simulate(monkeys, 20)
-advent.print_answer(1, answer1)
+print('Part 1:', answer1)
 
 answer2 = simulate(original, 10000, True)
-advent.print_answer(2, answer2)
+print('Part 2:', answer2)

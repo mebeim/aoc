@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
 def play(nums, n_turns):
 	last_seen = [0] * n_turns
@@ -19,12 +19,12 @@ def play(nums, n_turns):
 
 	return cur
 
-advent.setup(2020, 15)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 nums = tuple(map(int, fin.read().split(',')))
 ans = play(nums, 2020)
-advent.print_answer(1, ans)
+print('Part 1:', ans)
 
 ans = play(nums, 30000000)
-advent.print_answer(2, ans)
+print('Part 2:', ans)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from lib.intcode import IntcodeVM
 
 EMPTY, SCAFFOLD = '.#'
@@ -104,8 +104,8 @@ def find_functions(moves):
 						return A, B, C
 
 
-advent.setup(2019, 17)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 program = list(map(int, fin.read().split(',')))
 vm = IntcodeVM(program)
@@ -126,7 +126,7 @@ for r in range(1, rows - 1):
 			startpos = (r, c)
 			startdir = '^v<>'.index(grid[r][c])
 
-advent.print_answer(1, answer)
+print('Part 1:', answer)
 
 
 moves = get_moves(grid, startpos, startdir)
@@ -138,4 +138,4 @@ vm.reset()
 vm.code[0] = 2
 answer = vm.run(robot_prog)[-1]
 
-advent.print_answer(2, answer)
+print('Part 2:', answer)

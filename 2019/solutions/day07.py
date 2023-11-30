@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from itertools import permutations
 from lib.intcode import IntcodeVM
 
-advent.setup(2019, 7)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 program = list(map(int, fin.read().split(',')))
 vms = [IntcodeVM(program) for _ in range(5)]
@@ -20,7 +20,7 @@ for inputs in permutations(range(5), 5):
 	if out[0] > max_signal:
 		max_signal = out[0]
 
-advent.print_answer(1, max_signal)
+print('Part 1:', max_signal)
 
 
 max_signal = float('-inf')
@@ -46,4 +46,4 @@ for inputs in permutations(range(5, 10), 5):
 	if last_signal > max_signal:
 		max_signal = last_signal
 
-advent.print_answer(2, max_signal)
+print('Part 2:', max_signal)

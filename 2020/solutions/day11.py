@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from copy import deepcopy
 
 def occupied_neighbors(grid, r, c):
@@ -60,16 +60,15 @@ def evolve(grid, occ_counter, occ_threshold):
 		previous = grid
 
 
-from utils.timer import *
-advent.setup(2020, 11)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 original = list(map(list, map(str.rstrip, fin.readlines())))
 MAXROW, MAXCOL = len(original) - 1, len(original[0]) - 1
 OCCUPIED, EMPTY, FLOOR = '#L.'
 
 total_occupied = evolve(deepcopy(original), occupied_neighbors, 4)
-advent.print_answer(1, total_occupied)
+print('Part 1:', total_occupied)
 
 total_occupied = evolve(deepcopy(original), occupied_in_sight, 5)
-advent.print_answer(2, total_occupied)
+print('Part 2:', total_occupied)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from math import ceil
 from collections import deque, defaultdict
 
@@ -34,8 +34,8 @@ def needed_ore(recipes, fuel_qty):
 	return total_ore
 
 
-advent.setup(2019, 14)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 recipes = {}
 
@@ -51,7 +51,7 @@ for line in map(str.rstrip, fin):
 	recipes[product_name] = (int(product_qty), ingredients)
 
 ore = needed_ore(recipes, 1)
-advent.print_answer(1, ore)
+print('Part 1:', ore)
 
 
 AVAILABLE_ORE = 10**12
@@ -71,4 +71,4 @@ while hi - lo > 1:
 	else:
 		lo = x
 
-advent.print_answer(2, lo)
+print('Part 2:', lo)

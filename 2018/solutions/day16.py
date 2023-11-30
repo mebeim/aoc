@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 import re
+
 import z3
 
 def solve(ops):
@@ -18,6 +19,10 @@ def solve(ops):
 	m = solver.model()
 
 	return tuple(map(z3.IntNumRef.as_long, map(m.eval, variables)))
+
+
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 opcodes = [
 	lambda r,a,b: r[a] + r[b],             #  0 addr
@@ -41,10 +46,6 @@ opcodes = [
 opmap = list(set(range(16)) for i in range(16))
 rexp  = re.compile(r'-?\d+')
 
-
-advent.setup(2018, 16)
-fin = advent.get_input()
-
 data    = fin.read().strip().split('\n\n\n\n')
 samples = [l.split('\n') for l in data[0].split('\n\n')]
 program = [tuple(map(int, l.split())) for l in data[1].split('\n')]
@@ -66,7 +67,7 @@ for sample in samples:
 	if count >= 3:
 		ans += 1
 
-advent.print_answer(1, ans)
+print('Part 1:', ans)
 
 
 opmap = solve(opmap)
@@ -76,4 +77,4 @@ for instr in program:
 	regs[instr[3]] = opcodes[opmap[instr[0]]](regs, instr[1], instr[2])
 
 ans2 = regs[0]
-advent.print_answer(2, ans2)
+print('Part 2:', ans2)

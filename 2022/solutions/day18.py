@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
+import sys
 from collections import deque
 from itertools import product
 from operator import itemgetter
-
-from utils import advent
 
 def neighbors(x, y, z):
 	yield (x + 1, y    , z    )
@@ -39,18 +38,18 @@ def escape(cubes, src, rangex, rangey, rangez):
 	return faces_touched, seen
 
 
-advent.setup(2022, 18)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 cubes = {}
-with advent.get_input() as fin:
-	for line in fin:
-		cubes[tuple(map(int, line.split(',')))] = 6
+for line in fin:
+	cubes[tuple(map(int, line.split(',')))] = 6
 
 for c in cubes:
 	cubes[c] -= sum(n in cubes for n in neighbors(*c))
 
 surface = sum(cubes.values())
-advent.print_answer(1, surface)
+print('Part 1:', surface)
 
 
 allseen = set()
@@ -64,4 +63,4 @@ for c in product(rangex, rangey, rangez):
 		surface -= touched
 		allseen |= seen
 
-advent.print_answer(2, surface)
+print('Part 2:', surface)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from lib.intcode import IntcodeVM
 from collections import defaultdict
 
@@ -61,19 +61,19 @@ def sparse_to_matrix(grid):
 
 	return matrix
 
-advent.setup(2019, 11)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 program = list(map(int, fin.read().split(',')))
 robot = IntcodeVM(program)
 grid = run_robot(robot, BLACK)
 n_painted = len(grid)
 
-advent.print_answer(1, n_painted)
+print('Part 1:', n_painted)
 
 grid = run_robot(robot, WHITE)
 pic = sparse_to_matrix(grid)
 pic = ''.join(''.join(x) + '\n' for x in pic)
 
 # Can't really print this nicely, but whatever
-advent.print_answer(2, '\n' + pic)
+print('Part 2:', '\n' + pic)

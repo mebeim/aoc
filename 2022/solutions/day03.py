@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
 def prio(x):
     return ord(x) - (96 if x >= 'a' else 38)
 
 
-advent.setup(2022, 3)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 group = []
 total = group_total = 0
@@ -32,5 +32,5 @@ for line in fin:
 				group_total += prio(item)
 				break
 
-advent.print_answer(1, total)
-advent.print_answer(2, group_total)
+print('Part 1:', total)
+print('Part 2:', group_total)

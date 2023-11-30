@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from copy import deepcopy
 from itertools import product
 
@@ -87,8 +87,8 @@ def recursive_nextgen(grids, depth):
 	return new_grid
 
 
-advent.setup(2019, 24)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 orig_grid = list(list(l.strip()) for l in fin)
 
 ROWS = len(orig_grid)
@@ -117,7 +117,7 @@ for r, c in product(range(ROWS), range(COLS)):
 		total += biodiv
 	biodiv <<= 1
 
-advent.print_answer(1, total)
+print('Part 1:', total)
 
 
 assert ROWS % 2 == 1 and COLS % 2 == 1
@@ -144,4 +144,4 @@ for _ in range(200):
 	grids = new_grids
 
 bugs = sum(sum(sum(c == BUG for c in row) for row in grid) for grid in grids.values())
-advent.print_answer(2, bugs)
+print('Part 2:', bugs)

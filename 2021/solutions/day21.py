@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from itertools import product, cycle
 from functools import lru_cache
 
@@ -46,19 +46,19 @@ def play2(my_pos, my_score, other_pos, other_score, score_limit):
 	return my_wins, other_wins
 
 
-advent.setup(2021, 21)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
-with advent.get_input() as fin:
-    p1_pos = int(fin.readline().split()[-1]) - 1
-    p2_pos = int(fin.readline().split()[-1]) - 1
+p1_pos = int(fin.readline().split()[-1]) - 1
+p2_pos = int(fin.readline().split()[-1]) - 1
 
 rolls, loser_score = play1(p1_pos, p2_pos, 1000)
 ans = rolls * loser_score
 
-advent.print_answer(1, ans)
+print('Part 1:', ans)
 
 
 wins = play2(p1_pos, 0, p2_pos, 0, 21)
 best = max(wins)
 
-advent.print_answer(2, best)
+print('Part 2:', best)

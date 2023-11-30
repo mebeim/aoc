@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
 def fuel2(nums, x):
 	tot = 0
@@ -10,8 +10,8 @@ def fuel2(nums, x):
 	return tot
 
 
-advent.setup(2021, 7)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 nums = list(map(int, fin.readline().split(',')))
 nums.sort()
@@ -19,10 +19,10 @@ nums.sort()
 median = nums[len(nums) // 2]
 fuel   = sum(abs(x - median) for x in nums)
 
-advent.print_answer(1, fuel)
+print('Part 1:', fuel)
 
 
 mean = sum(nums) // len(nums)
 fuel = min(fuel2(nums, mean), fuel2(nums, mean + 1))
 
-advent.print_answer(2, fuel)
+print('Part 2:', fuel)

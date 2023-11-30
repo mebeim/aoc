@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from itertools import product, count
 from lib.intcode import intcode_oneshot
 
@@ -44,13 +44,13 @@ def bin_search(lo, hi, target):
 	return best
 
 
-advent.setup(2019, 19)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 program = list(map(int, fin.read().split(',')))
 total = sum(map(run, product(range(50), range(50))))
 
-advent.print_answer(1, total)
+print('Part 1:', total)
 
 
 TARGET = 100
@@ -63,4 +63,4 @@ for x in range(bestx, bestx - 10, -1):
 		bestx, besty = x, y
 
 answer = bestx * 10000 + besty
-advent.print_answer(2, answer)
+print('Part 2:', answer)

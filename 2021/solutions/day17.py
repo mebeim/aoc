@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 import re
 
 def invtri(x):
@@ -32,8 +32,8 @@ def search(xmin, xmax, ymin, ymax, v0xmin):
 	return yhi, total
 
 
-advent.setup(2021, 17)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 xmin, xmax, ymin, ymax = map(int, re.findall(r'-?\d+', fin.read()))
 assert ymin < 0 and ymax < 0
@@ -50,5 +50,5 @@ v0xmin = invtri(xmin)
 
 yhi, total = search(xmin, xmax, ymin, ymax, v0xmin)
 
-advent.print_answer(1, yhi)
-advent.print_answer(2, total)
+print('Part 1:', yhi)
+print('Part 2:', total)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 import re
 from collections import defaultdict
 from functools import lru_cache
@@ -22,8 +22,8 @@ def count_contained(src):
 	return tot
 
 
-advent.setup(2020, 7)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 contained_by = defaultdict(list)
 contains     = defaultdict(list)
@@ -38,7 +38,7 @@ for line in fin:
 		contains[outer].append((int(qty), inner))
 
 can_contain_gold = count_can_contain(contained_by, 'shiny gold')
-advent.print_answer(1, can_contain_gold)
+print('Part 1:', can_contain_gold)
 
 total_bags = count_contained('shiny gold')
-advent.print_answer(2, total_bags)
+print('Part 2:', total_bags)

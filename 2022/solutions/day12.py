@@ -4,7 +4,7 @@ from collections import deque
 from math import inf as INFINITY
 from itertools import filterfalse
 
-from utils import advent
+import sys
 
 def neighbors4(grid, r, c, h, w):
 	for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
@@ -45,10 +45,10 @@ def bfs(grid, src, dst, get_neighbors):
 	return INFINITY
 
 
-advent.setup(2022, 12)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1], 'rb') if len(sys.argv) > 1 else sys.stdin.buffer
 
-with advent.get_input(mode='rb') as fin:
-	grid = list(map(list, fin.read().splitlines()))
+grid = list(map(list, fin.read().splitlines()))
 
 START, END, LOWEST, HIGHEST = b'SEaz'
 src = dst = None
@@ -66,7 +66,7 @@ for r, row in enumerate(grid):
 		break
 
 min_dist = bfs(grid, src, dst, neighbors_forward)
-advent.print_answer(1, min_dist)
+print('Part 1:', min_dist)
 
 min_dist_from_any_a = bfs(grid, dst, LOWEST, neighbors_backward)
-advent.print_answer(2, min_dist_from_any_a)
+print('Part 2:', min_dist_from_any_a)

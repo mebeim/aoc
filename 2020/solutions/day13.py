@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from math import inf, gcd
 from itertools import count
 
@@ -8,8 +8,8 @@ def lcm(a, b):
 	return a * b // gcd(a, b)
 
 
-advent.setup(2020, 13)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 arrival = int(fin.readline())
 raw = fin.readline().strip().split(',')
@@ -28,7 +28,7 @@ for _, period in buses:
 		best_p = period
 
 ans = best_p * best
-advent.print_answer(1, ans)
+print('Part 1:', ans)
 
 
 time, step = buses[0]
@@ -39,4 +39,4 @@ for delta, period in buses[1:]:
 
 	step = lcm(step, period) # math.lcm() on Python >= 3.9
 
-advent.print_answer(2, time)
+print('Part 2:', time)

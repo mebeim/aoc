@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from functools import lru_cache
 
 def arrangements(nums, i):
@@ -19,8 +19,8 @@ def arrangements(nums, i):
 	return real_fn(i)
 
 
-advent.setup(2020, 10)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 nums = sorted(map(int, fin))
 nums = [0] + nums + [max(nums) + 3]
@@ -35,7 +35,7 @@ for cur, nxt in zip(nums, nums[1:]):
         dist3 += 1
 
 ans = dist1 * dist3
-advent.print_answer(1, ans)
+print('Part 1:', ans)
 
 total = arrangements(nums, 0)
-advent.print_answer(2, total)
+print('Part 2:', total)

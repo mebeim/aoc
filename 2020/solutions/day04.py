@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 
 def check_height(v):
 	if v.endswith('cm'):
@@ -23,8 +23,8 @@ checks = {
 KEYS = ('byr:', 'iyr:', 'eyr:', 'hgt:', 'hcl:', 'ecl:', 'pid:')
 
 
-advent.setup(2020, 4)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 passports = fin.read().split('\n\n')
 n_valid1 = 0
@@ -38,5 +38,5 @@ for raw in passports:
 		if all(checks[k](v) for k, v in passport):
 			n_valid2 += 1
 
-advent.print_answer(1, n_valid1)
-advent.print_answer(2, n_valid2)
+print('Part 1:', n_valid1)
+print('Part 2:', n_valid2)

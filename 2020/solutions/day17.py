@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from itertools import product
 
 def neighbors(coords):
@@ -25,8 +25,8 @@ def evolve(cube):
 	return new
 
 
-advent.setup(2020, 17)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 grid = tuple(map(str.rstrip, fin))
 h, w = len(grid), len(grid[0])
@@ -36,7 +36,7 @@ for _ in range(6):
 	cube = evolve(cube)
 
 total_alive = len(cube)
-advent.print_answer(1, total_alive)
+print('Part 1:', total_alive)
 
 
 hypercube = set((x, y, 0, 0) for x, y in product(range(h), range(w)) if grid[x][y] == '#')
@@ -45,4 +45,4 @@ for _ in range(6):
 	hypercube = evolve(hypercube)
 
 total_alive = len(hypercube)
-advent.print_answer(2, total_alive)
+print('Part 2:', total_alive)

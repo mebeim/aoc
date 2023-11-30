@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from collections import defaultdict
 from operator import itemgetter
 from itertools import combinations
@@ -127,14 +127,14 @@ MONSTER_PATTERN = (
 )
 
 
-advent.setup(2020, 20)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 tiles   = parse_input(fin)
 corners = match_tiles(tiles)
 ans     = prod(corners)
 
-advent.print_answer(1, ans)
+print('Part 1:', ans)
 
 
 top_left_id, matching_sides = corners.popitem()
@@ -156,4 +156,4 @@ water_cells   = sum(row.count('#') for row in image)
 n_monsters    = count_pattern(image, MONSTER_PATTERN)
 roughness     = water_cells - n_monsters * monster_cells
 
-advent.print_answer(2, roughness)
+print('Part 2:', roughness)

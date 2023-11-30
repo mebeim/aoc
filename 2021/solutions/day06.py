@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import advent
+import sys
 from collections import defaultdict, Counter
 
 def evolve(fish, days):
@@ -21,12 +21,12 @@ def evolve(fish, days):
 	return fish, sum(fish.values())
 
 
-advent.setup(2021, 6)
-fin = advent.get_input()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 fish     = Counter(map(int, fin.read().split(',')))
 fish, n1 = evolve(fish, 80)
 _   , n2 = evolve(fish, 256 - 80)
 
-advent.print_answer(1, n1)
-advent.print_answer(2, n2)
+print('Part 1:', n1)
+print('Part 2:', n2)
