@@ -5,11 +5,12 @@ Personal repository of [Advent of Code](#about-advent-of-code) solutions.
 
 ### Quick links
 
-- **Advent of Code 2022: [walkthrough][2022-wal], [clean][2022-sol] / [original][2022-ori] solutions, complete [calendar][2022-cal] and [leaderboard][2022-lea]**
-- Advent of Code 2021: [walkthrough][2021-wal], [clean][2021-sol] / [original][2021-ori] solutions, complete [calendar][2021-cal] and [leaderboard][2021-lea]
-- Advent of Code 2020: [walkthrough][2020-wal], [clean][2020-sol] / [original][2020-ori] solutions, complete [calendar][2020-cal] and [leaderboard][2020-lea]
-- Advent of Code 2019: [walkthrough][2019-wal], [clean][2019-sol] / [original][2019-ori] solutions, complete [calendar][2019-cal] and [leaderboard][2019-lea]
-- Advent of Code 2018: [clean][2018-sol] / [original][2018-ori] solutions, complete [calendar][2018-cal] and [leaderboard][2018-lea]
+- **[How to run my solutions on your inputs][how-to-run]**
+- **AoC 2022: [walkthrough][2022-wal], [clean][2022-sol] / [original][2022-ori] solutions, complete [calendar][2022-cal] and [leaderboard][2022-lea]**
+- AoC 2021: [walkthrough][2021-wal], [clean][2021-sol] / [original][2021-ori] solutions, complete [calendar][2021-cal] and [leaderboard][2021-lea]
+- AoC 2020: [walkthrough][2020-wal], [clean][2020-sol] / [original][2020-ori] solutions, complete [calendar][2020-cal] and [leaderboard][2020-lea]
+- AoC 2019: [walkthrough][2019-wal], [clean][2019-sol] / [original][2019-ori] solutions, complete [calendar][2019-cal] and [leaderboard][2019-lea]
+- AoC 2018: [clean][2018-sol] / [original][2018-ori] solutions, complete [calendar][2018-cal] and [leaderboard][2018-lea]
 
 
 About Advent of Code
@@ -28,14 +29,14 @@ channel: `#adventofcode` on `irc.libera.chat`, where you can also find me at the
 right time of the year.
 
 
-About this repo
----------------
+About this repository
+---------------------
 
 I discovered Advent of Code in 2017, and played my first edition in 2018. In
 this repository you can find my solutions and walkthroughs for the puzzles as
 well as other miscellaneus stuff like visualizations and other scripts.
 
-In each year's folder you will find:
+**In each year's directory** you will find:
 
 - `README.md`: an in depth walkthrough of my (clean) solutions for the puzzle,
   day by day, with references to used algorithms and data structures and
@@ -49,7 +50,7 @@ In each year's folder you will find:
   module, as well as other external modules to make things easier. Do not expect
   the code in here to be sane/readable/fast<sup>**[1]**</sup>.
 - `lib/`: small library of utilities written for this specific year. There are
-  recurring concepts and problems each year. If needed, this folder will hold
+  recurring concepts and problems each year. If needed, this directory will hold
   common code used by multiple solutions.
 - `misc/`: anything else interesting. This includes image/video visualizations
   of puzzles, additional interesting scripts, alternative solutions, and so on.
@@ -64,6 +65,31 @@ In each year's folder you will find:
 they are a good and fun way to see how I code, and they can be uploaded as soon
 as the leaderboard for the day is complete, as I often don't have time to
 rewrite them more cleanly right away.</sup>
+
+
+How to run my solutions
+-----------------------
+
+Provide your input from standard input:
+
+```bash
+2022/solutions/day01.py
+# Paste input here and type CTRL+D when done...
+```
+
+Save your input to file and pass its path as argument:
+
+```bash
+2022/solutions/day01.py path/to/your/input.txt
+```
+
+Directly download your input from the AoC website (you will need to extract your
+session cookie from your browser and replace `VALUE` below with
+the real value, please *only do this if you understand what you are doing*):
+
+```bash
+curl -s --cookie 'session=VALUE' 'https://adventofcode.com/2022/day/1/input' | 2022/solutions/day01.py
+```
 
 
 Contributing
@@ -88,7 +114,7 @@ license, which you can find in the file
 
 ---
 
-*Copyright &copy; 2018-2022 Marco Bonelli.*
+*Copyright &copy; 2018-2023 Marco Bonelli.*
 
 
 [2022-wal]: 2022/README.md
@@ -121,6 +147,7 @@ license, which you can find in the file
 [2018-cal]: 2018/misc/calendar.gif
 [2018-lea]: 2018/misc/full_leaderboard.md
 
+[how-to-run]:   #how-to-run-my-solutions
 [contributing]: /CONTRIBUTING.md
 [new-issue]:    https://github.com/mebeim/aoc/issues/new
 
