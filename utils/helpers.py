@@ -25,32 +25,38 @@ def rlog(recursion_depth):
 
 		def fib(n, depth=0):
 			log = rlog(depth)
-			log('n={}\n', n)
+			log('fib({})\n', n, is_header=True)
+
 			if n == 0 or n == 1:
 				log('{}\n', n, last=1)
 				return n
+
+			log('hello\n')
+
 			res = n + fib(n - 1, depth + 1) + fib(n - 2, depth + 1)
 			log('{}\n', res, last=1)
+
 			return res
 
 		>>> fib(3)
-		n=3
-		│ n=2
-		│ │ n=1
-		│ └ 1
-		│ │ n=0
-		│ └ 0
-		└ 3
-		│ n=1
-		└ 1
-		7
+		┌ fib(3)
+		│ hello
+		│ ┌ fib(2)
+		│ │ hello
+		│ │ ┌ fib(1)
+		│ │ └> 1
+		│ │ ┌ fib(0)
+		│ │ └> 0
+		│ └> 3
+		│ ┌ fib(1)
+		│ └> 1
+		└> 7
 	'''
 	@wraps(log)
-	def fn(s, *a, last=False):
-		pre = ' │' * (recursion_depth - 1)
-		if recursion_depth: pre += ' └' if last else ' │'
-		if pre: pre += ' '
-		log(pre + s, *a)
+	def fn(s, *a, is_header=False, is_retval=False):
+		pre = ' │' * recursion_depth
+		pre += ' ┌' if is_header else ' └>' if is_retval else ' │'
+		log(pre + ' ' + s, *a)
 
 	return fn
 
@@ -66,32 +72,37 @@ def reprint(recursion_depth):
 
 		def fib(n, depth=0):
 			ep = reprint(depth)
-			ep('n =', n)
+			ep('n =', n, is_header=1)
+
 			if n == 0 or n == 1:
-				ep(n, last=1)
+				ep(n, is_retval=1)
 				return n
+
+			ep('hello')
 			res = n + fib(n - 1, depth + 1) + fib(n - 2, depth + 1)
-			ep(res, last=1)
+			ep(res, is_retval=1)
+
 			return res
 
 		>>> fib(3)
-		n = 3
-		│ n = 2
-		│ │ n = 1
-		│ └ 1
-		│ │ n = 0
-		│ └ 0
-		└ 3
-		│ n = 1
-		└ 1
-		7
+		┌ n = 3
+		│ hello
+		│ ┌ n = 2
+		│ │ hello
+		│ │ ┌ n = 1
+		│ │ └> 1
+		│ │ ┌ n = 0
+		│ │ └> 0
+		│ └> 3
+		│ ┌ n = 1
+		│ └> 1
+		└> 7
 	'''
 	@wraps(log)
-	def fn(*a, last=False, **kwa):
-		pre = ' │' * (recursion_depth - 1)
-		if recursion_depth: pre += ' └' if last else ' │'
-		if pre: pre += ' '
-		eprint(pre, end='')
+	def fn(*a, is_header=False, is_retval=False, **kwa):
+		pre = ' │' * recursion_depth
+		pre += ' ┌' if is_header else ' └>' if is_retval else ' │'
+		eprint(pre, end=' ')
 		eprint(*a, **kwa)
 
 	return fn
