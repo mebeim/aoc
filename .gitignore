@@ -3,4 +3,5 @@ __pycache__/
 secret_session_cookie
 **/misc/**/data/*
 **/misc/**/frames/*
+inputs/
 *.py~
