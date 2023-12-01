@@ -10,7 +10,6 @@ def check_digit(string):
 	return DIGITS.get(d, 0)
 
 DIGITS = {
-	'zero' : 0,
 	'one'  : 1,
 	'two'  : 2,
 	'three': 3,
@@ -48,4 +47,4 @@ for line in fin:
 	# total2 += next(filter(None, map(check_digit, (line[i:] for i in range(len(line) -1, -1, -1)))))
 
 print('Part 1:', total1)
-print('Part 1:', total2)
+print('Part 2:', total2)

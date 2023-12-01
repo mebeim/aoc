@@ -95,7 +95,6 @@ line. We can simplify things by building a `dict` to use as a lookup table:
 
 ```python
 DIGITS = {
-    'zero' : 0,
     'one'  : 1,
     'two'  : 2,
     'three': 3,
