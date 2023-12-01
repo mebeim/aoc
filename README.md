@@ -6,7 +6,8 @@ Personal repository of [Advent of Code](#about-advent-of-code) solutions.
 ### Quick links
 
 - **[How to run my solutions on your inputs][how-to-run]**
-- **AoC 2022: [walkthrough][2022-wal], [clean][2022-sol] / [original][2022-ori] solutions, complete [calendar][2022-cal] and [leaderboard][2022-lea]**
+- **AoC 2023: [walkthrough][2023-wal], [clean][2023-sol] / [original][2023-ori] solutions**
+- AoC 2022: [walkthrough][2022-wal], [clean][2022-sol] / [original][2022-ori] solutions, complete [calendar][2022-cal] and [leaderboard][2022-lea]
 - AoC 2021: [walkthrough][2021-wal], [clean][2021-sol] / [original][2021-ori] solutions, complete [calendar][2021-cal] and [leaderboard][2021-lea]
 - AoC 2020: [walkthrough][2020-wal], [clean][2020-sol] / [original][2020-ori] solutions, complete [calendar][2020-cal] and [leaderboard][2020-lea]
 - AoC 2019: [walkthrough][2019-wal], [clean][2019-sol] / [original][2019-ori] solutions, complete [calendar][2019-cal] and [leaderboard][2019-lea]
@@ -116,6 +117,10 @@ license, which you can find in the file
 
 *Copyright &copy; 2018-2023 Marco Bonelli.*
 
+
+[2023-wal]: 2023/README.md
+[2023-sol]: 2023/solutions
+[2023-ori]: 2023/original_solutions
 
 [2022-wal]: 2022/README.md
 [2022-sol]: 2022/solutions
