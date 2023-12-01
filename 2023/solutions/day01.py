@@ -2,18 +2,14 @@
 
 import sys
 
-def check_number(char, line):
-	if char.isdigit():
-		return int(char)
-	else:
-		for num in NUMBERS:
-			if line.startswith(num):
-				return NUMBERS[num]
+def check_digit(string):
+	if string[0].isdigit():
+		return int(string[0])
 
-	return 0
+	d = next(filter(string.startswith, DIGITS), None)
+	return DIGITS.get(d, 0)
 
-
-NUMBERS = {
+DIGITS = {
 	'zero' : 0,
 	'one'  : 1,
 	'two'  : 2,
@@ -29,29 +25,27 @@ NUMBERS = {
 # Open the first argument as input or use stdin if no arguments were given
 fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
-lines = fin.readlines()
-total = 0
+total1 = total2 = 0
 
-for line in lines:
-	total += 10 * int(next(filter(str.isdigit, line)))
-	total += int(next(filter(str.isdigit, line[::-1])))
+for line in fin:
+	total1 += 10 * int(next(filter(str.isdigit, line)))
+	total1 += int(next(filter(str.isdigit, line[::-1])))
 
-print('Part 1:', total)
-
-
-total = 0
-
-for line in lines:
-	for i, char in enumerate(line):
-		n = check_number(char, line[i:])
-		if n:
-			total += 10 * n
+	for i in range(len(line)):
+		a = check_digit(line[i:])
+		if a:
 			break
 
 	for i in range(len(line) - 1, -1, -1):
-		n = check_number(line[i], line[i:])
-		if n:
-			total += n
+		b = check_digit(line[i:])
+		if b:
 			break
 
-print('Part 2:', total)
+	total2 += 10 * a + b
+
+	# Cursed alternative one-liner for part 2:
+	# total2 += 10 * next(filter(None, map(check_digit, (line[i:] for i in range(len(line))))))
+	# total2 += next(filter(None, map(check_digit, (line[i:] for i in range(len(line) -1, -1, -1)))))
+
+print('Part 1:', total1)
+print('Part 1:', total2)
