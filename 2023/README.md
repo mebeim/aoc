@@ -11,8 +11,8 @@ Table of Contents
 -----------------
 
 - [Day 1 - Trebuchet?!][d01]
+- [Day 2 - Cube Conundrum][d02]
 <!--
-- [Day 2 - ][d02]
 - [Day 3 - ][d03]
 - [Day 4 - ][d04]
 - [Day 5 - ][d05]
@@ -181,6 +181,189 @@ for line in fin:
 
 First two starts of the year done. Welcome to Advent of Code 2024!
 
+
+Day 2 - Cube Conundrum
+----------------------
+
+[Problem statement][d02-problem] — [Complete solution][d02-solution] — [Back to top][top]
+
+### Part 1
+
+We are dealing with... a game using colored cubes. Today's input seems a bit
+annoying to parse. While we could do this with a couple of regular expressions,
+I usually prefer to avoid those. Thankfully we can get around with only a few
+[`.split()`][py-str-split] operations.
+
+The lines are in the form:
+
+```none
+Game 3: 1 red, 2 green; 3 green, 1 blue, 7 red; 3 green, 5 red, 1 blue
+```
+
+The first thing to do is extract the game ID and convert it to integer: we can
+do this by simply splitting on the colon (`:`) - or more precisely on colon
+followed by a space (`': '`) - and then extract the ID by [slicing][py-slicing].
+
+```python
+fin = open(...)
+
+for line in fin:
+    gid, game = line.split(': ')
+    gid = int(gid[5:])
+```
+
+We can then split on `'; '` to separate each "turn" of each game, split again on
+`', '` to separate each listed number and color combination in the turn, and
+again one last time on whitespace to separate the number from the color,
+converting numbers to integer.
+
+```python
+for line in fin:
+    gid, game = line.split(': ')
+    gid = int(gid[5:])
+
+    for turn in game.split('; '):
+        for n_and_color in turn.split(', '):
+            n, color = n_and_color.split()
+            n = int(n)
+```
+
+We can simplify the above and split `n` and `color` on the fly using
+[`map()`][py-builtin-map] and `str.split()`:
+
+```diff
+     for turn in game.split('; '):
++        for n, color in map(str.split, turn.split(', ')):
+-        for n_and_color in turn.split(', '):
+-            n, color = n_and_color.split()
+             n = int(n)
+```
+
+Now, since we are tasked with identifying impossible games, for each color we
+encounter in a turn, we need to check whether the given number exceeds the
+limits we are given: 12 red, 13 green and 14 blue. We can do this pretty easily
+with a few `if` statements and a boolean variable.
+
+```python
+answer = 0
+
+for line in fin:
+    gid, game = line.split(': ')
+    gid = int(gid[5:])
+    bad = False
+
+    for turn in game.split('; '):
+        for n, color in map(str.split, turn.split(', ')):
+            n = int(n)
+
+            if color == 'red' and n > 12:
+                bad = True
+            elif color == 'green' and n > 13:
+                bad = True
+            elif color == 'blue' and n > 14:
+                bad = True
+
+    if bad:
+        answer += gid
+```
+
+Those `if` statements can be simplified down to a single one by combining the
+conditions. Additionally, we can `break` out of the loop as soon as we find an
+impossible turn:
+
+```python
+    # ... same as above ...
+            if n > 14 or (n > 13 and color == 'green') or (n > 12 and color == 'red'):
+                bad = True
+                break
+
+    if bad:
+        answer += gid
+
+print('Part 1:', answer)
+```
+
+### Part 2
+
+For part two, for each game we now need to find the minimum number of cubes of
+each color that would make the game possible. If we think about it for a moment,
+this simply means computing the maximum value we see for each color over all the
+turns of a game.
+
+We can adapt the code we just wrote for part 1 and integrate the calculations
+for part 2 too. We'll add 3 more variables to keep track of the number of cubes
+of each color in a given turn, and another 3 variables to keep track of the
+maximum number for each color among all the turns.
+
+```python
+answer1 = answer2 = 0
+
+for line in fin:
+    gid, game = line.split(': ')
+    gid = int(gid[5:])
+    bad = False
+    maxr = maxg = maxb = 0
+
+    for turn in game.split('; '):
+        # Cubes of a given color in this turn
+        r = g = b = 0
+
+        for n, color in map(str.split, turn.split(', ')):
+            n = int(n)
+
+            # Assign the right count to the corresponding variable
+            if color == 'red':
+                r = n
+            elif color == 'green':
+                g = n
+            else:
+                b = n
+```
+
+For each turn, we now have `r`, `g`, and `b` containing the number of red, green
+and blue cubes extracted in the turn respectively. We can use these variables to
+simplify the logic for the impossibility check of part 1, which can now happen
+outside of the `for turn in ...` loop and becomes:
+
+```python
+        if r > 12 or g > 13 or b > 14:
+            bad = True
+```
+
+Or, if we want to avoid branching, we can use the binary OR operator (`|`),
+which works just fine on `bool` values:
+
+```python
+        bad |= r > 12 or g > 13 or b > 14
+        # Equivalent to:
+        # bad = bad or (r > 12 or g > 13 or b > 14)
+```
+
+Now we can perform the calculations for part 2 using [`max()`][py-builtin-max]
+
+```python
+for line in fin:
+    # ...
+    for turn in game.split('; '):
+        # ...
+        for n, color in map(str.split, turn.split(', ')):
+            # ...
+
+        # Calculate maximum value for each color among all the turns, which will
+        # correspond to the minimum number of cubes to make this game possible.
+        maxr = max(r, minr)
+        maxg = max(g, ming)
+        maxb = max(b, minb)
+
+    if not bad:
+        answer1 += gid
+
+    answer2 += maxr * maxg * maxsb
+
+print('Part 1:', answer1)
+print('Part 2:', answer2)
+```
+
 ---
 
 *Copyright &copy; 2023 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -189,7 +372,7 @@ First two starts of the year done. Welcome to Advent of Code 2024!
 
 [top]: #advent-of-code-2023-walkthrough
 [d01]: #day-1---trebuchet
-[d02]: #day-2---
+[d02]: #day-2---cube-conundrum
 [d03]: #day-3---
 [d04]: #day-4---
 [d05]: #day-5---
@@ -260,7 +443,12 @@ First two starts of the year done. Welcome to Advent of Code 2024!
 [d24-solution]: solutions/day24.py
 [d25-solution]: solutions/day25.py
 
+[py-slicing]: https://docs.python.org/3/library/stdtypes.html#common-sequence-operations
+
 [py-builtin-filter]: https://docs.python.org/3/library/functions.html#filter
+[py-builtin-map]:    https://docs.python.org/3/library/functions.html#map
+[py-builtin-max]:    https://docs.python.org/3/library/functions.html#max
 [py-builtin-next]:   https://docs.python.org/3/library/functions.html#next
 [py-builtin-range]:  https://docs.python.org/3/library/functions.html#range
 [py-str-isdigit]:    https://docs.python.org/3/library/stdtypes.html#str.isdigic
+[py-str-split]:      https://docs.python.org/3/library/stdtypes.html#str.split
