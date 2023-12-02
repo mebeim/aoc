@@ -291,9 +291,8 @@ this simply means computing the maximum value we see for each color over all the
 turns of a game.
 
 We can adapt the code we just wrote for part 1 and integrate the calculations
-for part 2 too. We'll add 3 more variables to keep track of the number of cubes
-of each color in a given turn, and another 3 variables to keep track of the
-maximum number for each color among all the turns.
+for part 2 too. We'll add 3 more variables to keep track of the maximum number
+for each color among all the turns using [`max()`][py-builtin-max].
 
 ```python
 answer1 = answer2 = 0
@@ -301,68 +300,65 @@ answer1 = answer2 = 0
 for line in fin:
     gid, game = line.split(': ')
     gid = int(gid[5:])
-    bad = False
+
+    # Maximum number of red, green and blue cubes seen in any turn of this game
     maxr = maxg = maxb = 0
 
     for turn in game.split('; '):
-        # Cubes of a given color in this turn
-        r = g = b = 0
-
         for n, color in map(str.split, turn.split(', ')):
             n = int(n)
 
-            # Assign the right count to the corresponding variable
             if color == 'red':
-                r = n
+                maxr = max(n, maxr)
             elif color == 'green':
-                g = n
+                maxg = max(n, maxg)
             else:
-                b = n
+                maxb = max(n, maxb)
 ```
 
-For each turn, we now have `r`, `g`, and `b` containing the number of red, green
-and blue cubes extracted in the turn respectively. We can use these variables to
-simplify the logic for the impossibility check of part 1, which can now happen
-outside of the `for turn in ...` loop and becomes:
-
-```python
-        if r > 12 or g > 13 or b > 14:
-            bad = True
-```
-
-Or, if we want to avoid branching, we can use the binary OR operator (`|`),
-which works just fine on `bool` values:
-
-```python
-        bad |= r > 12 or g > 13 or b > 14
-        # Equivalent to:
-        # bad = bad or (r > 12 or g > 13 or b > 14)
-```
-
-Now we can perform the calculations for part 2 using [`max()`][py-builtin-max]
+For each game, at the end of the `for turn` loop, we now have `maxr`, `maxg`,
+and `maxb` containing respectively the maximum number of red, green and blue
+cubes that we saw in any turn. We can use these values to simplify the logic for
+the impossibility check of part 1, which can now happen outside the loop, as we
+cannot `break` earlier as we did before. Since the check is moved outside the
+loop, we also don't need the `bad` boolean variable anymore.
 
 ```python
 for line in fin:
     # ...
     for turn in game.split('; '):
         # ...
-        for n, color in map(str.split, turn.split(', ')):
-            # ...
 
-        # Calculate maximum value for each color among all the turns, which will
-        # correspond to the minimum number of cubes to make this game possible.
-        maxr = max(r, minr)
-        maxg = max(g, ming)
-        maxb = max(b, minb)
-
-    if not bad:
+    if maxr <= 12 and maxg <= 13 and maxb <= 14:
         answer1 += gid
+```
 
-    answer2 += maxr * maxg * maxsb
+Or, if we want to avoid branching, we can use a simple multiplication, since a
+`bool` used in arithmetic expressions evaluates either to `0` or `1`:
+
+```diff
+-    if maxr <= 12 and maxg <= 13 and maxb <= 14:
+-        answer1 += gid
++   answer1 += gid * (maxr <= 12 and maxg <= 13 and maxb <= 14)
+```
+
+Finally, the value we want for part 2 simply consists of the sum of the products
+of the 3 maximums over all games:
+
+```python
+for line in fin:
+    # ...
+    for turn in game.split('; '):
+        # ...
+
+    answer1 += gid * (maxr <= 12 and maxg <= 13 and maxb <= 14)
+    answer2 += maxr * maxg * maxb
 
 print('Part 1:', answer1)
 print('Part 2:', answer2)
 ```
+
+And here we go, 4 stars and counting!
 
 ---
 

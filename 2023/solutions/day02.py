@@ -10,29 +10,21 @@ answer1 = answer2 = 0
 for line in fin:
 	gid, game = line.split(': ')
 	gid = int(gid[5:])
-	bad = False
-	minr = ming = minb = 0
+	maxr = maxg = maxb = 0
 
 	for turn in game.split('; '):
-		r = g = b = 0
-
 		for n, color in map(str.split, turn.split(', ')):
 			n = int(n)
 
 			if color == 'red':
-				r = n
+				maxr = max(n, maxr)
 			elif color == 'green':
-				g = n
+				maxg = max(n, maxg)
 			else:
-				b = n
+				maxb = max(n, maxb)
 
-		bad |= r > 12 or g > 13 or b > 14
-		minr = max(r, minr)
-		ming = max(g, ming)
-		minb = max(b, minb)
-
-	answer1 += gid * (not bad)
-	answer2 += minr * ming * minb
+	answer1 += gid * (maxr <= 12 and maxg <= 13 and maxb <= 14)
+	answer2 += maxr * maxg * maxb
 
 print('Part 1:', answer1)
 print('Part 2:', answer2)
