@@ -8,20 +8,29 @@ def adjacent_symbols(grid, r, start_c, height, width):
 	row   = grid[r]
 	above = grid[r - 1] if r > 0 else []
 	below = grid[r + 1] if r < height - 1 else []
+	gears = []
+	adj_to_symbol = False
 
 	for c in range(max(0, start_c - 1), width):
 		if above and above[c] not in '0123456789.':
-			yield (r - 1, c)
+			adj_to_symbol = True
+			if above[c] == '*':
+				gears.append((r - 1, c))
 
 		if below and below[c] not in '0123456789.':
-			yield (r + 1, c)
+			adj_to_symbol = True
+			if below[c] == '*':
+				gears.append((r + 1, c))
 
-		if row[c] not in '0123456789':
-			if row[c] != '.':
-				yield (r, c)
+		if not row[c].isdigit():
+			adj_to_symbol |= row[c] != '.'
+			if row[c] == '*':
+				gears.append((r, c))
 
 			if c > start_c:
 				break
+
+	return adj_to_symbol, gears
 
 def extract_number(row, start, length):
 	end = start + 1
@@ -36,8 +45,9 @@ fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 grid = list(map(str.rstrip, fin.readlines()))
 height, width = len(grid), len(grid[0])
-adj_numbers = defaultdict(list)
+
 answer1 = answer2 = 0
+gears = defaultdict(list)
 
 for r, row in enumerate(grid):
 	c = 0
@@ -49,19 +59,19 @@ for r, row in enumerate(grid):
 		if c >= width:
 			break
 
-		symbols = list(adjacent_symbols(grid, r, c, height, width))
+		adj_to_symbol, adj_gears = adjacent_symbols(grid, r, c, height, width)
 
-		if symbols:
+		if adj_to_symbol:
 			number = extract_number(row, c, width)
 			answer1 += number
 
-			for sym in symbols:
-				adj_numbers[sym].append(number)
+			for rc in adj_gears:
+				gears[rc].append(number)
 
 		while c < width and row[c].isdigit():
 			c += 1
 
 print('Part 1:', answer1)
 
-answer2 = sum(map(prod, filter(lambda x: len(x) == 2, adj_numbers.values())))
+answer2 = sum(map(prod, filter(lambda x: len(x) == 2, gears.values())))
 print('Part 2:', answer2)

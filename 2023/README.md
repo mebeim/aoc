@@ -419,7 +419,9 @@ row), in order to extract a number we can simply scan linearly until we stop
 seeing digits. Let's write a function to extract a number in this way: it will
 take the row and the starting column as parameters and return a number converted
 to integer. For simplicity, we'll also pass the row length since we have it at
-hand. The [`.isdigit()`][py-str-isdigit] method of strings comes in handy.
+hand. The [`.isdigit()`][py-str-isdigit] method of strings comes in handy
+(technically, `.isdigit()` doesn't only accept [ASCII][misc-ascii] digits, but
+we know our entire input is ASCII, so it's fine).
 
 ```python
 def extract_number(row, start, length):
@@ -474,7 +476,7 @@ def has_adjacent_symbols(grid, r, start_c, height, width):
             return True
 
         # Check given row
-        if grid[r][c] not in '0123456789':
+        if not grid[r][c].isdigit():
             # Symbol
             if grid[r][c] != '.':
                 return True
@@ -507,7 +509,7 @@ def has_adjacent_symbols(grid, r, start_c, h, w):
         if below and below[c] not in '0123456789.':
             return True
 
-        if row[c] not in '0123456789':
+        if not row[c].isdigit():
             if row[c] != '.':
                 return True
 
@@ -557,53 +559,64 @@ print('Part 1:', answer)
 
 ### Part 2
 
-The task now becomes a bit more complex: we need to identify all the symbols
-that have exactly two adjacent numbers. For each such pair of numbers, calculate
-their product and sum all the products up.
+The task now becomes a bit more complex: we need to identify "gears", that is:
+all the asterisk (`*`) symbols that have exactly two adjacent numbers. For each
+such pair of numbers, we then need to calculate the product, and sum all the
+products up.
 
 It may seem like a lot of work, but the way we wrote the
-`has_adjacent_symbols()` function for part one makes it pretty easy to modify it
-to return *all symbols found* instead of just stopping at the first one and
-returning a boolean. If we transform the function in a generator and `yield` the
-coordinates of each symbol we encounter, we can then use those coordinates (row
-and column index) as an unique identifier of a given symbol: each time we
-encounter the same coordinates it means we found the same symbol.
+`has_adjacent_symbols()` function for part one makes it easy to modify it to
+identify gears instead of just stopping at the first symbol and returning a
+boolean. We can transform the function to return a boolean plus a list of
+coordinates for asterisk symbols found. We can then use those coordinates (row
+and column index) as an unique identifier of a given asterisk: each time we
+encounter the same coordinates it means we found the same one.
 
-Let's turn `has_adjacent_symbols()` into `adjacent_symbols()`. The changes are
-minimal:
+Let's turn `has_adjacent_symbols()` into `adjacent_symbols()`:
 
-```diff
- def adjacent_symbols(grid, r, start_c, h, w):
-     row   = grid[r]
-     # Take row above if possible, else an empty list
-     above = grid[r - 1] if r > 0 else []
-     # Take row below if possible, else an empty list
-     below = grid[r + 1] if r < height - 1 else []
+```python
+def adjacent_symbols(grid, r, start_c, height, width):
+    row   = grid[r]
+    # Take row above if possible, else an empty list
+    above = grid[r - 1] if r > 0 else []
+    # Take row below if possible, else an empty list
+    below = grid[r + 1] if r < height - 1 else []
 
-     for c in range(max(0, start_c - 1), width):
-         if above and above[c] not in '0123456789.':
--            return True
-+            yield (r - 1, c)
+    # List of coordinates of adjacent '*' symbols found
+    gears = []
+    # True if any adjacent symbol is found
+    adj_to_symbol = False
 
-         if below and below[c] not in '0123456789.':
--             return True
-+             yield (r + 1, c)
+    for c in range(max(0, start_c - 1), width):
+        if above and above[c] not in '0123456789.':
+            adj_to_symbol = True
 
-         if row[c] not in '0123456789':
-             if row[c] != '.':
--                return True
-+                yield (r, c)
+            if above[c] == '*':
+                gears.append((r - 1, c))
 
-             # No more digits, stop
-             if c > start_c:
-                 break
--
--    return False
+        if below and below[c] not in '0123456789.':
+            adj_to_symbol = True
+
+            if below[c] == '*':
+                gears.append((r + 1, c))
+
+        if not row[c].isdigit():
+            adj_to_symbol |= row[c] != '.'
+
+            if row[c] == '*':
+                gears.append((r, c))
+
+            # No more digits, stop
+            if c > start_c:
+                break
+
+    return adj_to_symbol, gears
 ```
 
-Now a call to `adjacent_symbols()` returns the coordinates of all the symbols
-adjacent to the number starting at `start_c` in the row at index `r`. We can
-keep track of the numbers adjacent to a given symbol with a simple dictionary of
+Now a call to `adjacent_symbols()` returns a boolean indicating whether any
+symbols were found adjacent to the number starting at `start_c` in the row at
+index `r`, as well as the coordinates of all the `*` symbols encountered. We can
+keep track of the numbers adjacent to a given `*` symbol with a dictionary of
 lists. Using a [`defaultdict(list)`][py-collections-defaultdict] makes it even
 easier as we can just [`.append()`][py-list-append] without worrying if a given
 symbol was already added to the dictionary or not.
@@ -611,8 +624,8 @@ symbol was already added to the dictionary or not.
 ```python
 from collections import defaultdict
 
-# For each symbol's coordinates, the list holds its adjacent numbers
-adj_numbers = defaultdict(list)
+# For each '*' symbol, keep a list holding its adjacent numbers
+gears = defaultdict(list)
 ```
 
 The main loop needs minimal modifications:
@@ -632,17 +645,16 @@ for r, row in enumerate(grid):
         if c >= width:
             break
 
-        # We have a digit, get all the adjacent symbols
-        symbols = list(adjacent_symbols(grid, r, c, height, width))
+        adj_to_symbol, adj_gears = list(adjacent_symbols(grid, r, c, height, width))
 
-        if symbols:
+        if adj_to_symbol:
             number = extract_number(row, c, width)
             answer1 += number
 
-            # For each symbol, add the current number to the list of numbers
+            # For each '*' symbol, add the current number to the list of numbers
             # adjacent to the symbol
-            for sym in symbols:
-                adj_numbers[sym].append(number)
+            for coords in adj_gears:
+                gears[coords].append(number)
 
         # Skip remaining digits
         while c < width and row[c].isdigit():
@@ -651,8 +663,8 @@ for r, row in enumerate(grid):
 print('Part 1:', answer1)
 ```
 
-We now have a complete `adj_numbers`, which is a dictionary of the following
-form `{symbol_coords: list_of_numbers}`, for example:
+We now have a complete `gears` dictionary of the form `{(r, c): [num, ...]}`,
+for example:
 
 ```python
 {
@@ -662,14 +674,14 @@ form `{symbol_coords: list_of_numbers}`, for example:
 }
 ```
 
-We already have the part 1 answer. For part 2 we are asked to consider symbols
-that have exactly two adjacent numbers, so we can simply iterate over
-`adj_numbers` and check which lists have a length of `2`. Simple enough!
+We already have the part 1 answer. For part 2 we are asked to consider `*`
+symbols that have exactly *two* adjacent numbers, so we can simply iterate over
+`gears` and check which lists have a length of `2`. Simple enough!
 
 ```python
 answer2 = 0
 
-for numbers in adj_numbers.values():
+for numbers in gears.values():
     if len(numbers) == 2:
         answer2 += numbers[0] * numbers[1]
 ```
@@ -694,7 +706,7 @@ a few builtins:
 - [`sum()`][py-builtin-sum] up all the products.
 
 ```python
-len_2_lists = filter(lambda x: len(x) == 2, adj_numbers.values())
+len_2_lists = filter(lambda x: len(x) == 2, gears.values())
 products    = map(prod, len_2_lists)
 answer2     = sum(products)
 ```
@@ -702,7 +714,7 @@ answer2     = sum(products)
 Or more concisely:
 
 ```python
-answer2 = map(prod, filter(lambda x: len(x) == 2, adj_numbers.values())))
+answer2 = map(prod, filter(lambda x: len(x) == 2, gears.values())))
 print('Part 2:', answer2)
 ```
 
@@ -810,3 +822,5 @@ it as is. Six stars out of fifty!
 [py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigic
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
+
+[misc-ascii]: https://en.wikipedia.org/wiki/ASCII
