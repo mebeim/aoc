@@ -8,12 +8,13 @@ from inspect import signature, Parameter
 from .helpers import log, rlog, reprint
 
 # Adapted from: https://stackoverflow.com/a/47956089/3889449
-def _stack_size(size_hint=8, getframe=_getframe):
-	'''Get stack size for caller's frame.'''
-	frame = None
+def _stack_size(size_hint: int=8) -> int:
+	'''Get number of call frames for the caller.'''
+	frame = 0
+
 	try:
 		while True:
-			frame = getframe(size_hint)
+			frame = _getframe(size_hint)
 			size_hint *= 2
 	except ValueError:
 		if frame:
@@ -22,7 +23,7 @@ def _stack_size(size_hint=8, getframe=_getframe):
 			while not frame:
 				size_hint = max(2, size_hint // 2)
 				try:
-					frame = getframe(size_hint)
+					frame = _getframe(size_hint)
 				except ValueError:
 					continue
 
@@ -31,7 +32,7 @@ def _stack_size(size_hint=8, getframe=_getframe):
 		if not frame:
 			return size
 
-def log_calls(log_return=True):
+def log_calls(log_return: bool=True):
 	'''Decorate a function logging arguments and return value
 	(if log_return=True) of every call to standard error.
 	'''
@@ -52,7 +53,7 @@ def log_calls(log_return=True):
 		return wrapper
 	return decorator
 
-def log_calls_recursive(log_call=True, log_return=True):
+def log_calls_recursive(log_call: bool=True, log_return: bool=True):
 	'''Decorate a function logging arguments (if log_call=True) and return value
 	(if log_return=True) of every call to standard error, indenting the logs for
 	recursive calls according to the recursion level.
@@ -152,7 +153,7 @@ def log_calls_recursive(log_call=True, log_return=True):
 		return wrapper
 	return decorator
 
-def selective_cache(*arg_names):
+def selective_cache(*arg_names: str):
 	'''Memoize results using only arguments with the specified names as key.
 	Note: does NOT support functions using *args, **kwargs or default values.
 

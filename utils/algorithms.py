@@ -21,17 +21,33 @@ from math import inf as INFINITY
 from itertools import filterfalse
 from operator import itemgetter
 from itertools import product
+from typing import TypeVar, Any, Iterable, Iterator, Callable, Union, Optional
+from typing import List, Tuple, Dict
+from collections.abc import Sequence, Container
+
 from .data_structures import UnionFind
+
+T = TypeVar('T')
+
+Grid2D              = Sequence[Sequence[Any]]
+Coord2D             = Tuple[int,int]
+WeightedGraphDict   = Dict[T,List[Tuple[T,int]]]
+UnweightedGraphDict = Dict[T,List[T]]
+GraphDict           = Union[WeightedGraphDict,UnweightedGraphDict]
+GridNeighborsFunc   = Callable[[Grid2D,int,int,Container],Iterator[Coord2D]]
+GraphNeighborsFunc  = Callable[[GraphDict,T],Iterator[T]]
+Distance            = Union[int,float]
+IntOrFloat          = Union[int,float]
 
 # Maximum cache size used for memoization with lru_cache
 MAX_CACHE_SIZE = 256 * 2**20 # 256Mi entries -> ~8GiB if one entry is 32 bytes
 
-def grid_neighbors_gen(deltas):
+def grid_neighbors_gen(deltas: Iterable[Coord2D]) -> GridNeighborsFunc:
 	'''Create a generator function for finding coordinates of neighbors in a
 	grid (2D matrix) given a list of deltas to apply to the source coordinates
 	to get neighboring cells.
 	'''
-	def g(grid, r, c, avoid=()):
+	def g(grid: Grid2D, r: int, c: int, avoid: Container=()) -> Iterator[Coord2D]:
 		'''Get neighbors of a cell in a 2D grid (matrix) i.e. list of lists or
 		similar. Performs bounds checking. Grid is assumed to be rectangular.
 		'''
@@ -53,25 +69,29 @@ def grid_neighbors_gen(deltas):
 
 	return g
 
-def grid_neighbors_values_gen(deltas):
+def grid_neighbors_values_gen(deltas: Iterable[Coord2D]) \
+		-> Callable[[Grid2D,int,int,Container],Iterator[Any]]:
 	'''Create a generator function for finding values of neighbors in a grid
 	(2D matrix) given a list of deltas to apply to the source coordinates
 	to get neighboring cells.
 	'''
 	g = grid_neighbors_gen(deltas)
 
-	def v(grid, r, c, avoid=()):
+	def v(grid: Grid2D, r: int, c: int, avoid: Container=()) -> Iterator[Any]:
 		for rr, cc in g(grid, r, c, avoid):
 			yield grid[rr][cc]
 
 	return v
 
-def grid_neighbors_coords_gen(deltas):
+def neighbors_coords_gen(deltas: Iterable[Coord2D]) \
+		-> Callable[[int,int],Iterator[Coord2D]]:
 	'''Create a generator function yielding coordinates of neighbors of a given
-	cell in a grid (2D matrix), given a list of deltas to apply to the source
-	coordinates.
+	cell in a hypotetical grid (2D matrix), given a list of deltas to apply to
+	the source coordinates.
+
+	Useful for cases where bound-checking is not needed, like sparse matrices.
 	'''
-	def neighbor_coords(r, c):
+	def neighbor_coords(r: int, c: int) -> Iterator[Coord2D]:
 		for dr, dc in deltas:
 			yield r + dr, c + dc
 
@@ -85,11 +105,14 @@ neighbors4_values  = grid_neighbors_values_gen(((-1, 0), (0, -1), (0, 1), (1, 0)
 neighbors4x_values = grid_neighbors_values_gen(((-1, -1), (-1, 1), (1, -1), (1, 1)))
 neighbors8_values  = grid_neighbors_values_gen(((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)))
 
-neighbors4_coords  = grid_neighbors_coords_gen(((-1, 0), (0, -1), (0, 1), (1, 0)))
-neighbors4x_coords = grid_neighbors_coords_gen(((-1, -1), (-1, 1), (1, -1), (1, 1)))
-neighbors8_coords  = grid_neighbors_coords_gen(((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)))
+neighbors4_coords  = neighbors_coords_gen(((-1, 0), (0, -1), (0, 1), (1, 0)))
+neighbors4x_coords = neighbors_coords_gen(((-1, -1), (-1, 1), (1, -1), (1, 1)))
+neighbors8_coords  = neighbors_coords_gen(((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)))
 
-def grid_find_adjacent(grid, src, find, avoid=(), coords=False, get_neighbors=neighbors4):
+def grid_find_adjacent(grid: Grid2D, src: Coord2D, find: Container,
+		avoid: Container=(), coords: bool=False,
+		get_neighbors: GridNeighborsFunc=neighbors4) \
+		-> Union[Tuple[Tuple[int,int,Any],int],Tuple[Any,int]]:
 	'''Find and yield edges to reachable nodes in grid (2D matrix) from src,
 	considering the values in find as nodes, and the values in avoid as walls.
 
@@ -99,8 +122,9 @@ def grid_find_adjacent(grid, src, find, avoid=(), coords=False, get_neighbors=ne
 	anyting else is considered open space
 	get_neighbors(grid, r, c, avoid) is called to determine cell neighbors
 
-	If coords=False (default), yields edges in the form (char, dist), otherwise
-	in the form ((row, col, char), dist).
+	If coords=False (default), yields edges in the form (node, dist), otherwise
+	in the form ((row, col, node), dist). For a character grid node will be a
+	single character.
 
 	Uses breadth-first search.
 	'''
@@ -128,7 +152,9 @@ def grid_find_adjacent(grid, src, find, avoid=(), coords=False, get_neighbors=ne
 			for neighbor in filterfalse(visited.__contains__, get_neighbors(grid, *node)):
 				queue.append((dist + 1, neighbor))
 
-def graph_from_grid(grid, find, avoid=(), coords=False, get_neighbors=neighbors4):
+def graph_from_grid(grid: Grid2D, find: Container, avoid: Container=(),
+		coords: bool=False, get_neighbors: GridNeighborsFunc=neighbors4) \
+		-> WeightedGraphDict:
 	'''Reduce a grid (2D matrix) to an undirected graph by finding all nodes and
 	calculating their distance to others. Note: can return a disconnected graph.
 
@@ -140,9 +166,9 @@ def graph_from_grid(grid, find, avoid=(), coords=False, get_neighbors=neighbors4
 	If coord=False (default), nodes of the graph will be represented by the
 	found value only, otherwise by a tuple of the form (row, col, char).
 
-	Returns a "graph dictionary" of the form {node: [(dist, node)]}.
+	Returns a "graph dictionary" of the form {node: [(node, dist)]}.
 	'''
-	graph = {}
+	graph: GraphDict = {}
 
 	for r, row in enumerate(grid):
 		for c, char in enumerate(row):
@@ -152,9 +178,10 @@ def graph_from_grid(grid, find, avoid=(), coords=False, get_neighbors=neighbors4
 
 	return graph
 
-def grid_bfs(grid, src, dst, avoid=(), get_neighbors=neighbors4):
+def grid_bfs(grid: Grid2D, src: Coord2D, dst: Coord2D, avoid: Container=(),
+		get_neighbors: GridNeighborsFunc=neighbors4) -> Distance:
 	'''Find the length of any path from src to dst in grid using breadth-first
-	search.
+	search. Returns INFINITY if no path is found.
 
 	grid is a 2D matrix i.e. list of lists or similar.
 	src and dst are tuples in the form (row, col)
@@ -179,19 +206,22 @@ def grid_bfs(grid, src, dst, avoid=(), get_neighbors=neighbors4):
 
 	return INFINITY
 
-def grid_bfs_lru(grid, avoid=(), get_neighbors=neighbors4):
+def grid_bfs_lru(grid: Grid2D, avoid: Container=(),
+		get_neighbors: GridNeighborsFunc=neighbors4) \
+		-> Callable[[Coord2D,Coord2D],Distance]:
 	@lru_cache(MAX_CACHE_SIZE)
-	def wrapper(src, dst):
+	def wrapper(src: Coord2D, dst: Coord2D) -> Distance:
 		nonlocal grid, get_neighbors
 		return grid_bfs(grid, src, dst, avoid, get_neighbors)
 	return wrapper
 
-def bfs(G, src, weighted=False, get_neighbors=None):
+def bfs(G: GraphDict, src: Any, weighted: bool=False,
+		get_neighbors: Optional[GraphNeighborsFunc]=None) -> set[Any]:
 	'''Find and return the set of all nodes reachable from src in G using
 	breadth-first search.
 
 	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
-	if weighted=True, in which case weights are discarded.
+	if weighted=True, in which case weights are ignored.
 
 	get_neighbors(node) is called to determine node neighbors (default is G.get)
 
@@ -216,11 +246,12 @@ def bfs(G, src, weighted=False, get_neighbors=None):
 
 	return visited
 
-def connected_components(G, weighted=False, get_neighbors=None):
+def connected_components(G: GraphDict, weighted: bool=False,
+		get_neighbors: Optional[GraphNeighborsFunc]=None) -> List[set[Any]]:
 	'''Find and return a list of all the connected components of G.
 
 	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
-	if weighted=True, in which case weights are discarded.
+	if weighted=True, in which case weights are ignored.
 
 	get_neighbors(node) is called to determine node neighbors (default is G.get)
 
@@ -239,12 +270,12 @@ def connected_components(G, weighted=False, get_neighbors=None):
 
 	return components
 
-def dijkstra(G, src, dst, get_neighbors=None):
+def dijkstra(G: WeightedGraphDict, src: Any, dst: Any,
+		get_neighbors: Optional[GraphNeighborsFunc]=None) -> Distance:
 	'''Find the length of the shortest path from src to dst in G using
 	Dijkstra's algorithm.
 
-	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
-	if weighted=True, in which case weights are discarded.
+	G is a weighted "graph dictionary" of the form {src: [(dst, weight)]}.
 
 	For memoization, use: djk = dijkstra_lru(G); djk(src, dst).
 	'''
@@ -277,17 +308,23 @@ def dijkstra(G, src, dst, get_neighbors=None):
 
 	return INFINITY
 
-def dijkstra_lru(G, get_neighbors=None):
+def dijkstra_lru(G: WeightedGraphDict,
+		get_neighbors: Optional[GraphNeighborsFunc]=None) \
+		-> Callable[[Any,Any],Distance]:
+	'''Memoized version of dijkstra(): djk = dijkstra_lru(G); djk(src, dst).
+	'''
 	@lru_cache(MAX_CACHE_SIZE)
-	def wrapper(src, dst):
+	def wrapper(src: Any, dst: Any) -> Distance:
 		nonlocal G, get_neighbors
 		return dijkstra(G, src, dst, get_neighbors)
 	return wrapper
 
-def dijkstra_path(G, src, dst, get_neighbors=None):
+def dijkstra_path(G: WeightedGraphDict, src: Any, dst: Any,
+		get_neighbors: Optional[GraphNeighborsFunc]=None) \
+		-> Tuple[Tuple[Any],Distance]:
 	'''Find the shortest path from src to dst in G using Dijkstra's algorithm.
 
-	G is a "graph dictionary" of the form {src: [(dst, weight)]}
+	G is a weighted "graph dictionary" of the form {src: [(dst, weight)]}
 	get_neighbors(node) is called to determine node neighbors (default is G.get)
 
 	Returns a tuple (shortest_path, length) where shortest_path is a tuple of
@@ -335,18 +372,25 @@ def dijkstra_path(G, src, dst, get_neighbors=None):
 
 	return (), INFINITY
 
-def dijkstra_path_lru(G, get_neighbors=None):
+def dijkstra_path_lru(G: WeightedGraphDict,
+		get_neighbors: Optional[GraphNeighborsFunc]=None) \
+		-> Callable[[Any,Any],Tuple[Tuple[Any],Distance]]:
+	'''Memoized version of dijkstra_path():
+	djk = dijkstra_path_lru(G); djk(src, dst).
+	'''
 	@lru_cache(MAX_CACHE_SIZE)
-	def wrapper(src, dst):
+	def wrapper(src: Any, dst: Any) -> Tuple[Tuple[Any],Distance]:
 		nonlocal G, get_neighbors
 		return dijkstra_path(G, src, dst, get_neighbors)
 	return wrapper
 
-def dijkstra_all(G, src, get_neighbors=None):
+def dijkstra_all(G: WeightedGraphDict, src: Any,
+		get_neighbors: Optional[GraphNeighborsFunc]=None) \
+		-> defaultdict[Any,Distance]:
 	'''Find the length of all the shortest paths from src to any reachable node
 	in G using Dijkstra's algorithm.
 
-	G is a "graph dictionary" of the form {src: [(dst, weight)]}
+	G is a weighted "graph dictionary" of the form {src: [(dst, weight)]}
 	get_neighbors(node) is called to determine node neighbors (default is G.get)
 
 	Reurns a defaultdict {node: distance}, where unreachable nodes have
@@ -378,7 +422,9 @@ def dijkstra_all(G, src, get_neighbors=None):
 
 	return distance
 
-def dijkstra_all_paths(G, src, get_neighbors=None):
+def dijkstra_all_paths(G: WeightedGraphDict, src: Any,
+		get_neighbors: Optional[GraphNeighborsFunc]=None) \
+		-> defaultdict[Any,Tuple[Tuple[Any],Distance]]:
 	'''Find all the shortest paths from src to any reachable node in G and their
 	using Dijkstra's algorithm.
 
@@ -416,12 +462,17 @@ def dijkstra_all_paths(G, src, get_neighbors=None):
 
 	return pd
 
-def bellman_ford(G, src):
+def bellman_ford(G: WeightedGraphDict, src: Any) \
+		-> Tuple[
+			defaultdict[Any,Distance],
+			defaultdict[Any,Distance],
+			Callable[[Any],deque[Any]]
+		]:
 	'''Find all the shortest paths from src to any reachable node in G and their
 	lengths using the Bellman-Ford algorithm. IMPORTANT: all nodes of the graph
 	should be in G as keys!
 
-	G is a "graph dictionary" of the form {src: [(dst, weight)]}.
+	G is a weighted "graph dictionary" of the form {src: [(dst, weight)]}.
 
 	Returns a tuple (distance, previous, path_to) where distance and previous
 	are two defaultdict, while path_to is a function.
@@ -441,7 +492,7 @@ def bellman_ford(G, src):
 	distance = defaultdict(lambda: INFINITY, {src: 0})
 	previous = defaultdict(lambda: None)
 
-	def path_to(dst):
+	def path_to(dst: Any) -> deque[Any]:
 		nonlocal previous
 		res = deque([])
 
@@ -474,11 +525,16 @@ def bellman_ford(G, src):
 
 	return distance, previous, path_to
 
-def floyd_warshall(G):
+def floyd_warshall(G: WeightedGraphDict) \
+		-> Tuple[
+			defaultdict[Any,defaultdict[Any,Distance]],
+			defaultdict[Any,defaultdict[Any,Distance]],
+			Callable[[Any,Any],List[Any]]
+		]:
 	'''Find the length of the shortest paths between any pair of nodes in G and
 	using the Floyd-Warshall algorithm.
 
-	G is a "graph dictionary" of the form {src: [(dst, weight)]}.
+	G is a weighted "graph dictionary" of the form {src: [(dst, weight)]}.
 
 	Returns a tuple (distance, successor, path), where distance and successor
 	are two defaultdict of defaultdicts, while path is a function.
@@ -498,7 +554,7 @@ def floyd_warshall(G):
 	distance  = defaultdict(lambda: defaultdict(lambda: INFINITY))
 	successor = defaultdict(lambda: defaultdict(lambda: None))
 
-	def path(src, dst):
+	def path(src: Any, dst: Any) -> List[Any]:
 		nonlocal successor
 
 		if successor[src][dst] is None:
@@ -532,13 +588,14 @@ def floyd_warshall(G):
 
 	return distance, successor, path
 
-def kruskal(G):
+def kruskal(G: WeightedGraphDict) -> WeightedGraphDict:
 	'''Find the minimum spanning tree (or forest) of the *undirected* graph G
 	using Kruskal's algorithm.
 
-	G is a "graph dictionary" of the form {src: [(dst, weight)]}.
+	G is a weighted "graph dictionary" of the form {src: [(dst, weight)]}.
 
-	Returns a new graph dictionary representing the minimum spannign tree.
+	Returns a new weighted graph dictionary representing the minimum spannign
+	tree.
 	'''
 	mst   = defaultdict(list)
 	uf    = UnionFind(G)
@@ -561,7 +618,8 @@ def kruskal(G):
 
 	return mst
 
-def _toposort_dependencies(G, reverse, weighted):
+def _toposort_dependencies(G: GraphDict, reverse: bool, weighted: bool) \
+		-> Tuple[defaultdict[Any,int],defaultdict[Any,int]]:
 	'''Calculate forward and reverse dependencies of the nodes in the directed
 	graph G. If reverse=True, edges of G are considered inverted.
 
@@ -593,7 +651,7 @@ def _toposort_dependencies(G, reverse, weighted):
 
 	return dep, revdep
 
-def toposort(G, reverse=False, weighted=False):
+def toposort(G: GraphDict, reverse: bool=False, weighted: bool=False) -> List[Any]:
 	'''Perform a topological sort of G. If reverse=True, edges of G are
 	considered inverted. No particular order is guaranteed whenever there are
 	multiple nodes with no dependencies that can be chosen as next.
@@ -619,7 +677,7 @@ def toposort(G, reverse=False, weighted=False):
 
 	return result
 
-def lex_toposort(G, reverse=False, weighted=False):
+def lex_toposort(G: GraphDict, reverse: bool=False, weighted: bool=False) -> List[Any]:
 	'''Perform a lexicographical topological sort of G. If reverse=True, edges
 	of G are considered inverted. The smallest node is always chosen whenever
 	there are multiple nodes with no dependencies that can be chosen as next.
@@ -650,7 +708,9 @@ def lex_toposort(G, reverse=False, weighted=False):
 
 	return result
 
-def bisection(fn, y, lo=None, hi=None, tolerance=1e-9, upper=False):
+def bisection(fn: Callable[[IntOrFloat],IntOrFloat], y: IntOrFloat,
+		lo: Optional[IntOrFloat]=None, hi: Optional[IntOrFloat]=None,
+		tolerance: IntOrFloat=1e-9, upper: bool=False) -> IntOrFloat:
 	'''Find a value x in the range [lo, hi] such that fn(x) == y.
 
 	NOTE: fn(x) must be a monotinically increasing function for this to work! In
@@ -735,19 +795,20 @@ def bisection(fn, y, lo=None, hi=None, tolerance=1e-9, upper=False):
 
 	return lo
 
-def binary_search(a, x):
-	'''Find the index of x in the sorted iterable a using binary search. Returns
-	-1 if x not in a.
+def binary_search(seq: Sequence[Any], x: Any) -> int:
+	'''Find the index of x in the sorted sequence seq using binary search.
+	Returns -1 if x not in seq.
 
-	Note: a must be indexable.
+	NOTE: seq must be indexable.
 	'''
 	# https://docs.python.org/3/library/bisect.html#searching-sorted-lists
-	i = bisect_left(a, x)
-	if i != len(a) and a[i] == x:
+	i = bisect_left(seq, x)
+	if i != len(seq) and seq[i] == x:
 		return i
 	return -1
 
-def knapsack(items, weight_limit):
+def knapsack(items: Dict[T,Tuple[Any,IntOrFloat]], weight_limit: IntOrFloat) \
+		-> Tuple[IntOrFloat,List[T]]:
 	'''0-1 knapsack: find the best subset of items to choose to get the maximum
 	total value with the given total weight limit.
 
@@ -763,7 +824,7 @@ def knapsack(items, weight_limit):
 	# best(n, wl) -> best score choosing amongst the first n elements
 	# with a total weight limit of wl
 	@lru_cache(MAX_CACHE_SIZE)
-	def best(n, wl):
+	def best(n: int, wl: IntOrFloat) -> IntOrFloat:
 		if n == 0 or wl <= 0:
 			return 0
 

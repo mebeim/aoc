@@ -2,14 +2,15 @@ __all__ = ['gcd', 'lcm', 'prod', 'comb', 'perm', 'pow', 'isqrt']
 
 import sys
 from math import factorial
+from typing import Optional, Iterable, Any
 
-def _gcd2(a, b):
+def _gcd2(a: int, b: int) -> int:
 	'''Greatest Common Divisor between a and b.'''
 	while b:
 		a, b = b, a % b
 	return a
 
-def _gcd(*integers):
+def _gcd(*integers: int) -> int:
 	'''Greatest Common Divisor.'''
 	it = iter(integers)
 	res = next(it)
@@ -18,7 +19,7 @@ def _gcd(*integers):
 		res = _gcd2(x, res)
 	return res
 
-def _lcm(*integers):
+def _lcm(*integers: int) -> int:
 	'''Least Common Multiple.'''
 	it = iter(integers)
 	res = next(it)
@@ -27,7 +28,7 @@ def _lcm(*integers):
 		res = res * x // _gcd2(res, x)
 	return res
 
-def _prod(iterable, start=1):
+def _prod(iterable: Iterable[Any], start: int=1):
 	'''
 	Calculate the product of all the elements in the input iterable.
 
@@ -42,7 +43,7 @@ def _prod(iterable, start=1):
 		res *= x
 	return res
 
-def _comb(n, k):
+def _comb(n: int, k: int) -> int:
 	'''
 	Number of ways to choose k items from n items without repetition and without order.
 
@@ -65,7 +66,7 @@ def _comb(n, k):
 		return 0
 	return factorial(n) // (factorial(k) * factorial(n - k))
 
-def _perm(n, k=None):
+def _perm(n: int, k: Optional[int]=None) -> int:
 	'''
 	Number of ways to choose k items from n items without repetition and with order.
 
@@ -95,13 +96,13 @@ def _perm(n, k=None):
 		return 0
 	return factorial(n) // factorial(n - k)
 
-def egcd(a, b):
+def egcd(a: int, b: int) -> int:
 	if a == 0:
 		return (b, 0, 1)
 	g, y, x = egcd(b % a, a)
 	return (g, x - (b // a) * y, y)
 
-def _modinv(base, mod):
+def _modinv(base: int, mod: int) -> int:
 	g, inv, _ = egcd(base, mod)
 	if g != 1:
 		raise ValueError('base is not invertible for the given modulus')
@@ -121,7 +122,7 @@ def _pow(base, exp, mod=None):
 	# Polyfill for Python < 3.8
 	return real_pow(_modinv(base, mod), -exp, mod)
 
-def _isqrt(n):
+def _isqrt(n: int) -> int:
 	'''Return the integer part of the square root of n.'''
 	# https://code.activestate.com/recipes/577821-integer-square-root-function/
 	if n > 0:

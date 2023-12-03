@@ -9,15 +9,17 @@ __all__ = [
 import sys
 import re
 from functools import wraps
+from typing import Any, Callable, Iterable, Sequence, Collection, TextIO, Type
+from typing import Tuple, Dict, AnyStr, Set, Union
 
-def log(s, *a):
+def log(s: str, *a: Any):
 	'''Log a string to standard error after formatting it with any additionally
 	provided argument.
 	'''
 	sys.stderr.write(s.format(*a))
 	sys.stderr.flush()
 
-def rlog(recursion_depth):
+def rlog(recursion_depth: int) -> Callable[...,None]:
 	'''Create a logging function that behaves like log(), but adds
 	recursion_depth levels of indentation to each logged string.
 
@@ -64,7 +66,7 @@ def eprint(*a, **kwa):
 	'''Wrapper for print() that prints on standard error.'''
 	print(*a, **kwa, file=sys.stderr)
 
-def reprint(recursion_depth):
+def reprint(recursion_depth: int):
 	'''Create a printing function that behaves like eprint(), but adds
 	recursion_depth levels of indentation to each logged string.
 
@@ -107,7 +109,7 @@ def reprint(recursion_depth):
 
 	return fn
 
-def wait(msg='Press [ENTER] to continue...'):
+def wait(msg: str='Press [ENTER] to continue...'):
 	'''Wait for user interaction by printing a message to standard error and
 	waiting for input.
 	'''
@@ -119,21 +121,21 @@ def wait(msg='Press [ENTER] to continue...'):
 		log(" keyboard interrupt, exiting...\n")
 		sys.exit(0)
 
-def dump_iterable(iterable, fmt='{:d}: {!r}'):
+def dump_iterable(iterable: Iterable, fmt: str='{:d}: {!r}'):
 	'''Dump index and values of an iterable using the specified format string to
 	standard error.
 	'''
 	for i, item in enumerate(iterable):
 		log(fmt + '\n', i, item)
 
-def dump_dict(dct, fmt='{}: {!r}'):
+def dump_dict(dct: Dict[Any,Any], fmt: str='{}: {!r}'):
 	'''Dump keys and values of a dictionary using the specified format string to
 	standard error.
 	'''
 	for k, v in dct.items():
 		log(fmt + '\n', k, v)
 
-def dump_char_matrix(mat, transpose=False):
+def dump_char_matrix(mat: Sequence[Sequence[str]], transpose: bool=False):
 	'''Dump the contents of a matrix of characters (e.g. list of string or list
 	of list of single-char strings) to standard error.
 
@@ -152,7 +154,8 @@ def dump_char_matrix(mat, transpose=False):
 
 	sys.stderr.flush()
 
-def dump_sparse_matrix(mat, chars='# ', transpose=False, header=False):
+def dump_sparse_matrix(mat: Union[Set[Tuple[int,int]],Dict[Tuple[int,int],Any]],
+		chars: str='# ', transpose: bool=False, header: bool=False):
 	'''Dump the contents of a sparse matrix (e.g. a set or a dict, where the key
 	is the coordinates of a cell in the matrix) to standard error.
 
@@ -191,7 +194,8 @@ def dump_sparse_matrix(mat, chars='# ', transpose=False, header=False):
 				sys.stderr.write(char_at((r, c)))
 			sys.stderr.write('\n')
 
-def extract_ints(str_or_bytes, container=list, negatives=True):
+def extract_ints(str_or_bytes: AnyStr, container: Type[Collection]=list,
+		negatives: bool=True) -> Collection[int]:
 	'''Extract integers within a string or a bytes object using a regular
 	expression and return a list of int.
 
@@ -205,7 +209,8 @@ def extract_ints(str_or_bytes, container=list, negatives=True):
 		exp = exp.encode()
 	return container(map(int, re.findall(exp, str_or_bytes)))
 
-def read_lines(file, rstrip=True, lstrip=True, container=list):
+def read_lines(file: TextIO, rstrip: bool=True, lstrip: bool=True,
+		container: Type[Collection]=list) -> Collection[str]:
 	'''Read file into a list of lines. Strips lines on both ends by default
 	unless rstrip=False or lstrip=False.
 
@@ -221,7 +226,8 @@ def read_lines(file, rstrip=True, lstrip=True, container=list):
 		return container(map(str.lstrip, lines))
 	return container(lines)
 
-def read_ints(file, container=list, negatives=True):
+def read_ints(file: TextIO, container: Type[Collection]=list,
+		negatives: bool=True) -> Collection[int]:
 	'''Parse file containing integers into a list of integers.
 
 	With negative=False, discard any leading hypen, effectively extracting
@@ -231,7 +237,9 @@ def read_ints(file, container=list, negatives=True):
 	'''
 	return extract_ints(file.read(), container, negatives)
 
-def read_int_matrix(file, container=list, outer_container=list, negatives=True):
+def read_int_matrix(file: TextIO, container: Type[Collection]=list,
+		outer_container: Type[Collection]=list, negatives: bool=True) \
+		-> Collection[Collection[int]]:
 	'''Parse file containing lines containing integers into a list of lists of
 	int. Integers are extracted using a regular expression.
 
@@ -243,7 +251,9 @@ def read_int_matrix(file, container=list, outer_container=list, negatives=True):
 	'''
 	return outer_container(extract_ints(l, container, negatives) for l in file)
 
-def read_char_matrix(file, rstrip=False, lstrip=False, container=list, outer_container=list):
+def read_char_matrix(file: TextIO, rstrip: bool=False, lstrip: bool=False,
+		container: Type[Collection]=list,
+		outer_container: Type[Collection]=list) -> Collection[Collection[str]]:
 	'''Read file into a matrix of characters (effectively a grid). Avoids
 	stripping whitespace other than newlines, unless rstrip=True or lstrip=True.
 
@@ -260,21 +270,23 @@ def read_char_matrix(file, rstrip=False, lstrip=False, container=list, outer_con
 		return outer_container(container(l.lstrip()) for l in lines)
 	return outer_container(map(container, lines))
 
-def read_digit_matrix(file, rstrip=False, lstrip=False, container=list, outer_container=list):
+def read_digit_matrix(file: TextIO, rstrip: bool=False, lstrip: bool=False,
+		container: Type[Collection]=list,
+		outer_container: Type[Collection]=list) -> Collection[Collection[int]]:
 	'''Same as read_char_matrix, but each character is assumed to be an ASCII
 	digit and is therefore transformed to int.
 	'''
 	mat = read_char_matrix(file, rstrip, lstrip)
 	return outer_container(container(map(int, l)) for l in mat)
 
-def autorange(start, end, step=1):
-	'''Range from start to end (included) in steps of +/- step regardless if
-	start > end or end > start.
+def autorange(start: int, end: int, step: int=1) -> range:
+	'''Range from start to end (end is INCLUDED) in steps of +/- step regardless
+	if start > end or end > start.
 
 	autorange(1, 3) -> 1, 2, 3
 	autorange(3, 1) -> 3, 2, 1
 	autorange(10, 1, 2) -> 10, 8, 6, 4, 2
 	'''
 	if start > end:
-		yield from range(start, end - 1, -step)
-	yield from range(start, end + 1, step)
+		return range(start, end - 1, -step)
+	return range(start, end + 1, step)
