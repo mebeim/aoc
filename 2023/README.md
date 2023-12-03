@@ -12,8 +12,8 @@ Table of Contents
 
 - [Day 1 - Trebuchet?!][d01]
 - [Day 2 - Cube Conundrum][d02]
+- [Day 3 - Gear Ratios][d03]
 <!--
-- [Day 3 - ][d03]
 - [Day 4 - ][d04]
 - [Day 5 - ][d05]
 - [Day 6 - ][d06]
@@ -360,7 +360,359 @@ print('Part 2:', answer2)
 
 And here we go, 4 stars and counting!
 
+
+Day 3 - Gear Ratios
+-------------------
+
+[Problem statement][d03-problem] — [Complete solution][d03-solution] — [Back to top][top]
+
+### Part 1
+
+First ASCII grid problem of the year, let's get right into it! First of all,
+parsing: doesn't get much easier than this, we can just read the entire input in
+one go and the use [`.splitlines()`][py-str-splitlines] to have a nice list of
+strings that we can index like a grid. For later use, let's also calculate width
+and height of the grid right away.
+
+```python
+fin = open(...)
+grid = fin.read().splitlines()
+witdh, height = len(grid), len(grid[0])
+```
+<!--
+Now onto the problem: in order to correctly identify numbers on each line that
+are adjacent to symbols, we need a way to iterate over the neighbors of a cell
+in the grid, so let's write a [generator function][py-generators] for this.
+Given the grid, a row index and a column index, we can iterate over all 8
+neighbors yielding both their row/column indices and the value of the cell.
+
+```python
+def neighbors(grid, r, c):
+    for deltar in (-1, 0, 1):
+        for deltac in (-1, 0, 1):
+            if deltar and deltac:
+                rr, cc = r + deltar, c + deltac
+
+                if 0 <= rr < len(grid) and 0 <= cc < len(grid[rr]):
+                    yield rr, cc, grid[rr][cc]
+```
+
+This works, but we can optimize it in two ways. First of all we already know all
+the possible `deltar, deltac` combinations, so we can use a single loop.
+Secondly, we can avoid computing the length every single time for the bounds
+check and either take it as argument or calculate it once at the start of the
+function: I chose the former.
+
+```python
+def neighbors(grid, r, c, h, w):
+    for dr, dc in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)):
+        rr, cc = r + dr, c + dc
+
+        if 0 <= rr < h and 0 <= cc < w:
+            yield rr, cc, grid[rr][cc]
+```
+-->
+
+Now onto the real problem: given that the numbers scattered around the grid are
+always spelled from left to right (i.e. all the digits are always on the same
+row), in order to extract a number we can simply scan linearly until we stop
+seeing digits. Let's write a function to extract a number in this way: it will
+take the row and the starting column as parameters and return a number converted
+to integer. For simplicity, we'll also pass the row length since we have it at
+hand. The [`.isdigit()`][py-str-isdigit] method of strings comes in handy.
+
+```python
+def extract_number(row, start, length):
+    end = start + 1
+    while end < length and row[end].isdigit():
+        end += 1
+
+    return int(row[start:end])
+```
+
+Now all we need is a way to determine whether a number is adjacent to any
+symbol. There are a multitude of ways to go about this, with small variations
+that can make the code look completely different. I chose the one that seemed
+more readable and intuitive to me.
+
+Following a similar approach as the one used to extract a number, we can scan
+linearly from left to right starting from one column before the number and
+stopping one column after the number, checking the row containing the number as
+well as the one above and below. If we find any symbol, we can stop checking and
+we know that number needs to be accounted for.
+
+Let's write another function to do this:
+
+1. Start from the column before the first digit and keep going until we have
+   a digit on the given row.
+2. Check the same column in the row above and below the given row: if there's
+   a symbols, stop here.
+3. Check the column of the given row, if there's a symbol, stop here. Otherwise
+   stop unconditionally if there's no digit and we are past the starting column.
+
+Point 3 above is a bit tricky, but is basically what allows us to stop scanning
+when we encounter the end of the current number.
+
+We don't exactly know what symbols there might be, but we know that anything
+that is not a dot (`.`) or a digit is a symbol, so that's the check we'll
+implement.
+
+Here's the function:
+
+```python
+def has_adjacent_symbols(grid, r, start_c, height, width):
+    # Avoid going out of bounds on the left if start_c is 0
+    start_c = max(0, start_c - 1)
+
+    for c in range(start_c, width):
+        # Check above
+        if r > 0 and grid[r - 1][c] not in '0123456789.':
+            return True
+
+        # Check below
+        if r < height - 1 and grid[r + 1][c] not in '0123456789.':
+            return True
+
+        # Check given row
+        if grid[r][c] not in '0123456789':
+            # Symbol
+            if grid[r][c] != '.':
+                return True
+
+            # No more digits, stop
+            if c > start_c:
+                break
+
+    return False
+```
+
+Since the row we are given (`r`) is always the same, and indexing lists is a
+pretty slow operation in Python, we can simplify the above function while also
+making it more readable by extracting the three rows (given row, row above and
+row below) right away. A [conditional expression][py-cond-expr] comes in handy
+for this purpose.
+
+```python
+def has_adjacent_symbols(grid, r, start_c, h, w):
+    row   = grid[r]
+    # Take row above if possible, else an empty list
+    above = grid[r - 1] if r > 0 else []
+    # Take row below if possible, else an empty list
+    below = grid[r + 1] if r < height - 1 else []
+
+    for c in range(max(0, start_c - 1), width):
+        if above and above[c] not in '0123456789.':
+            return True
+
+        if below and below[c] not in '0123456789.':
+            return True
+
+        if row[c] not in '0123456789':
+            if row[c] != '.':
+                return True
+
+            # No more digits, stop
+            if c > start_c:
+                break
+
+    return False
+```
+
+The multiple `not in ...` checks may seem a bit redundant, but there aren't many
+alternatives that are shorter or simpler to read.
+
+We now have all we need to solve the problem. All that's left to do is iterate
+over the grid one row at a time, and scan characters in the row until we find a
+digit. Once we do, check for adjacent symbols and extract the number if any
+symbol is found.
+
+The [`enumerate()`][py-builtin-enumerate] built-in is nice to have to iterate
+both on rows and their row index at once.
+
+```python
+answer = 0
+
+for r, row in enumerate(grid):
+    c = 0
+
+    while c < width:
+        # Skip all non-digits
+        while c < width and not row[c].isdigit():
+            c += 1
+
+        # Stop if we are past the end of the row
+        if c >= width:
+            break
+
+        # We have a digit, check for adjacent symbols and extract it
+        if has_adjacent_symbols(grid, r, c, height, width):
+            answer += extract_number(row, c, width)
+
+        # Skip remaining digits
+        while c < width and row[c].isdigit():
+            c += 1
+
+print('Part 1:', answer)
+```
+
+### Part 2
+
+The task now becomes a bit more complex: we need to identify all the symbols
+that have exactly two adjacent numbers. For each such pair of numbers, calculate
+their product and sum all the products up.
+
+It may seem like a lot of work, but the way we wrote the
+`has_adjacent_symbols()` function for part one makes it pretty easy to modify it
+to return *all symbols found* instead of just stopping at the first one and
+returning a boolean. If we transform the function in a generator and `yield` the
+coordinates of each symbol we encounter, we can then use those coordinates (row
+and column index) as an unique identifier of a given symbol: each time we
+encounter the same coordinates it means we found the same symbol.
+
+Let's turn `has_adjacent_symbols()` into `adjacent_symbols()`. The changes are
+minimal:
+
+```diff
+ def adjacent_symbols(grid, r, start_c, h, w):
+     row   = grid[r]
+     # Take row above if possible, else an empty list
+     above = grid[r - 1] if r > 0 else []
+     # Take row below if possible, else an empty list
+     below = grid[r + 1] if r < height - 1 else []
+
+     for c in range(max(0, start_c - 1), width):
+         if above and above[c] not in '0123456789.':
+-            return True
++            yield (r - 1, c)
+
+         if below and below[c] not in '0123456789.':
+-             return True
++             yield (r + 1, c)
+
+         if row[c] not in '0123456789':
+             if row[c] != '.':
+-                return True
++                yield (r, c)
+
+             # No more digits, stop
+             if c > start_c:
+                 break
+-
+-    return False
+```
+
+Now a call to `adjacent_symbols()` returns the coordinates of all the symbols
+adjacent to the number starting at `start_c` in the row at index `r`. We can
+keep track of the numbers adjacent to a given symbol with a simple dictionary of
+lists. Using a [`defaultdict(list)`][py-collections-defaultdict] makes it even
+easier as we can just [`.append()`][py-list-append] without worrying if a given
+symbol was already added to the dictionary or not.
+
+```python
+from collections import defaultdict
+
+# For each symbol's coordinates, the list holds its adjacent numbers
+adj_numbers = defaultdict(list)
+```
+
+The main loop needs minimal modifications:
+
+```python
+answer1 = 0
+
+for r, row in enumerate(grid):
+    c = 0
+
+    while c < width:
+        # Skip all non-digits
+        while c < width and not row[c].isdigit():
+            c += 1
+
+        # Stop if we are past the end of the row
+        if c >= width:
+            break
+
+        # We have a digit, get all the adjacent symbols
+        symbols = list(adjacent_symbols(grid, r, c, height, width))
+
+        if symbols:
+            number = extract_number(row, c, width)
+            answer1 += number
+
+            # For each symbol, add the current number to the list of numbers
+            # adjacent to the symbol
+            for sym in symbols:
+                adj_numbers[sym].append(number)
+
+        # Skip remaining digits
+        while c < width and row[c].isdigit():
+            c += 1
+
+print('Part 1:', answer1)
+```
+
+We now have a complete `adj_numbers`, which is a dictionary of the following
+form `{symbol_coords: list_of_numbers}`, for example:
+
+```python
+{
+    (1, 2): [123, 456],
+    (3, 4): [999],
+    # ...
+}
+```
+
+We already have the part 1 answer. For part 2 we are asked to consider symbols
+that have exactly two adjacent numbers, so we can simply iterate over
+`adj_numbers` and check which lists have a length of `2`. Simple enough!
+
+```python
+answer2 = 0
+
+for numbers in adj_numbers.values():
+    if len(numbers) == 2:
+        answer2 += numbers[0] * numbers[1]
+```
+
+We can also use `math.prod()` to calculate the product:
+
+```python
+from math import prod
+
+for numbers in adj_numbers.values():
+    if len(numbers) == 2:
+        answer2 += prod(numbers)
+```
+
+Since all we are doing is summing up, we can simplify even more with the help of
+a few builtins:
+
+- [`filter()`][py-builtin-filter] each list with a [`lambda`][py-lambda]
+  function that checks the length, to only extract the ones with length `2`.
+- [`map()`][py-builtin-map] each list to the product of its numbers with
+  `prod()`.
+- [`sum()`][py-builtin-sum] up all the products.
+
+```python
+len_2_lists = filter(lambda x: len(x) == 2, adj_numbers.values())
+products    = map(prod, len_2_lists)
+answer2     = sum(products)
+```
+
+Or more concisely:
+
+```python
+answer2 = map(prod, filter(lambda x: len(x) == 2, adj_numbers.values())))
+print('Part 2:', answer2)
+```
+
+Although I like the conciseness of the above expression, one may prefer the more
+verbose loop since it is undoubtedly easier to understand if you are not an
+hardcore Python dev. Well, a bit of golfing is always fun anyway, so I'll keep
+it as is. Six stars out of fifty!
+
 ---
+
 
 *Copyright &copy; 2023 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
 
@@ -369,7 +721,7 @@ And here we go, 4 stars and counting!
 [top]: #advent-of-code-2023-walkthrough
 [d01]: #day-1---trebuchet
 [d02]: #day-2---cube-conundrum
-[d03]: #day-3---
+[d03]: #day-3---gear-ratios
 [d04]: #day-4---
 [d05]: #day-5---
 [d06]: #day-6---
@@ -439,12 +791,22 @@ And here we go, 4 stars and counting!
 [d24-solution]: solutions/day24.py
 [d25-solution]: solutions/day25.py
 
-[py-slicing]: https://docs.python.org/3/library/stdtypes.html#common-sequence-operations
+[py-assert]:     https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement
+[py-cond-expr]:  https://docs.python.org/3/reference/expressions.html#conditional-expressions
+[py-lambda]:     https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
+[py-generators]: https://docs.python.org/3/howto/functional.html#generators
+[py-slicing]:    https://docs.python.org/3/library/stdtypes.html#common-sequence-operations
 
-[py-builtin-filter]: https://docs.python.org/3/library/functions.html#filter
-[py-builtin-map]:    https://docs.python.org/3/library/functions.html#map
-[py-builtin-max]:    https://docs.python.org/3/library/functions.html#max
-[py-builtin-next]:   https://docs.python.org/3/library/functions.html#next
-[py-builtin-range]:  https://docs.python.org/3/library/functions.html#range
-[py-str-isdigit]:    https://docs.python.org/3/library/stdtypes.html#str.isdigic
-[py-str-split]:      https://docs.python.org/3/library/stdtypes.html#str.split
+[py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
+[py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
+[py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
+[py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
+[py-builtin-next]:            https://docs.python.org/3/library/functions.html#next
+[py-builtin-range]:           https://docs.python.org/3/library/functions.html#range
+[py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
+[py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
+[py-dict-values]:             https://docs.python.org/3/library/stdtypes.html#dict.values
+[py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigic
+[py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
+[py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
