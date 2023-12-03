@@ -37,12 +37,16 @@ def log_calls(log_return=True):
 	'''
 	def decorator(fn):
 		@wraps(fn)
-		def wrapper(*args):
-			log('{}{}\n', fn.__name__, args)
-			retval = fn(*args)
+		def wrapper(*args, **kwargs):
+			repr_args = map(repr, args)
+			repr_kwargs = starmap('{}={!r}'.format, kwargs.items())
+			signature = ', '.join(chain(repr_args, repr_kwargs))
+			log('{}({})\n', fn.__name__, signature)
+
+			retval = fn(*args, **kwargs)
 
 			if log_return:
-				log('-> {}\n', retval)
+				log('-> {!r}\n', retval)
 
 			return retval
 		return wrapper
