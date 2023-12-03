@@ -120,8 +120,8 @@ class BST(MutableMapping):
 		return node
 
 	def _rightmost(self, node):
-		while node.left:
-			node = node.left
+		while node.right:
+			node = node.right
 		return node
 
 	def _predecessor(self, node):
