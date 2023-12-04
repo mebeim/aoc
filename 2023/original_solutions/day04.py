@@ -40,9 +40,3 @@ for i, (ia, ib) in enumerate(cards):
 
 n = len(cards) + sum(copies)
 advent.print_answer(2, n)
-
-
-# - Can you memoize some state for which the solution will always be the same?
-# - Can you batch operations together instead of doing them singularly?
-# - Too many points? Coordinate compression?
-# - Can you go blind with Z3 (or GCC+IDA+Z3) instead of reverse engineering?
