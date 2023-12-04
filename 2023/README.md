@@ -71,8 +71,8 @@ for line in fin:
 
 We can simplify this with the help of the [`filter()`][py-builtin-filter]
 built-in function: just filter out any character that satisfies `str.isdigit()`.
-To only extrac the first such character from the iterator returned by `filter()`
-we can simply use [`next()`][py-builtin-next].
+To only extract the first such character from the iterator returned by
+`filter()` we can simply use [`next()`][py-builtin-next].
 
 ```python
 for line in fin:
@@ -179,7 +179,7 @@ for line in fin:
     total2 += next(filter(None, map(check_digit, (line[i:] for i in range(len(line) -1, -1, -1)))))
 ```
 
-First two starts of the year done. Welcome to Advent of Code 2024!
+First two stars of the year done. Welcome to Advent of Code 2023!
 
 
 Day 2 - Cube Conundrum
@@ -714,7 +714,7 @@ answer2     = sum(products)
 Or more concisely:
 
 ```python
-answer2 = map(prod, filter(lambda x: len(x) == 2, gears.values())))
+answer2 = sum(map(prod, filter(lambda x: len(x) == 2, gears.values()))))
 print('Part 2:', answer2)
 ```
 

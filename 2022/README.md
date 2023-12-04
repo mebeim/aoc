@@ -3714,8 +3714,8 @@ mutable, but we can use a `frezenset` (the immutable variant of a `set`).
 maxscore = defaultdict(int)
 
 for solution in solutions(distance, rates, good, 26):
-    k = frozenset(choice)
-    s = score(rates, choice)
+    k = frozenset(solution)
+    s = score(rates, solution)
 
     if s > maxscore[k]:
         maxscore[k] = s
@@ -4314,8 +4314,8 @@ def best_case_scenario(initial_amount, robots, t):
 We can now use it to perform three optimizations of the same kind any time we
 visit a new state:
 
-1. If the amount of geodes achievable in the best-case scenario number is lower
-   than the current `best` we have, we can discard the state and any of its
+1. If the amount of geodes achievable in the best-case scenario is lower than
+   the current `best` we have, we can discard the state and any of its
    successors.
 2. If the amount of obsidian achievable in the best-case scenario is lower than
    the amount needed to build a geode robot, we know we'll never be able to
@@ -4428,7 +4428,7 @@ def search(blueprint):
                 q.append((..., []))
 
         # If we can also "wait" without building, pass along the list of robots
-        # we couldhave built, but decided to not build instead.
+        # we could whave built, but decided to not build instead.
         if (robs and obs < max_obs_needed) or (rclay and clay < max_clay_needed) or ore < max_ore_needed:
             q.append((..., can_build))
 
@@ -4752,7 +4752,9 @@ use [`isinstance()`][py-builtin-isinstance] to check whether `T[node]` is a
 it could also be passed as parameter.
 
 ```python
-def calc(value, list):
+def calc(node):
+    value = T[node]
+	if not isinstance(node, list):
         # This is a value node, just return the value.
         return value
 
@@ -4945,7 +4947,7 @@ rvalue = calc(r)
 if lvalue is None:
     answer = find_value(l, rvalue)
 else:
-    answer = find_value(r, rvalue)
+    answer = find_value(r, lvalue)
 ```
 
 Since `root` is `L == R`, we could also re-write it as `L - R`, knowing that the
@@ -5058,7 +5060,7 @@ for i in range(HEIGHT):
 Additionally, we will need an easy way to detect whether we are going out of
 bounds (and therefore need to wrap around). To avoid a bunch of annoying
 bound-checking `if` statements, we can simply add two rows of empty cells at the
-top and at the bottom of the grid, as weel as two columns of empty cells on the
+top and at the bottom of the grid, as well as two columns of empty cells on the
 left and the right. This also makes the actual grid start at `grid[1][x]` (where
 `x` is the column of the leftmost free cell in the top row) instead of
 `grid[0][x]`, which is nice since the coordinate system used in the problem

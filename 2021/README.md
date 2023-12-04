@@ -5010,7 +5010,7 @@ different points to keep track of... a little bit too many to fit in memory
 As usual, there are different ways to solve today's problem:
 
 1. The most optimal solution in terms of time complexity is probably using
-   [segment trees][wiki-segment-tree], however it also the most complex one to
+   [segment trees][wiki-segment-tree], however it's also the most complex one to
    actually implement. There are other solutions that work just fine given the
    number of commands in our input isn't that large.
 

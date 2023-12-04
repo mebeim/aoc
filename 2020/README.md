@@ -3382,7 +3382,7 @@ def is_valid(ticket):
 ```
 
 Sweet. Now we just need to filter out invalid tickets and only work with valid
-ones. Perfect use case for the [`filter()`][py-builtin-filter] buil-in. Then,
+ones. Perfect use case for the [`filter()`][py-builtin-filter] built-in. Then,
 for each valid ticket, for each field we want to check if any of the ticket
 values violate that particular field's validity requirements. If so, we'll
 remove the index of that value as a possible index for the field.
@@ -3713,7 +3713,7 @@ dimensions.
 Oh no! The code we wrote works with 3 dimensions, do we need to rewrite
 everything? Well, not quite, the only function that would need to be updated is
 `neighbors()`, since it takes exactly 3 arguments. We can make a small change to
-generalize it to work with any dimension.
+generalize it to work with any number of dimensions.
 
 To generate neighbor coordinates, we would need to take an additional parameter
 `w` for the fourth dimension, but since we want this to be general, taking a
