@@ -13,8 +13,8 @@ Table of Contents
 - [Day 1 - Trebuchet?!][d01]
 - [Day 2 - Cube Conundrum][d02]
 - [Day 3 - Gear Ratios][d03]
+- [Day 4 - Scratchcards][d04]
 <!--
-- [Day 4 - ][d04]
 - [Day 5 - ][d05]
 - [Day 6 - ][d06]
 - [Day 7 - ][d07]
@@ -723,6 +723,147 @@ verbose loop since it is undoubtedly easier to understand if you are not an
 hardcore Python dev. Well, a bit of golfing is always fun anyway, so I'll keep
 it as is. Six stars out of fifty!
 
+
+Day 4 - Scratchcards
+--------------------
+
+[Problem statement][d04-problem] — [Complete solution][d04-solution] — [Back to top][top]
+
+### Part 1
+
+For each line of input we have two easy to parse lists of integers, and we want
+to know how many integers of the first list are also in the second one. We can
+do this with a simple loop while parsing the input.
+
+To extract the lists we can start by discarding anythig before the first `:`,
+whose index can be found with [`.find()`][py-str-find]. Then,
+[`.split()`][py-str-split] the line on `|` (the delimiter of the two lists),
+split again each list on whitespace, and finally [`map()`][py-builtin-map]
+everything to `int`.
+
+```python
+fin = open(...)
+
+for line in fin:
+    winners, numbers = line[line.find(':') + 1:].split('|')
+    winners = list(map(int, winners.split()))
+    numbers = list(map(int, numbers.split()))
+```
+
+Now we have two lists for each input line that are easy to work with: to check
+how many elements of `winners` are in `numbers` the first thing that comes to
+mind is simply iterating over the former and checking if elements are in the
+latter using the `in` operator:
+
+```python
+    matches = 0
+    for w in winners:
+        if w in numbers:
+            matches += 1
+```
+
+This isn't really optimal though, as the `in` operator has to scan `numbers`
+every single time. It would be better if `numbers` was a `set`, so that
+membership could be tested instantly. In fact... if both `winners` and `numbers`
+are `set`s, we can use the `&` (binary AND) operator to calculate the
+[intersection][py-set-intersection] of the two sets. The length of the
+intersection will then be equal to the number of elements that are in both sets,
+which is what we want.
+
+```python
+for line in fin:
+    winners, numbers = line[line.find(':') + 1:].split('|')
+    winners = set(map(int, winners.split()))
+    numbers = set(map(int, numbers.split()))
+    matches = len(numbers & winners)
+```
+
+Now, as the rules of the game suggest, for each card, each matching number
+doubles the score of the card, which starts at `1` on the first match. This is
+basically just a power of two, so we can calculate it with one expression
+without the need of loops. Doing `2**(matches - 1)` seems enough, but in case of
+zero matches we will get `2**-1 == 0.5` while we would want to have `0` instead.
+We can transform the result to `int` to work around this.
+
+```python
+score = 0
+
+for line in fin:
+    winners, numbers = line[line.find(':') + 1:].split('|')
+    winners = set(map(int, winners.split()))
+    numbers = set(map(int, numbers.split()))
+    matches = len(numbers & winners)
+    score += int(2**(matches - 1))
+
+print('Part 1:', score)
+```
+
+### Part 2
+
+We don't need to calculate a score anymore, but instead for each card we need to
+*duplicate* the N cards past the current one, where N is the number of matches
+of the current card. So for example, if card 1 has 3 matches, we'll need to
+duplicate card 2, 3 and 4. After doing this for all cards, we want to know how
+many cards we end up with in total (originals and copies).
+
+The peculiar thing is that we need to account for the copies as well, so each
+time we process a card, *every single copy* of that card will generate a new
+copy of the next N cards. Therefore, in general, the number of matches must be
+multiplied by the number of copies of the card we have.
+
+Let's keep track of the number of matches calculated in part 1 with a `list`:
+
+```diff
++matches = []
++
+ for line in fin:
+     winners, numbers = line[line.find(':') + 1:].split('|')
+     winners = set(map(int, winners.split()))
+     numbers = set(map(int, numbers.split()))
+-    matches = len(numbers & winners)
+-    score += int(2**(matches - 1))
++    matches.append(len(numbers & winners))
+```
+
+The total score for part 1 could still be calculated inside the loop, or outside
+the loop with a [`sum()`][py-builtin-sum] and a
+[generator expression][py-gen-expr]:
+
+```python
+score = sum(int(2**(n - 1)) for n in matches)
+print('Part 1:', score)
+```
+
+To keep track of the number of copies of each card, we can either use a `dict`
+or a `list`. Since we already know that we have exactly `len(matches)` cards, we
+can just use a `list`. Initially, we have `1` copy of each card:
+
+
+```python
+copies = [1] * len(matches)
+```
+
+For each card `i` we process, we need to add one copy of the next `matches[i]`
+cards. Since the card itself could have already been copied, instead of adding
+only one copy of the next cards, we'll add `copies[i]` instead. We can
+[`enumerate()`][py-builtin-enumerate] the matches to have both the current
+card's index and its number of matches ready. Other than that, it's just a
+matter of a couple of `for` loops:
+
+```python
+for i, n in enumerate(matches):
+    for j in range(i + 1, i + n + 1):
+        copies[j] += copies[i]
+```
+
+The answer we are after is the total number of cards (copies included), so we
+can just `sum()` up the number of copies:
+
+```python
+total = sum(copies)
+print('Part 2:', total)
+```
+
 ---
 
 
@@ -734,7 +875,7 @@ it as is. Six stars out of fifty!
 [d01]: #day-1---trebuchet
 [d02]: #day-2---cube-conundrum
 [d03]: #day-3---gear-ratios
-[d04]: #day-4---
+[d04]: #day-4---scratchcards
 [d05]: #day-5---
 [d06]: #day-6---
 [d07]: #day-7---
@@ -805,6 +946,7 @@ it as is. Six stars out of fifty!
 
 [py-assert]:     https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement
 [py-cond-expr]:  https://docs.python.org/3/reference/expressions.html#conditional-expressions
+[py-gen-expr]:   https://docs.python.org/3/reference/expressions.html#generator-expressions
 [py-lambda]:     https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
 [py-generators]: https://docs.python.org/3/howto/functional.html#generators
 [py-slicing]:    https://docs.python.org/3/library/stdtypes.html#common-sequence-operations
@@ -819,6 +961,8 @@ it as is. Six stars out of fifty!
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-dict-values]:             https://docs.python.org/3/library/stdtypes.html#dict.values
 [py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
+[py-str-find]:                https://docs.python.org/3/library/stdtypes.html#str.find
 [py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigic
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
