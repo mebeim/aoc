@@ -14,8 +14,8 @@ Table of Contents
 - [Day 2 - Cube Conundrum][d02]
 - [Day 3 - Gear Ratios][d03]
 - [Day 4 - Scratchcards][d04]
+- [Day 5 - If You Give A Seed A Fertilizer][d05]
 <!--
-- [Day 5 - ][d05]
 - [Day 6 - ][d06]
 - [Day 7 - ][d07]
 - [Day 8 - ][d08]
@@ -864,6 +864,278 @@ total = sum(copies)
 print('Part 2:', total)
 ```
 
+
+Day 5 - If You Give A Seed A Fertilizer
+---------------------------------------
+
+[Problem statement][d05-problem] — [Complete solution][d05-solution] — [Back to top][top]
+
+### Part 1
+
+Interesting problem today! And unfortunately also some kind of annoying input
+parsing... so let's get it out of the way quickly.
+
+Our input is split in "sections" that are delimited by empty lines. The first
+section is simply a list of seeds (integers), while the other sections represent
+"mappings". Each mapping has a header (first line) followed by a list of entries
+that are 3-tuples of integers, one per line. With enough splitting and mapping,
+we should be able to do it:
+
+1. [`.split()`][py-str-split] the whole input in sections: simple enough, just
+   need to split on two consecutive newlines (`'\n\n'`).
+2. Parse the seeds, simply discarding the initial `'seeds:'`, `.split()` on
+   whitespace and [`map()`][py-builtin-map] the numbers to `int`.
+3. Parse the mappings one at a time: for each one, discard the header and then
+   build a list of 3-tuples, again splitting on whitespace and converting to
+   `int`.
+
+This time I decided to write a function for input parsing, here it is:
+
+```python
+def parse_input(fin):
+    sections = fin.read().split('\n\n')
+    seeds    = sections[0]
+    seeds    = list(map(int, seeds[6:].split()))
+    mappings = []
+
+    for section in sections[1:]:
+        mapping = []
+        mappings.append(mapping)
+
+        for line in section.splitlines()[1:]:
+            entry = tuple(map(int, line.split()))
+            mapping.append(entry)
+
+    return seeds, mappings
+```
+
+The entries in each mapping are given in the form `dst src length` meaning that
+numbers in the source range `[src, src + length)` should map to the destination
+range `[dst, dst + length)`. This simply means that if a number is in the source
+range, a delta needs to be applied to bring it to the destination range: that
+delta is simply `dst - src`. Since it's easier to work with source range and
+delta, let's just convert each entry in the mapping accordingly right at the
+moment of parsing:
+
+```diff
+ def parse_input(fin):
+     # ... unchanged ...
+         for line in section.splitlines()[1:]:
+-             entry = tuple(map(int, line.split()))
+-             mapping.append(entry)
++             dst, src, length = map(int, line.split())
++             mapping.append((src, src + length, dst - src))
+     # ... unchanged ...
+```
+
+The input can now be easily parsed:
+
+```python
+fin = open(...)
+seeds, mappings = parse_input(fin)
+```
+
+We now need to apply all the mappings (in order) to each of the `seeds` we have,
+and find the smallest final value (after all mappings are applied). We can do
+this quite easily:
+
+- For each seed value `v`, iterate over all mappings one by one.
+- For each entry `start, end, delta` in the mapping: if `v` is in the range
+  `[start, end)`, then `v + delta` is the new value and we can stop scanning the
+  entries of this mapping and proceed to the next one. Otherwise, `v` remains
+  unchanged.
+
+We can use `float('inf')` for an initial "infinite" positive value as minimum.
+Putting the above into code we already have a complete solution:
+
+```python
+minimum = float('inf')
+
+for v in seeds:
+    for step in steps:
+        for start, end, delta in step:
+            if start <= v < end:
+                v += delta
+                break
+
+    minimum = min(minimum, v)
+
+print('Part 1:', minimum)
+```
+
+### Part 2
+
+The `seed` numbers we were initially given now need to be interpreted
+differently: they are pairs of the form `start_seed n`. Each pair represents the
+seeds in the range `[start_value, start_value + n)`. The request is unchanged,
+but now we have *a whole lot* more seeds to work with.
+
+If we take a look at our input, we can see numbers that are easily in the
+hundreds of millions. Needless to say, a bruteforce approach (simply checking
+all seeds in each range), is going to be way too slow. We could maybe get away
+with it a compiled programming language like C/C++/Go/Rust, but (1) we are stuck
+with Python 3 and (2) that's just lame, we want to find the *real* solution!
+
+The way to go about this is to write a new algorithm that is able to work with
+*segments* instead of single values. If we think about it, for every input
+segment `[A, B)`, for every source range `[C, D)` of a given mapping, we can
+only have four different possibilities of overlap:
+
+```none
+(1) Complete           (2) Partial inner
+
+        AxxxB              A----xxx----B
+    C----xxx----D              CxxxD
+
+(3) Partial right      (4) Partial left
+
+    A----xxxB                  Axxx----B
+        Cxxx----D          C----xxxD
+```
+
+While processing a segment, for each segment (source range) in the mapping, if
+we have overlap, we can "extract" the overlapping and non-overlapping parts: the
+overlapping part can be converted to the destination range by applying `delta`
+on both its ends, while the non-overlapping parts can be kept to check if it
+overlaps with other segments.
+
+The first thing to do now is to convert the initial list of `seeds` into a list
+of segments. We can do this easily if we iterate its elements pairwise:
+
+```python
+segments = []
+
+for i in range(0, len(seeds), 2):
+    start_value, n = seeds[i:i + 2]
+    segments.append((start_value, start_value + n))
+```
+
+An alternative way to do this is through the use of [`zip()`][py-builtin-zip]:
+
+```python
+segments = []
+
+for start_value, n in zip(seeds[::2], seeds[1::2]):
+    segments.append((start_value, start_value + n))
+```
+
+The "trick" here is that `seeds[::2]` returns a list of the elements with *even*
+indices, and `seeds[1::2]` returns a list of the elements with *odd* indices.
+Using a [generator expression][py-gen-expr] we can also get rid of the loop:
+
+```python
+segments = [(v, v + n) for v, n in zip(seeds[::2], seeds[1::2])]
+```
+
+The algorithm to implement is now as follows:
+
+- Start with a list of segments to convert.
+- For each mapping:
+  - Create an empty list of processed segments (to be converted by the next
+    mapping).
+  - For each segment we need to convert:
+    - Check for overlaps with each segment of the mapping:
+      - In case of overlap, extract the overlapping part, shift it by `delta`
+        and move it to the list of processed segments. Then extract the
+        non-overlapping part(s) and add them back to the list of segments to
+        convert (they may overlap with other segments in this mapping).
+      - In case of no overlap with any segment of the mapping, move the segment
+        as is to the list of processed segments.
+   - Take the list of processed segments as the new list of segments to convert.
+
+Let's write a function to implement the above. In order to perform fast removal
+and insertion from the beginning, we can use a [`deque`][py-collections-deque]
+for both the list of segments to convert and the list of processed segments.
+
+```python
+from collections import deque
+
+def solve(segments, mappings):
+    for mapping in mappings:
+        processed = deque()
+
+        while segments:
+            a, b = segments.popleft()
+
+            for c, d, delta in mapping:
+                partial_left  = c <= a < d
+                partial_right = c < b <= d
+
+                if partial_left and partial_right:
+                    # Complete overlap:
+                    #     a---b
+                    # c-----------d
+                    # Entire [a, b) segment is converted
+                    processed.append((a + delta, b + delta))
+                    break
+
+                if partial_left:
+                    # Partial left overlap:
+                    #     a------b
+                    # c------d
+                    # [a, d) is converted
+                    processed.append((a + delta, d + delta))
+                    # [d, b) may overlap with other segments, keep it
+                    segments.append((d, b))
+                    break
+
+                if partial_right:
+                    # Partial right overlap:
+                    # a------b
+                    #     c------d
+                    # [a, d) is converted
+                    processed.append((c + delta, b + delta))
+                    # [a, c) may overlap with other segments, keep it
+                    segments.append((a, c))
+                    break
+
+                if a < c and b > d:
+                    # Partial inner overlap:
+                    # a-----------b
+                    #     c---d
+                    # [c, d) is converted
+                    processed.append((c + delta, d + delta))
+                    # [a, c) may overlap with other segments, keep it
+                    segments.append((a, c))
+                    # [d, b) may overlap with other segments, keep it
+                    segments.append((d, b))
+                    break
+            else:
+                # No overlap with any segment in this mapping, keep as is
+                processed.append((a, b))
+
+        segments = processed
+
+    # We are done, the minimum possible final value will be the minimum start
+    # of the final segments after conversion
+    return min(s[0] for s in segments)
+```
+
+A careful reader may have noticed the `for: ... else:` construct above: the
+`else:` branch is only entered if no `break` happens inside the `for`. Since we
+break on any overlap, the `else:` is only entered when there is no overlap with
+any segment of the mapping.
+
+Quite nice! All that's left to do is call the above function and print the
+result!
+
+```python
+segments = deque(segments)
+minimum = solve(segments, mappings)
+print('Part 2:', minimum)
+```
+
+If we really want, we could even use the function we just wrote to solve part 1:
+after all, single numbers can be seen as segments of length `1`:
+
+```python
+segments = deque((s, s + 1) for s in seeds)
+minimum = solve(segments, mappings)
+print('Part 1:', minimum)
+```
+
+10 stars and counting!
+
 ---
 
 
@@ -876,7 +1148,7 @@ print('Part 2:', total)
 [d02]: #day-2---cube-conundrum
 [d03]: #day-3---gear-ratios
 [d04]: #day-4---scratchcards
-[d05]: #day-5---
+[d05]: #day-5---if-you-give-a-seed-a-fertilizer
 [d06]: #day-6---
 [d07]: #day-7---
 [d08]: #day-8---
@@ -958,7 +1230,9 @@ print('Part 2:', total)
 [py-builtin-next]:            https://docs.python.org/3/library/functions.html#next
 [py-builtin-range]:           https://docs.python.org/3/library/functions.html#range
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
+[py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
+[py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
 [py-dict-values]:             https://docs.python.org/3/library/stdtypes.html#dict.values
 [py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
