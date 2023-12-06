@@ -15,8 +15,8 @@ Table of Contents
 - [Day 3 - Gear Ratios][d03]
 - [Day 4 - Scratchcards][d04]
 - [Day 5 - If You Give A Seed A Fertilizer][d05]
+- [Day 6 - Wait For It][d06]
 <!--
-- [Day 6 - ][d06]
 - [Day 7 - ][d07]
 - [Day 8 - ][d08]
 - [Day 9 - ][d09]
@@ -686,7 +686,7 @@ for numbers in gears.values():
         answer2 += numbers[0] * numbers[1]
 ```
 
-We can also use `math.prod()` to calculate the product:
+We can also use [`math.prod()`][py-math-prod] to calculate the product:
 
 ```python
 from math import prod
@@ -1134,7 +1134,150 @@ minimum = solve(segments, mappings)
 print('Part 1:', minimum)
 ```
 
-10 stars and counting!
+As an interesting plus, my solution for today's part 2 is `84206669`, which
+contains the numbers 420, 666 and 69, LOL. 10 stars and counting!
+
+
+Day 6 - Wait For It
+-------------------
+
+[Problem statement][d06-problem] — [Complete solution][d06-solution] — [Back to top][top]
+
+### Part 1
+
+Simple and fast problem today!
+
+First of all, input parsing: we just have two lists of integers, so a simple
+[`.split()`][py-str-split] plus [`map()`][py-builtin-map] will do after
+splitting the input in lines and discarding the words at the start of each line.
+
+```python
+fin   = open(...)
+lines = fin.readlines()
+times = map(int, lines[0][9:].split())
+dists = map(int, lines[1][9:].split())
+```
+
+We don't really need to make `times` and `dists` into lists or tuples as we will
+iterate over them just once.
+
+Now, without thinking too much about it, it seems simple enough to just run a
+couple loops to solve the problem. For each pair of time `t` and distance `d`,
+we can simply try and hold for any possible time between `1` and `t`, and see if
+that wins the race. The remaining time we have to run will be `t` minus the time
+we hold. Adding up all the times this happens gives us the number of different
+ways to win the race, which we can accumulate as a product as requested.
+
+To iterate over pairs of `times` and `dists` we can use
+[`zip()`][py-builtin-zip].
+
+```python
+result = 1
+
+for t, d in zip(times, dists):
+    wins = 0
+
+    for hold in range(1, t):
+        if hold * (t - hold) > d:
+            wins += 1
+
+    result *= wins
+
+print('Part 1:', result)
+```
+
+That was... easy! Wasn't it?
+
+### Part 2
+
+Now we are told that we need to discard all whitespace between input times and
+distances, and only consider the single resulting big value for time and
+distance. Needless to say, these values are pretty huge. Our part 1 solution is
+still feasible, but would definitely benefit from some optimization.
+
+If you think about it, the problem is quite simple, and we can express it with a
+single mathematical formula. We have *t* time to win the race, and to win we
+need to travel at least *d* distance. The time we have to run is equal to the
+total time of the race (*t*) minus the time *x* we hold at the start. Therefore
+we win if:
+
+*x(t - x) ≥ d*
+
+Where *x* is the hold time and *t - x* is the remaining time we have for
+running. Simplifying the equation we get:
+
+*-x<sup>2</sup> + tx ≥ d* ​​⇒ *-x<sup>2</sup> + tx - d ≥ 0*
+
+Given the quadratic equation *-x<sup>2</sup> + tx - d = 0*, we can use the
+[quadratic formula][misc-quadratic-formula] to find the two solutions for *x*:
+
+- *x<sub>min</sub> = (-t + √(t<sup>2</sup> - 4d)) / (-2) = (t - √(t<sup>2</sup> - 4d)) / 2*
+- *x<sub>max</sub> = (-t - √(t<sup>2</sup> - 4d)) / (-2) = (t + √(t<sup>2</sup> - 4d)) / 2*
+
+Since we want a non-negative result we then know that any value of *x* between
+the minimum solution *x<sub>min</sub>* and the maximum solution
+*x<sub>max</sub>* is valid.
+
+Let's write a function to calculate the solution and directly give us the
+answer. Since we are dealing with powers and square roots, the numbers we'll
+calculate will be `float`, but we can use [`math.floor()`][py-math-floor] and
+[`math.ceil()`][py-math-ceil] as needed to get integral values. Ideally we'd
+want to calculate *x<sub>max</sub>* - *x<sub>min</sub>*, but to get the correct
+value we will need to round down *x<sub>max</sub>*, round up *x<sub>min</sub>*
+and subtract 1 from the result.
+
+```python
+from math import ceil, floor
+
+def solve(t, d):
+    delta = (t**2 - 4*d)**0.5
+    xmin, xmax = (t - delta) / 2, (t + delta) / 2
+    return ceil(xmin) - floor(xmax) - 1
+```
+
+We can now simplify the loop we wrote in part 1:
+
+```python
+answer = 1
+
+for t, d in zip(times, dists):
+    wins = solve(t, d)
+    answer *= wins
+```
+
+And since all we are doing is calculating a product, we can use
+[`math.prod()`][py-math-prod] with a [generator expression][py-gen-expr] to get
+rid of the loop entirely:
+
+```python
+from math import prod
+
+answer = prod(solve(t, d) for t, d in zip(times, dists))
+```
+
+We can also use [`itertools.starmap()`][py-itertools-starmap] to automatically
+unpack and pass the two parameters to `solve()`:
+
+```python
+from math import prod
+from itertools import starmap
+
+answer = prod(starmap(solve, zip(times, dists)))
+print('Part 1:', answer)
+```
+
+Sweet! For part 2, all we need to do is remove whitespace between the input
+numbers using [`.replace()`][py-str-replace] and do a single calculation:
+
+```python
+time = int(lines[0][9:].replace(' ', ''))
+dist = int(lines[1][9:].replace(' ', ''))
+answer = solve(time, dist)
+print('Part 2:', answer)
+```
+
+Don't you love it when a single closed formula can solve the entire problem? I
+definitely do.
 
 ---
 
@@ -1149,7 +1292,7 @@ print('Part 1:', minimum)
 [d03]: #day-3---gear-ratios
 [d04]: #day-4---scratchcards
 [d05]: #day-5---if-you-give-a-seed-a-fertilizer
-[d06]: #day-6---
+[d06]: #day-6---wait-for-it
 [d07]: #day-7---
 [d08]: #day-8---
 [d09]: #day-9---
@@ -1233,12 +1376,18 @@ print('Part 1:', minimum)
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
+[py-itertools-starmap]:       https://docs.python.org/3/library/itertools.html#itertools.starmap
+[py-math-ceil]:               https://docs.python.org/3/library/math.html#math.ceil
+[py-math-floor]:              https://docs.python.org/3/library/math.html#math.floor
+[py-math-prod]:               https://docs.python.org/3/library/math.html#math.prod
 [py-dict-values]:             https://docs.python.org/3/library/stdtypes.html#dict.values
 [py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
 [py-str-find]:                https://docs.python.org/3/library/stdtypes.html#str.find
 [py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigic
+[py-str-replace]:             https://docs.python.org/3/library/stdtypes.html#str.replace
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 
-[misc-ascii]: https://en.wikipedia.org/wiki/ASCII
+[misc-ascii]:             https://en.wikipedia.org/wiki/ASCII
+[misc-quadratic-formula]: https://en.wikipedia.org/wiki/Quadratic_formula
