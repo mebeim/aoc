@@ -1255,14 +1255,11 @@ from math import prod
 answer = prod(solve(t, d) for t, d in zip(times, dists))
 ```
 
-We can also use [`itertools.starmap()`][py-itertools-starmap] to automatically
-unpack and pass the two parameters to `solve()`:
+We can also use `map()` and get rid of the generator expression (it will unpack
+pairs of values from `times` and `dists` and pass them as two arguments for us):
 
 ```python
-from math import prod
-from itertools import starmap
-
-answer = prod(starmap(solve, zip(times, dists)))
+answer = prod(map(solve, times, dists))
 print('Part 1:', answer)
 ```
 
@@ -1376,7 +1373,6 @@ definitely do.
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
-[py-itertools-starmap]:       https://docs.python.org/3/library/itertools.html#itertools.starmap
 [py-math-ceil]:               https://docs.python.org/3/library/math.html#math.ceil
 [py-math-floor]:              https://docs.python.org/3/library/math.html#math.floor
 [py-math-prod]:               https://docs.python.org/3/library/math.html#math.prod

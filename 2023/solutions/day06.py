@@ -2,7 +2,6 @@
 
 import sys
 from math import ceil, floor, prod
-from itertools import starmap
 
 def solve(t, d):
 	delta = (t**2 - 4*d)**0.5
@@ -17,7 +16,7 @@ lines = fin.readlines()
 
 times = map(int, lines[0][9:].split())
 dists = map(int, lines[1][9:].split())
-ans = prod(starmap(solve, zip(times, dists)))
+ans = prod(map(solve, times, dists))
 print('Part 1:', ans)
 
 time = int(lines[0][9:].replace(' ', ''))
