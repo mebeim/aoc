@@ -4,6 +4,7 @@
 #
 
 import re
+import sys
 
 class K:
 	__slots__ = ('value')
@@ -21,8 +22,11 @@ class K:
 		return K(self.value + other.value)
 
 
-fin = open('input.txt')
-exprs = fin.read().splitlines()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
+
+with fin:
+	exprs = fin.read().splitlines()
 
 table1 = str.maketrans('+*', '-+')
 table2 = str.maketrans('+*', '*+')

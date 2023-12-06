@@ -5,6 +5,7 @@
 # slower than using "nurmal" lists. It is *a lot* slower with PyPy.
 #
 
+import sys
 from collections import deque
 
 def mix(order, numbers, times=1):
@@ -24,9 +25,10 @@ def mix(order, numbers, times=1):
 	return numbers[(i + 1000) % sz][1] + numbers[(i + 2000) % sz][1] + numbers[(i + 3000) % sz][1]
 
 
-advent.setup(2022, 20)
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
-with open('input.txt') as fin:
+with fin:
 	order = tuple((i, int(line)) for i, line in enumerate(fin))
 
 numbers = deque(order)

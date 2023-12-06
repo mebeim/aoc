@@ -3,6 +3,7 @@
 # Alternative "textbook" general solution using the Shunting-yard algorithm.
 #
 
+import sys
 from re import findall
 from collections import deque
 from operator import add, mul
@@ -73,8 +74,11 @@ def evaluate(expr, opmap):
 	return stack.pop()
 
 
-fin = open('input.txt')
-exprs = fin.readlines()
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
+
+with fin:
+	exprs = fin.readlines()
 
 opmap = {'+': Op(add), '*': Op(mul)} # same precedence
 total = sum(map(partial(evaluate, opmap=opmap), exprs))

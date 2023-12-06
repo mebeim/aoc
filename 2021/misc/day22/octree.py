@@ -7,6 +7,7 @@
 #
 
 import re
+import sys
 import resource
 
 # Limit memory usage to 8GB... we will nonetheless exceed this limit and our
@@ -78,9 +79,12 @@ class Octree:
 		return f'<{self.cuboid} leaf={self.leaf} v={self.value}>'
 
 
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
+
 commands = []
 
-with open('input.txt') as fin:
+with fin:
 	for line in fin:
 		value = int(line.startswith('on'))
 		x0, x1, y0, y1, z0, z1 = map(int, re.findall(r'-?\d+', line))

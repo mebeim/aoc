@@ -3,6 +3,7 @@
 # Alternative "purely mathematical" solution.
 #
 
+import sys
 from math import inf, prod
 from operator import itemgetter
 
@@ -30,10 +31,12 @@ def chinese_remainder_theorem(equations):
 
 	return x
 
-fin = open('input.txt')
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
-arrival = int(fin.readline())
-raw = fin.readline().strip().split(',')
+with fin:
+	arrival = int(fin.readline())
+	raw = fin.readline().strip().split(',')
 
 buses = []
 for i, v in filter(lambda iv: iv[1] != 'x', enumerate(raw)):

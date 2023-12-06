@@ -4,6 +4,8 @@
 # instead of a wrapper class. The runtime is comparable.
 #
 
+import sys
+
 def mix(order, numbers, times=1):
 	sz = len(numbers)
 
@@ -21,7 +23,10 @@ def mix(order, numbers, times=1):
 	return numbers[(i + 1000) % sz][1] + numbers[(i + 2000) % sz][1] + numbers[(i + 3000) % sz][1]
 
 
-with open('input.txt') as fin:
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
+
+with fin:
 	order = tuple((i, int(line)) for i, line in enumerate(fin))
 
 numbers = list(order)

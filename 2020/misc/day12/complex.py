@@ -3,8 +3,13 @@
 # Arithmetical solution using complex numbers as coordinates.
 #
 
-fin = open('input.txt')
-commands = tuple(map(lambda l: (l[0], int(l[1:])), fin))
+import sys
+
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
+
+with fin:
+	commands = tuple(map(lambda l: (l[0], int(l[1:])), fin))
 
 # Deltas to apply to move forward in a specific direction.
 deltas = {

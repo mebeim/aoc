@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import re
+import sys
 
 def parse_input(fin):
 	rules = {}
@@ -61,12 +62,14 @@ def build_regexp_special(rules, rule=0):
 	return '(' + '|'.join(options) + ')'
 
 
-fin = open('input.txt')
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
-rules  = parse_input(fin)
+with fin:
+	rules = parse_input(fin)
+
 rexp1  = re.compile('^' + build_regexp(rules) + '$')
 rexp2  = re.compile('^' + build_regexp_special(rules) + '$')
-print(len(build_regexp_special(rules)))
 valid1 = 0
 valid2 = 0
 

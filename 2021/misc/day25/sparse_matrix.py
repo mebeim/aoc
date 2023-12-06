@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 from itertools import count
 
 def evolve(sea, h, w):
@@ -36,7 +37,10 @@ def evolve(sea, h, w):
 	return n
 
 
-with open('input.txt') as fin:
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
+
+with fin:
 	grid = fin.read().split()
 
 h, w = len(grid), len(grid[0])

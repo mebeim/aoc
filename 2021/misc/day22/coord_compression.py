@@ -6,16 +6,20 @@
 #
 
 import re
+import sys
 import resource
 from bisect import bisect_left
 
 # Limit memory usage to 8GB just to be sure... the `space` list below will be huge.
 resource.setrlimit(resource.RLIMIT_AS, (8 * 2**30,) * 2)
 
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
+
 commands = []
 xs, ys, zs = [], [], []
 
-with open('input.txt') as fin:
+with fin:
 	for line in fin:
 		on = int(line.startswith('on'))
 		x1, x2, y1, y2, z1, z2 = tuple(map(int, re.findall(r'-?\d+', line)))

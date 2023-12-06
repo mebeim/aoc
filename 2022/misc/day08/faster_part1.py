@@ -4,7 +4,12 @@
 # direction), thus achieving a computational complexity of O(n^2) operations.
 #
 
-with open('input.txt', 'rb') as fin:
+import sys
+
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1], 'rb') if len(sys.argv) > 1 else sys.stdin.buffer
+
+with fin:
 	grid = fin.read().splitlines()
 
 height, width = len(grid), len(grid[0])

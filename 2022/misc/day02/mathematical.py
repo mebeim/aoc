@@ -3,14 +3,19 @@
 # Alternative mathematical solution without lookup tables.
 #
 
-score1 = score2 = 0
-ord_a = ord('A')
-ord_x = ord('X')
+import sys
 
-with open('input.txt', 'rb') as fin:
-	for a, b in map(bytes.split, fin):
-		a = ord(a) - ord_a
-		b = ord(b) - ord_x
+# Open the first argument as input or use stdin if no arguments were given
+fin = open(sys.argv[1], 'rb') if len(sys.argv) > 1 else sys.stdin.buffer
+
+score1 = score2 = 0
+ord_a = b'A'[0]
+ord_x = b'X'[0]
+
+with fin:
+	for line in fin:
+		a = line[0] - ord_a
+		b = line[2] - ord_x
 
 		score1 += b + 1
 		score2 += b * 3 + 1
