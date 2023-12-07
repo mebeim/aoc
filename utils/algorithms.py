@@ -22,8 +22,7 @@ from itertools import filterfalse
 from operator import itemgetter
 from itertools import product
 from typing import TypeVar, Any, Iterable, Iterator, Callable, Union, Optional
-from typing import List, Tuple, Dict
-from collections.abc import Sequence, Container
+from typing import List, Tuple, Dict, DefaultDict, Set, Deque, Sequence, Container
 
 from .data_structures import UnionFind
 
@@ -216,7 +215,7 @@ def grid_bfs_lru(grid: Grid2D, avoid: Container=(),
 	return wrapper
 
 def bfs(G: GraphDict, src: Any, weighted: bool=False,
-		get_neighbors: Optional[GraphNeighborsFunc]=None) -> set[Any]:
+		get_neighbors: Optional[GraphNeighborsFunc]=None) -> Set[Any]:
 	'''Find and return the set of all nodes reachable from src in G using
 	breadth-first search.
 
@@ -247,7 +246,7 @@ def bfs(G: GraphDict, src: Any, weighted: bool=False,
 	return visited
 
 def connected_components(G: GraphDict, weighted: bool=False,
-		get_neighbors: Optional[GraphNeighborsFunc]=None) -> List[set[Any]]:
+		get_neighbors: Optional[GraphNeighborsFunc]=None) -> List[Set[Any]]:
 	'''Find and return a list of all the connected components of G.
 
 	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
@@ -386,7 +385,7 @@ def dijkstra_path_lru(G: WeightedGraphDict,
 
 def dijkstra_all(G: WeightedGraphDict, src: Any,
 		get_neighbors: Optional[GraphNeighborsFunc]=None) \
-		-> defaultdict[Any,Distance]:
+		-> DefaultDict[Any,Distance]:
 	'''Find the length of all the shortest paths from src to any reachable node
 	in G using Dijkstra's algorithm.
 
@@ -424,7 +423,7 @@ def dijkstra_all(G: WeightedGraphDict, src: Any,
 
 def dijkstra_all_paths(G: WeightedGraphDict, src: Any,
 		get_neighbors: Optional[GraphNeighborsFunc]=None) \
-		-> defaultdict[Any,Tuple[Tuple[Any],Distance]]:
+		-> DefaultDict[Any,Tuple[Tuple[Any],Distance]]:
 	'''Find all the shortest paths from src to any reachable node in G and their
 	using Dijkstra's algorithm.
 
@@ -464,9 +463,9 @@ def dijkstra_all_paths(G: WeightedGraphDict, src: Any,
 
 def bellman_ford(G: WeightedGraphDict, src: Any) \
 		-> Tuple[
-			defaultdict[Any,Distance],
-			defaultdict[Any,Distance],
-			Callable[[Any],deque[Any]]
+			DefaultDict[Any,Distance],
+			DefaultDict[Any,Distance],
+			Callable[[Any],Deque[Any]]
 		]:
 	'''Find all the shortest paths from src to any reachable node in G and their
 	lengths using the Bellman-Ford algorithm. IMPORTANT: all nodes of the graph
@@ -492,7 +491,7 @@ def bellman_ford(G: WeightedGraphDict, src: Any) \
 	distance = defaultdict(lambda: INFINITY, {src: 0})
 	previous = defaultdict(lambda: None)
 
-	def path_to(dst: Any) -> deque[Any]:
+	def path_to(dst: Any) -> Deque[Any]:
 		nonlocal previous
 		res = deque([])
 
@@ -527,8 +526,8 @@ def bellman_ford(G: WeightedGraphDict, src: Any) \
 
 def floyd_warshall(G: WeightedGraphDict) \
 		-> Tuple[
-			defaultdict[Any,defaultdict[Any,Distance]],
-			defaultdict[Any,defaultdict[Any,Distance]],
+			DefaultDict[Any,DefaultDict[Any,Distance]],
+			DefaultDict[Any,DefaultDict[Any,Distance]],
 			Callable[[Any,Any],List[Any]]
 		]:
 	'''Find the length of the shortest paths between any pair of nodes in G and
@@ -619,7 +618,7 @@ def kruskal(G: WeightedGraphDict) -> WeightedGraphDict:
 	return mst
 
 def _toposort_dependencies(G: GraphDict, reverse: bool, weighted: bool) \
-		-> Tuple[defaultdict[Any,int],defaultdict[Any,int]]:
+		-> Tuple[DefaultDict[Any,int],DefaultDict[Any,int]]:
 	'''Calculate forward and reverse dependencies of the nodes in the directed
 	graph G. If reverse=True, edges of G are considered inverted.
 
