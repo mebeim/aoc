@@ -16,8 +16,8 @@ Table of Contents
 - [Day 4 - Scratchcards][d04]
 - [Day 5 - If You Give A Seed A Fertilizer][d05]
 - [Day 6 - Wait For It][d06]
+- [Day 7 - Camel Cards][d07]
 <!--
-- [Day 7 - ][d07]
 - [Day 8 - ][d08]
 - [Day 9 - ][d09]
 - [Day 10 - ][d10]
@@ -1276,6 +1276,268 @@ print('Part 2:', answer)
 Don't you love it when a single closed formula can solve the entire problem? I
 definitely do.
 
+
+Day 7 - Camel Cards
+-------------------
+
+[Problem statement][d07-problem] — [Complete solution][d07-solution] — [Back to top][top]
+
+### Part 1
+
+Input parsing seems quite easy today: we have a list of pairs where the first
+one is a string and the second an integer. We can simply
+[`.split()`][py-str-split] each input line, convert to `int` the second element
+and be done with it. We are asked to somehow sort the hands in ascending order
+according to their strength, so we need a way to remember the bet associated
+with each hand: we can do this with a `dict` of the form `{hand: bet_value}`.
+Let's build it:
+
+```python
+fin = open(...)
+
+bets = {}
+for line in fin:
+    hand, bet = line.split()
+    bets[hand] = int(bet)
+```
+
+Now, the strength of a hand can be calculated according to a few simple rules,
+which basically only boil down to counting the number of occurrences of each
+card in the hand to establish the type of the hand. For hands of the same type,
+the stronger hand is the one with the highest card from left to right. For
+example, given `AAAKK` and `AKAKA` (both full houses of aces over kings), the
+first one is stronger since the second card is `A`, while the second card of the
+second hand is `K`, which is lower than `A`.
+
+The cards we are given may be digits between `2` and `9` as well as any of the
+letters `TJQKA`. Given two hands that have the same counts of cards (i.e. none
+is immediately higher than the other), it would be nice to split ties by simply
+comparing the two hands as strings (e.g. `hand_a < hand_b`).
+
+This would work very well for [ASCII][misc-ascii] digits since `'0' < '1'`,
+`'1' < '2'` and so on until `'8' < '9'`, but it does not work as for the letters
+we have since e.g. `'A' < 'K'`, while we would want `A` to have a higher value.
+To overcome this limitation and have easy comparisons, we can simply choose
+other characters for cards higher than `9`. Instead of `TJQKA`, we can use
+`ABCDE`, since `'A' > '9'`, `'B' > 'A'` and so on.
+
+Let's translate all the letters in the hands we have from `TJQKA` to `ABCDE`: we
+can do this easily with [`str.translate()`][py-str-translate] after building a
+translation table with [`str.maketrans()`][py-str-maketrans].
+
+```python
+tbl = str.maketrans('TJQKA', 'ABCDE')
+bets = {}
+
+for line in fin:
+    hand, bet = line.split()
+    bets[hand.translate(tbl)] = int(bet)
+```
+
+The above loop be simplified with the help of [`map()`][py-builtin-map]:
+
+```python
+for hand, bet in map(str.split, fin):
+    bets[hand.translate(tbl)] = int(bet)
+```
+
+And since all we are doing is creating a dictionary we could also use a
+[dict comprehension][py-dict-comprehension].
+
+```python
+bets = {hand.translate(tbl): int(bet) for hand, bet in map(str.split, fin)}
+```
+
+*Okay... that might be a bit hard to read for the average Python programmer, but
+it does look pretty cool.* I'll keep it in my solution's code.
+
+Nice! Now the keys of the `bets` are strings representing hands, and have been
+translated to be easily comparable. In case of hands of the same type (e.g. two
+double pairs), we can use a normal Python string comparison to pick the highest.
+
+How can we determine the kind of a hand? Well, by counting the number of equal
+cards, of course. The [`Counter`][py-collections-counter] class from the
+[`collections`][py-collections] module can do this for us easily. Once we know
+the counts, it is pretty simple to establish the hand type. Let's see what
+happens for each type:
+
+| Type            | `hand`    | `Counter(hand)`                            | Sorted frequencies |
+|-----------------|-----------|--------------------------------------------|--------------------|
+| Five of a kind  | `'AAAAA'` | `{'A': 5}`                                 | `[5]`              |
+| Four of a kind  | `'AAAAB'` | `{'A': 4, 'B': 1}`                         | `[4, 1]`           |
+| Full house      | `'AAABB'` | `{'A': 3, 'B': 2}`                         | `[3, 2]`           |
+| Three of a kind | `'AAABC'` | `{'A': 3, 'B': 1, 'C': 1}`                 | `[3, 1, 1]`        |
+| Double pair     | `'AABBC'` | `{'A': 2, 'B': 2, 'C': 1}`                 | `[2, 2, 1]`        |
+| One pair        | `'AABBC'` | `{'A': 2, 'B': 1, 'C': 1, 'D': 1}`         | `[2, 1, 1, 1]`     |
+| High card       | `'ABCDE'` | `{'A': 1, 'B': 1, 'C': 1, 'D': 1, 'E': 1}` | `[1, 1, 1, 1, 1]`  |
+
+From the above table, it should seem quite obvious that the only information we
+need to establish the strength of a hand based on its type is the frequencies of
+its cards. Given two cards, to know which one has the stronger type, we can
+simply compare the counter frequencies in descending order! The first hand with
+a has a higher frequency wins. In fact, we have `[5] > [4, 1]`,
+`[4, 1] > [3, 2]`, `[3, 2] > [3, 2, 1]` and so on.
+
+Let's write a function to calculate the strength of a given hand so that we can
+later pass it as a `key=` function to [`sorted()`][py-builtin-sorted]. We can
+first determine the strength of the hand type using the card frequencies
+returned by `Counter(hand)`, then, in case of tie (same type), we can look at
+the cards in the hand itself.
+
+All we need to be able to sort a collection of hands is a tuple of the form
+`(descending_frequencies, hand)`, where `descending_frequencies` is a tuple or
+list of `int`, and `hand` is the string representing the hand itself. The
+`sorted()` function will then first compare the frequencies and in case of tie
+compare the hands. Given that both compare exactly the way we want with simple
+Python comparison operators, this is all that's needed!
+
+```python
+from collections import Counter
+
+def strength(hand):
+    counter = Counter(hand).values()
+    frequencies = sorted(counter, reverse=True)
+    return (frequencies, hand)
+```
+
+We can now sort the keys of our `bets` dictionary using the above function as
+`key=` and calculate the total as defined by the problem statement: sum the
+products between the rank of each hand and its bid value. This can be easily
+done with the help of [`enumerate()`][py-builtin-enumerate] providing `start=1`.
+
+```python
+ordered_hands = sorted(bets, key=strength)
+total = 0
+
+for rank, hand in enumerate(ordered_hands, 1):
+    total += rank * bets[hand]
+```
+
+To simplify things, we can [`map()`][py-builtin-map] the hands to their bet
+through `bet.get()`, and then use [`sum()`][py-builtin-sum] plus a
+[generator expression][py-gen-expr] to compute the total:
+
+```python
+ordered_hands = sorted(bets, key=strength)
+ordered_bets  = map(bets.get, ordered_hands)
+total         = sum(rank * bet for rank, bet in enumerate(ordered_bets, 1))
+```
+
+We can also calculate the `total` with `map()` and
+[`math.prod()`][py-math-prod]. In any case, we already have our answer!
+
+```python
+total = sum(map(prod, enumerate(ordered_bets, 1)))
+print('Part 1:', total)
+```
+
+### Part 2
+
+We are now supposed to treat the `J` cards as "jokers". A Joker can assume the
+value of any other card, and when used in a hand, it will assume the value of
+the card that maximizes the hand's strength. When breaking ties though, a `J`
+should be considered weaker than a `2` (in other words, by itself, it is the
+weakest card).
+
+Since the Joker should be considered the weakest card when breaking ties, we
+cannot use the previous translation of `TJQKA` to `ABCDE` anymore, but we can
+use `A0CDE` instead, since `'0' < '2'`. Let's first translate the cards again.
+We simply need to turn any `B` into a `0`:
+
+```python
+new_bets = {}
+for hand, bet in bets.items():
+    new_bets[hand.replace('B', '0')] = bet
+```
+
+The above can also be simplified using a dict comprehension:
+
+```python
+new_bets = {hand.replace('B', '0'): bet for hand, bet in bets.items()}
+```
+
+The initial request is the same: sort the hands in ascending order based on
+their strength, then calculate the total winnings. However, calculating the
+strength of a given hand became a bit harder, as we need to account for jokers
+too.
+
+Let's see what happens in case we have jokers in different scenarios:
+
+- *Five of a kind*: `JJJJJ`, a five of a kind of jokers is simply the weakest
+  five of a kind.
+
+- *Four of a kind*: we can either have `XXXXJ` or `JJJJX`. In both cases,
+  converting the jokers to the other card will give us a five of a kind.
+  **Converting any of the jokers to any other card will just weaken the hand.**
+
+- *Full house*: we can either have `XXXJJ` or `JJJXX`. In both cases, converting
+  the jokers to the other card will give us a five of a kind. Again, converting
+  any of the jokers to any other card will just weaken the hand.
+
+- *Three of a kind*: we can either have `XXXYJ` or `JJJXY`. The best we can get
+  is a four of a kind: convert `J` to `X` in the first case or to `Y` in the
+  second case.
+
+- *Double pair*: we can either have `XXYYJ` or `JJXXY`. The best we can get is a
+  full house converting `J` to `X`.
+
+- *One pair*: we can either have `XXYZJ` or `JJXYZ`. The best we can get is a
+  three of a kind converting `J` to `X` in the first case or to any of the other
+  cards in the second case.
+
+- *High card*: `XYZWJ`... we can simply get a pair converting `J` to any of the
+  other cards.
+
+It should be clear enough from the above examples: whenever we have one or more
+jokers available, the best thing to do is to make them all count as the card
+with the highest frequency. **Doing anything else can only turn the hand into a
+weaker type**, or at best keep it of the same type.
+
+Following this logic, let's write another function to deal with hands that may
+contain jokers (remember that we previously translated jokers to `0` to easily
+compare hands of the same type).
+
+```python
+def strength_with_joker(hand):
+    # Calculate frequencies for each card
+    counter = Counter(hand)
+    # Rremove jokers
+    jokers = counter.pop('0', 0)
+    # Sort frequencies in descending order
+    freqs = sorted(counts.values(), reverse=True)
+    # Convert all jokers to the card with the highest frequency
+    freqs[0] += jokers
+
+    return freqs, hand
+```
+
+The only edge case to consider is a five of a kind of jokers: in that case after
+`counter.pop('0', 0)` we'll be left with nothing, so `frequs[0]` will fail. We
+can simply detect this at the start:
+
+```python
+def strength_with_joker(hand):
+    if hand == '00000':
+        return [5], hand
+
+    counter = Counter(hand)
+    jokers  = counter.pop('0', 0)
+    freqs   = sorted(counts.values(), reverse=True)
+    freqs[0] += jokers
+
+    return freqs, hand
+```
+
+The final result can be calculated in exactly the same as we did for part 1:
+
+```python
+ordered = map(new_bets.get, sorted(bets, key=strength_with_joker))
+total   = sum(map(prod, enumerate(ordered, 1)))
+print('Part 2:', total)
+```
+
+I really enjoyed this one! 14/50 stars.
+
 ---
 
 
@@ -1290,7 +1552,7 @@ definitely do.
 [d04]: #day-4---scratchcards
 [d05]: #day-5---if-you-give-a-seed-a-fertilizer
 [d06]: #day-6---wait-for-it
-[d07]: #day-7---
+[d07]: #day-7---camel-cards
 [d08]: #day-8---
 [d09]: #day-9---
 [d10]: #day-10---
@@ -1356,12 +1618,13 @@ definitely do.
 [d24-solution]: solutions/day24.py
 [d25-solution]: solutions/day25.py
 
-[py-assert]:     https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement
-[py-cond-expr]:  https://docs.python.org/3/reference/expressions.html#conditional-expressions
-[py-gen-expr]:   https://docs.python.org/3/reference/expressions.html#generator-expressions
-[py-lambda]:     https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
-[py-generators]: https://docs.python.org/3/howto/functional.html#generators
-[py-slicing]:    https://docs.python.org/3/library/stdtypes.html#common-sequence-operations
+[py-assert]:             https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement
+[py-cond-expr]:          https://docs.python.org/3/reference/expressions.html#conditional-expressions
+[py-dict-comprehension]: https://peps.python.org/pep-0274/
+[py-gen-expr]:           https://docs.python.org/3/reference/expressions.html#generator-expressions
+[py-lambda]:             https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
+[py-generators]:         https://docs.python.org/3/howto/functional.html#generators
+[py-slicing]:            https://docs.python.org/3/library/stdtypes.html#common-sequence-operations
 
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
@@ -1369,8 +1632,11 @@ definitely do.
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
 [py-builtin-next]:            https://docs.python.org/3/library/functions.html#next
 [py-builtin-range]:           https://docs.python.org/3/library/functions.html#range
+[py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
+[py-collections]:             https://docs.python.org/3/library/collections.html#collections
+[py-collections-counter]:     https://docs.python.org/3/library/collections.html#collections.deque
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
 [py-math-ceil]:               https://docs.python.org/3/library/math.html#math.ceil
@@ -1381,9 +1647,11 @@ definitely do.
 [py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
 [py-str-find]:                https://docs.python.org/3/library/stdtypes.html#str.find
 [py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigic
+[py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
 [py-str-replace]:             https://docs.python.org/3/library/stdtypes.html#str.replace
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
+[py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 
 [misc-ascii]:             https://en.wikipedia.org/wiki/ASCII
 [misc-quadratic-formula]: https://en.wikipedia.org/wiki/Quadratic_formula
