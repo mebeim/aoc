@@ -47,5 +47,4 @@ for src, dst in product(srcs, dsts):
 	ns.append(n)
 
 ans = lcm(*ns)
-
-advent.print_and_submit(2, ans)
+advent.print_answer(2, ans)
