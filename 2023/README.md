@@ -18,8 +18,8 @@ Table of Contents
 - [Day 6 - Wait For It][d06]
 - [Day 7 - Camel Cards][d07]
 - [Day 8 - Haunted Wasteland][d08]
+- [Day 9 - Mirage Maintenance][d09]
 <!--
-- [Day 9 - ][d09]
 - [Day 10 - ][d10]
 - [Day 11 - ][d11]
 - [Day 12 - ][d12]
@@ -1840,6 +1840,192 @@ print('Part 2:', steps_part2)
 Quite the conundrum today, can't say I enjoyed jumping through hoops and
 verifying questionable input assumptions, but hey, that's what we get I guess!
 
+
+Day 9 - Mirage Maintenance
+--------------------------
+
+[Problem statement][d09-problem] — [Complete solution][d09-solution] — [Back to top][top]
+
+### Part 1
+
+We are dealing with lists of integers. Parsing the input couldn't be easier. For
+each line, we can simply [`.split()`][py-str-split] and
+[`map()`][py-builtin-map] to `int`, a patter we should be familiar with by now.
+
+```python
+fin = open(...)
+
+for line in fin:
+    numbers = list(map(int, line.split()))
+    # ...
+```
+
+We are told to keep calculating pairwise differences, so let's write a generator
+function that does exactly this. There are different ways to do it, I will use
+[`iter()`][py-builtin-iter] to turn the list into an iterator, then extract the
+first number, and iterate over the next ones, yelding the differences one at a
+time.
+
+```python
+def deltas(nums):
+    it = iter(nums)
+    prev = next(it)
+
+    for n in it:
+        yield n - prev
+        prev = n
+```
+
+Sweet. Now, according to the rules, we can simply keep calling `deltas(nums)`
+until all the deltas we calculate are `0`. For example:
+
+```
+0   3   6   9  12  15
+  3   3   3   3   3
+    0   0   0   0
+```
+
+Now we are told to append one more `0` to the last list (of all zeroes), and,
+going backwards, find the next element of the original list. So, for example:
+
+```
+0   3   6   9  12  15   A  -->  0   3   6   9  12  15  [18]
+  3   3   3   3   3   B    -->    3   3   3   3   3  [3]
+    0   0   0   0  [0]     -->      0   0   0   0  [0]
+```
+
+The number *A* above is what we are looking for. Since we added a `0` at the end
+of the last list, we know that *B - 3 = 0*, and therefore that *B = 0 + 3 = 3*.
+Similarly, *A - 15 = B*, therefore *A = B + 15 = 0 + 3 + 15 = 18*.
+
+It's easy to see how *A* is nothing more than the sum of the last elements of
+each of the list we have.
+
+Let's write a function that calculates it for us. We'll keep computing
+differences until we have all zeroes, and accumulate the sum of the last
+(rightmost) element each time. To check if all the elements of a list are `0`,
+we can either write a good ol' loop, or we can use the [`all()`][py-builtin-all]
+builtin: `all(x == 0 for x in nums)` will tell us if there is any number that is
+not `0` in the list.
+
+```python
+def solve(nums):
+    tot = 0
+
+    while 1:
+        tot += nums[-1]
+        nums = list(deltas(nums))
+
+        if all(x == 0 for x in nums):
+            break
+
+    return tot
+```
+
+Alternatively, we can invert the check using [`any()`][py-builtin-any] to verify
+that our lis contains any non-zero value, and use it as the loop condition:
+
+```diff
+ def solve(nums):
+     tot = 0
+
+-    while 1:
++    while any(nums):
+         tot += nums[-1]
+         nums = list(deltas(nums))
+-
+-        if all(x == 0 for x in nums):
+-            break
+
+     return tot
+```
+
+For each input list, we now need to calculate the next number according to the
+rules using the above function, then sum all of themse numbers up.
+
+```python
+total = 0
+
+for line in fin:
+    numbers = list(map(int, line.split()))
+    total += solve(numbers)
+
+print('Part 1:', numbers)
+```
+
+### Part 2
+
+We now need to do a similar thing to find the *previous* number of each list.
+Such number is found by first prepending a `0` to the last list (of all zeroes)
+and working backwards.
+
+For example:
+
+```
+A  10  13  16  21  30  45  -->  [5] 10  13  16  21  30  45
+  B   3   3   5   9  15    -->    [5]  3   3   5   9  15
+    C   0   2   4   6      -->     [-2]  0   2   4   6
+      D   2   2   2        -->        [2]  2   2   2
+       [0]  0   0          -->          [0]  0   0
+```
+
+This time, we know that:
+
+- *2 - D = 0*
+- *0 - C = D*
+- *3 - B = C*
+- *10 - A = B*
+
+Therefore we have:
+
+- *A = -B + 10*
+- *= -(-C + 3) + 10*
+- *= -(-(-D + 0) + 3) + 10*
+- *= -(-(-(-0 + 2) + 0) + 3) + 10*
+- *= -(-0 + 2) + 0 - 3 + 10*
+- *= 0 - 2 + 0 - 3 + 10*
+- *= 5*
+
+It's a little bit harder to see this time, but what we are doing now is simply
+calculating the sum of the leftmost numbers of each list, inverting the sign of
+the ones in odd positions. Indeed, reordering the second to last steop above, we
+have `10 - 3 + 0 - 2 + 0`.
+
+We can therefore calculate this number as easily as how we did for part 1:
+simply keep adding the first number of each list, multiplied by either `1` or
+`-1` depending on the iteration.
+
+```python
+def solve(nums):
+    tot_right = tot_left = 0
+    sign = 1
+
+    while any(nums):
+        tot_right += nums[-1]
+        tot_left += sign * nums[0]
+        sign = -sign
+        nums = list(deltas(nums))
+
+    return tot_right, tot_left
+```
+
+As simple as that, we now have a function that returns both the previous number
+and the next number of the original list, so we can calculate the answers for
+both part 1 and 2 at the same time:
+
+```python
+total1 = total2 = 0
+
+for line in fin:
+    nums = list(map(int, line.split()))
+    l, r = solve(nums)
+    total1 += l
+    total2 += r
+
+print('Part 1:', total1)
+print('Part 2:', total2)
+```
+
 ---
 
 
@@ -1856,7 +2042,7 @@ verifying questionable input assumptions, but hey, that's what we get I guess!
 [d06]: #day-6---wait-for-it
 [d07]: #day-7---camel-cards
 [d08]: #day-8---haunted-wasteland
-[d09]: #day-9---
+[d09]: #day-9---mirage-maintenance
 [d10]: #day-10---
 [d11]: #day-11---
 [d12]: #day-12---
@@ -1932,8 +2118,11 @@ verifying questionable input assumptions, but hey, that's what we get I guess!
 [py-slicing]:            https://docs.python.org/3/library/stdtypes.html#common-sequence-operations
 [py-unpacking]:          https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 
+[py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
+[py-builtin-any]:             https://docs.python.org/3/library/functions.html#any
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
+[py-builtin-iter]:            https://docs.python.org/3/library/functions.html#iter
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
 [py-builtin-next]:            https://docs.python.org/3/library/functions.html#next
