@@ -17,8 +17,8 @@ Table of Contents
 - [Day 5 - If You Give A Seed A Fertilizer][d05]
 - [Day 6 - Wait For It][d06]
 - [Day 7 - Camel Cards][d07]
+- [Day 8 - Haunted Wasteland][d08]
 <!--
-- [Day 8 - ][d08]
 - [Day 9 - ][d09]
 - [Day 10 - ][d10]
 - [Day 11 - ][d11]
@@ -420,7 +420,7 @@ seeing digits. Let's write a function to extract a number in this way: it will
 take the row and the starting column as parameters and return a number converted
 to integer. For simplicity, we'll also pass the row length since we have it at
 hand. The [`.isdigit()`][py-str-isdigit] method of strings comes in handy
-(technically, `.isdigit()` doesn't only accept [ASCII][misc-ascii] digits, but
+(technically, `.isdigit()` doesn't only accept [ASCII][wiki-ascii] digits, but
 we know our entire input is ASCII, so it's fine).
 
 ```python
@@ -1209,7 +1209,7 @@ running. Simplifying the equation we get:
 *-x<sup>2</sup> + tx ≥ d* ​​⇒ *-x<sup>2</sup> + tx - d ≥ 0*
 
 Given the quadratic equation *-x<sup>2</sup> + tx - d = 0*, we can use the
-[quadratic formula][misc-quadratic-formula] to find the two solutions for *x*:
+[quadratic formula][wiki-quadratic-formula] to find the two solutions for *x*:
 
 - *x<sub>min</sub> = (-t + √(t<sup>2</sup> - 4d)) / (-2) = (t - √(t<sup>2</sup> - 4d)) / 2*
 - *x<sub>max</sub> = (-t - √(t<sup>2</sup> - 4d)) / (-2) = (t + √(t<sup>2</sup> - 4d)) / 2*
@@ -1314,7 +1314,7 @@ letters `TJQKA`. Given two hands that have the same counts of cards (i.e. none
 is immediately higher than the other), it would be nice to split ties by simply
 comparing the two hands as strings (e.g. `hand_a < hand_b`).
 
-This would work very well for [ASCII][misc-ascii] digits since `'0' < '1'`,
+This would work very well for [ASCII][wiki-ascii] digits since `'0' < '1'`,
 `'1' < '2'` and so on until `'8' < '9'`, but it does not work as for the letters
 we have since e.g. `'A' < 'K'`, while we would want `A` to have a higher value.
 To overcome this limitation and have easy comparisons, we can simply choose
@@ -1538,6 +1538,308 @@ print('Part 2:', total)
 
 I really enjoyed this one! 14/50 stars.
 
+
+Day 8 - Haunted Wasteland
+-------------------------
+
+[Problem statement][d08-problem] — [Complete solution][d08-solution] — [Back to top][top]
+
+### Part 1
+
+First problem of the year on a graph??? Hmm, almost.
+
+Parsing the input is rather straightforward. First, let's extract the first line
+of input representing the directions to follow, removing the final newline with
+[`.rstrip()`][py-str-rstrip]:
+
+```python
+fin = open(...)
+directions = fin.readline().rstrip()
+```
+
+To make it easier to work with, let's also convert the list of directions in
+the directions to integers: `0` for `L` and `1` for `R`. We'll see why this is useful
+in a moment.
+
+```python
+new_directions = []
+for direction in directions:
+    if direction == 'R':
+        new_directions.append(1)
+    else:
+        new_directions.append(0)
+
+directions = new_directions
+```
+
+The above can also be simplified by converting the boolean comparison result to
+an integer since `int(True) == 1` and `int(False) == 0`:
+
+```python
+new_directions = []
+for direction in directions:
+    new_directions.append(int(direction == 'R'))
+
+directions = new_directions
+```
+
+Let's just go one step further and convert the above to a
+[generator expression][py-gen-expr]:
+
+```python
+directions = tuple(int(d == 'R') for d in directions)
+```
+
+Next, let's extract the network nodes from each of the following input lines
+with simple [slicing][py-slicing] operations, since every line has exactly the
+same format and node names are all 3 characters long. To represent the graph of
+nodes we'll use a `dict` of the form `{source: (left, right)}`.
+
+```python
+# Skip empty line
+fin.readline()
+
+g = {}
+for line in fin:
+    # Lines are of the form: 'AAA = (BBB, CCC)\n'
+    src, left, right = line[:3], line[7:10], line[12:15]
+    g[src] = (left, right)
+```
+
+That could also be simplified to a single generator expression, or more
+precisely a [dict comprehension][py-dict-comprehension] (*ok, I might be getting
+too comfortable with these, but whatever*):
+
+```python
+fin.readline()
+g = {l[:3]: (l[7:10], l[12:15]) for l in fin}
+```
+
+Now we have all we need to solve the problem. Counting the steps from `AAA` to
+`ZZZ` is merely a matter of following the directions through our graph `g`.
+Given the way we built `g`, going from one node to the next can be done with
+`next_node = g[node][direction]`. All we need to do is follow the `directions`,
+and since we may need to repeat them multiple times, we can use
+[`itertools.cycle()`][py-itertools-cycle] to make our life easier:
+
+```python
+from itertools import cycle
+
+node = 'AAA'
+steps = 0
+
+for d in cycle(directions):
+    node = g[node][d]
+    steps += 1
+    if node == 'ZZZ':
+        break
+```
+
+We can also use [`enumerate()`][py-builtin-enumerate] starting from `1` to count
+the steps. Either way, we're done for part 1.
+
+```python
+node = 'AAA'
+
+for d in enumerate(cycle(directions), 1):
+    node = g[node][d]
+    if node == 'ZZZ':
+        break
+
+print('Part 1:', steps)
+```
+
+### Part 2
+
+Now things get significantly more complex, and to be fair probably a tad too
+much for my liking. We are told to start from all nodes ending with `A` and
+simultaneously follow the directions like we did for part 1 until all the nodes
+we are on end with `Z`.
+
+This may seem like a simple problem at first sight, but as it turns out it's all
+except simple. Attempting the naïve solution (literally advancing N nodes in
+parallel) will take us nowhere since the number of steps required is way too
+large (for my input, it was in the order of 10<sup>13</sup>).
+
+Why exactly am I saying that this is hard? Well, because **the key to
+simplifying this problem is detecting cycles of nodes**, but:
+
+1. It's hard to determine when a cycle is encountered.
+2. We can encounter "temporary" cycles that only loop a few times before never
+   being seen again.
+3. Once in a cycle, we could encounter more than one Z-ending node per loop.
+
+Firstly, we cannot simply tell that we are in a cycle if we reach the same node
+twice. Simple directions and graphs can give us false cycles where we encounter
+the same node multiple times before wandering off. For example, take the
+following input (I use shorter node names for simplicity):
+
+```
+LLLLRRLLRRRLL
+
+A = (Z, A)
+Z = (A, A)
+```
+
+Starting from `A`, the nodes we'd visit would be: A, Z, A, Z, A, A, A, Z, A, A,
+A, A, Z. We clearly encountered `Z` multiple times: after 2 steps, after 4
+steps, after 8 and after 13. It's only after this that we'll keep visiting the
+same pattern again, so we have a cycle of length 13 where a node ending with `Z`
+is encountered four times per cycle at offsets 2, 4, 8 and 13.
+
+This is clearer if we use pairs of the form `(node, i)` where `i` is the index
+in the list of directions to follow. We have: (A 0), (Z 1), (A 2), (Z 3), (A 4),
+(A 5), (A 6), (Z 7), (A 8), (A 9), (A 10), (A 11), (Z 12). After this, we have
+exhausted the list of directions (of length 13), so we go back to: (A 0), (Z 1),
+(A 2), and so on.
+
+In other words, **a real loop is one where we encounter the same at the same
+step in the given list of directions**. Therefore, a real loop must have a
+length that is a multiple of the length of the given directions
+(`len(directions)`).
+
+Moreover, a situation like the following would also be completely valid:
+
+```
+L
+
+A = (B, X)
+B = (C, X)
+C = (D, X)
+D = (Z, X)
+Z = (D, X)
+```
+
+Here the nodes we'd visit would be A, B, C, D, Z, D, Z, D, Z [...]. In this
+case, we initially have a "useless" chain (A, B, C) leading us into the real
+cycle (D, Z), so we also have an "initial offset" to account for.
+
+This leads us into a situation similar (albeit more complex) to the one of
+[2020 day 13 part 2][2020-d13-p2-crt], where the problem was solvable in a
+purely mathematical way using the [Chinese Remainder Theorem][wiki-crt].
+
+The problem statement does not help much, because the generic description we are
+given does not exclude the above possibilities. In other words, we aren't
+directly given any hint about special properties of the input that would
+simplify things for us. However, as it turns out, **there definitely are special
+properties that hold for all inputs of today's problem** and that reduce the
+complexity by an order of magnitude.
+
+This isn't really the first time this has happened, and it's common for AoC
+puzzles. Nonetheless it left a lot of people (including me) wondering why their
+very simple solution, which was making a lot of assumptions about the input,
+would work. [Here's a thread][d08-reddit-thread] on the AoC subreddit where a
+lot of people people shared their ideas.
+
+Given the above (and most importantly given the fact that I really don't have
+the time nor the willpower to solve the general problem), I will focus on
+explaining the properties of the input that make this problem simpler to solve
+and then verify them in my solution.
+
+Let's use "A-nodes" to refer to the nodes ending with `A`, and "Z-nodes" to
+refer to nodes ending with `Z`. A simpler version of the problem would include
+the following constraints:
+
+1. Following the given directions, each A-node only reaches one Z-node;
+2. Continuing to follow the directions from such Z-node, it is guaranteed that
+   we will loop back to it without encountering any other Z-node;
+4. The length of the loop is equal to the number of steps required to reach the
+   Z-node from the A-node.
+
+If the above assumptions hold, this means that for each A-node we have exactly
+one reachable Z-node, and we will encounter such Z-node once every N steps,
+where N is equal to the length of the loop and also equal to the number of
+initial steps from the A-node to the Z-node.
+
+As we already saw, "looping back" does not simply mean encountering the same
+node twice, but encountering it twice exactly after a number of steps that is a
+multiple of the length of the given directions.
+
+Let's write a function that given a starting A-node node finds and returns the
+length of the loop to the first Z-node.
+
+```python
+def steps(g, node, directions):
+    directions_iter = enumerate(cycle(directions), 1)
+
+    for n1, d in directions_iter:
+        node = g[node][d]
+        if node[-1] == 'Z':
+            # Z-node encountered for the first time, stop here
+            break
+
+    # Remember this Z-node
+    znode = node
+
+    # Continue following the path until we find another Z-node
+    for loop_len, (n2, d) in enumerate(directions_iter, 1):
+        node = g[node][d]
+        if node[-1] == 'Z':
+            # Second Z-node found (should be the same as the first)
+            break
+
+    # Check assumptions:
+    #
+    # 1) Each A-node should only reach one Z-node;
+    # 2) Continuing from such node, we should loop back to it without
+    #    encountering any other Z-nodes;
+    # 3) The length of the loop is equal to the number of steps required to
+    #    reach the Z-node from the A-node.
+    #
+    assert node == znode
+    assert n1 % len(directions) == n2 % len(directions)
+    assert n1 == loop_len
+
+    return loop_len
+```
+
+Since we are assuming that the loop length is equal to the number of steps
+needed to reach the Z-node in the first place, we can also use this function to
+solve part 1. In fact, we are guaranteed to be able to reach `ZZZ` from `AAA` by
+the problem statement, and since we are also verifying that only one Z-node is
+reachable from any A-node, the `ZZZ` node is also guaranteed to be the only node
+reachable from `AAA`.
+
+Let's find the loop length for each A-node. First we need to find the A-nodes:
+this can be done with a simple scan of the keys of our `g` graph dictionary
+using [`filter()`][py-builtin-filter] plus a [`lambda`][py-lambda] or a
+filtering generator expression:
+
+```python
+a_nodes = filter(lambda node: node[-1] == 'A', g)
+# Or, equivalent:
+a_nodes = (node for node in g if node[-1] == 'A')
+```
+
+For each starting A-node, we can calculate the loop length using the function we
+just wrote. For part 1 we can simply pass `'AAA'`.
+
+```python
+steps_part1 = steps(g, 'AAA', directions)
+print('Part 1:', steps_part1)
+```
+
+For any other A-node we can use `map()` or a generator expression:
+
+```python
+cycle_lengths = map(lambda a: steps(g, a, directions), a_nodes)
+```
+
+We are now essentially dealing with N cycles of different lengths: how can we
+determine the number of steps needed for them to sync up? Pretty easy: just
+calculate the [least common multiple][wiki-lcm] (LCM) of the lengths using the
+[`math.lcm()`][py-math-lcm] function (available since Python 3.9). Since this
+function takes an arbitrary number of arguments (but not an iterable), we can
+[unpack][py-unpacking] the iterable when passing it as argument.
+
+```python
+steps_part2 = lcm(*cycle_lengths)
+print('Part 2:', steps_part2)
+```
+
+Quite the conundrum today, can't say I enjoyed jumping through hoops and
+verifying questionable input assumptions, but hey, that's what we get I guess!
+
 ---
 
 
@@ -1553,7 +1855,7 @@ I really enjoyed this one! 14/50 stars.
 [d05]: #day-5---if-you-give-a-seed-a-fertilizer
 [d06]: #day-6---wait-for-it
 [d07]: #day-7---camel-cards
-[d08]: #day-8---
+[d08]: #day-8---haunted-wasteland
 [d09]: #day-9---
 [d10]: #day-10---
 [d11]: #day-11---
@@ -1618,6 +1920,9 @@ I really enjoyed this one! 14/50 stars.
 [d24-solution]: solutions/day24.py
 [d25-solution]: solutions/day25.py
 
+[d08-reddit-thread]: https://www.reddit.com/r/adventofcode/comments/18dfpub
+[2020-d13-p2-crt]:   https://github.com/mebeim/aoc/blob/master/2020/README.md#part-2---purely-mathematical-approach
+
 [py-assert]:             https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement
 [py-cond-expr]:          https://docs.python.org/3/reference/expressions.html#conditional-expressions
 [py-dict-comprehension]: https://peps.python.org/pep-0274/
@@ -1625,6 +1930,7 @@ I really enjoyed this one! 14/50 stars.
 [py-lambda]:             https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
 [py-generators]:         https://docs.python.org/3/howto/functional.html#generators
 [py-slicing]:            https://docs.python.org/3/library/stdtypes.html#common-sequence-operations
+[py-unpacking]:          https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
@@ -1639,8 +1945,10 @@ I really enjoyed this one! 14/50 stars.
 [py-collections-counter]:     https://docs.python.org/3/library/collections.html#collections.deque
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
+[py-itertools-cycle]:         https://docs.python.org/3/library/itertools.html#itertools.cycle
 [py-math-ceil]:               https://docs.python.org/3/library/math.html#math.ceil
 [py-math-floor]:              https://docs.python.org/3/library/math.html#math.floor
+[py-math-lcm]:                https://docs.python.org/3/library/math.html#math.ceil
 [py-math-prod]:               https://docs.python.org/3/library/math.html#math.prod
 [py-dict-values]:             https://docs.python.org/3/library/stdtypes.html#dict.values
 [py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
@@ -1649,9 +1957,12 @@ I really enjoyed this one! 14/50 stars.
 [py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigic
 [py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
 [py-str-replace]:             https://docs.python.org/3/library/stdtypes.html#str.replace
+[py-str-rstrip]:              https://docs.python.org/3/library/stdtypes.html#str.rstrip
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 
-[misc-ascii]:             https://en.wikipedia.org/wiki/ASCII
-[misc-quadratic-formula]: https://en.wikipedia.org/wiki/Quadratic_formula
+[wiki-ascii]:             https://en.wikipedia.org/wiki/ASCII
+[wiki-crt]:               https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Statement
+[wiki-lcm]:               https://en.wikipedia.org/wiki/Least_common_multiple
+[wiki-quadratic-formula]: https://en.wikipedia.org/wiki/Quadratic_formula
