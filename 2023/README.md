@@ -2018,7 +2018,7 @@ total1 = total2 = 0
 
 for line in fin:
     nums = list(map(int, line.split()))
-    l, r = solve(nums)
+    r, l = solve(nums)
     total1 += l
     total2 += r
 
