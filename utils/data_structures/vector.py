@@ -1,4 +1,4 @@
-__all__ = ['Vector', 'Vec']
+__all__ = ['Vector', 'Vec', 'MutableVector', 'MutVec']
 
 from math import sqrt
 from numbers import Number
@@ -8,21 +8,16 @@ from collections.abc import MutableSequence, Sequence
 
 from ..polyfill import prod, isqrt
 
-class Vector(MutableSequence):
-	'''A N-dimensional vector of scalar numbers.'''
+class Vector(Sequence):
+	'''An immutable N-dimensional vector of scalar numbers.'''
 
 	__slots__ = ('components')
 
 	def __init__(self, *components: Number):
-		self.components = list(components)
+		self.components = components
 
 	def __hash__(self):
-		# Ideally we would like a Vector to be hashable to easily insert it into
-		# sets or dicts, but we cannot safely do this since it's mutable. We
-		# prever mutability over hashability for common operations like
-		# `v.x = 123` or `v.y += 1` or `v[10] = 456`. Add an hint in the error
-		# message.
-		raise TypeError(f"unhashable type: '{self.__class__.__name__}', use tuple(vector) if needed")
+		return hash(self.components)
 
 	def __len__(self):
 		return len(self.components)
@@ -30,25 +25,14 @@ class Vector(MutableSequence):
 	def __getitem__(self, i):
 		return self.components[i]
 
-	def __setitem__(self, i, v):
-		self.components[i] = v
-
-	def __delitem__(self, i):
-		# Do not support shrinking a Vector (also called for `pop` and `remove`)
-		raise NotImplementedError('what the hell are you doing?')
-
-	def insert(self, i, v):
-		# Do not support expanding a Vector (also called for `append` and `extend`)
-		raise NotImplementedError('what the hell are you doing?')
-
 	def __iter__(self):
 		# Override default MutableSequence mixin (which uses __len__ and
 		# __getitem__) for performance
 		return iter(self.components)
 
 	def __reversed__(self):
-		# Override default MutableSequence mixin (which uses __len__ and
-		# __getitem__) for performance
+		# Override default Sequence mixin (which uses __len__ and __getitem__)
+		# for performance
 		return reversed(self.components)
 
 	def __pos__(self) -> 'Vector':
@@ -59,11 +43,12 @@ class Vector(MutableSequence):
 
 	def __abs__(self) -> Number:
 		s = sum(x**2 for x in self)
-		res = isqrt(s)
 
 		# Try computing the integer square root to keep everything an `int`.
-		if isinstance(s, int) and res * res == s:
-			return res
+		if isinstance(s, int):
+			res = isqrt(s)
+			if res * res == s:
+				return res
 
 		# Fall back to normal square root returning a `float`.
 		return sqrt(s)
@@ -72,62 +57,24 @@ class Vector(MutableSequence):
 		self._check_dim(len(other))
 		return Vector(*map(sum, zip(self, other)))
 
-	def __iadd__(self, other) -> 'Vector':
-		self._check_dim(len(other))
-
-		for i, x in enumerate(other):
-			self[i] += x
-		return self
-
 	def __sub__(self, other):
 		self._check_dim(len(other))
 		return Vector(*starmap(sub, zip(self, other)))
-
-	def __isub__(self, other) -> 'Vector':
-		self._check_dim(len(other))
-
-		for i, x in enumerate(other):
-			self[i] -= x
-		return self
 
 	def __mul__(self, v):
 		if not isinstance(v, Number):
 			raise ValueError('ambiguous product by non-scalar: use A.dot(B) or A.cross(B)')
 		return Vector(*map(lambda x: x * v, self))
 
-	def __imul__(self, v):
-		if not isinstance(v, Number):
-			raise ValueError('ambiguous product by non-scalar: use A.dot(B) or A.cross(B)')
-
-		for i in range(len(self)):
-			self[i] *= v
-		return self
-
 	def __truediv__(self, v):
 		if not isinstance(v, Number):
 			raise ValueError('division by non-scalar')
 		return Vector(*map(lambda x: x / v, self))
 
-	def __itruediv__(self, v):
-		if not isinstance(v, Number):
-			raise ValueError('division by non-scalar')
-
-		for i in range(len(self)):
-			self[i] /= v
-		return self
-
 	def __floordiv__(self, v):
 		if not isinstance(v, Number):
 			raise ValueError('division by non-scalar')
 		return Vector(*map(lambda x: x // v, self))
-
-	def __ifloordiv__(self, v):
-		if not isinstance(v, Number):
-			raise ValueError('division by non-scalar')
-
-		for i in range(len(self)):
-			self[i] //= v
-		return self
 
 	def __eq__(self, other):
 		return len(self) == len(other) and all(a == b for a, b in zip(self, other))
@@ -180,7 +127,6 @@ class Vector(MutableSequence):
 		return abs(self)
 
 	# Convenience properties for 1D, 2D, 3D, 4D space
-
 	@property
 	def x(self): return self[0]
 	@property
@@ -190,26 +136,97 @@ class Vector(MutableSequence):
 	@property
 	def w(self): return self[3]
 
-	@x.setter
-	def x(self, x): self[0] = x
-	@y.setter
-	def y(self, y): self[1] = y
-	@z.setter
-	def z(self, z): self[2] = z
-	@w.setter
-	def w(self, w): self[3] = w
-
 	# Convenience properties for 2D grids
-
 	@property
 	def r(self): return self[0]
 	@property
 	def c(self): return self[1]
 
-	@r.setter
+
+class MutableVector(Vector, MutableSequence):
+	'''A mutable N-dimensional vector of scalar numbers.'''
+
+	__slots__ = ('components')
+
+	def __init__(self, *components: Number):
+		self.components = list(components)
+
+	def __repr__(self):
+		return f'MutVec{self.components}'
+
+	def __hash__(self):
+		# Ideally we would like a Vector to be hashable to easily insert it into
+		# sets or dicts, but we cannot safely do this since it's mutable. We
+		# prefer mutability over hashability for common operations like
+		# `v.x = 123` or `v.y += 1` or `v[10] = 456`. Add an hint in the error
+		# message.
+		raise TypeError(f"unhashable type: '{self.__class__.__name__}', use tuple(vector) if needed")
+
+	def __setitem__(self, i, v):
+		self.components[i] = v
+
+	def __delitem__(self, i):
+		# Do not support shrinking a Vector (also called for `pop` and `remove`)
+		raise NotImplementedError('what the hell are you doing?')
+
+	def insert(self, i, v):
+		# Do not support expanding a Vector (also called for `append` and `extend`)
+		raise NotImplementedError('what the hell are you doing?')
+
+	def __iadd__(self, other) -> 'Vector':
+		self._check_dim(len(other))
+
+		for i, x in enumerate(other):
+			self[i] += x
+		return self
+
+	def __isub__(self, other) -> 'Vector':
+		self._check_dim(len(other))
+
+		for i, x in enumerate(other):
+			self[i] -= x
+		return self
+
+	def __imul__(self, v):
+		if not isinstance(v, Number):
+			raise ValueError('ambiguous product by non-scalar: use A.dot(B) or A.cross(B)')
+
+		for i in range(len(self)):
+			self[i] *= v
+		return self
+
+	def __itruediv__(self, v):
+		if not isinstance(v, Number):
+			raise ValueError('division by non-scalar')
+
+		for i in range(len(self)):
+			self[i] /= v
+		return self
+
+	def __ifloordiv__(self, v):
+		if not isinstance(v, Number):
+			raise ValueError('division by non-scalar')
+
+		for i in range(len(self)):
+			self[i] //= v
+		return self
+
+	# Convenience properties for 1D, 2D, 3D, 4D space
+	@Vector.x.setter
+	def x(self, x): self[0] = x
+	@Vector.y.setter
+	def y(self, y): self[1] = y
+	@Vector.z.setter
+	def z(self, z): self[2] = z
+	@Vector.w.setter
+	def w(self, w): self[3] = w
+
+	# Convenience properties for 2D grids
+	@Vector.r.setter
 	def r(self, r): self[0] = r
-	@c.setter
+	@Vector.c.setter
 	def c(self, c): self[1] = c
 
-# Convenience alias
-Vec = Vector
+# Convenience aliases
+Vec    = Vector
+MutVec = MutableVector
