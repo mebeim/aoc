@@ -2,30 +2,23 @@
 
 import sys
 
-def adjust(row, multiplier):
-	res = []
-	space = 0
+def sum_distances(counts, multiplier):
+	total = partial_sum = previous = space = 0
 
-	for n in row:
-		for _ in range(n):
-			yield space
-
-		space += 1 if n else multiplier
-
-	return res
-
-def sum_distances(values):
-	total = partial_sum = 0
-
-	for i, v in enumerate(values):
-		total += i * v - partial_sum
-		partial_sum += v
+	for n in counts:
+		if n:
+			total       += (n * (2 * previous + n - 1) // 2) * space
+			total       -= n * partial_sum + ((n - 1) * n // 2) * space
+			partial_sum += n * space
+			previous    += n
+			space       += 1
+		else:
+			space += multiplier
 
 	return total
 
 def solve(row_counts, col_counts, multiplier):
-	return sum_distances(adjust(row_counts, multiplier)) + \
-		sum_distances(adjust(col_counts, multiplier))
+	return sum_distances(row_counts, multiplier) + sum_distances(col_counts, multiplier)
 
 
 # Open the first argument as input or use stdin if no arguments were given
