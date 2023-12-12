@@ -2034,7 +2034,7 @@ Day 12 - Hot Springs
 
 ### Part 1
 
-To parse the input data, we can simply [`.split()`][py-builtin-split] each line,
+To parse the input data, we can simply [`.split()`][py-str-split] each line,
 keep the first string as is, then split the second string on commas (`,`) and
 [`map()`][py-builtin-map] every number to `int`.
 
