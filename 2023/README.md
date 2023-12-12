@@ -19,10 +19,10 @@ Table of Contents
 - [Day 7 - Camel Cards][d07]
 - [Day 8 - Haunted Wasteland][d08]
 - [Day 9 - Mirage Maintenance][d09]
+- *Day 10 - TODO*
+- *Day 11 - TODO*
+- [Day 12 - Hot Springs][d12]
 <!--
-- [Day 10 - ][d10]
-- [Day 11 - ][d11]
-- [Day 12 - ][d12]
 - [Day 13 - ][d13]
 - [Day 14 - ][d14]
 - [Day 15 - ][d15]
@@ -2026,6 +2026,343 @@ print('Part 1:', total1)
 print('Part 2:', total2)
 ```
 
+
+Day 12 - Hot Springs
+--------------------
+
+[Problem statement][d12-problem] — [Complete solution][d12-solution] — [Back to top][top]
+
+### Part 1
+
+To parse the input data, we can simply [`.split()`][py-builtin-split] each line,
+keep the first string as is, then split the second string on commas (`,`) and
+[`map()`][py-builtin-map] every number to `int`.
+
+```python
+fin = open(...)
+
+for line in fin:
+    record, groups = line.split()
+    groups = tuple(map(int, groups.split(',')))
+```
+
+It's clear that we are dealing with repeated occurrences of the same basic
+problem, given one per line. There is a possibility to brute force each one,
+which incidentally is what I did for part 1 in my
+[original solution][d12-original] in a pretty inconvenient way, but that seems
+like a pretty slow solution... let's think about it.
+
+As it turns out, brute force might not be the answer, but it sure does get very
+close to it. In fact, let's start implementing a brute-force approach, and see
+what can be done to improve it.
+
+For each `record`, the goal is to try and build the groups of `#` in all
+possible ways that match the requested lengths (`groups`). Given an input record
+and the list of group lengths we are looking for, we can iteratively build the
+groups one at a time, scanning the record while keeping track of the remaining
+characters to check, the remaining groups we still have to complete, and the
+length of the current group we are building.
+
+The logic for each step can then be implemented as follows:
+
+1. If we encounter a `#` we can simply add `1` to the current group length.
+2. If we encounter a `.` we can be in two situations:
+   1. We were already building a group, so the current group length is positive.
+      In such case, we can check the first of the remaining group lengths to
+      build and verify that we correctly reached exactly that length. If so, we
+      can continue, otherwise we made a mistake and can throw away this attempt.
+   2. We were not building a group, so the current group length is zero. In such
+      case, we can just keep going forward to find the next `#` or `?` where we
+      can start building the next group.
+3. If we encounter a `?` we can choose to turn it either in a `#` or a `.`, so
+   we simply try both, applying the logic of *both* the above steps.
+
+When do we stop? Well, of course when we get to the end of the record. Once we
+do, there are two possibilities: either we built all groups correctly (so we
+can count this arrangement in the total) or we did not (so we don't count this
+arrangement).
+
+If we built all groups correctly, we can be in one of two scenarios (either one
+is good):
+
+- No groups left to build and we are currently not building one (current group
+  length is zero).
+- Exactly one group left to build and we just completed it (the current group
+  length is the same as the requested one).
+
+Now that we have all the logic, we can implement it as a recursive function:
+
+```python
+def solve(record: str, groups: tuple[int], curlen=0) -> int:
+    # Did we reach the end of the record?
+    if not record:
+        if len(groups) == 0 and curlen == 0:
+            # We have no groups left to build and we aren't currently building
+            # one (we did not encounter any '#' after building the last group)
+            return 1
+        if len(groups) == 1 and curlen == groups[0]:
+            # We only have one group left to build and the current group we are
+            # building has exactly the requested length
+            return 1
+
+        # We either have more than one group left to build or we are building
+        # more groups than needed
+        return 0
+
+    char = record[0]
+    total = 0
+
+    if char == '#':
+        # (1.) Current group gets one more '#'
+        total += solve(record[1:], groups, curlen + 1)
+    elif char == '.':
+        if curlen == 0:
+            # (2.1) Not currently building a group and cannot start here, keep going
+            total += solve(record[1:], groups, 0)
+        elif len(groups) > 0 and curlen == groups[0]:
+            # (2.2) We completed this group correctly, advance to the next one
+            total += solve(record[1:], groups[1:], 0)
+    elif char == '?':
+        # (1.) Try turning this into a '#'
+        # Current group gets one more '#'
+        total += solve(record[1:], groups, curlen + 1)
+
+        # (2.) Try turning this into a '.'
+        if curlen == 0:
+            # (2.1) Not currently building a group and cannot start here, keep going
+            total += solve(record[1:], groups, 0)
+        elif len(groups) > 0 and curlen == groups[0]:
+            # (2.2) We completed this group correctly, advance to the next one
+            total += solve(record[1:], groups[1:], 0)
+
+    return total
+```
+
+The advancement to the next record character is done by simply popping one from
+the front of the string (`record[1:]`), and the same goes for the group lengths
+(`groups[1:]`).
+
+The above function should already solve the problem, but before using it we can
+simplify it a little bit. Notice how in the case of `?` we are repeating the
+logic we use for `#` and `.` (makes sense since we can turn `?` into any of `#`
+or `.`). We can simply move the check for `?` in the two `if` statements above
+and get rid of the duplicated logic:
+
+```diff
+ def solve(record: str, groups: tuple[int], curlen=0) -> int:
+     # ... unchanged ...
+
+-    if char == '#':
++    if char == '#' or char == '?':
+         # (1.) Current group gets one more '#'
+         total += solve(record[1:], groups, curlen + 1)
+-    elif char == '.':
++    if char == '.' or char == '?':
+         if curlen == 0:
+             # (2.1) Not currently building a group and cannot start here, keep going
+             total += solve(record[1:], groups, 0)
+         elif len(groups) > 0 and curlen == groups[0]:
+             # (2.2) We completed this group correctly, advance to the next one
+             total += solve(record[1:], groups[1:], 0)
+-    elif char == '?':
+-        # (1.) Try turning this into a '#'
+-        # Current group gets one more '#'
+-        total += solve(record[1:], groups, curlen + 1)
+-
+-        # (2.) Try turning this into a '.'
+-        if curlen == 0:
+-            # (2.1) Not currently building a group and cannot start here, keep going
+-            total += solve(record[1:], groups, 0)
+-        elif len(groups) > 0 and curlen == groups[0]:
+-            # (2.2) We completed this group correctly, advance to the next one
+-            total += solve(record[1:], groups[1:], 0)
+
+     return total
+```
+
+The solution we just built looks like brute force, but has a couple of smart
+checks that make it avoid bad arrangements early on. For example, when
+encountering a `.`, we only advance if we aren't building a group
+(`curlen == 0`) of if we matched the current requested group length. Going
+forward unconditionally would just mean reaching a bad final arrangement. This
+already cuts down the search space a little bit.
+
+We can implement one additional check to make it a little bit smarter: if we
+ever find ourselves in a situation where the current group length is higher than
+the next requested group length, or if we finish building the requested groups
+but encounter any `#`, we can simply stop. This will prune away even more bad
+arrangements early on:
+
+```python
+def solve(record: str, groups: tuple[int], curlen=0) -> int:
+    # ... unchanged ...
+
+    if len(groups) > 0 and curlen > groups[0]:
+        # Building a group that is too long
+        return 0
+
+    if len(groups) == 0 and curlen > 0:
+        # Building a group when we shouldn't be building any more
+        return 0
+
+    char = record[0]
+    total = 0
+
+    # ... unchanged ...
+```
+
+We can now run the `solve()` function for each line of input and accumulate the
+total to get the answer we are looking for:
+
+```python
+total = 0
+
+for line in fin:
+    records, groups = line.split()
+    groups = tuple(map(int, groups.split(',')))
+    total += solve(records, groups)
+
+print('Part 1:')
+```
+
+### Part 2
+
+The problem remains the same, but each record now needs to be *quintupled* in
+length: the string representing the record is repeated five times and four `?`
+are added in between. The group lengths also need to be extended by simply
+copying them five times.
+
+Okay, we already have a solution, let's run it. We can use simple multiplication
+to repeat the `groups`, while for the records we can use
+[`str.join()`][py-str-join] to add `?` characters between five copies of the
+original string.
+
+```python
+total1 = total2 = 0
+
+for line in fin:
+    records, groups = line.split()
+    groups = tuple(map(int, groups.split(',')))
+
+    total1 += solve(records, groups)
+
+    records = '?'.join([record] * 5)
+    groups  = groups * 5
+    total2 += solve(records, groups)
+
+print('Part 1:', total1)
+print('Part 2:', total2)
+```
+
+Well, that couldn't have been easier! Shortest part two of the year??? Well no,
+not really. We could stare at the terminal for ages, but the above script will
+not terminate anytime soon. Indeed, while our "smart" brute force solution works
+fine for small inputs, the problem complexity grows exponentially with the input
+length, and there now are simply too many possible arrangements to test
+extensively!
+
+As it turns out though, we are very close to the solution. In fact, we are so
+close that all we need to add is *two* lines of code... but let's see why first.
+
+To drastically improve the current solution we need to realize one thing: if we
+ever encounter the same situation more than once, we are doing unneeded work, as
+we already previously computed the answer.
+
+As an example, let's check the following input:
+
+```
+record: ??...??...### | groups: 1,1,3 | curlen: 0
+```
+
+We have two ways to compose the first group:
+
+```
+#....??...###
+.#...??...###
+```
+
+In both cases, we continue advancing and reach the same scenario:
+
+```
+record: ..??...### | groups: 1,3 | curlen: 0
+record: ..??...### | groups: 1,3 | curlen: 0
+
+...??...### 1,3
+```
+
+This now means that we will try to solve the same problem twice. Needless to
+say, solving the same subproblem multiple times is clearly not optimal. If we
+can figure out a way to remember partial solutions we can check each time if a
+solution already exists and avoid any further (useless) computation.
+
+As it turns out, this can be easily achieved using a dictionary as a cache! The
+dictionary keys will be tuples of the form `(record, groups, curlen)` and the
+dictionary values will be the solution for that specific input. At the start,
+before doing any calculation, we can check the dictionary to see if we already
+have a solution, and if so return it right away. At the end of any calculation,
+before returning the solution we'll store the calculated `total` in the
+dictionary so that it can be used later.
+
+The changes to our `solve()` function are minimal:
+
+```python
+CACHE = {}
+
+def solve(record: str, groups: tuple[int], curlen=0):
+    key = (record, groups, curlen)
+    if key in CACHE:
+        # Result was already calculated
+        return CACHE[key]
+
+    # ... actual computation here ...
+
+    # Save result to reuse it later
+    CACHE[key] = total
+    return total
+```
+
+Congrats, we just solved a problem using [dynamic programming][wiki-dp]! Nothing
+fancy, we just needed to add some [memoization][wiki-memoization].
+
+What I just wrote above can be achieved with a single line of code (in case all
+the function arguments are hashable, which is our case) using the
+[`functools.cache`][py-functools-cache] (since Python 3.9) or
+[`functools.lru_cache`][py-functools-lru_cache] decorators.
+
+```python
+from functools import cache
+
+@cache
+def solve(record, groups, curlen=0):
+    # ... unchanged ...
+```
+
+The loop we wrote earlier now simply works *as is* without any change. However,
+both the `@cache` and `@lru_cache` decorators provide a way to clear the cache
+of the function, which can be done through `func.cache_clear()`. We don't
+necessarily need to do it, but since technically each line of input is a
+different problem, we can clear the cache each time to avoid wasting memory
+caching unneeded solutions from previous problems.
+
+```python
+total1 = total2 = 0
+
+for line in fin:
+    records, groups = line.split()
+    groups = tuple(map(int, groups.split(',')))
+
+    total1 += solve(records, groups)
+
+    records = '?'.join([record] * 5)
+    groups  = groups * 5
+    total2 += solve(records, groups)
+
+print('Part 1:', total1)
+print('Part 2:', total2)
+```
+
+24/50 stars and counting!
+
 ---
 
 
@@ -2045,7 +2382,7 @@ print('Part 2:', total2)
 [d09]: #day-9---mirage-maintenance
 [d10]: #day-10---
 [d11]: #day-11---
-[d12]: #day-12---
+[d12]: #day-12---hot-springs
 [d13]: #day-13---
 [d14]: #day-14---
 [d15]: #day-15---
@@ -2107,6 +2444,7 @@ print('Part 2:', total2)
 [d25-solution]: solutions/day25.py
 
 [d08-reddit-thread]: https://www.reddit.com/r/adventofcode/comments/18dfpub
+[d12-original]:      original_solutions/day12.py
 [2020-d13-p2-crt]:   https://github.com/mebeim/aoc/blob/master/2020/README.md#part-2---purely-mathematical-approach
 
 [py-assert]:             https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement
@@ -2134,6 +2472,8 @@ print('Part 2:', total2)
 [py-collections-counter]:     https://docs.python.org/3/library/collections.html#collections.deque
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
+[py-functools-cache]:         https://docs.python.org/3/library/functools.html#functools.cache
+[py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
 [py-itertools-cycle]:         https://docs.python.org/3/library/itertools.html#itertools.cycle
 [py-math-ceil]:               https://docs.python.org/3/library/math.html#math.ceil
 [py-math-floor]:              https://docs.python.org/3/library/math.html#math.floor
@@ -2144,6 +2484,7 @@ print('Part 2:', total2)
 [py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
 [py-str-find]:                https://docs.python.org/3/library/stdtypes.html#str.find
 [py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigic
+[py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
 [py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
 [py-str-replace]:             https://docs.python.org/3/library/stdtypes.html#str.replace
 [py-str-rstrip]:              https://docs.python.org/3/library/stdtypes.html#str.rstrip
@@ -2153,5 +2494,7 @@ print('Part 2:', total2)
 
 [wiki-ascii]:             https://en.wikipedia.org/wiki/ASCII
 [wiki-crt]:               https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Statement
+[wiki-dp]:                https://en.wikipedia.org/wiki/Dynamic_programming
 [wiki-lcm]:               https://en.wikipedia.org/wiki/Least_common_multiple
+[wiki-memoization]:       https://en.wikipedia.org/wiki/Memoization
 [wiki-quadratic-formula]: https://en.wikipedia.org/wiki/Quadratic_formula
