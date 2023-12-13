@@ -20,7 +20,7 @@ def find_reflections(grid):
 
 	for size in range(1, height // 2 + 1):
 		a = grid[:size]
-		b = grid[size:2 * size][::-1]
+		b = grid[2 * size - 1:size - 1:-1]
 		diff = count_differences(a, b)
 
 		if diff == 0:
@@ -32,7 +32,7 @@ def find_reflections(grid):
 			break
 
 		a = grid[height - 2 * size:height - size]
-		b = grid[height - size:][::-1]
+		b = grid[height - 1:height - size - 1:-1]
 		diff = count_differences(a, b)
 
 		if diff == 0:
@@ -54,9 +54,7 @@ with fin:
 
 ans1 = ans2 = 0
 
-for raw_grid in grids:
-	g = raw_grid.splitlines()
-
+for g in map(str.splitlines, grids):
 	perfect, imperfect = find_reflections(g)
 	ans1 += 100 * perfect
 	ans2 += 100 * imperfect
