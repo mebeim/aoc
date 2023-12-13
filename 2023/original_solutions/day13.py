@@ -2,7 +2,7 @@
 
 from utils.all import *
 
-# advent.setup(2023, )
+advent.setup(2023, 13)
 DEBUG = 'debug' in map(str.lower, sys.argv)
 fin = advent.get_input() if not DEBUG else io.StringIO('''\
 #.##..##.
@@ -21,21 +21,8 @@ fin = advent.get_input() if not DEBUG else io.StringIO('''\
 ..##..###
 #....#..#
 ''')
-eprint(*fin, sep='', end='----- end of input -----\n\n'); fin.seek(0, 0)
+data = fin.read()
 
-try: data = fin.read(); fin.seek(0, 0)
-except: pass
-try: ints = extract_ints(data)
-except: pass
-try: intmat = read_int_matrix(fin); fin.seek(0, 0)
-except: pass
-try: lines = read_lines(fin); fin.seek(0, 0)
-except: pass
-try: intgrid = read_digit_matrix(fin); fin.seek(0, 0)
-except: pass
-try: g = graph_from_grid(grid, find='QWERTYUIOPASDFGHJKLZXCVBNM', avoid='#', coords=False, get_neighbors=neighbors4)
-except: pass
-timer_start()
 
 def find_reflection(grid):
 	h   = len(grid)
