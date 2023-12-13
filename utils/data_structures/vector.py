@@ -26,8 +26,8 @@ class Vector(Sequence):
 		return self.components[i]
 
 	def __iter__(self):
-		# Override default MutableSequence mixin (which uses __len__ and
-		# __getitem__) for performance
+		# Override default Sequence mixin (which uses __len__ and __getitem__)
+		# for performance
 		return iter(self.components)
 
 	def __reversed__(self):
@@ -173,14 +173,14 @@ class MutableVector(Vector, MutableSequence):
 		# Do not support expanding a Vector (also called for `append` and `extend`)
 		raise NotImplementedError('what the hell are you doing?')
 
-	def __iadd__(self, other) -> 'Vector':
+	def __iadd__(self, other) -> 'MutableVector':
 		self._check_dim(len(other))
 
 		for i, x in enumerate(other):
 			self[i] += x
 		return self
 
-	def __isub__(self, other) -> 'Vector':
+	def __isub__(self, other) -> 'MutableVector':
 		self._check_dim(len(other))
 
 		for i, x in enumerate(other):
