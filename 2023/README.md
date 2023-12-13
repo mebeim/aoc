@@ -22,8 +22,8 @@ Table of Contents
 - *Day 10 - TODO*
 - *Day 11 - TODO*
 - [Day 12 - Hot Springs][d12]
+- [Day 13 - Point of Incidence][d13]
 <!--
-- [Day 13 - ][d13]
 - [Day 14 - ][d14]
 - [Day 15 - ][d15]
 - [Day 16 - ][d16]
@@ -2350,7 +2350,6 @@ total1 = total2 = 0
 for line in fin:
     records, groups = line.split()
     groups = tuple(map(int, groups.split(',')))
-
     total1 += solve(records, groups)
 
     records = '?'.join([record] * 5)
@@ -2362,6 +2361,329 @@ print('Part 2:', total2)
 ```
 
 24/50 stars and counting!
+
+
+Day 13 - Point of Incidence
+---------------------------
+
+[Problem statement][d13-problem] — [Complete solution][d13-solution] — [Back to top][top]
+
+### Part 1
+
+Seems like we are dealing with *reflections* today. The input is a series of
+rectangular character grids separated by empty lines. It should be simple to
+parse it and transform each grid into a list of strings (rows): just a couple of
+split operations will do, and [`str.splitlines()`][py-str-splitlines] comes in
+handy.
+
+```python
+fin = open(...)
+raw_grids = fin.read().split('\n\n')
+
+for raw_grid in raw_grids
+    grid = raw_grid.splitlines()
+```
+
+Since all we are doing is calling `.splitlines()` for each grid, we can use
+[`map()`][py-builtin-map] instead:
+
+```python
+for grid in map(str.splitlines, raw_grids):
+    # ... solution code here ...
+```
+
+OK... now, what do we do with those? Well, we find reflections of course! The
+problem statement seemed a bit hard to understand today, but in short, all we
+need to do for each grid is find the horizontal line at which we get a
+reflection of all the rows either from the bottom or the top (whichever is
+closer), and the same goes for vertical lines.
+
+As an example, take the following grids:
+
+```
+ #....#..#                                ###.##.#.#
+ ..##..###     .#.....     ##..###.#.    v.#..##.###v
+v#####.##.v    ####..#     .#....#.#.    ^.#..##.###^
+^#####.##.^   v# # ##.v    .#.#.##..#     ###.##.#.#
+ ..##..###    ^# # ##.^   v# ## #.##.v    ...###.#.#
+ #....#..#     ####..#    ^# ## #.##.^    #.#.#.#.#.
+```
+
+The horizontal reflection lines for these grids are in between the rows marked
+with `v` and `^`. Not all the rows must be reflected, in fact, it is enough for
+only one set of rows from either the top or the bottom to be fully reflected,
+and the others can be ignored. In fact, the only "perfect" reflection happening
+above is in the first grid. The same reasoning applies to vertical reflections.
+
+For all the grids we have we need to find reflections and count the rows above
+(for horizontal reflections) or to the left (for vertical reflections). How can
+we do this? The grids are small enough that there is no need to come up with
+insanely optimized solutions: a simple scan through the grid choosing all
+possible sizes for the reflection will do just fine.
+
+Let's write a function to solve this for horizontal reflections, since it's
+easier to work with rows (they are simple strings) than columns. The maximum
+size of a horizontal reflection (expressed in number of rows) is `h // 2`, where
+`h` is the height of the grid. For each possible reflection size from `1` to
+`h // 2`, we can either have a reflection at the top or at the bottom of the
+grid. It will be enough to make a couple of slice operations and comparisons to
+detect it.
+
+Once we have two chunks of rows obtained through slicing (e.g. `grid[a:b]` and
+`grid[c:d]`), to check whether they are a reflection of each other we can simply
+reverse one of the two (`[::-1]`) and compare it with the other. Since comparing
+two lists means comparing their contents, we'll get a match only if both lists
+have the same length and contain equal strings.
+
+```python
+def find_reflections(grid):
+    height = len(grid)
+
+    for size in range(1, height // 2 + 1):
+        # Check for reflection of the top size rows
+        top = grid[:size]
+        bottom = grid[size:2 * size]
+
+        if top == bottom[::-1]:
+            return size
+
+        # Check for reflection of the bottom size rows
+        top = grid[height - 2 * size:height - size]
+        bottom = grid[height - size:]
+
+        if top == bottom[::-1]:
+            return height - size
+
+    # No horizontal reflection found
+    return 0
+```
+
+Technically, doing `bottom = grid[size:2 * size]` and then `bottom[::-1]`
+immediately after performs a copy twice. We could simplify this to a single
+slice doing `grid[2 * size - 1:size - 1:-1]`, though it's a bit hard to read.
+The same goes for the second bottom slice operation which can be expressed as
+`grid[height - 1:height - size - 1:-1]`. I always found 3-argument slices pretty
+weird and counter-intuitive. In any case, uNfortunately we are always performing
+a copy when slicing... that's a shortcoming of the language that does not allow
+to perform non-copying slices, but again since grids are small this is no big
+deal.
+
+What about vertical reflections? Columns seem much more annoying to deal with. A
+clever way to get around the problem is [transposing][wiki-transpose] the grid
+and checking for horizontal reflections again. This isn't in general the best
+solution, but for small lists like the ones we are dealing with it's no big
+deal. Let's write a function to transpose a grid (list of strings):
+
+```python
+def transpose(grid):
+    newgrid = []
+
+    for c in range(len(grid[0])):
+        row = []
+        for r in range(len(grid)):
+            row.append(grid[r][c])
+
+        newgrid.append(''.join(row))
+
+    return newgrid
+```
+
+The above can be simplified quite a lot, first by replacing the inner loop with
+a [generator expression][py-gen-expr], since all we are doing is building a
+list:
+
+```python
+def transpose(grid):
+    newgrid = []
+
+    for c in range(len(grid[0])):
+        row = [grid[r][c] for r in range(len(grid))]
+        newgrid.append(''.join(row))
+
+    return newgrid
+```
+
+We are now iterating over all the rows of the grid at the same time, each
+iteration extracting the `c`-th element of each of them. This is exactly what
+the [`zip()`][py-builtin-zip] already does...
+
+```python
+def transpose(grid):
+    newgrid = []
+
+    for row in zip(*grid):
+        newgrid.append(''.join(row))
+
+    return newgrid
+```
+
+And finally, we can do away with the loop by using [`map()`][py-builtin-map] to
+join the rows into strings:
+
+```python
+def transpose(grid):
+    return list(map(''.join, zip(*grid)))
+```
+
+Okay, it took more time to write a simple grid transposition than solving the
+actual problem :') but we are done. Now it's only a matter of applying the same
+function to all the grids in our input. Continuing from the initial input
+parsing code we wrote, we now have:
+
+```python
+total = 0
+
+for grid in map(str.splitlines, raw_grids):
+    total += 100 * find_reflections(grid)
+    total += find_reflections(transpose(grid))
+
+print('Part 1:', total)
+```
+
+Onto part 2!
+
+### Part 2
+
+We are now told that in addition to the reflections we just found, there also
+are additional reflections happening, where *all cells except one* match. This
+means that looking for reflections, we will not get a match by simply comparing
+the two sides like we are doing now. For example:
+
+```
+v###.#.##.v
+^#####.##.^
+```
+
+The minimal grid shown above has a horizontal reflection where all cells match
+except one (the first `.` on the first row). If we turn that `.` into a `#` we
+get a real reflection.
+
+We could try all possible combinations by flipping each cell once and checking
+for reflections, but that'd be awfully slow (and also awful in general). What we
+can do instead is count the number of differences after extracting the two sides
+of the reflection. If there are zero different cells we have a reflection that
+is good for part 1, otherwise if there is exactly one we have a reflection that
+is good for part 2.
+
+Let's write a function to count the number of differences given two lists of
+strings. We will assume that the second list has already been flipped over so
+that we can easily iterate over both lists using [`zip()`][py-builtin-zip]:
+
+```python
+def count_differences(a, b):
+    diff = 0
+    for linea, lineb in zip(a, b):
+        for chara, charb in zip(linea, lineb):
+            if chara != charb:
+                diff += 1
+
+    return diff
+```
+
+We could theoretically stop counting whenever we reach a `diff` higher than `1`
+since we won't consider that a reflection in any case. Furthermore, the inner
+loop can be simplified with a [`sum()`][py-builtin-sum] plus a generator
+expression:
+
+```python
+def count_differences(a, b):
+    diff = 0
+    for linea, lineb in zip(a, b):
+        diff += sum(chara != charb for chara, charb in zip(linea, lineb))
+        if diff > 1:
+            break
+
+    return diff
+```
+
+Good. We can now modify the `find_reflections()` function that we wrote for part
+1 to use `count_differences()` and return both lines of reflections.
+
+```python
+def find_reflections(grid):
+    height = len(grid)
+    perfect = imperfect = 0
+
+    for size in range(1, height // 2 + 1):
+        # Check for reflection of the top size rows
+        top = grid[:size]
+        bottom = grid[size:2 * size]
+        diff = count_differences(top, bottom[::-1])
+
+        if diff == 0:
+            perfect = size
+        elif diff == 1:
+            imperfect = size
+
+        # Check for reflection of the bottom size rows
+        top = grid[height - 2 * size:height - size]
+        bottom = grid[height - size:]
+        diff = count_differences(top, bottom[::-1])
+
+        if diff == 0:
+            perfect = height - size
+        elif diff == 1:
+            imperfect = height - size
+
+    return perfect, imperfect
+```
+
+We can also stop as soon as we find both the perfect and the imperfect
+reflection:
+
+```diff
+ def find_reflections(grid):
+     height = len(grid)
+     perfect = imperfect = 0
+
+     for size in range(1, height // 2 + 1):
+         # Check for reflection of the top size rows
+         top = grid[:size]
+         bottom = grid[size:2 * size]
+         diff = count_differences(top, bottom[::-1])
+
+         if diff == 0:
+             perfect = size
+         elif diff == 1:
+             imperfect = size
++
++        if perfect and imperfect:
++            break
+
+         # Check for reflection of the bottom size rows
+         top = grid[height - 2 * size:height - size]
+         bottom = grid[height - size:]
+         diff = count_differences(top, bottom[::-1])
+
+         if diff == 0:
+             perfect = height - size
+         elif diff == 1:
+             imperfect = height - size
++
++        if perfect and imperfect:
++            break
+
+     return perfect, imperfect
+```
+
+And finally, we can integrate both part 1 and part 2 calculations in the same
+main loop:
+
+```python
+total1 = total2 = 0
+
+for grid in map(str.splitlines, grids):
+    perfect, imperfect = find_reflections(grid)
+    total1 += 100 * perfect
+    total2 += 100 * imperfect
+
+    perfect, imperfect = find_reflections(transpose(grid))
+    total1 += perfect
+    total2 += imperfect
+
+print('Part 1:', total1)
+print('Part 2:', total2)
+```
 
 ---
 
@@ -2383,7 +2705,7 @@ print('Part 2:', total2)
 [d10]: #day-10---
 [d11]: #day-11---
 [d12]: #day-12---hot-springs
-[d13]: #day-13---
+[d13]: #day-13---point-of-incidence
 [d14]: #day-14---
 [d15]: #day-15---
 [d16]: #day-16---
@@ -2498,3 +2820,4 @@ print('Part 2:', total2)
 [wiki-lcm]:               https://en.wikipedia.org/wiki/Least_common_multiple
 [wiki-memoization]:       https://en.wikipedia.org/wiki/Memoization
 [wiki-quadratic-formula]: https://en.wikipedia.org/wiki/Quadratic_formula
+[wiki-transpose]:         https://en.wikipedia.org/wiki/Transpose
