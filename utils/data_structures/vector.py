@@ -126,6 +126,18 @@ class Vector(Sequence):
 		'''Convenience alias for abs(vector).'''
 		return abs(self)
 
+	def rotate2d(self, n: int):
+		'''Rotate 2D vector 90 degrees n times, clockwise if n is positive,
+		counter-clockwise if n is negative.
+		'''
+		self._check_dim(2, 'this vector is not 2-dimensional')
+
+		n %= 4
+		if n == 0: return self.__class__(*self)
+		if n == 1: return self.__class__(self.y, -self.x)
+		if n == 2: return self.__class__(-self.x, -self.y)
+		return self.__class__(-self.y, self.x)
+
 	# Convenience properties for 1D, 2D, 3D, 4D space
 	@property
 	def x(self): return self[0]
