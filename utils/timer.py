@@ -4,7 +4,7 @@ import sys
 import time
 import atexit
 
-from .helpers import log
+from .io_helpers import log
 
 def seconds_to_most_relevant_unit(s: float) -> str:
 	s *= 1e6

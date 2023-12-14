@@ -4,7 +4,7 @@ import re
 from importlib import find_loader
 from datetime import datetime, timedelta
 
-from .helpers import wait
+from .io_helpers import wait
 
 def log(s, *a):
 	sys.stderr.write('[advent] ' + s.format(*a))

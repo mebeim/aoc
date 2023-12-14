@@ -5,7 +5,7 @@ from functools import wraps
 from itertools import count, starmap, chain
 from inspect import signature, Parameter
 
-from .helpers import log, rlog, reprint
+from .io_helpers import log, rlog, reprint
 
 # Adapted from: https://stackoverflow.com/a/47956089/3889449
 def _stack_size(size_hint: int=8) -> int:
