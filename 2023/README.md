@@ -23,8 +23,8 @@ Table of Contents
 - *Day 11 - TODO*
 - [Day 12 - Hot Springs][d12]
 - [Day 13 - Point of Incidence][d13]
+- [Day 14 - Parabolic Reflector Dish][d14]
 <!--
-- [Day 14 - ][d14]
 - [Day 15 - ][d15]
 - [Day 16 - ][d16]
 - [Day 17 - ][d17]
@@ -2685,6 +2685,335 @@ print('Part 1:', total1)
 print('Part 2:', total2)
 ```
 
+
+Day 14 - Parabolic Reflector Dish
+---------------------------------
+
+[Problem statement][d14-problem] — [Complete solution][d14-solution] — [Back to top][top]
+
+### Part 1
+
+Another day dealing with rectangular character grids. This time we need to
+transform the grid we are given though, so that's going to be fun.
+
+Parsing the input is a walk in the park, just read everything and split the
+lines into a list, and while we are at it also calculate the grid height and
+width for later:
+
+```python
+with open(...) as fin:
+    grid = fin.read().splitlines()
+    height, width = len(grid), len(grid[0])
+```
+
+We have two main kinds of cells in our grid: cubic rocks `#`, which stay fixed
+in place, and spherical rocks `O`, which we need to move around. It seems easier
+to represent things using [sparse matrices][wiki-sparse-matrix] instead of a
+single conventional matrix (the `grid` we just created above).
+
+Let's create two sparse matrices, one for fixed rocks and one for movable rocks.
+We'll use sets of coordinates as sparse matrices since we don't really need to
+associate coordinates with any kind of value. As usual,
+[`enumerate()`][py-builtin-enumerate] comes in handy to easily iterate over both
+cells and grid coordinates.
+
+```python
+fixed   = set()
+movable = set()
+
+for r, row in enumerate(grid):
+    for c, char in enumerate(row):
+        if char == '#':
+            fixed.add((r, c))
+        elif char == 'O':
+            movable.add((r, c))
+```
+
+We now need to move all the movable rocks (`O`) up, sort of like swiping UP in
+the game [2048][wiki-2048]. We can do this by creating a new sparse matrix and
+iterating over the coordinates in `movable` in ascending order (since the rocks
+that need to be moved first are the ones at the top). We can use the
+[`sorted()`][py-builtin-sorted] built-in to do this.
+
+For each movable rock we have, starting from its original position, move one
+cell up at a time, and stop when the top is reached (`r < 0`) or at the first
+rock encountered, then add the new coordinates to the new movable matrix. We can
+either encounter rocks that are fixed or that are in the new matrix.
+
+```python
+def move(fixed, movable):
+    new_movable = set()
+
+    for r, c in sorted(movable):
+        # Go up one cell at a time until we encounter another (fixed or movable) rock
+        r -= 1
+        while r >= 0 and (r, c) not in fixed and (r, c) not in new_movable:
+            r -= 1
+
+        # Given that the above condition is checked only after decrementing r,
+        # we will always be one step further up than needed, so use r + 1 here
+        new_movable.add((r + 1, c))
+
+    return new_movable
+```
+
+Since we only care about the ordering of the `r` coordinate, we can use a `key=`
+function to extract only that coordinate and speed the sorting up a little bit.
+The [`operator.itemgetter()`][py-operator-itemgetter] function seems a bit
+cleaner than writing a [`lambda`][py-lambda] function in this case:
+
+```diff
+-    for r, c in sorted(movable):
++    for r, c in sorted(movable, key=itemgetter(0)):
+```
+
+Secondly, we are doing two membership checks at a time: `in fixed` and
+`in new_movable`. We can simplify things by starting with
+`new_movable = fixed.copy()` and checking only for `in new_movable`. At the end
+of the function we can then remove all the fixed coordinates at once with a
+[set difference][py-set-difference]. This may seem slower, but in this case the
+operations of copying a set and computing a set difference, which are
+implemented in *native* code ([here][misc-cpython-set-difference] for the
+curious), are way faster than all the double membership checks we are doing in
+Python code.
+
+```diff
+ def move(fixed, movable):
+-    new_movable = set()
++    new_movable = fixed.copy()
+
+     for r, c in sorted(movable, key=itemgetter(0)):
+         r -= 1
+-        while r >= 0 and (r, c) not in fixed and (r, c) not in new_movable:
++        while r >= 0 and (r, c) not in new_movable:
+             r -= 1
+
+         new_movable.add((r + 1, c))
+
+-    return new_movable
++    return new_movable - fixed
+```
+
+We almost have all we need. After applying the `move()` function above to our
+set of movable rocks, we then need to compute the sum of their distance from the
+bottom of the grid:
+
+```python
+new_movable = move(fixed, movable)
+total = 0
+
+for r, _ in new_movable:
+    total += height - r
+```
+
+Since all we are doing is summing things up, we can simplify the above using the
+classic [`map()`][py-builtin-map] + [`sum()`][py-builtin-sum] combo with a
+`lambda`:
+
+```python
+new_grid = move(fixed, movable)
+total = sum(map(lambda rc: height - rc[0], new_grid))
+print('Part 1:', total)
+```
+
+### Part 2
+
+We now need to move the movable rocks in all four directions: first up, then
+left, then down, and finally right. These 4 consecutive move operations are
+called a "spin", and we need to perform 1000000000 (*one billion!*) spins before
+calculating the final sum.
+
+First of all: we know how to move rocks up, as we just wrote a function to do
+it, but what about down, left, and right? Well, we don't necessarily need to
+complicate things by writing a new function or changing the current one.
+Instead, we can simply *rotate our coordinates* and apply the same `move()`
+function each time.
+
+Rotating the grid 90 degrees clockwise and moving everything up is equivalent to
+moving everything left, the only difference is that we then need to rotate it
+back 90 degrees counter-clockwise after the movement. However, since for each
+"spin" we need to move things 4 times (once per direction), we can simply rotate
+90 degrees clockwise each time, and end up in the same direction as we started.
+
+Writing a rotation function is straightforward: row indices become column
+indices, and column indices become row indices (but from the bottom, not the
+top, so we need to invert them). Let's write a function to rotate our sparse
+matrices:
+
+```python
+def rotate_90(coords, height):
+    rotated = set()
+    for r, c in coords:
+        rotated.add((c, height - r - 1))
+    return rotated
+```
+
+We can also simplify the above down to a single
+[generator expression][py-gen-expr]:
+
+```python
+def rotate_90(coords, height):
+    return set((c, height - r - 1) for r, c in coords)
+```
+
+Okay, now to the real problem: needless to say, we won't get anywhere with a
+literal implementation that spins *one billion times*. That's the equivalent of
+4 billion rotations and 4 billion movements. It's going to take ages. We could
+*maybe* get away with it in a compiled language such as C/C++/Rust/Go, but
+nonetheless, there must be a smarter solution!
+
+What if, after some arbitrary number of spins, we find ourselves in the same
+configuration as the start? That would mean that the possible configurations are
+only a finite amount, and that we can only cycle through them. Once a cycle is
+found, a bit of math is all that's needed to determine the final result.
+
+Let's write a function that keeps applying spins until a cycle is identified. In
+order to check if we already saw a configuration, and at which iteration, we can
+use a dictionary of the form `{seen_set: iteration_number}`. As we are working
+with sets, and sets are not hashable (as they are mutable), we will need to turn
+any set into an immutable [`frozenset`][py-frozenset] first before adding it as
+key in a dictionary.
+
+```python
+def spin(fixed, movable, height, width):
+    seen = {frozenset(movable): 0}
+
+    for i in range(1, 1000000000 + 1):
+        # Move up, rotate
+        movable = rotate_90(move(fixed, movable), height)
+        fixed   = rotate_90(fixed, height)
+        # Move left, rotate
+        movable = rotate_90(move(fixed, movable), width)
+        fixed   = rotate_90(fixed, width)
+        # Move down, rotate
+        movable = rotate_90(move(fixed, movable), height)
+        fixed   = rotate_90(fixed, height)
+        # Move right, rotate
+        movable = rotate_90(move(fixed, movable), width)
+        fixed   = rotate_90(fixed, width)
+
+        # Freeze the set and check if we already saw it
+        key = frozenset(movable)
+        if key in seen:
+            break
+
+        # Didn't see this set yet, take note of the current iteration
+        seen[key] = i
+
+    # ...
+```
+
+The above function can be simplified a bit, but we first need to figure out how
+to compute the final result once we identify a cycle. We can sketch the
+situation up with some ASCII-art:
+
+```
+    Iteration  0     1     2     3     4     5
+Configuration  A --> B --> C --> D --> E --> F
+                           ^                 |
+                           |                 |
+                           +-----------------+
+```
+
+In the above example, at iteration 6 we find ourselves with the same
+configuration (`C`) as iteration 2. At this point, we are back at the start of
+the cycle, and if we keep going we'll see `D`, `E`... and so on.
+
+To find the iteration at which the cycle starts, we can simply check the values
+in `seen`. The cycle length is then simply the current iteration minus the start
+iteration (in the above example it's 4). The number of iterations remaining is
+one billion minus the cycle start iteration. Once we have these values, we can
+calculate the final step (inside the cycle) with a modulo operation.
+
+Let's complete the function with this in mind. We'll return the final solution
+right away.
+
+```python
+def spin(fixed, movable, height, width):
+    seen = {frozenset(movable): 0}
+
+    for i in range(1, 1000000000 + 1):
+        for h in (height, width, height, width):
+            movable = rotate_90(move(fixed, movable), h)
+            fixed   = rotate_90(fixed, h)
+
+        key = frozenset(movable)
+        if key in seen:
+            break
+
+        seen[key] = i
+
+    cycle_start = seen[key]
+    cycle_len   = i - cycle_start
+    remaining   = iterations - cycle_start
+    final       = remaining % cycle_len + cycle_start
+
+    # Find the configuration corresponding to the final iteration
+    for key, i in seen.items():
+        if i == final:
+            break
+
+    # Calculate final result as we did for part 1
+    return sum(map(lambda rc: height - rc[0], key))
+```
+
+There are a couple of optimizations to apply here:
+
+1. As fixed rocks don't move, we will only ever have 4 different `fixed`
+   configurations possible (one per 90-degree rotation), therefore we can
+   pre-calculate them.
+2. Instead of iterating over `seen` to find the configuration corresponding to
+   the `final` iteration, we can [ab]use it to also store the inverse mapping
+   `{i: key}`. After all, there is no risk of confusing things as one is an
+   integer and the other is a `frozenset`, and storing a reference is a
+   lightweight operation that does not perform a copy.
+
+```diff
+ def spin(fixed, movable, height, width):
+     seen = {frozenset(movable): 0}
++
++    cache = [(fixed, height)]
++    for _ in range(3):
++        fixed = rotate_90(fixed, height)
++        cache.append((fixed, width))
++        height, width = width, height
+
+     for i in range(1, 1000000000 + 1):
+-        for h in (height, width, height, width):
+-            movable = rotate_90(move(fixed, movable), h)
+-            fixed   = rotate_90(fixed, h)
++        for fixed, height in cache:
++            movable = rotate_90(move(fixed, movable), height)
+
+         key = frozenset(movable)
+         if key in seen:
+             break
+
+         seen[key] = i
++        seen[i]   = key
+
+     cycle_start = seen[key]
+     cycle_len   = i - cycle_start
+     remaining   = iterations - cycle_start
+     final       = remaining % cycle_len + cycle_start
+
+-    # Find the configuration corresponding to the final iteration
+-    for key, i in seen.items():
+-        if i == final:
+-            break
++    key = seen[final]
+
+     # Calculate final result as we did for part 1
+     return sum(map(lambda rc: height - rc[0], key))
+```
+
+We can now take our shiny `spin()` function *for a spin* and solve part 2:
+
+```python
+total = spin(fixed, movable, height, width)
+print('Part 2:', total)
+```
+
 ---
 
 
@@ -2706,7 +3035,7 @@ print('Part 2:', total2)
 [d11]: #day-11---
 [d12]: #day-12---hot-springs
 [d13]: #day-13---point-of-incidence
-[d14]: #day-14---
+[d14]: #day-14---parabolic-reflector-dish
 [d15]: #day-15---
 [d16]: #day-16---
 [d18]: #day-18---
@@ -2794,16 +3123,19 @@ print('Part 2:', total2)
 [py-collections-counter]:     https://docs.python.org/3/library/collections.html#collections.deque
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
+[py-dict-values]:             https://docs.python.org/3/library/stdtypes.html#dict.values
+[py-frozenset]:               https://docs.python.org/3/library/stdtypes.html#frozenset
 [py-functools-cache]:         https://docs.python.org/3/library/functools.html#functools.cache
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
 [py-itertools-cycle]:         https://docs.python.org/3/library/itertools.html#itertools.cycle
+[py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-math-ceil]:               https://docs.python.org/3/library/math.html#math.ceil
 [py-math-floor]:              https://docs.python.org/3/library/math.html#math.floor
 [py-math-lcm]:                https://docs.python.org/3/library/math.html#math.ceil
 [py-math-prod]:               https://docs.python.org/3/library/math.html#math.prod
-[py-dict-values]:             https://docs.python.org/3/library/stdtypes.html#dict.values
-[py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-operator-itemgetter]:     https://docs.python.org/3/library/operator.html#operator.itemgetter
 [py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
+[py-set-difference]:          https://docs.python.org/3/library/stdtypes.html#frozenset.difference
 [py-str-find]:                https://docs.python.org/3/library/stdtypes.html#str.find
 [py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigic
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
@@ -2814,10 +3146,14 @@ print('Part 2:', total2)
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 
+[wiki-2048]:              https://en.wikipedia.org/wiki/2048_(video_game)
 [wiki-ascii]:             https://en.wikipedia.org/wiki/ASCII
 [wiki-crt]:               https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Statement
 [wiki-dp]:                https://en.wikipedia.org/wiki/Dynamic_programming
 [wiki-lcm]:               https://en.wikipedia.org/wiki/Least_common_multiple
 [wiki-memoization]:       https://en.wikipedia.org/wiki/Memoization
 [wiki-quadratic-formula]: https://en.wikipedia.org/wiki/Quadratic_formula
+[wiki-sparse-matrix]:     https://en.wikipedia.org/wiki/Sparse_matrix#Dictionary_of_keys_(DOK)
 [wiki-transpose]:         https://en.wikipedia.org/wiki/Transpose
+
+[misc-cpython-set-difference]: https://github.com/python/cpython/blob/e24eccbc1cf5f22743cd5cda733cd04891155d54/Objects/setobject.c#L1500
