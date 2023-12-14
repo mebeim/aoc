@@ -36,10 +36,10 @@ class Vector(Sequence):
 		return reversed(self.components)
 
 	def __pos__(self) -> 'Vector':
-		return Vector(*self)
+		return self.__class__(*self)
 
 	def __neg__(self) -> 'Vector':
-		return Vector(*map(int.__neg__, self))
+		return self.__class__(*map(int.__neg__, self))
 
 	def __abs__(self) -> Number:
 		s = sum(x**2 for x in self)
@@ -55,26 +55,26 @@ class Vector(Sequence):
 
 	def __add__(self, other):
 		self._check_dim(len(other))
-		return Vector(*map(sum, zip(self, other)))
+		return self.__class__(*map(sum, zip(self, other)))
 
 	def __sub__(self, other):
 		self._check_dim(len(other))
-		return Vector(*starmap(sub, zip(self, other)))
+		return self.__class__(*starmap(sub, zip(self, other)))
 
 	def __mul__(self, v):
 		if not isinstance(v, Number):
 			raise ValueError('ambiguous product by non-scalar: use A.dot(B) or A.cross(B)')
-		return Vector(*map(lambda x: x * v, self))
+		return self.__class__(*map(lambda x: x * v, self))
 
 	def __truediv__(self, v):
 		if not isinstance(v, Number):
 			raise ValueError('division by non-scalar')
-		return Vector(*map(lambda x: x / v, self))
+		return self.__class__(*map(lambda x: x / v, self))
 
 	def __floordiv__(self, v):
 		if not isinstance(v, Number):
 			raise ValueError('division by non-scalar')
-		return Vector(*map(lambda x: x // v, self))
+		return self.__class__(*map(lambda x: x // v, self))
 
 	def __eq__(self, other):
 		return len(self) == len(other) and all(a == b for a, b in zip(self, other))
@@ -94,7 +94,7 @@ class Vector(Sequence):
 			Vector(1, 2, 3).dot((4, 5, 6)) == 1*4 + 2*5 + 3*6 == 32
 		'''
 		self._check_dim(len(other))
-		return Vector(*map(prod, zip(self, other)))
+		return self.__class__(*map(prod, zip(self, other)))
 
 	def dot_product(self, other: Sequence) -> 'Vector':
 		'''Convenience alias for .dot().'''
@@ -112,7 +112,7 @@ class Vector(Sequence):
 		if len(other) != 3:
 			raise ValueError('operand not 3-dimensional')
 
-		return Vector(
+		return self.__class__(
 			self[1] * other[2] - self[2] * other[1],
 			self[2] * other[0] - self[0] * other[2],
 			self[0] * other[1] - self[1] * other[0]
