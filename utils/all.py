@@ -6,3 +6,4 @@ from .decorators import *
 from .timer import *
 from .algorithms import *
 from .data_structures import *
+from .math import *
