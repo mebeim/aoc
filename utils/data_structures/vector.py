@@ -9,7 +9,9 @@ from collections.abc import MutableSequence, Sequence
 from ..polyfill import prod, isqrt
 
 class Vector(Sequence):
-	'''An immutable N-dimensional vector of scalar numbers.'''
+	'''An immutable N-dimensional vector of scalar numbers.
+	Uses a tuple as backing for its components.
+	'''
 
 	__slots__ = ('components')
 
@@ -156,7 +158,9 @@ class Vector(Sequence):
 
 
 class MutableVector(Vector, MutableSequence):
-	'''A mutable N-dimensional vector of scalar numbers.'''
+	'''A mutable N-dimensional vector of scalar numbers.
+	Uses a list as backing for its components.
+	'''
 
 	__slots__ = ('components')
 
