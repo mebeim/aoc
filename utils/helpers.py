@@ -1,5 +1,7 @@
 __all__ = ['autorange', 'transpose']
 
+from typing import Sequence, Any
+
 def autorange(start: int, end: int, step: int=1) -> range:
 	'''Range from start to end (end is INCLUDED) in steps of +/- step regardless
 	if start > end or end > start.
@@ -11,3 +13,22 @@ def autorange(start: int, end: int, step: int=1) -> range:
 	if start > end:
 		return range(start, end - 1, -step)
 	return range(start, end + 1, step)
+
+def transpose(matrix: Sequence[Sequence[Any]]) -> Sequence[Sequence[Any]]:
+	'''Transpose a matrix keeping the same container types. Assumes that the
+	elements (rows) of the matrix are all the same continer type.
+
+	transpose([(1, 2, 3), (4, 5, 6)]) -> [(1, 4), (2, 5), (3, 6)]
+	transpose([b'aaa', b'bbb']) -> [b'ab', b'ab', b'ab']
+	transpose(('ab', 'cd', 'ef')) -> ('ace', 'bdf')
+	'''
+	outer = type(matrix)
+	inner = type(matrix[0])
+
+	if inner is str:
+		# Need to special case this and use str.join() if we want to keep strings
+		return outer(map(''.join, zip(*matrix)))
+	if inner is bytes:
+		# Funny bytes behaving as ints when iterated over :')
+		return outer(map(bytes, map(bytearray, zip(*matrix))))
+	return outer(map(inner, zip(*matrix)))
