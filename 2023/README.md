@@ -24,8 +24,8 @@ Table of Contents
 - [Day 12 - Hot Springs][d12]
 - [Day 13 - Point of Incidence][d13]
 - [Day 14 - Parabolic Reflector Dish][d14]
+- [Day 15 - Lens Library][d15]
 <!--
-- [Day 15 - ][d15]
 - [Day 16 - ][d16]
 - [Day 17 - ][d17]
 - [Day 18 - ][d18]
@@ -3297,6 +3297,179 @@ def sum_distances(counts, multiplier):
     return total
 ```
 
+
+Day 15 - Lens Library
+---------------------
+
+[Problem statement][d15-problem] — [Complete solution][d15-solution] — [Back to top][top]
+
+### Part 1
+
+Today we need to implement a (rather simple) custom
+[hash function][wiki-hash-func]. The problem asks us to work with ASCII values
+of the input strings, so it seems appropriate to read the input in binary mode
+(`'b'`) and work with `bytes` instead of `str`, since iterating over `bytes`
+objects yields integers corresponding to the byte values, and in case of ASCII
+characters those are exactly the ASCII values we want.
+
+To parse the input we only need to [`.strip()`][py-bytes-strip] away unwanted
+newlines and [`.split()`][py-bytes-split] on commas to obtain a list of `bytes`
+objects:
+
+```python
+with open(..., 'rb') as fin:
+    strings = fin.read().strip().split(b',')
+```
+
+Now we can write a function to calculate the hash of an input string. The rules
+are very simple, so it's only a few lines of code:
+
+```python
+def aoc_hash(s):
+	h = 0
+	for c in s:
+		h = ((h + c) * 17) % 256
+	return h
+```
+
+And finally, [`map()`][py-builtin-map] each string to its hash and
+[`sum()`][py-builtin-sum] up all the hashes:
+
+```python
+total = sum(map(aoc_hash, strings))
+print('Part 1:', total)
+```
+
+That was fast!
+
+### Part 2
+
+We now need to implement a hashmap with some... weird (to say the least) rules.
+Each string in the input can be in one of two forms:
+
+- `key-` meaning "remove `key`".
+- `key=v` meaning "set the value associated with `key` to `v`".
+
+The hashmap has 256 slots numbered from `0` to `255` that are lists. Each slot
+contains entries of the form `(key, value)`. The hashmap behaves as follows:
+
+- When a key is removed from the, the corresponding `(key, value)` entry is
+  removed from the slot corresponding to the key hash (obtained using the
+  hashing function we just wrote for part 1).
+- When a key is added, it is inserted at the end of the slot corresponding to
+  the key hash. However, in case the key was already present in such slot, the
+  position of its corresponding entry remains unchanged, but the value is
+  replaced with the new one, so an entry `(key, oldval)` becomes
+  `(key, newval)`.
+
+Without much thinking, we can quite literally implement the above instructions
+as is. Let's create a `HashMap` class just for the sake of it. We will use a
+[`defaultdict`][py-collections-defaultdict] as the backing store of slots, just
+to avoid having to deal with the insertion of empty lists when a given slot is
+accessed the first time.
+
+```python
+from collections import defaultdict
+
+class HashMap:
+    def __init__(self):
+        self.backing_store = defaultdict(list)
+```
+
+In both the removal and the insertion case, the old entry needs to be removed
+from the slot. The only difference is that in the insertion case, a new entry
+is also inserted in the slot at the same index as the existing one (if any).
+Let's implement an internal method to find the entry associated with a key in a
+given slot and [`.pop()`][py-list-pop] it away. We'll return the index in case
+the entry was found and popped, or `-1` in case no entry was found.
+
+It'd be nice to simply call [`slot.index(key)`][py-list-index], but the slots
+contain entries of the form `(key, v)`, so we cannot simply look for a `key`, so
+we'll need to iterate them manually. The [`enumerate()`][py-builtin-enumerate]
+built-in is always helpful:
+
+```python
+class HashMap:
+    # ... continued from above ...
+
+    def _find_and_pop(self, slot, key):
+        for i, (k, _) in enumerate(slot):
+            if k == key:
+                slot.pop(i)
+                return i
+
+        return -1
+```
+
+Awesome, now we need a `.remove(key)` method and an `.insert(key, value)`
+method. In case of removal we just need to find the slot and use
+`self._find_and_pop()`, while in case of insertion we also need to `.insert()`
+the new `(key, value)` entry either at the same index the old entry was popped
+or at the end of the slot.
+
+Here's the code:
+
+```python
+class HashMap:
+    # ... continued from above ...
+
+    def remove(self, key):
+        h    = aoc_hash(key)
+        slot = self.backing_store[h]
+        self._find_and_pop(slot, key)
+
+    def insert(self, key, value):
+        h    = aoc_hash(key)
+        slot = self.backing_store[h]
+        i    = self._find_and_pop(slot, key)
+
+        if i != -1:
+            slot.insert(i, (key, value))
+        else:
+            slot.append((key, value))
+```
+
+That's it. Now we can instantiate our `HashMap` class and insert/remove keys as
+requested by iterating over the input strings:
+
+```python
+hashmap = HashMap()
+
+for s in strings:
+    if b'-' in s:
+        key = s[:-1]
+        hashmap.remove(key)
+    elif b'=' in s:
+        key, value = s.split(b'=')
+        hashmap.insert(key, int(value))
+```
+
+The final value to calculatea "power" that corresponds to a weird sum over all
+entries present in the hashmap. For each entry, we need its value multiplied by
+its index in the slot (strating at 1) multiplied again by its slot number
+(starting at 1). Let's write a method to do this:
+
+```python
+class HashMap:
+    # ... continued from above ...
+
+    def power(self):
+        total = 0
+
+        for slot_number, lst in self.backing_store.items():
+            for entry_index, (_, value) in enumerate(lst, 1):
+                total += (slot_number + 1) * entry_index * value
+
+        return total
+```
+
+The answer is now just one method call away:
+
+```python
+total = hashmap.power()
+print('Part 2:', total)
+```
+
 ---
 
 
@@ -3319,7 +3492,7 @@ def sum_distances(counts, multiplier):
 [d12]: #day-12---hot-springs
 [d13]: #day-13---point-of-incidence
 [d14]: #day-14---parabolic-reflector-dish
-[d15]: #day-15---
+[d15]: #day-15---lens-library
 [d16]: #day-16---
 [d18]: #day-18---
 [d19]: #day-19---
@@ -3402,6 +3575,8 @@ def sum_distances(counts, multiplier):
 [py-builtin-sorted]:          https://docs.python.org/3/library/functions.html#sorted
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
+[py-bytes-split]:             https://docs.python.org/3/library/stdtypes.html#bytes.split
+[py-bytes-strip]:             https://docs.python.org/3/library/stdtypes.html#bytes.strip
 [py-collections]:             https://docs.python.org/3/library/collections.html#collections
 [py-collections-counter]:     https://docs.python.org/3/library/collections.html#collections.deque
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
@@ -3412,6 +3587,8 @@ def sum_distances(counts, multiplier):
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
 [py-itertools-cycle]:         https://docs.python.org/3/library/itertools.html#itertools.cycle
 [py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-list-index]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-list-pop]:                https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-math-ceil]:               https://docs.python.org/3/library/math.html#math.ceil
 [py-math-floor]:              https://docs.python.org/3/library/math.html#math.floor
 [py-math-lcm]:                https://docs.python.org/3/library/math.html#math.ceil
@@ -3420,12 +3597,13 @@ def sum_distances(counts, multiplier):
 [py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
 [py-set-difference]:          https://docs.python.org/3/library/stdtypes.html#frozenset.difference
 [py-str-find]:                https://docs.python.org/3/library/stdtypes.html#str.find
-[py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigic
+[py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigit
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
 [py-str-maketrans]:           https://docs.python.org/3/library/stdtypes.html#str.maketrans
 [py-str-replace]:             https://docs.python.org/3/library/stdtypes.html#str.replace
 [py-str-rstrip]:              https://docs.python.org/3/library/stdtypes.html#str.rstrip
 [py-str-split]:               https://docs.python.org/3/library/stdtypes.html#str.split
+[py-str-strip]:               https://docs.python.org/3/library/stdtypes.html#str.strip
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
 [py-str-translate]:           https://docs.python.org/3/library/stdtypes.html#str.translate
 
@@ -3433,6 +3611,7 @@ def sum_distances(counts, multiplier):
 [wiki-ascii]:             https://en.wikipedia.org/wiki/ASCII
 [wiki-crt]:               https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Statement
 [wiki-dp]:                https://en.wikipedia.org/wiki/Dynamic_programming
+[wiki-hash-func]:         https://en.wikipedia.org/wiki/Hash_function
 [wiki-lcm]:               https://en.wikipedia.org/wiki/Least_common_multiple
 [wiki-memoization]:       https://en.wikipedia.org/wiki/Memoization
 [wiki-quadratic-formula]: https://en.wikipedia.org/wiki/Quadratic_formula
