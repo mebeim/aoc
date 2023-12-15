@@ -15,20 +15,21 @@ class HashMap:
 	def __init__(self):
 		self.backing_store = defaultdict(list)
 
-	def _find_and_pop(self, slot, key):
+	def _find_and_pop(self, key):
+		slot = self.backing_store[aoc_hash(key)]
+
 		for i, (k, _) in enumerate(slot):
 			if k == key:
 				slot.pop(i)
-				return i
-		return -1
+				return slot, i
+
+		return slot, -1
 
 	def remove(self, key):
-		slot = self.backing_store[aoc_hash(key)]
-		self._find_and_pop(slot, key)
+		self._find_and_pop(key)
 
 	def insert(self, key, value):
-		slot = self.backing_store[aoc_hash(key)]
-		i = self._find_and_pop(slot, key)
+		slot, i = self._find_and_pop(key)
 
 		if i != -1:
 			slot.insert(i, (key, value))

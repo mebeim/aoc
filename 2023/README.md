@@ -3429,7 +3429,53 @@ class HashMap:
             slot.append((key, value))
 ```
 
-That's it. Now we can instantiate our `HashMap` class and insert/remove keys as
+It's worth noting that in general using a list/array for things such as
+insertion and removal of elements right in the middle is not a good idea as the
+operation generally needs to rearrange the whole list after inserting/removing
+the element. Since we are doing a linear scan, a [linked list][wiki-linked-list]
+would be perfect for this. However, we are dealing with very small lists and
+implementing a linked list in Python would be far *slower* in such case, so
+let's stick to a normal `list`.
+
+Since the first two operations of `.remove()` and `.insert()` are the same, we
+could also move them into `._find_and_pop()`, making it return both the slot and
+the index:
+
+```diff
+ class HashMap:
+     # ...
+
+     def _find_and_pop(self, key):
++        slot = self.backing_store[aoc_hash(key)]
++
+         for i, (k, _) in enumerate(slot):
+             if k == key:
+                 slot.pop(i)
+-                return i
++                return slot, i
+
+-        return -1
++        return slot, -1
+
+     def remove(self, key):
+-        h    = aoc_hash(key)
+-        slot = self.backing_store[h]
+-        self._find_and_pop(slot, key)
++        self._find_and_pop(key)
+
+     def insert(self, key, value):
+-        h    = aoc_hash(key)
+-        slot = self.backing_store[h]
+-        i    = self._find_and_pop(slot, key)
++        slot, i = self._find_and_pop(key)
+
+         if i != -1:
+             slot.insert(i, (key, value))
+         else:
+             slot.append((key, value))
+```
+
+That's about it. Now we can instantiate our `HashMap` class and insert/remove keys as
 requested by iterating over the input strings:
 
 ```python
@@ -3613,6 +3659,7 @@ print('Part 2:', total)
 [wiki-dp]:                https://en.wikipedia.org/wiki/Dynamic_programming
 [wiki-hash-func]:         https://en.wikipedia.org/wiki/Hash_function
 [wiki-lcm]:               https://en.wikipedia.org/wiki/Least_common_multiple
+[wiki-linked-list]:       https://en.wikipedia.org/wiki/Linked_list
 [wiki-memoization]:       https://en.wikipedia.org/wiki/Memoization
 [wiki-quadratic-formula]: https://en.wikipedia.org/wiki/Quadratic_formula
 [wiki-sparse-matrix]:     https://en.wikipedia.org/wiki/Sparse_matrix#Dictionary_of_keys_(DOK)
