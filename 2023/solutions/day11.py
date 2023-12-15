@@ -7,8 +7,7 @@ def sum_distances(counts, multiplier):
 
 	for n in counts:
 		if n:
-			total       += (n * (2 * previous + n - 1) // 2) * space
-			total       -= n * partial_sum + ((n - 1) * n // 2) * space
+			total       += n * (previous * space - partial_sum)
 			partial_sum += n * space
 			previous    += n
 			space       += 1
