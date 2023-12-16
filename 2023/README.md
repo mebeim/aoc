@@ -25,8 +25,8 @@ Table of Contents
 - [Day 13 - Point of Incidence][d13]
 - [Day 14 - Parabolic Reflector Dish][d14]
 - [Day 15 - Lens Library][d15]
+- [Day 16 - The Floor Will Be Lava][d16]
 <!--
-- [Day 16 - ][d16]
 - [Day 17 - ][d17]
 - [Day 18 - ][d18]
 - [Day 19 - ][d19]
@@ -379,39 +379,6 @@ fin = open(...)
 grid = fin.read().splitlines()
 witdh, height = len(grid), len(grid[0])
 ```
-<!--
-Now onto the problem: in order to correctly identify numbers on each line that
-are adjacent to symbols, we need a way to iterate over the neighbors of a cell
-in the grid, so let's write a [generator function][py-generators] for this.
-Given the grid, a row index and a column index, we can iterate over all 8
-neighbors yielding both their row/column indices and the value of the cell.
-
-```python
-def neighbors(grid, r, c):
-    for deltar in (-1, 0, 1):
-        for deltac in (-1, 0, 1):
-            if deltar and deltac:
-                rr, cc = r + deltar, c + deltac
-
-                if 0 <= rr < len(grid) and 0 <= cc < len(grid[rr]):
-                    yield rr, cc, grid[rr][cc]
-```
-
-This works, but we can optimize it in two ways. First of all we already know all
-the possible `deltar, deltac` combinations, so we can use a single loop.
-Secondly, we can avoid computing the length every single time for the bounds
-check and either take it as argument or calculate it once at the start of the
-function: I chose the former.
-
-```python
-def neighbors(grid, r, c, h, w):
-    for dr, dc in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)):
-        rr, cc = r + dr, c + dc
-
-        if 0 <= rr < h and 0 <= cc < w:
-            yield rr, cc, grid[rr][cc]
-```
--->
 
 Now onto the real problem: given that the numbers scattered around the grid are
 always spelled from left to right (i.e. all the digits are always on the same
@@ -3516,6 +3483,240 @@ total = hashmap.power()
 print('Part 2:', total)
 ```
 
+
+Day 16 - The Floor Will Be Lava
+-------------------------------
+
+[Problem statement][d16-problem] — [Complete solution][d16-solution] — [Back to top][top]
+
+### Part 1
+
+We're on the roll with these ASCII grid problems it seems... well, we should
+know the drill by now, parsing the input is literally one line of code:
+
+```python
+grid = open(...).read().splitlines()
+```
+
+As we already did for previous days, we can express coordinates as pairs `(r, c)`
+of row index and column index, and directions as pairs of deltas `(dr, dc)`. The
+four directions we can go are up, down, left, right, and they correspond to the
+deltas `(-1, 0)`, `(1, 0)`, `(0, -1)`, `(0, 1)`. Moving in any given direction
+is a simple vector sum with the new coordinates being `(r + dr, c + dc)`.
+
+What about mirrors (`\` and `/`) though? How do they change the current
+direction of travel? To extract a general rule we can simply test all
+directions:
+
+- Encountering `\`:
+  - If we are going up `(-1, 0)` we end up going left `(0, -1)`;
+  - If we are going down `(1, 0)` we end up going right `(0, 1)`;
+  - If we are going left `(0, -1)` we end up going up `(-1, 0)`;
+  - If we are going right `(0, 1)` we end up going down `(1, 0)`.
+- Encountering `/`:
+  - If we are going up `(-1, 0)` we end up going right `(0, 1)`;
+  - If we are going down `(1, 0)` we end up going left `(0, -1)`;
+  - If we are going left `(0, -1)` we end up going down `(1, 0)`;
+  - If we are going right `(0, 1)` we end up going up `(-1, 0)`.
+
+It looks like the `\` mirror simply swaps the two deltas of the current
+direction from `(dr, dc)` to `(dc, dr)`. The `/` mirror does a similar
+transformation, but the signs of the deltas are inverted: it transforms
+`(dr, dc)` in `(-dc, -dr)`.
+
+What about the splitters `-` and `|`? Well, these complicate things a little
+bit, since they create additional paths to follow at the same time (at least
+theoretically). Let's "ignore" them for now and write a function to explore the
+grid following *a single path*, starting from the top left and going right. We
+will consider any `-` that is perpendicular to our direction as "go right" and
+any `|` perpendicular to our direction as "go down".
+
+To count the number of cells we visit we can use a set of coordinates: we'll add
+the current coordinates to the set each step, and check its length when we are
+done.
+
+How do we stop? well, the beam we are emulating can either escape the grid or
+end up in an infinite loop. The first case is easy to detect with a bounds
+check, and for the second one we can keep a set of already visited states: if we
+ever find ourselves on the same cell and going in a direction that we already
+traveled on that cell, we will know we entered a loop.
+
+This is enough to implement an initial `travel()` function:
+
+```python
+def travel(grid):
+    height     = len(grid)
+    width      = len(grid[0])
+    r, c       = 0, 0 # top left corner
+    dr, dc     = 0, 1 # going right
+    seen_cells = set()
+    seen       = set()
+
+    while 1:
+        # Are we out of bounds?
+        if 0 <= r < height and 0 <= c < width:
+            # Can't possibly continue!
+            break
+
+        # Dif we already get here while also going in the same direction?
+        if (r, c, dr, dc) not in seen:
+            # This is a loop!
+            break
+
+        seen.add((r, c, dr, dc))
+        seen_cells.add((r, c))
+        cell = grid[r][c]
+
+        if cell == '/':
+            dr, dc = -dc, -dr
+        elif cell == '\\':
+            dr, dc = dc, dr
+        elif cell == '-':
+            # If we are moving either up or down, just turn right
+            if dr != 0:
+                dr, dc = 0, 1
+        elif cell == '|':
+            # If we are moving either left or right, just turn down
+            if dc != 0:
+                dr, dc = 1, 0
+
+        r += dr
+        c += dc
+
+    return len(seen_cells)
+```
+
+The two checks right at the start of the `while` loop can be moved to the loop
+condition, which becomes:
+
+```python
+    while 0 <= r < height and 0 <= c < width and (r, c, dr, dc) not in seen:
+        # ...
+```
+
+Okay, but what about following multiple paths? It's not that complicated: we can
+remember the paths that we still have to visit in a queue. Then, each time we
+encounter a `-` or `|` split that is perpendicular to our direction of travel,
+we keep advancing in one of the two directions and put the second (unexplored)
+direction in the queue for later. Once we are done exploring, we can pop from
+the queue and continue from there. This approach corresponds to a
+[depth-first][wiki-dfs] exploration of all the paths.
+
+Let's use a [`deque`][py-collections-deque] for our queue. We only need to add
+one more `while` loop:
+
+```python
+def travel(grid):
+    queue      = deque([(0, 0, 0, 1)]) # r, c, dr, dc
+    height     = len(grid)
+    width      = len(grid[0])
+    seen_cells = set()
+    seen       = set()
+
+    # While there are still paths to explore (i.e. queue is not empty)
+    while queue:
+        r, c, dr, dc = queue.pop()
+
+        while 0 <= r < height and 0 <= c < width and (r, c, dr, dc) not in seen:
+            seen.add((r, c, dr, dc))
+            seen_cells.add((r, c))
+            cell = grid[r][c]
+
+            if cell == '/':
+                dr, dc = -dc, -dr
+            elif cell == '\\':
+                dr, dc = dc, dr
+            elif cell == '-':
+                # If we are we moving either up or down, just go right
+                if dr != 0:
+                    dr, dc = 0, 1
+                    # We will explore the path that goes left later
+                    queue.append((r, c - 1, 0, -1))
+            elif cell == '|':
+                # If we are we moving either left or right, just go down
+                if dc != 0:
+                    dr, dc = 1, 0
+                    # We will explore the path that goes up later
+                    queue.append((r - 1, c, -1, 0))
+
+            r += dr
+            c += dc
+
+    return len(seen_cells)
+```
+
+Awesome, we can now call our function and solve the problem:
+
+```python
+n_energized = travel(grid)
+print('Part 1:', n_energized)
+```
+
+### Part 2
+
+We now need to try and start exploring from any possible cell on the grid's
+perimeter and calculate the maximum possible number of encountered cells. We
+always start going towards the inside, so if we start on the left wall the
+initial direction is right, if we start on the bottom wall it's up, and so on.
+For corner cells, we need to test both possible start directions (e.g., for the
+top left cell we can either start going right or down).
+
+Well... we already have the code, let's just move the start coordinates and
+direction to the parameters of our `travel()` function:
+
+```diff
+-def travel(grid):
+-    queue      = deque([(0, 0, 0, 1)])
++def travel(grid, startr, startc, dr, dc):
++    queue      = deque([(startr, startc, dr, dc)])
+     # ...
+```
+
+For simplicity, let's also pass the width and height of the grid to the
+function, so that we don't have to call `len()` a thousand times:
+
+```diff
+-def travel(grid, startr, startc, dr, dc):
++def travel(grid, height, width, startr, startc, dr, dc):
+     queue      = deque([(startr, startc, dr, dc)])
+-    height     = len(grid)
+-    width      = len(grid[0])
+     # ...
+```
+
+The function call for part 1 can now be adjusted as follows:
+
+```python
+height, width = len(grid), len(grid[0])
+n_energized = travel(grid, height, width, 0, 0, 0, 1)
+print('Part 1:', n_energized)
+```
+
+For part 2, we can call the function for every cell on the perimeter of the grid
+and calculate the maximum value returned:
+
+```python
+best = 0
+
+# Vertical walls
+for r in range(len(grid)):
+    # Leftmost, start going right
+    best = max(best, travel(grid, height, width, r, 0, 0, 1))
+    # Rightmost, start going left
+    best = max(best, travel(grid, height, width, r, width - 1, 0, -1))
+
+# Horizontal walls
+for c in range(len(grid[0])):
+    # Top, start going down
+    best = max(best, travel(grid, height, width, 0, c, 1, 0))
+    # Bottom, start going left
+    best = max(best, travel(grid, height, width, height - 1, c, -1, 0))
+
+print('Part 2:', best)
+```
+
+32 stars! I like powers of two.
+
 ---
 
 
@@ -3539,7 +3740,7 @@ print('Part 2:', total)
 [d13]: #day-13---point-of-incidence
 [d14]: #day-14---parabolic-reflector-dish
 [d15]: #day-15---lens-library
-[d16]: #day-16---
+[d16]: #day-16---the-floor-will-be-lava
 [d18]: #day-18---
 [d19]: #day-19---
 [d20]: #day-20---
@@ -3657,6 +3858,7 @@ print('Part 2:', total)
 [wiki-ascii]:             https://en.wikipedia.org/wiki/ASCII
 [wiki-crt]:               https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Statement
 [wiki-dp]:                https://en.wikipedia.org/wiki/Dynamic_programming
+[wiki-dfs]:               https://en.wikipedia.org/wiki/Depth-first_search
 [wiki-hash-func]:         https://en.wikipedia.org/wiki/Hash_function
 [wiki-lcm]:               https://en.wikipedia.org/wiki/Least_common_multiple
 [wiki-linked-list]:       https://en.wikipedia.org/wiki/Linked_list
