@@ -2,19 +2,17 @@
 
 import sys
 from collections import deque
+from operator import itemgetter
 
 def travel(grid, height, width, start=(0, 0), direction=(0, 1)):
-	queue     = deque([(*start, *direction)])
-	seen      = set()
-	energized = set()
+	queue = deque([(*start, *direction)])
+	seen  = set()
 
 	while queue:
 		r, c, dr, dc = queue.pop()
 
 		while 0 <= r < height and 0 <= c < width and (r, c, dr, dc) not in seen:
 			seen.add((r, c, dr, dc))
-			energized.add((r, c))
-
 			cell = grid[r][c]
 
 			if cell == '/':
@@ -31,7 +29,7 @@ def travel(grid, height, width, start=(0, 0), direction=(0, 1)):
 			r += dr
 			c += dc
 
-	return len(energized)
+	return len(set(map(itemgetter(0, 1), seen)))
 
 
 # Open the first argument as input or use stdin if no arguments were given
