@@ -26,8 +26,8 @@ Table of Contents
 - [Day 14 - Parabolic Reflector Dish][d14]
 - [Day 15 - Lens Library][d15]
 - [Day 16 - The Floor Will Be Lava][d16]
+- [Day 17 - Clumsy Crucible][d17]
 <!--
-- [Day 17 - ][d17]
 - [Day 18 - ][d18]
 - [Day 19 - ][d19]
 - [Day 20 - ][d20]
@@ -3717,6 +3717,455 @@ print('Part 2:', best)
 
 32 stars! I like powers of two.
 
+
+Day 17 - Clumsy Crucible
+------------------------
+
+[Problem statement][d17-problem] — [Complete solution][d17-solution] — [Back to top][top]
+
+### Part 1
+
+The long awaited shortest path finding problem of the year! But of course, this
+is not just plain boring shortest path finding, there's a twist to make things
+interesting.
+
+Let's get input parsing out of the way. Once again we have a grid of
+ccharacters: the code to parse it is basically just muscle memory at this
+point...
+
+```python
+grid = open(...).read().splitlines()
+```
+
+Since incidentally these characters are also digits, and we'll need them in
+integer form, let's also convert everything to `int` with the help of
+[`map()`][py-builtin-map] plus a [generator expression][py-gen-expr], and while
+we are at it, let's also compute the height and width of the grid, which will be
+useful later as usual.
+
+```python
+grid   = [list(map(int, row)) for row in grid]
+height = len(grid)
+width  = len(grid[0])
+```
+
+The raw information given in the form of a grid can be used to build a weighted
+[directed graph][wiki-directed-graph]. The only three things we need to
+understand are:
+
+1. How to represent a node.
+2. How to identify the neighbors of a node (i.e. how to identify the arcs that
+   exit a given node).
+3. How to assign weights to such arcs.
+
+When it comes to cells in a grid, the instinctive way to represent nodes is as
+simple pairs of coordinates `(r, c)`. However, this time it won't be enough.
+Given the movement rules in the problem statement, our movement on a given cell
+may be restricted to a cetain set of ditections: for example, if we reached a
+cell after 3 consecutive right, the only directions we can go from there are up
+or down.
+
+Ideally, the only thing that should determine the possible paths to follow from
+a given node is the node itself, and *not* how the node was reached. If we reach
+the same coordinates twice without knowing where we came from, we cannot
+possibly know whether we should stop because we already explored all possible
+paths from the node, or continue because this time new paths are reachable.
+
+Given that we can reach nodes in differnt ways, and that this will directly
+influence which nodes will be reachable from them, we need more information than
+just the cell coordinates to represent a node. The bare minimum needed in this
+case is the coordinates plus the directions we are allowed to explore from the
+node. We can represent a node using a tuple of the form
+`(coords, possible_directions)` (where `coords` is a pair `(r, c)`).
+
+How can we identify the neighbors of a node then? The problem statement tells us
+that, from any given cell, we can travel between 1 and 3 consecutive steps in
+the same direction until we need to turn. Therefore, given a node, one way to
+find its neighbors is to identify all the possible coordinates that are
+reachable within 3 steps in a straight line in any of the allowed directions.
+
+Take this small grid as an example:
+
+```none
+  012345
+  ------
+0|X23522
+1|411111
+2|211111
+```
+
+We start on the cell marked as `X` with coordinates `(0, 0)`, and we can travel
+right or down. The coordinates reachable from this cell therefore are:
+
+- Traveling right: `(0, 1)` with distance 2, `(0, 2)` with distance 5 (2 + 3),
+  and `(0, 3)` with distance 10 (2 + 3 + 5).
+- Traveling down: `(1, 0)` with distance 4, and `(2, 0)` with distance 6
+  (4 + 2).
+
+What about the coordinates reachable from `(0, 1)` then? Technically, we can
+travel right from `(0, 1)` to `(0, 2)` with distance 2, for a total distance of
+4 from the start, but given how we explored the grid, we already know that we
+can reach `(0, 2)` with distance 4 from `(0, 0)`, so that would be a pointless
+intermediate step to reach the same goal.
+
+Similarly, we could go from `(1, 0)` down to `(2, 0)` with distance 2, for a
+total distance of 4 from the start, but we already know that `(2, 0)` is
+reachable with distance 4 from the start!
+
+The above reasoning gives a pretty neat way to identify neighbors: given a node
+identified by a pair of coordintates and possible directions of travel, travel
+on a straight line in any of the possible directions up to 3 steps. The
+neighbors of the node will then be any of the reached coordinates, and each of
+them will be only allowed to turn 90 degrees to continue traveling.
+
+As another example:
+
+```none
+  012345
+  ------
+0|111111
+1|3X2751
+2|111111
+```
+
+The neighbors of the node `((1, 2), [left, right])` (the `X` cell above) are:
+
+- `((1, 0), [up, down])` at distance 3, with neighbors `((0, 0), [left, right])`
+  and `((2, 0), [left, right])`;
+- `((1, 3), [up, down])` at distance 2, with neighbors `((0, 3), [left, right])`
+  and `((2, 3), [left, right])`;
+- `((1, 4), [up, down])` at distance 9, with neighbors `((0, 4), [left, right])`
+  and `((2, 4), [left, right])`;
+- `((1, 5), [up, down])` at distance 14, with neighbors
+  `((0, 5), [left, right])` and `((2, 5), [left, right])`.
+
+As you may have noticed, using this kind of representation, we only ever switch
+from allowed directions `[left, right]` to allowed directions `[up, down]`. We
+can therefore simplify things and say that the allowed directions are either
+vertical or horizontal, which can be represented with a single `bool` variable
+tells us whether we can travel vertically or not vertically (i.e. horizontally).
+
+Finally, arcs: an arc will simply be a tuple of the form
+`(neighbor_node, weight)`, and the weight of the arc, as is probably already
+obvious from the above examples, is simply the sum of the numbers encountered on
+the grid (including the destination cell, but not the starting cell).
+
+<!--
+Let's start by writing a [generator function][py-generators] that, given a node,
+will `yield` all its neighbors. As we already said, a node is a tuple of the
+form `((r, c), can_travel_vertically)`. We have two main cases: either go
+vertically and yield as neighbors the (up to) 3 cells above and (up to) 3 cells
+below, or go horizontally and yield as neighbors the (up to) 3 cells left and
+(up to) 3 cells right.
+
+For now, let's assume that we will be using the global variables `grid`,
+`height` and `width` to avoid an insane amount of parameters, we'll see later
+how to "fix" this. The only parameter we need is the node.
+
+```python
+def neighbors(node):
+    # Just to be explicit, not really needed
+    global grid, height, width
+
+    (r, c), can_travel_vertically = node
+
+    if can_travel_vertically:
+        # Go up to 3 cells up
+        for delta in range(1, 3 + 1):
+            if r - delta >= 0:
+                break
+            yield ((r - delta, c), False)
+
+        # Go up to 3 cells down
+        for delta in range(1, 3 + 1):
+            if r + delta < height:
+                break
+            yield ((r + delta, c), False)
+    else:
+        # Go up to 3 cells left
+        for delta in range(1, 3 + 1):
+            if c - delta >= 0:
+                break
+            yield ((r, c - delta), False)
+
+        # Go up to 3 cells right
+        for delta in range(1, 3 + 1):
+            if c + delta < width:
+                break
+            yield ((r, c + delta), False)
+```
+
+Okay, seems good to identify the neighbors... but we also want to know what's
+their distance (i.e. the weight of the arc from the original `node` to each of
+them). Let's add that calculation to the function:
+
+```diff
+ def neighbors(node):
+     # Just to be explicit, not really needed
+     global grid, height, width
+
+     (r, c), can_travel_vertically = node
+
+     if can_travel_vertically:
+         # Go up to 3 cells up
++        weight = 0
+         for delta in range(1, 3 + 1):
+             if r - delta >= 0:
+                 break
++            weight += grid[r][c]
+-            yield ((r - delta, c), False)
++            yield ((r - delta, c), False), weight
+
+         # Go up to 3 cells down
++        weight = 0
+         for delta in range(1, 3 + 1):
+             if r + delta < height:
+                 break
++            weight += grid[r][c]
+-            yield ((r + delta, c), False)
++            yield ((r + delta, c), False), weight
+     else:
+         # Go up to 3 cells left
++        weight = 0
++        for delta in range(1, 3 + 1):
+             if c - delta >= 0:
+                 break
++            weight += grid[r][c]
+-            yield ((r, c - delta), True)
++            yield ((r, c - delta), True), weight
+
+         # Go up to 3 cells right
++        weight = 0
+         for delta in range(1, 3 + 1):
+             if c + delta < width:
+                 break
++            weight += grid[r][c]
+-            yield ((r, c + delta), True)
++            yield ((r, c + delta), True), weight
+```
+-->
+
+Let's write a [generator function][py-generators] that, given a pair of starting
+coordinates and a direction, calculates and yields all the coordinates and the
+weights moving in a straight line up to 3 steps. It seems simple enough: just
+keep going for at most 3 steps in the given direction as long as you are inside
+the grid, add up all the weights encountered, and `yield` a tuple
+`(coords, weight)` each time.
+
+```python
+def straight_line(grid, height, width, r, c, deltar, deltar):
+    weight = 0
+
+    for _ in range(1, 3 + 1):
+        r += deltar
+        c += deltac
+
+        if not (0 <= r < height and 0 <= c < width):
+            break
+
+        weight += grid[r][c]
+        yield ((r, c), weight)
+```
+
+With the help of the above code, we can now easily write another generator
+function that, given a node, will `yield` all its neighbors. As we already said,
+a node is a tuple of the form `((r, c), can_travel_vertically)`. We have two
+main cases: if we can go vertically, travel in a straight line up and down up to
+3 steps, and if we can not go vertically then travel in a straight line left and
+right up to 3 steps. This transltes to 4 calls to the above function.
+
+```python
+def neighbors(grid, height, width, node):
+    (r, c), can_travel_vertically = node
+
+    if can_travel_vertically:
+        # Up
+        for coords, weight in straight_line(grid, height, width, r, c, -1, 0):
+            yield ((coords, False), weight)
+        # Down
+        for coords, weight in straight_line(grid, height, width, r, c, 1, 0):
+            yield ((coords, False), weight)
+    else:
+        # Left
+        for coords, weight in straight_line(grid, height, width, r, c, 1, -1):
+            yield ((coords, True), weight)
+        # Right
+        for coords, weight in straight_line(grid, height, width, r, c, 1, 1):
+            yield ((coords, True), weight)
+```
+
+The above function is definitely still siplifiable, but to avoid wasting ages
+I'll leave that as an exercise to the reader (or you can just check out my
+complete solution linked above).
+
+Awesome! We now have:
+
+- The definition of a node.
+- The definition of an arc and its weight.
+- A way to list the outgoing arcs from a node (i.e. to determine all the
+  neighbors of a given node).
+
+This is all we need to implement a pathfinding algorithm. In particular, since
+we are interested in finding the shrotest path from one node to another, we can
+use the famous [Dijkstra's algorithm][wiki-dijkstra].
+
+Copying almost verbatim from my 2019 walkthrough: as we already did in previous
+years ([2019 d6 p2][2019-d06-p2], [2021 d15 p1][2021-d15-p1]), w ewill implement
+Dijkstra's algorithm using a [min-heap][wiki-min-heap] as a [priority
+queue][wiki-priority-queue] to hold the nodes to visit and always pop the one
+with the shortest distance from the source. The [`heapq`][py-heapq] module is
+exactly what we need. A [`defaultdict`][py-collections-defaultdict] that returns
+`float('inf')` (also provided by `math.inf`) as the default value is also useful
+to treat not-yet-seen nodes as being infinitely distant (positive floating point
+infinity compares greater than any integer).
+
+The algorithm is well-known and also well-explained in the Wikipedia page I just
+linked above, so I'm not going into much detail about it, I'll just add some
+comments to the code.
+
+```python
+import heapq
+from collections import defaultdict
+from math import inf as INFINITY
+
+def dijkstra(grid, height, width, src_coords, dst_coords):
+    # Set of visited nodes to avoid visiting the same node twice
+    visited = set()
+
+    # List of (distance, node) used as heap to choose the next node to visit
+    queue = []
+    # We'll start from the coordinates src_coords. This is the only special case
+    # where we can go bot horizontally and vertically, so we'll add two nodes to
+    # the initial queue.
+    queue.append((0, (src_coords, False)))
+    queue.append((0, (src_coords, True)))
+
+    # Dictionary of the form {node: total_distance} keeping track of the minimum
+    # distance from any given node to the start
+    distance = defaultdict(lambda: INFINITY)
+
+    # While we have nodes to visit
+    while queue:
+        # Pop the node with lowest distance from the priority queue
+        dist, node = heapq.heappop(queue)
+
+        # If we got to the destination, we found what we were looking for
+        if node[0] == dst_coords:
+            return dist
+
+        # If we already visited this node, skip it, proceed to the next one
+        if node in visited:
+            continue
+
+        # Mark the node as visited
+        visited.add(node)
+
+        # For each neighbor of this node...
+        for neighbor, weight in neighbors(grid, height, width, node):
+            # Calculate the total distance from the source to this neighbor
+            # passing through this node
+            new_dist = dist + weight
+
+            # If the new distance is lower than the minimum distance we know to
+            # reach this neighbor, then update its minimum distance and add it
+            # to the queue, as we found a "better" path to it
+            if new_dist < distance[neighbor]:
+                distance[neighbor] = new_dist
+                heapq.heappush(queue, (new_dist, neighbor))
+
+    # If we ever empty the queue without entering the node[0] == dst_coords
+    # check in the above loop, there is no path from source to destination
+    return INFINITY
+```
+
+Assuming we wrote everything correctly, all that's left to do is call the
+function to get our answer:
+
+```python
+src_coords = (0, 0)
+dst_coords = (height - 1, width - 1)
+
+min_dist = dijkstra(grid, height, width, src_coords, dst_coords)
+print('Part 1:', min_dist)
+```
+
+### Part 2
+
+For part 2, we still need to find the shortest path to victory, but this time
+the movement rules change: whenever we move, we always have to take *at least* 4
+steps in the same direction. Then, we can keep going for
+*up to 6 additional steps* in the same direction before we necessarily have to
+turn.
+
+Well, thankfully, given the way we coded things for part 1, the changes to make
+are not that many. The only function to change is `straight_line()`, which
+should now take into account the minimum distance of 4 and maximum of 4+6 = 10.
+To make it generic enough, let's take these numbers as parameters:
+
+```diff
+-def straight_line(grid, height, width, r, c, deltar, deltar):
++def straight_line(grid, height, width, r, c, deltar, deltar, start, stop):
+     weight = 0
+
+-    for _ in range(1, 3 + 1):
++    for i in range(start, stop + 1):
+         r += deltar
+         c += deltac
+
+         if not (0 <= r < height and 0 <= c < width):
+             break
+
+         weight += grid[r][c]
+-        yield ((r, c), weight)
++        if i >= start:
++            yield ((r, c), weight)
+```
+
+The only other changes to make are simplying a matter of passing around the
+`start` and `stop` values:
+
+```diff
+-def neighbors(grid, height, width, node):
++def neighbors(grid, height, width, node, start, stop):
+     (r, c), can_travel_vertically = node
+
+     if can_travel_vertically:
+-        for coords, weight in straight_line(grid, height, width, r, c, -1, 0):
++        for coords, weight in straight_line(grid, height, width, r, c, -1, 0, start, stop):
+             yield ((coords, False), weight)
+-        for coords, weight in straight_line(grid, height, width, r, c, 1, 0):
++        for coords, weight in straight_line(grid, height, width, r, c, 1, 0, start, stop):
+             yield ((coords, False), weight)
+     else:
+-        for coords, weight in straight_line(grid, height, width, r, c, 1, -1):
++        for coords, weight in straight_line(grid, height, width, r, c, 1, -1, start, stop):
+             yield ((coords, True), weight)
+-        for coords, weight in straight_line(grid, height, width, r, c, 1, 1):
++        for coords, weight in straight_line(grid, height, width, r, c, 1, 1, start, stop):
+             yield ((coords, True), weight)
+```
+
+And in the main `dijkstra()` function:
+
+```diff
+-def dijkstra(grid, height, width, src_coords, dst_coords)
++def dijkstra(grid, height, width, src_coords, dst_coords, start, stop):
+     # ....
+-        for neighbor, weight in neighbors(grid, height, width, node):
++        for neighbor, weight in neighbors(grid, height, width, node, start, stop):
+     # ...
+```
+
+We can now calculate the answer for both parts with two function calls:
+
+```python
+min_dist1 = dijkstra(grid, height, width, src_coords, dst_coords, 1, 3)
+print('Part 1:', min_dist1)
+
+min_dist2 = dijkstra(grid, height, width, src_coords, dst_coords, 4, 10)
+print('Part 2:', min_dist2)
+```
+
 ---
 
 
@@ -3741,6 +4190,7 @@ print('Part 2:', best)
 [d14]: #day-14---parabolic-reflector-dish
 [d15]: #day-15---lens-library
 [d16]: #day-16---the-floor-will-be-lava
+[d17]: #day-17---clumsy-crucible
 [d18]: #day-18---
 [d19]: #day-19---
 [d20]: #day-20---
@@ -3799,7 +4249,10 @@ print('Part 2:', best)
 
 [d08-reddit-thread]: https://www.reddit.com/r/adventofcode/comments/18dfpub
 [d12-original]:      original_solutions/day12.py
+[2019-d06-p2]:       ../2019/README.md#part-2-5
+[2021-d15-p1]:       ../2021/README.md#day-15---chiton
 [2020-d13-p2-crt]:   https://github.com/mebeim/aoc/blob/master/2020/README.md#part-2---purely-mathematical-approach
+
 
 [py-assert]:             https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement
 [py-cond-expr]:          https://docs.python.org/3/reference/expressions.html#conditional-expressions
@@ -3832,6 +4285,7 @@ print('Part 2:', best)
 [py-frozenset]:               https://docs.python.org/3/library/stdtypes.html#frozenset
 [py-functools-cache]:         https://docs.python.org/3/library/functools.html#functools.cache
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
+[py-heapq]:                   https://docs.python.org/3/library/heapq.html
 [py-itertools-cycle]:         https://docs.python.org/3/library/itertools.html#itertools.cycle
 [py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-index]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
@@ -3859,10 +4313,14 @@ print('Part 2:', best)
 [wiki-crt]:               https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Statement
 [wiki-dp]:                https://en.wikipedia.org/wiki/Dynamic_programming
 [wiki-dfs]:               https://en.wikipedia.org/wiki/Depth-first_search
+[wiki-dijkstra]:          https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
+[wiki-directed-graph]:    https://en.wikipedia.org/wiki/Directed_graph
 [wiki-hash-func]:         https://en.wikipedia.org/wiki/Hash_function
 [wiki-lcm]:               https://en.wikipedia.org/wiki/Least_common_multiple
 [wiki-linked-list]:       https://en.wikipedia.org/wiki/Linked_list
 [wiki-memoization]:       https://en.wikipedia.org/wiki/Memoization
+[wiki-min-heap]:          https://en.wikipedia.org/wiki/Binary_heap
+[wiki-priority-queue]:    https://en.wikipedia.org/wiki/Priority_queue
 [wiki-quadratic-formula]: https://en.wikipedia.org/wiki/Quadratic_formula
 [wiki-sparse-matrix]:     https://en.wikipedia.org/wiki/Sparse_matrix#Dictionary_of_keys_(DOK)
 [wiki-taxicab]:           https://en.wikipedia.org/wiki/Taxicab_geometry
