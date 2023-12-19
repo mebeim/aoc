@@ -11,14 +11,14 @@ def pairwise(iterable):
 
 def shoelace(vertices):
 	area = 0
-	for (r1, c1), (r2, c2) in pairwise(vertices):
-		area += (r2 + r1) * (c2 - c1)
+	for (r1, c1), (_, c2) in pairwise(vertices):
+		area += r1 * (c2 - c1)
 
-	return abs(area) // 2
+	return abs(area)
 
 def solve(vertices, perimeter):
 	area = shoelace(vertices)
-	return int(area - perimeter / 2 + 1) + perimeter
+	return area + perimeter // 2 + 1
 
 
 # Open the first argument as input or use stdin if no arguments were given
