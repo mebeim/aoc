@@ -28,8 +28,8 @@ Table of Contents
 - [Day 16 - The Floor Will Be Lava][d16]
 - [Day 17 - Clumsy Crucible][d17]
 - [Day 18 - Lavaduct Lagoon][d18]
+- [Day 19 - Aplenty][d19]
 <!--
-- [Day 19 - ][d19]
 - [Day 20 - ][d20]
 - [Day 21 - ][d21]
 - [Day 22 - ][d22]
@@ -4380,6 +4380,325 @@ area2 = shoelace(vertices2) + perimeter2 // 2 + 1
 print('Part 1:', area2)
 ```
 
+
+Day 19 - Aplenty
+----------------
+
+[Problem statement][d19-problem] — [Complete solution][d19-solution] — [Back to top][top]
+
+### Part 1
+
+Interesting problem today, I'd say the most interesting so far this year. We
+need to emulate a set of "workflows" composed of rules that are linked to each
+other.
+
+To the input parsing! We have two section of input separated by an empty line,
+so we can just read everything, [`.split()`][py-str-split] on `\n\n` to get the
+two sections, and then use [`.splitlines()`][py-str-splitlines] on each section.
+
+```python
+with open(...) as fin:
+    raw_workflows, raw_variables = fin.read().split('\n\n')
+
+raw_workflows = raw_workflows.splitlines()
+raw_variables = raw_variables.splitlines()
+```
+
+Since parsing is a bit tedious, let's write two functions: one to parse the
+workflows and another one to parse the variable assignments.
+
+Each line in `raw_workflows` represents a single workflow of the following
+form:
+
+```none
+zzz{a>3102:vrv,a<2800:cqj,a<2999:A,bvc}
+```
+
+The name (`zzz`) can be easily extracted by locating the first `{` character
+through [`.find()`][py-str-find] and then slicing. The rules start right after
+`{` and end at the second-to-last character, so they can again be extracted by
+slicing. They can then be `.split()` on commas (`,`) and parsed.
+
+Each rule has the form `expression:next_workflow_name`, except the last rule
+which only represent the workflow name to go to if none of the previous rules
+are satisfied. Each rule can therefore be `.split()` on the colon (`:`) through
+a simple generator expression to obtain a list of pairs
+`[expression, next_workflow_name]`.
+
+Each expression has the form `v>num` or `v<num` where `v` is a
+variable name and `num` is an integer. We can extract these three components
+with slicing, and once again use a generator expression to transform each
+`[expression, next_workflow_name]` pair into
+`(var_name, op, value, next_workflow_name)`.
+
+Where do we store parsed workflows? Well, since each workflow include rules that
+identify other workflows by name, a dictionary of the form
+`{name: (rules, last_name)}` seems ideal ot easy find workflows by name. That
+`last_name` is simply the name in the final rule, which does not have an
+expression.
+
+Here's a function that parses workflows from raw input lines to a dictionary as
+described above:
+
+```python
+def parse_workflows(lines):
+    workflows = {}
+
+    for line in lines:
+        name = line[:line.find('{')]
+        rules = line[line.find('{') + 1:-1].split(',')
+        # Separate the last rule (name only) from the rest
+        rules, last = rules[:-1], rules[-1]
+        # ['expr1:name1', ...] -> [[expr1, name1], ...]
+        rules = (r.split(':') for r in rules)
+        # [[expr1, name1], ...] -> [(var_name, op, value, next_workflow_name), ...]
+        rules = [(exp[0], exp[1], int(exp[2:]), nxt) for exp, nxt in rules]
+        workflows[name] = (rules, last)
+
+    return workflows
+```
+
+Parsing variable assignments is simpler: remove the leading `{` and trailing
+`}`, split each assignment on `=` to have pairs of the form `[var_name, value]`,
+and finally convert each value to integer.
+
+Again, the most convenient container to use is a dictionary of the form
+`{var_name: value}`. This is because workflow rules will refer to the variable
+by name, so we need an easy way to get their value given their name. This
+dictionary can be consicely built using
+[dict comprehension][py-dict-comprehension].
+
+Since these assignments only need to be iterated over once, we can write a
+[generator function][py-generators] that yields one dictionary at a time.
+
+```python
+def parse_variables(lines):
+    for line in lines:
+        # '{a=123,b=456}' -> ['a=123', 'b=456']
+        assignments = line[1:-1].split(',')
+        # ['a=123', 'b=456'] -> [('a', '123'), ('b', '456')]
+        assignments = map(lambda a: a.split('='), assignments)
+        # [('a', '123'), ('b', '456')] -> {'a': 123, 'b': 456}
+        yield {a[0]: int(a[1]) for a in assignments}
+```
+
+Now we can parse the two input sections we have using the functions we just
+wrote:
+
+```python
+workflows = parse_workflows(raw_workflows)
+variables = parse_variables(raw_variables)
+```
+
+Our task is to try running the workflows (starting from the one named `in`) with
+all the given variable assignments, and for workflows that succeed (i.e. end up
+referencing the dummy `A` workflow) sum the variable values.
+
+Let's write a function to run the workflows we have given one dictionary of
+variable assignments. The algorithm seems straightforward:
+
+1. Start with the workflow `in`;
+2. For each rule in the workflow, test the referenced variable against the
+   given value, depending on the given operation (`<` or `>`);
+3. If the check passes, proceed to the next workflow identified by the rule,
+   otherwise proceed to the next rule;
+4. If all the rules of the current workflow are processed without any match
+   (i.e. none of the tested expressions were saisfied), proceed to the `last`
+   workflow (corresponding to the final rule that has no expression);
+5. Continue until a workflow named `'A'` or `'R'` is encountered;
+6. In case `'A'` is encountered, return the sum of the variable values, or zero
+   otherwise.
+
+Here's the implementation:
+
+```python
+def run(workflows, variables):
+    cur = 'in'
+
+    while cur != 'A' and cur != 'R':
+        rules, last = workflows[cur]
+
+        for varname, op, value, nxt in rules:
+            var = variables[varname]
+            if op == '<' and var < value:
+                cur = nxt
+                break
+            if op == '>' and var > value:
+                cur = nxt
+                break
+        else:
+            # No break statement encountered (i.e., none of the rules matched)
+            cur = last
+
+    if cur == 'A':
+        return sum(variables.values())
+    return 0
+```
+
+Using the above function, we can now calculate the value for all the variable
+assignments we have, and [`sum()`][py-builtin-sum] everything up.
+
+```python
+total = sum(run(workflows, v) for v in variables)
+```
+
+We can also use [`map()`][py-builtin-map[ instead of a generator expression if
+we first bind the first argument of `run` to be always `workflows` using
+[`functoos.partial()`][py-functools-partial]:
+
+```python
+total = sum(map(partial(run, workflows), variables))
+print('Part 1:', total)
+```
+
+### Part 2
+
+Now we are told to ignore the given variable assignments. We know that each of
+the four variables we have (`x`, `m`, `a`, `s`) can have a value ranging from 1
+to 4000 (ends included), and want to calculate how many among all the possible
+value assignments are accepted by the workflows.
+
+We clearly cannot test all the possible assignments in a reasonable time, since
+we have 4 ranges of 4000 values, so a total of 4000<sup>4</sup> =
+256000000000000 (256 trillion) unique possible assignments. We need to architect
+a smarter strategy.
+
+It may already be obvious, but the workflows we are given represent a
+[directed graph][wiki-directed-graph]: each workflow represents a node, and is
+connected to other workflows through some ordered expressions (arcs). We can
+advance from one node to the other testing the expressions in the given order
+and taking the arc corresponding to the first satisfied expression (or the final
+arc with no expression).
+
+Additionally, there are no loops (otherwise part 1 would have been impossible),
+so the graph is also a [tree][wiki-tree], where the root is the workflow named
+`'in'`, and the only two leaves are the two workflows named `'A'` and `'R'`.
+
+We can solve the problem in a single exploration of the tree from the root down
+to the leaves, either using [BFS][wiki-bfs] or [DFS][wiki-dfs]. The latter is
+simpler to implement as a recursive function. To do this, along the way we'll
+keep track of *ranges of possible values* instead of single values.
+
+Starting from the root workflow (`'in'`) with [1, 4000] as the possible range
+for all the variables, the strategy to implement is as follows:
+
+1. If we reach the `'A'` workflow, return the product of all the range sizes,
+   which corresponds to the number of possible combinations;
+2. Otherwise, if we reach the `'R'` workflow, return `0`;
+3. Otherwise, we need to go through the rules of the current workflow. For each
+   rule:
+   1. Check the value *v* to test and the current range *[lo, hi]* of possible
+      values for the tested variable. In case the expression is *var < v*, we
+      need to discard all the values above *v*, so the new accepted range will
+      be *[lo, v - 1]*. In case the operation is *var > v*, we need to discard
+      all the values below *v*, so the new accepted range will be *[v + 1, hi]*.
+   2. Make a recursive call to know the amount of accepted values for the new
+      ranges. Add the result of the recursive call to the total number of
+      accepted rules.
+   3. Update the current range for the tested variable with the opposite of the
+      accepted range (we advance to the next rule only if the current did not
+      match). In case of *var < v* we advance with *[v, hi]*, while in case od
+      *var > v* we advance with *[lo, value]*.
+4. Finally, after processing all the rules, make a last recursive call to also
+   explore the workflow corresponding to the final rule that has no associated
+   expression using the updated ranges. Add the result of the recursive call
+   to the total and return it.
+
+The above algorithm essentially splits the search space in half each time a rule
+is evaluated: one half is accepted and continues to the next workflow, while the
+other half is rejected and passed on to the next rule of the current workflow.
+
+We'll implement the above as a recursive function taking 3 arguments: the
+workflows, the initial ranges and the current workflow name. The variable ranges
+will be represented with a dictionary of the form `{var_name: (lo, hi)}`,
+starting with `lo=1` and `hi=4000` for all variables.
+
+To update the dictionary of ranges and pass it on recursively, we can use the
+bitwise OR operator (`|`), which has the effect of creating a new dictionary
+with the values taken from the right side of the operator overriding the
+originals, as documented [here][py-dict]. So, for example:
+`{'x': 1, 'y': 2} | {'x': 3}` will produce `{'x': 3, 'y': 2}`.
+
+Here's the implementation of the above:
+
+```python
+def count_accepted(workflows, ranges, cur='in'):
+    if cur == 'A':
+        # The ranges we have are accepted, return the number of possible
+        # combinations, which corresponds to the product of the range sizes
+        product = 1
+        for lo, hi in ranges.values()
+            product *= hi - lo + 1
+
+        return product
+
+    if cur == 'R':
+        # The ranges we have were rejected
+        return 0
+
+    rules, last = workflows[cur]
+    total = 0
+
+    for var, op, value, nxt in rules:
+        lo, hi = ranges[var]
+
+        if op == '<':
+            # Check if this rule can match any of the values in [lo, hi]
+            if lo < value:
+                # Crate a new ranges dictionary updating the range of this
+                # variable from [lo, hi] to [lo, value - 1], then explore the
+                # next workflow with a recursive call
+                ranges | {var: (lo, value - 1)}
+                total += count_accepted(workflows, , nxt)
+
+            # If possible, update the current range with the opposite of the
+            # match (since we also want to explore the possibility of no match),
+            # so from [lo, hi] to [value, hi], and continue to the next rule
+            if hi >= value:
+                ranges[var] = (value, hi)
+        else:
+            # Pretty much the same reasoning as above...
+            if hi > value:
+                total += count_accepted(workflows, ranges | {var: (value + 1, hi)}, nxt)
+
+            if lo <= value:
+                ranges[var] = (lo, value)
+
+    # Also try processing the next workflow, which should be explored only if no
+    # rules match (we already updated all the ranges as needed)
+    total += count_accepted(workflows, ranges, last)
+    return total
+```
+
+The calculation of the product in case we encounter the `'A'` workflow can be
+simplified using [`math.prod()`][py-math-prod] plus a
+[generator expression][py-gen-expr]:
+
+```diff
++from math import product
++
+ def count_accepted(workflows, ranges, cur='in'):
+     if cur == 'A':
+         # The ranges we have are accepted, return the number of possible
+         # combinations, which corresponds to the product of the range sizes
+-        product = 1
+-        for lo, hi in ranges.values()
+-            product *= hi - lo + 1
+-
+-        return product
++        return prod(hi - lo + 1 for lo, hi in ranges.values())
+
+     # ... unchanged ...
+```
+
+We are once again one function call away from the solutoin, so let's get our
+38th star:
+
+```python
+accepted = count_accepted(workflows, {v: (1, 4000) for v in 'xmas'})
+print('Part 2:', accepted)
+```
+
 ---
 
 
@@ -4406,7 +4725,7 @@ print('Part 1:', area2)
 [d16]: #day-16---the-floor-will-be-lava
 [d17]: #day-17---clumsy-crucible
 [d18]: #day-18---lavaduct-lagoon
-[d19]: #day-19---
+[d19]: #day-19---aplenty
 [d20]: #day-20---
 [d21]: #day-21---
 [d22]: #day-22---
@@ -4472,6 +4791,7 @@ print('Part 1:', area2)
 
 [py-assert]:             https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement
 [py-cond-expr]:          https://docs.python.org/3/reference/expressions.html#conditional-expressions
+[py-dict]:               https://docs.python.org/3/library/stdtypes.html#typesmapping
 [py-dict-comprehension]: https://peps.python.org/pep-0274/
 [py-gen-expr]:           https://docs.python.org/3/reference/expressions.html#generator-expressions
 [py-lambda]:             https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions
@@ -4503,6 +4823,7 @@ print('Part 1:', area2)
 [py-frozenset]:               https://docs.python.org/3/library/stdtypes.html#frozenset
 [py-functools-cache]:         https://docs.python.org/3/library/functools.html#functools.cache
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
+[py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
 [py-heapq]:                   https://docs.python.org/3/library/heapq.html
 [py-itertools-cycle]:         https://docs.python.org/3/library/itertools.html#itertools.cycle
 [py-itertools-pairwise]:      https://docs.python.org/3/library/itertools.html#itertools.pairwise
@@ -4548,5 +4869,6 @@ print('Part 1:', area2)
 [wiki-sparse-matrix]:     https://en.wikipedia.org/wiki/Sparse_matrix#Dictionary_of_keys_(DOK)
 [wiki-taxicab]:           https://en.wikipedia.org/wiki/Taxicab_geometry
 [wiki-transpose]:         https://en.wikipedia.org/wiki/Transpose
+[wiki-tree]:              https://en.wikipedia.org/wiki/Tree_(graph_theory)
 
 [misc-cpython-set-difference]: https://github.com/python/cpython/blob/e24eccbc1cf5f22743cd5cda733cd04891155d54/Objects/setobject.c#L1500
