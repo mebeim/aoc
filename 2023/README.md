@@ -4611,6 +4611,10 @@ The above algorithm essentially splits the search space in half each time a rule
 is evaluated: one half is accepted and continues to the next workflow, while the
 other half is rejected and passed on to the next rule of the current workflow.
 
+This can be nicely visualized using a [Sankey diagram][wiki-sankey], which is
+what was done [here in this Reddit post][d19-reddit-sankey] in the AoC
+subreddit. Pretty neat!
+
 We'll implement the above as a recursive function taking 3 arguments: the
 workflows, the initial ranges and the current workflow name. The variable ranges
 will be represented with a dictionary of the form `{var_name: (lo, hi)}`,
@@ -5117,6 +5121,7 @@ print('Part 2:', answer)
 [d08-p2]:             #part-2-7
 [d12-original]:       original_solutions/day12.py
 [d18-jonathan-video]: https://www.youtube.com/watch?v=UNimgm_ogrw
+[d19-reddit-sankey]:  https://old.reddit.com/r/adventofcode/comments/18lyvuv
 [d20-reddit-viz1]:    https://www.reddit.com/r/adventofcode/comments/18mypla
 [d20-reddit-viz2]:    https://www.reddit.com/r/adventofcode/comments/18mqnrl
 [2019-d06-p2]:        ../2019/README.md#part-2-5
@@ -5204,6 +5209,7 @@ print('Part 2:', answer)
 [wiki-pick-theorem]:      https://en.wikipedia.org/wiki/Pick%27s_theorem
 [wiki-priority-queue]:    https://en.wikipedia.org/wiki/Priority_queue
 [wiki-quadratic-formula]: https://en.wikipedia.org/wiki/Quadratic_formula
+[wiki-sankey]:            https://en.wikipedia.org/wiki/Sankey_diagram
 [wiki-shoelace]:          https://en.wikipedia.org/wiki/Shoelace_formula
 [wiki-sparse-matrix]:     https://en.wikipedia.org/wiki/Sparse_matrix#Dictionary_of_keys_(DOK)
 [wiki-taxicab]:           https://en.wikipedia.org/wiki/Taxicab_geometry
