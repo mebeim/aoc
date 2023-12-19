@@ -27,8 +27,8 @@ Table of Contents
 - [Day 15 - Lens Library][d15]
 - [Day 16 - The Floor Will Be Lava][d16]
 - [Day 17 - Clumsy Crucible][d17]
+- [Day 18 - Lavaduct Lagoon][d18]
 <!--
-- [Day 18 - ][d18]
 - [Day 19 - ][d19]
 - [Day 20 - ][d20]
 - [Day 21 - ][d21]
@@ -4166,6 +4166,220 @@ min_dist2 = dijkstra(grid, height, width, src_coords, dst_coords, 4, 10)
 print('Part 2:', min_dist2)
 ```
 
+
+Day 18 - Lavaduct Lagoon
+------------------------
+
+[Problem statement][d18-problem] — [Complete solution][d18-solution] — [Back to top][top]
+
+### Part 1
+
+No way, grids again? Ok, no, not really. This time we are not dealing directly
+with a gid, but rather only following directions to draw something on it.
+
+Given that the input instructions to draw edges only contain directions to go
+up/down/left/right, what we will end up drawing a polygon that only has right
+angles and vertical or horizontal edges. Our task is to calculate its total area
+expressed in terms of points with integral coordinates that reside either inside
+or on the edges of the polygon.
+
+How can this be done? There are multiple ways: the naïve approach would be to
+draw the entire perimeter of the polygon following the directions liteally and
+then determine use [breadth-first search][wiki-bfs] starting from any cell on
+its inside to count how many cells there are (including the perimeter). That
+would work, but would definitely not be optimal.
+
+In fact, closed formulas exist that can solve this problem. A quick internet
+search for *"area of a polygon given its vertices"* brings up the
+[shoelace formula][wiki-shoelace], also known as "Gauss' area formula". The
+formula is more general and also works for edges that are not horizontal and
+vertical, so in our case it can also be simplified a bit. There are different
+variations of the formula, but the one that I think fits the scenario best is
+the trapezoid formula.
+
+The core concept is easy to undestand with the help of an example. Consider the
+following polygon:
+
+```none
+^ Y
+|    1        8
+|     ########
+|     #      #          6
+|     #      ###########
+|     #     7|         #
+|     #      |     3   #
+|     #############    #
+|    2|      |    #    #
+|     |      |    ######
+|     |      |   4|    |5
+|     |      |    |    |
+O-----x------x----x----x-----> X
+```
+
+Ignoring the vertical segments (they have zero area below them), if we denote
+the area below a segment from *a* to *b* with $A_{a,b}$, then the area of the
+above polygon can be calculated as: $A_{1,8} + A_{7,6} - A_{2,3} - A_{4,5}$. In
+fact, if we take a look at it we can se that $A_{1,8}$ includes a piece of
+$A_{2,3}$ below it, $A_{7,6}$ includes the remaining piece of $A_{2,3}$ and also
+$A_{4,5}$.
+
+The Shoelace formula in fact calculates the area exactly like this: as the
+summation of the *signed areas* below the edges of the polygon considered in
+counter-clockwise order. The area $A_{a,b}$ can be calculated as
+$(b_x - a_x)(a_y + b_y)/2$ for the generic case where the shape is a trapezoid.
+In our case it's just $(b_x - a_x)a_y$, since horizontal segments will have the
+same *y* ($a_y + b_y = 2a_y$), and vertical segments will have the same *x*
+($b_x - a_x = 0)$.
+
+If we iterate over the vertices of the above example pairwise, we get:
+$A_{2,1} + A_{3,2} + A_{5,4} + ... + A_{1,8}$. The areas $A_{3,2}$ and $A_{5,4}$
+are negative since we are considering the edges in their opposite direction.
+
+The only additional thing to consider is that we also want to include the cells
+on the perimeter of the polygon itself in our area, but the formula we just
+wrote will only include part of it. To overcome this, we can apply
+[Pick's theorem][wiki-pick-theorem], which states that $A = I+\frac{P}{2}-1$,
+that is: the area is equal to the number of internal points, minus one half of
+the points laying on the perimeter, plus 1.
+
+Okay, we have our mind set on the goal, now onto the coding part. We want the
+coordinates of all the vertices and the number of points on the perimeter. We
+can calculate all of this in one go by parsing the input line by line.
+
+We will [`.split()`][py-str-split] each line extracting the direction and the
+number of steps that follows (ignoring the last hexadecimal part for now as the
+problem statement says). We will express coordinates as `(r, c)` as usual (using
+`x` and `y` would be equivalent, but I find `r` and `c` more intuitive).
+Starting from an arbitrary point, for example `(0, 0)`, we will then move each
+time in the given direction for the given number of steps, and add the new
+coordinates to a list of vertices. The direction, which can be one of `UDLR`,
+can be easily converted into deltas to apply to `r` and `c` with the help of a
+dictionary.
+
+```python
+fin = open(...)
+
+dirmap = {'R': (0, 1), 'D': (1, 0), 'L': (0, -1), 'U': (-1, 0)}
+
+vertices = []
+perimeter = 0
+r = c = 0
+
+for line in fin:
+    direction, steps, _ = line.split()
+    steps = int(steps)
+
+    dr, dc = dirmap[direction]
+    r += steps * dr
+    c += steps * dc
+
+    vertices.append((r, c))
+    perimeter += steps
+```
+
+Since we will iterate over vertices pairwise, and we also want include in our
+calculations the edge that goes from the last vertex to the first, we will add
+`(0, 0)` at the end of the list.
+
+```python
+vertices.append((0, 0))
+```
+
+We now have a list of vertices and the perimeter of the polygon. Let's write a
+function to calculate the inner area using the shoelace formula. To iterate over
+pairs of vertices we can use [`itertools.pairwise()`][py-itertools-pairwise], or
+alternatively re-implement it ourselves using
+[`itertools.tee()`][py-itertools-tee] as the example in the Pytho ndocumentation
+shows, since `pairwise()` is only available from Python 3.10.
+
+Since we want to iterate over vertices in counter-clockwise order, but we don't
+know if they are ordered clockwise or counter-clockwise, there is a chance that
+the resulting area will be negative. That's no issue, we can calculate its
+absolute value with [`abs()`][py-builtin-abs].
+
+```python
+from itertools import pairwise
+
+def shoelace(vertices):
+    area = 0
+    for (r1, c1), (_, c2) in pairwise(vertices):
+        area += (c2 - c1) * r1
+
+    return abs(area)
+```
+
+We can now calculate the inner area and then apply Pick's theorem to get the
+total area we want. We want an integer result, and the perimeter we calculate
+will always be an even number (given that the path we take from the initial
+vertex always brings us back to the origin), so we can use itneger division
+(`//`).
+
+```python
+area = shoelace(vertices) + perimeter // 2 + 1
+print('Part 1:', area)
+```
+
+### Part 2
+
+For part 2 we are told that the hexadecimal values we ignored in part 1 actually
+represent the real edges: the lowest hex digit represents the direction, which
+can be `0123` for `RDLU`, and the other digits represent the number of steps to
+take (the length of the edge).
+
+We already have all we need to solve the problem, we only need to feed our
+function new values. We can either rewind the input and parse it again or do
+everything in a single loop and keep two lists of vertices and two perimeters.
+To convert hexadecimal numbers into decimal we can pass `16` (the base to
+convert from) as second argument to [`int()`][py-builtin-int]. In any case, we
+can add `0123` to our `dirmap` to convert those digits to the appropriate
+deltas.
+
+```python
+dirmap = {
+	'R': (0, 1), 'D': (1, 0), 'L': (0, -1), 'U': (-1, 0),
+	'0': (0, 1), '1': (1, 0), '2': (0, -1), '3': (-1, 0),
+}
+
+vertices1 = []
+vertices2 = []
+perimeter1 = 0
+perimeter2 = 0
+r1 = c1 = r2 = c2 = 0
+
+for line in fin:
+    direction, steps1, hexval = line.split()
+    steps1 = int(steps1)
+
+    dr, dc = dirmap[direction]
+    r1 += steps1 * dr
+    c1 += steps1 * dc
+
+    direction = hexval[-2]
+    steps2 = int(hexval[2:-2], 16)
+    dr, dc = dirmap[direction]
+    r2 += steps2 * dr
+    c2 += steps2 * dc
+
+    vertices1.append((r1, c1))
+    vertices2.append((r2, c2))
+    perimeter1 += steps1
+    perimeter2 += steps2
+
+vertices1.append((0, 0))
+vertices2.append((0, 0))
+```
+
+Yeah, not the prettiest code I've seen... but why complicate things? The
+solutions for both parts are both one function call away:
+
+```python
+area1 = shoelace(vertices1) + perimeter1 // 2 + 1
+print('Part 1:', area1)
+
+area2 = shoelace(vertices2) + perimeter2 // 2 + 1
+print('Part 1:', area2)
+```
+
 ---
 
 
@@ -4191,7 +4405,7 @@ print('Part 2:', min_dist2)
 [d15]: #day-15---lens-library
 [d16]: #day-16---the-floor-will-be-lava
 [d17]: #day-17---clumsy-crucible
-[d18]: #day-18---
+[d18]: #day-18---lavaduct-lagoon
 [d19]: #day-19---
 [d20]: #day-20---
 [d21]: #day-21---
@@ -4215,6 +4429,7 @@ print('Part 2:', min_dist2)
 [d14-problem]: https://adventofcode.com/2023/day/14
 [d15-problem]: https://adventofcode.com/2023/day/15
 [d16-problem]: https://adventofcode.com/2023/day/16
+[d17-problem]: https://adventofcode.com/2023/day/17
 [d18-problem]: https://adventofcode.com/2023/day/18
 [d19-problem]: https://adventofcode.com/2023/day/19
 [d20-problem]: https://adventofcode.com/2023/day/20
@@ -4239,6 +4454,7 @@ print('Part 2:', min_dist2)
 [d14-solution]: solutions/day14.py
 [d15-solution]: solutions/day15.py
 [d16-solution]: solutions/day16.py
+[d17-solution]: solutions/day17.py
 [d18-solution]: solutions/day18.py
 [d19-solution]: solutions/day19.py
 [d20-solution]: solutions/day20.py
@@ -4263,10 +4479,12 @@ print('Part 2:', min_dist2)
 [py-slicing]:            https://docs.python.org/3/library/stdtypes.html#common-sequence-operations
 [py-unpacking]:          https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 
+[py-builtin-abs]:             https://docs.python.org/3/library/functions.html#abs
 [py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
 [py-builtin-any]:             https://docs.python.org/3/library/functions.html#any
 [py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
 [py-builtin-filter]:          https://docs.python.org/3/library/functions.html#filter
+[py-builtin-int]:             https://docs.python.org/3/library/functions.html#int
 [py-builtin-iter]:            https://docs.python.org/3/library/functions.html#iter
 [py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
 [py-builtin-max]:             https://docs.python.org/3/library/functions.html#max
@@ -4287,6 +4505,8 @@ print('Part 2:', min_dist2)
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
 [py-heapq]:                   https://docs.python.org/3/library/heapq.html
 [py-itertools-cycle]:         https://docs.python.org/3/library/itertools.html#itertools.cycle
+[py-itertools-pairwise]:      https://docs.python.org/3/library/itertools.html#itertools.pairwise
+[py-itertools-tee]:           https://docs.python.org/3/library/itertools.html#itertools.tee
 [py-list-append]:             https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-index]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-pop]:                https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
@@ -4310,6 +4530,7 @@ print('Part 2:', min_dist2)
 
 [wiki-2048]:              https://en.wikipedia.org/wiki/2048_(video_game)
 [wiki-ascii]:             https://en.wikipedia.org/wiki/ASCII
+[wiki-bfs]:               https://en.wikipedia.org/wiki/Breadth-first_search
 [wiki-crt]:               https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Statement
 [wiki-dp]:                https://en.wikipedia.org/wiki/Dynamic_programming
 [wiki-dfs]:               https://en.wikipedia.org/wiki/Depth-first_search
@@ -4320,8 +4541,10 @@ print('Part 2:', min_dist2)
 [wiki-linked-list]:       https://en.wikipedia.org/wiki/Linked_list
 [wiki-memoization]:       https://en.wikipedia.org/wiki/Memoization
 [wiki-min-heap]:          https://en.wikipedia.org/wiki/Binary_heap
+[wiki-pick-theorem]:      https://en.wikipedia.org/wiki/Pick%27s_theorem
 [wiki-priority-queue]:    https://en.wikipedia.org/wiki/Priority_queue
 [wiki-quadratic-formula]: https://en.wikipedia.org/wiki/Quadratic_formula
+[wiki-shoelace]:          https://en.wikipedia.org/wiki/Shoelace_formula
 [wiki-sparse-matrix]:     https://en.wikipedia.org/wiki/Sparse_matrix#Dictionary_of_keys_(DOK)
 [wiki-taxicab]:           https://en.wikipedia.org/wiki/Taxicab_geometry
 [wiki-transpose]:         https://en.wikipedia.org/wiki/Transpose

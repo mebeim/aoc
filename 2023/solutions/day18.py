@@ -54,6 +54,9 @@ for line in fin:
 	perimeter1 += steps1
 	perimeter2 += steps2
 
+vertices1.append((0, 0))
+vertices2.append((0, 0))
+
 area1 = solve(vertices1, perimeter1)
 print('Part 1:', area1)
 
