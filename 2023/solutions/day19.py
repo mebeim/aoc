@@ -23,13 +23,13 @@ def parse_variables(lines):
 		assignments = map(lambda a: a.split('='), assignments)
 		yield {a[0]: int(a[1]) for a in assignments}
 
-def run_workflow(flow, variables):
+def run(workflows, variables):
 	cur = 'in'
 
 	while cur != 'A' and cur != 'R':
-		insns, last = flow[cur]
+		rules, last = workflows[cur]
 
-		for varname, op, value, nxt in insns:
+		for varname, op, value, nxt in rules:
 			var = variables[varname]
 			if op == '<' and var < value or op == '>' and var > value:
 				cur = nxt
@@ -58,18 +58,12 @@ def count_accepted(workflows, ranges, cur='in'):
 			if lo < value:
 				total += count_accepted(workflows, ranges | {var: (lo, value - 1)}, nxt)
 
-			if hi >= value:
-				ranges[var] = (value, hi)
-			else:
-				break
+			ranges[var] = (max(lo, value), hi)
 		else:
 			if hi > value:
 				total += count_accepted(workflows, ranges | {var: (value + 1, hi)}, nxt)
 
-			if lo <= value:
-				ranges[var] = (lo, value)
-			else:
-				break
+			ranges[var] = (lo, min(hi, value))
 
 	total += count_accepted(workflows, ranges, last)
 	return total
@@ -84,7 +78,7 @@ with fin:
 workflows = parse_workflows(raw_workflows.splitlines())
 variables = parse_variables(raw_variables.splitlines())
 
-total = sum(map(partial(run_workflow, workflows), variables))
+total = sum(map(partial(run, workflows), variables))
 print('Part 1:', total)
 
 accepted = count_accepted(workflows, {v: (1, 4000) for v in 'xmas'})
