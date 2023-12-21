@@ -29,8 +29,8 @@ Table of Contents
 - [Day 17 - Clumsy Crucible][d17]
 - [Day 18 - Lavaduct Lagoon][d18]
 - [Day 19 - Aplenty][d19]
+- [Day 20 - Pulse Propagation][d20]
 <!--
-- [Day 20 - ][d20]
 - [Day 21 - ][d21]
 - [Day 22 - ][d22]
 - [Day 23 - ][d23]
@@ -4542,7 +4542,7 @@ assignments we have, and [`sum()`][py-builtin-sum] everything up.
 total = sum(run(workflows, v) for v in variables)
 ```
 
-We can also use [`map()`][py-builtin-map[ instead of a generator expression if
+We can also use [`map()`][py-builtin-map] instead of a generator expression if
 we first bind the first argument of `run` to be always `workflows` using
 [`functoos.partial()`][py-functools-partial]:
 
@@ -4699,6 +4699,334 @@ accepted = count_accepted(workflows, {v: (1, 4000) for v in 'xmas'})
 print('Part 2:', accepted)
 ```
 
+
+Day 20 - Pulse Propagation
+--------------------------
+
+[Problem statement][d20-problem] — [Complete solution][d20-solution] — [Back to top][top]
+
+### Part 1
+
+Today's problem is a fun one (well, at least for part 1). We are working with
+singals and want to propagate them through what is essentially a
+[directed graph][wiki-directed-graph] of "modules".
+
+The input we are given consists of lines of the form `src -> dst1, dst2, dst3`.
+Te easiest way to represent the graph is a dictionary of the form
+`{node: list_of_neighbors}`, and the input provides us the key-value pairs to
+fill it with.
+
+We can represent "pulses" as booleans with `True` meaning high and `False`
+meaning low. In order to distinguish between different kind of modules, we can
+use two additional dictionaries: one for "flip-flop" modules, where the values
+will be the current state of each flip-flop, and one for "conjunction" modules,
+where the values will be dictionaries used to remember the last state of the
+inputs for each conjunction. Modules that are neighte flip-flops nor
+conjunctions don't need to remember any state them.
+
+Let's get to parsing then: separate sources from destinations by
+[`.split()`][py-str-split]-ing each line on the arrow (`'->'`), then
+[`.strip()`][py-str-strip] useless whitespace from both parts and `.split()`
+again the destinations on commas (`', '`) to get a list.
+
+To determine the module type we simply check the first character: for flip-flops
+we initialize their state to `False` (low), while for conjunctions we'll create
+a new empty dictionary (to fill later). Finally, we'll add everything to the
+graph dictionary.
+
+```python
+flops = {}
+conjs = {}
+graph = {}
+
+with open(...) as fin:
+    for line in fin:
+        source, dests = line.split('->')
+        source = source.strip()
+        dests = dests.strip().split(', ')
+
+        if source[0] == '%':
+            source = source[1:]
+            flops[source] = False
+        elif source[0] == '&':
+            source = source[1:]
+            conjs[source] = {}
+
+        graph[source] = dests
+```
+
+Now that we have built the graph and recognized each flip-flop and conjunction,
+we need to initialize the state of each conjunction module: for each
+conjunction, we will add any module that has such conjunction in its destination
+list to the conjunction's dictionary. This can be done with a simple `for` loop
+over the [`.items()`][py-dict-items] of the `conjs` dictionary we just built.
+
+```python
+for source, dests in graph.items():
+    for dest in dests:
+        if dest in conjs:
+            cnjs[dest][source] = False
+```
+
+Now the fun begins. Following the rules, we need to propagate an initial pulse
+starting from the `'broadcaster'` module. This module gets a los (`False`) pulse
+from an initial button press, and such pulse will propagate according to the
+rules in the problem statement.
+
+We can implement a [breadth-first][wiki-bfs] exploration of the graph using a
+[`deque`][py-collections-deque] as [FIFO][wiki-fifo] queue. The elemenents to
+enqueue will be tuples of the form `(sender, receiver, pulse)` where `sender` is
+the module that sent the pulse, `receiver` is the module currently receiving it,
+and `pulse` is `True`/`False` for high/low.
+
+We'll keep going until there are elements in the queue, popping one at a time
+from the front and processing it, which may result in appending new elements to
+process to the tail of the queue. We'll also keep track of the number of low and
+high pulses encountered, as this is what we are asked.
+
+Let's write a function for this: the implementation will simply follows the
+rules given by the problem statement.
+
+```python
+from collections import deque
+
+def run(graph, flops, conjs):
+    q   = deque([('button', 'broadcaster', False)])
+    nhi = 0 # number of high pulses encountered
+    nlo = 0 # number of low pulses encountered
+
+    while q:
+        sender, receiver, pulse = q.popleft()
+
+        if pulse:
+            nhi += 1
+        else:
+            nlo += 1
+
+        if receiver in flops:
+            # Flip flops only react to low pulses
+            if pulse:
+                return
+            # When a low pulse is received, the state of the flip-flop switches
+            # to its opposite and a concording pulse is propagated
+            next_pulse = flops[receiver] = not flops[receiver]
+        elif receiver in conjs:
+            # When a pulse is received by a conjunction, the last known state of
+            # the sender is updated for this conjunction
+            conjs[receiver][sender] = pulse
+            # If all the last pulse seen from all the inputs of this conjunction
+            # was high, then a low pulse is propagated, otherwise a high pulse
+            next_pulse = not all(conjs[receiver].values())
+        elif receiver in graph:
+            # Neither a flip-flop nor a conjunction, propagate the pulse as is
+            next_pulse = pulse
+        else:
+            # This module is not connected to any other module, cannot propagate
+            return
+
+        # Now propagate the new pulse to all the modules connected to this one
+        for new_receiver in graph[receiver]:
+            q.append((receiver, new_receiver, next_pulse))
+
+    return nhi, nlo
+```
+
+To get our 39th star, we can now call the function 1000 times and calculate the
+product of the total number of low and high pulses observer:
+
+```python
+tothi = totlo = 0
+for _ in range(1000):
+    nhi, nlo = run(graph, flops, conjs)
+    tothi += nhi
+    totlo += nlo
+
+answer = tothi * totlo
+print('Part 1:', answer)
+```
+
+### Part 2
+
+Things take an interesting turn: we need to reset all flip-flops and
+conjunctions to their initial state, and then find out when will the `'rx'`
+module ever receive the first low pulse, in terms of number of button presses.
+
+Theoretically, we already have the code to do this: in part 1 we had to emulate
+1000 button presses, why not simply add a check inside the `run()` function and
+call it indefinitely until the check is hit? Well, of course, in classic Advent
+of Code spirit, this brute force approach won't work. Or well, it would work, if
+it weren't for the fact that the number we are looking for is insanely high, so
+the solution would take a little bit too much time to run.
+
+We need to take a look at our input to realize what's going on. A couple of
+visualizations posted today on AoC's subreddit are also helpful for this:
+[one][d20-reddit-viz1], [two][d20-reddit-viz2]. In any case, a few interesting
+aspects stand out:
+
+1. There's only one `rx` module;
+2. There's only one input to the `rx` module, and it's a conjunction module;
+3. All the inputs to this conjunction module are also conjunction modules.
+
+Let's stop and think for a second. Unfortunately we will have to make a few
+assumptions without which our life would be much, much harder. The good news is
+that these assumptions seem to hold, the bad news is that making assumptions
+theoretically makes the solution less general. As I take it though, this always
+happens for at least one or two AoC problems each year, so I'm relatively fine
+with it.
+
+Consider the following:
+
+1. Assume that the three above conditions always hold (at least, they dit for my
+   input and I assume everyone else's input);
+2. Let's call $A$ the conjunction mentioned in point 2 above, which is the only
+   input module to `rx`. Then, let's call $B_1, B_2, ..., B_N$ the *N*
+   conjunctions mentioned in point 3 above, which are the only input modules to
+   $A$.
+3. Given the behavior of conjunctions, $A$ will send a low pulse to `in` as soon
+   as all the remembered pulses from its inputs ($B_i$) are high.
+4. Each $B_i$ will send a high pulse to $A$ every time it receives a low pulse
+   (no matter the state, a low pulse received by a conjunction will always
+   propagate another low pulse).
+5. Assume that each $B_i$ **somehow** periodically receives a low pulse every
+   $P_i$ button presses (i.e., each $P_i$ runs of the `run()` function we
+   wrote).
+6. Assume that the period of each $B_i$ module starts at the first button press
+   and ends at the first low pulse delivered to the module.
+
+We now have *N* modules ($B_1, ..., B_n$), which according to the assumption in
+point 5 above are periodically sending high pulses with different period lengths
+($P_1, ..., P_n$). According to the assumption in point 6, all these periods
+also start at the same time (the first button press).
+
+The *N* modules we have send high pulses in periods of different lengths
+starting at the same instant, and we want to know when they will synchronize.
+This will happen every [$\text{lcm}(P_1,...,P_n)$][wiki-lcm] iterations. The
+situation is similar to the one of [day 8 part 2][d08-p2].
+
+The logic to use to propagate pulses is unchanged, so whatever code we write
+will be very similar to the code for part 1. Let's therefore extract the pulse
+propagation logic of the `run()` function into an helper
+[generator function][py-generators] that we can then use for both part 1 and
+part 2. This function will take the current `sender`, `receiver` and `pulse`,
+process the pulse according to the rules, and `yield` all the next elements to
+explore (i.e., to add the queue). It's as simple as cut and paste:
+
+```python
+def propagate_pulse(graph, flops, conjs, sender, receiver, pulse):
+    if receiver in flops:
+        if pulse:
+            return
+        next_pulse = flops[receiver] = not flops[receiver]
+    elif receiver in conjs:
+        conjs[receiver][sender] = pulse
+        next_pulse = not all(conjs[receiver].values())
+    elif receiver in graph:
+        next_pulse = pulse
+    else:
+        return
+
+    for new_receiver in graph[receiver]:
+        yield receiver, new_receiver, next_pulse
+```
+
+The `run()` function from part 1 can then be rewritten as follows:
+
+```python
+def run(graph, flops, conjs):
+    q = deque([('button', 'broadcaster', False)])
+    nhi = nlo = 0
+
+    while q:
+        sender, receiver, pulse = q.popleft()
+
+        if pulse:
+            nhi += 1
+        else:
+            nlo += 1
+
+        q.extend(propagate_pulse(graph, flops, conjs, sender, receiver, pulse))
+
+    return nhi, nlo
+```
+
+We can now write a function to find out the $P_i$ periods. First, we'll have to
+identify $A$: the only conjunction module that is an input to `rx`. Then, we
+have to identify each $B_i$: the only conjunction modules that are inputs to
+$A$. Both these operations can be done by iterating over the `.items()` of the
+`graph` we have. Since we are making assumptions, where possible, it's best to
+make sure that they hold with [`assert`][py-assert].
+
+```python
+def find_periods(graph, flops, conjs):
+    periodic = set() # These are B1, B2, ... BN
+
+    for rx_source, dests in graph.items():
+        if dests == ['rx']:
+            # rx_source is A
+            assert rx_source in conjs
+            break
+
+    for source, dests in graph.items():
+        if rx_source in dests:
+            assert source in conj
+            periodic.add(source)
+
+    # TODO: find periods...
+```
+
+Cool. Now, to find the periods, we can simply [`count()`][py-itertools-count]
+the iterations starting from `1` and each time do a full run. Whenever we
+encounter a low pulse, if the receiver is one of the $B_i$ modules we are
+interested in, we will yield the current iteration count and
+[`.discard()`][py-set-discard] it from our `periodic` set. We will be done when
+the set is empty.
+
+```python
+from itertools import count
+
+def find_periods(graph, flops, conjs):
+    # ... same as above ...
+
+    for iteration in count(1):
+        q = deque([('button', 'broadcaster', False)])
+
+        while q:
+            sender, receiver, pulse = q.popleft()
+
+            if not pulse:
+                if receiver in periodic:
+                    yield iteration
+
+                    periodic.discard(receiver)
+                    if not periodic:
+                        return
+
+            q.extend(propagate_pulse(graph, flops, conjs, sender, receiver, pulse))
+```
+
+Now we can simply call the above function and calculate the [LCM][wiki-lcm] of
+all the numbers it returns using [`math.lcm()`][py-math-lcm]. First thouh, we
+have to reset the state of all the flip-flops and the conjunctions. That's not
+a problem it only takes a couple of `for` loops.
+
+```python
+from math import lcm
+
+# Reset flip-flops
+for f in flops:
+    flops[f] = False
+
+# Reset conjunctions
+for inputs in conjs.values():
+    for i in inputs:
+        inputs[i] = False
+
+answer = lcm(*find_periods(graph, flops, conjs))
+print('Part 2:', answer)
+```
+
+40 stars collected, 10 more to go!
+
 ---
 
 
@@ -4726,7 +5054,7 @@ print('Part 2:', accepted)
 [d17]: #day-17---clumsy-crucible
 [d18]: #day-18---lavaduct-lagoon
 [d19]: #day-19---aplenty
-[d20]: #day-20---
+[d20]: #day-20---pulse-propagation
 [d21]: #day-21---
 [d22]: #day-22---
 [d24]: #day-24---
@@ -4783,7 +5111,10 @@ print('Part 2:', accepted)
 [d25-solution]: solutions/day25.py
 
 [d08-reddit-thread]: https://www.reddit.com/r/adventofcode/comments/18dfpub
+[d08-p2]:            #part-2-7
 [d12-original]:      original_solutions/day12.py
+[d20-reddit-viz1]:   https://www.reddit.com/r/adventofcode/comments/18mypla
+[d20-reddit-viz2]:   https://www.reddit.com/r/adventofcode/comments/18mqnrl
 [2019-d06-p2]:       ../2019/README.md#part-2-5
 [2021-d15-p1]:       ../2021/README.md#day-15---chiton
 [2020-d13-p2-crt]:   https://github.com/mebeim/aoc/blob/master/2020/README.md#part-2---purely-mathematical-approach
@@ -4819,12 +5150,14 @@ print('Part 2:', accepted)
 [py-collections-counter]:     https://docs.python.org/3/library/collections.html#collections.deque
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
 [py-collections-deque]:       https://docs.python.org/3/library/collections.html#collections.deque
+[py-dict-items]:              https://docs.python.org/3/library/stdtypes.html#dict.items
 [py-dict-values]:             https://docs.python.org/3/library/stdtypes.html#dict.values
 [py-frozenset]:               https://docs.python.org/3/library/stdtypes.html#frozenset
 [py-functools-cache]:         https://docs.python.org/3/library/functools.html#functools.cache
 [py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
 [py-functools-partial]:       https://docs.python.org/3/library/functools.html#functools.partial
 [py-heapq]:                   https://docs.python.org/3/library/heapq.html
+[py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
 [py-itertools-cycle]:         https://docs.python.org/3/library/itertools.html#itertools.cycle
 [py-itertools-pairwise]:      https://docs.python.org/3/library/itertools.html#itertools.pairwise
 [py-itertools-tee]:           https://docs.python.org/3/library/itertools.html#itertools.tee
@@ -4838,6 +5171,7 @@ print('Part 2:', accepted)
 [py-operator-itemgetter]:     https://docs.python.org/3/library/operator.html#operator.itemgetter
 [py-set-intersection]:        https://docs.python.org/3/library/stdtypes.html#frozenset.intersection
 [py-set-difference]:          https://docs.python.org/3/library/stdtypes.html#frozenset.difference
+[py-set-discard]:             https://docs.python.org/3/library/stdtypes.html#frozenset.discard
 [py-str-find]:                https://docs.python.org/3/library/stdtypes.html#str.find
 [py-str-isdigit]:             https://docs.python.org/3/library/stdtypes.html#str.isdigit
 [py-str-join]:                https://docs.python.org/3/library/stdtypes.html#str.join
@@ -4857,6 +5191,7 @@ print('Part 2:', accepted)
 [wiki-dfs]:               https://en.wikipedia.org/wiki/Depth-first_search
 [wiki-dijkstra]:          https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
 [wiki-directed-graph]:    https://en.wikipedia.org/wiki/Directed_graph
+[wiki-fifo]:              https://it.wikipedia.org/wiki/FIFO
 [wiki-hash-func]:         https://en.wikipedia.org/wiki/Hash_function
 [wiki-lcm]:               https://en.wikipedia.org/wiki/Least_common_multiple
 [wiki-linked-list]:       https://en.wikipedia.org/wiki/Linked_list
