@@ -4242,6 +4242,9 @@ wrote will only include part of it. To overcome this, we can apply
 that is: the area is equal to the number of internal points, minus one half of
 the points laying on the perimeter, plus 1.
 
+Jonathan Paulson made a good and straight-to-the-point video explanation of this
+approach in [his youtube video here][d18-jonathan-video].
+
 Okay, we have our mind set on the goal, now onto the coding part. We want the
 coordinates of all the vertices and the number of points on the perimeter. We
 can calculate all of this in one go by parsing the input line by line.
@@ -4377,7 +4380,7 @@ area1 = shoelace(vertices1) + perimeter1 // 2 + 1
 print('Part 1:', area1)
 
 area2 = shoelace(vertices2) + perimeter2 // 2 + 1
-print('Part 1:', area2)
+print('Part 2:', area2)
 ```
 
 
@@ -5110,14 +5113,15 @@ print('Part 2:', answer)
 [d24-solution]: solutions/day24.py
 [d25-solution]: solutions/day25.py
 
-[d08-reddit-thread]: https://www.reddit.com/r/adventofcode/comments/18dfpub
-[d08-p2]:            #part-2-7
-[d12-original]:      original_solutions/day12.py
-[d20-reddit-viz1]:   https://www.reddit.com/r/adventofcode/comments/18mypla
-[d20-reddit-viz2]:   https://www.reddit.com/r/adventofcode/comments/18mqnrl
-[2019-d06-p2]:       ../2019/README.md#part-2-5
-[2021-d15-p1]:       ../2021/README.md#day-15---chiton
-[2020-d13-p2-crt]:   https://github.com/mebeim/aoc/blob/master/2020/README.md#part-2---purely-mathematical-approach
+[d08-reddit-thread]:  https://www.reddit.com/r/adventofcode/comments/18dfpub
+[d08-p2]:             #part-2-7
+[d12-original]:       original_solutions/day12.py
+[d18-jonathan-video]: https://www.youtube.com/watch?v=UNimgm_ogrw
+[d20-reddit-viz1]:    https://www.reddit.com/r/adventofcode/comments/18mypla
+[d20-reddit-viz2]:    https://www.reddit.com/r/adventofcode/comments/18mqnrl
+[2019-d06-p2]:        ../2019/README.md#part-2-5
+[2021-d15-p1]:        ../2021/README.md#day-15---chiton
+[2020-d13-p2-crt]:    https://github.com/mebeim/aoc/blob/master/2020/README.md#part-2---purely-mathematical-approach
 
 
 [py-assert]:             https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement
