@@ -2,7 +2,6 @@
 
 import sys
 from collections import deque
-from copy import deepcopy
 from itertools import count
 from math import lcm
 
@@ -24,7 +23,7 @@ def propagate_pulse(graph, flops, conjs, sender, receiver, pulse):
 
 def run(graph, flops, conjs):
 	q = deque([('button', 'broadcaster', False)])
-	nlo = nhi = 0
+	nhi = nlo = 0
 
 	while q:
 		sender, receiver, pulse = q.popleft()
@@ -32,10 +31,10 @@ def run(graph, flops, conjs):
 		nlo += not pulse
 		q.extend(propagate_pulse(graph, flops, conjs, sender, receiver, pulse))
 
-	return nlo, nhi
+	return nhi, nlo
 
-def find_cycles(graph, flops, conjs):
-	useful = set()
+def find_periods(graph, flops, conjs):
+	periodic = set()
 
 	for rx_source, dests in graph.items():
 		if dests == ['rx']:
@@ -45,7 +44,7 @@ def find_cycles(graph, flops, conjs):
 	for source, dests in graph.items():
 		if rx_source in dests:
 			assert source in conjs
-			useful.add(source)
+			periodic.add(source)
 
 	for iteration in count(1):
 		q = deque([('button', 'broadcaster', False)])
@@ -54,11 +53,11 @@ def find_cycles(graph, flops, conjs):
 			sender, receiver, pulse = q.popleft()
 
 			if not pulse:
-				if receiver in useful:
+				if receiver in periodic:
 					yield iteration
 
-					useful.discard(receiver)
-					if not useful:
+					periodic.discard(receiver)
+					if not periodic:
 						return
 
 			q.extend(propagate_pulse(graph, flops, conjs, sender, receiver, pulse))
@@ -75,7 +74,7 @@ with fin:
 	for line in fin:
 		source, dests = line.split('->')
 		source = source.strip()
-		dests = list(map(str.strip, dests.split(',')))
+		dests = dests.strip().split(', ')
 
 		if source[0] == '%':
 			source = source[1:]
@@ -90,9 +89,6 @@ for source, dests in graph.items():
 	for dest in filter(conjs.__contains__, dests):
 		conjs[dest][source] = False
 
-orig_flops = deepcopy(flops)
-orig_conjs = deepcopy(conjs)
-
 tothi = totlo = 0
 for _ in range(1000):
 	nhi, nlo = run(graph, flops, conjs)
@@ -102,5 +98,13 @@ for _ in range(1000):
 answer1 = totlo * tothi
 print('Part 1:', answer1)
 
-answer2 = lcm(*find_cycles(graph, orig_flops, orig_conjs))
+
+for f in flops:
+	flops[f] = False
+
+for inputs in conjs.values():
+	for i in inputs:
+		inputs[i] = False
+
+answer2 = lcm(*find_periods(graph, flops, conjs))
 print('Part 2:', answer2)
