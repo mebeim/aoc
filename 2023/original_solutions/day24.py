@@ -68,7 +68,7 @@ advent.print_answer(1, tot)
 import z3
 
 # BitVec is way faster than Int
-I = lambda name: z3.BitVec(name, 64)
+I = lambda name: z3.Real(name)
 
 x, y, z = I('x'), I('y'), I('z')
 vx, vy, vz = I('vx'), I('vy'), I('vz')
@@ -89,6 +89,8 @@ assert s.check() == z3.sat
 m = s.model()
 x, y, z = m.eval(x), m.eval(y), m.eval(z)
 x, y, z = x.as_long(), y.as_long(), z.as_long()
+
+print(x, y, z)
 
 ans2 = x + y + z
 advent.print_answer(2, ans2)
