@@ -130,7 +130,7 @@ with fin:
 		p, v = line.split('@')
 		p = tuple(map(int, p.split(',')))
 		v = tuple(map(int, v.split(',')))
-		hailstones .append((p, v))
+		hailstones.append((p, v))
 
 for a, b in combinations(hailstones, 2):
 	x, y = intersection_2d_forward(*a, *b)
