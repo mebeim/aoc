@@ -1168,30 +1168,30 @@ need to travel at least *d* distance. The time we have to run is equal to the
 total time of the race (*t*) minus the time *x* we hold at the start. Therefore
 we win if:
 
-*x(t - x) ≥ d*
+$x(t - x) \ge d$
 
-Where *x* is the hold time and *t - x* is the remaining time we have for
-running. Simplifying the equation we get:
+Where $x$ is the hold time and $t - x$ is the remaining time we have for
+running. Expanding the equation we get:
 
-*-x<sup>2</sup> + tx ≥ d* ​​⇒ *-x<sup>2</sup> + tx - d ≥ 0*
+$-x^2 + tx \ge d \implies -x^2 + tx - d \ge 0$
 
-Given the quadratic equation *-x<sup>2</sup> + tx - d = 0*, we can use the
-[quadratic formula][wiki-quadratic-formula] to find the two solutions for *x*:
+Given the quadratic equation $-x^2 + tx - d = 0$, we can use the
+[quadratic formula][wiki-quadratic-formula] to find the two solutions for $x$:
 
-- *x<sub>min</sub> = (-t + √(t<sup>2</sup> - 4d)) / (-2) = (t - √(t<sup>2</sup> - 4d)) / 2*
-- *x<sub>max</sub> = (-t - √(t<sup>2</sup> - 4d)) / (-2) = (t + √(t<sup>2</sup> - 4d)) / 2*
+- $x_\text{min} = \frac{-t + \sqrt{t^2 - 4d}}{-2} = \frac{t - \sqrt{t^2 - 4d}}{2}$
+- $x_\text{max} = \frac{-t - \sqrt{t^2 - 4d}}{-2} = \frac{t + \sqrt{t^2 - 4d}}{2}$
 
-Since we want a non-negative result we then know that any value of *x* between
-the minimum solution *x<sub>min</sub>* and the maximum solution
-*x<sub>max</sub>* is valid.
+Since we want a non-negative result we then know that any value of $x$ between
+the minimum solution $x_\text{min}$ and the maximum solution $x_\text{max}$ is
+valid.
 
 Let's write a function to calculate the solution and directly give us the
 answer. Since we are dealing with powers and square roots, the numbers we'll
 calculate will be `float`, but we can use [`math.floor()`][py-math-floor] and
 [`math.ceil()`][py-math-ceil] as needed to get integral values. Ideally we'd
-want to calculate *x<sub>max</sub>* - *x<sub>min</sub>*, but to get the correct
-value we will need to round down *x<sub>max</sub>*, round up *x<sub>min</sub>*
-and subtract 1 from the result.
+want to calculate $x_\text{max} - x_\text{min}$, but to get the correct value we
+will need to round down $x_\text{max}$, round up $x_\text{min}$ and subtract 1
+from the result.
 
 ```python
 from math import ceil, floor
@@ -1341,9 +1341,9 @@ happens for each type:
 From the above table, it should seem quite obvious that the only information we
 need to establish the strength of a hand based on its type is the frequencies of
 its cards. Given two cards, to know which one has the stronger type, we can
-simply compare the counter frequencies in descending order! The first hand with
-a has a higher frequency wins. In fact, we have `[5] > [4, 1]`,
-`[4, 1] > [3, 2]`, `[3, 2] > [3, 2, 1]` and so on.
+simply compare the counter frequencies in descending order! The first hand that
+has a higher frequency wins. In fact, we have `[5] > [4, 1]`, `[4, 1] > [3, 2]`,
+`[3, 2] > [3, 1, 1]` and so on.
 
 Let's write a function to calculate the strength of a given hand so that we can
 later pass it as a `key=` function to [`sorted()`][py-builtin-sorted]. We can
@@ -1991,6 +1991,289 @@ for line in fin:
 
 print('Part 1:', total1)
 print('Part 2:', total2)
+```
+
+
+Day 11 - Cosmic Expansion
+-------------------------
+
+[Problem statement][d11-problem] — [Complete solution][d11-solution] — [Back to top][top]
+
+### Part 1
+
+We are going off on grid problems this year it seems. This time the grid is
+relatively simple, and we won't even need it for much else than extracting some
+coordinates. In fact, the only thing we care about is the position of each
+galaxy (`#`) in the grid. As we need to find rows or columns that are empty
+(composed only of empty space `.` and no galaxy `#`).
+
+Let's take a top-down approach this time and leave the input parsing for later.
+
+The problem statements asks us to alculate the [taxicab distance][wiki-taxicab]
+between all possible pairs of galaxies in the grid. The taxicab distance between
+two points $A$ and $B$ with coordinates $(r_A, c_A)$ and $(r_B, c_B)$ can be
+calculated as $|r_A - r_B| + |c_A - c_B|$. It's not hard to notice that such
+distance can be computed separately first on one axis (vertical) and then on the
+other axis (horizontal), as the two components of the sum, namely the vertical
+distance and the horizontal distance, are independent. The 2D problem we are
+dealing with is therefore just two instances of the same 1D problem.
+
+Here's an example 1D input (consisting of a single row):
+
+```none
+.##.#..#.#
+```
+
+Now, given that we are told that each space (`.`) expands to two spaces, and
+therefore each empty column in reality corresponds to *two* empty columns, we
+cannot simply calculate the distance right away with a handful of subtractions.
+We first need to figure out the *real* coordinates of each galaxy after the
+expansion. This can be done by scanning the only row we have from left to right
+and keeping track of the real column index: each time a space (`.`) is crossed,
+increment the index by two, while each time a galaxy (`#`) is encountered,
+remember its index and then increment by one.
+
+Let's write a [generator function][py-generators] for this:
+
+```python
+def expand(row):
+    column = 0
+
+    for char in row:
+        if char == '#':
+            yield column
+            column += 1
+        else:
+            # Empty space expands: each '.' becomes two '.'
+            column += 2
+```
+
+Simple enough. However, we are dealing with a *grid* of galaxies, so while it is
+true that the above works for the simple 1D case, in the more general 2D case
+there can be more than one galaxy on each column, for example:
+
+```none
+.##.#..#.#
+##...#.##.
+```
+
+In order to account for this, we can build a list of counts for each column.
+Let's do this with our actual input. The parsing couldn't be easier, just
+`.read()` everyting and use [`str.splitlines()`][py-str-splitlines] to get a
+list of strings. Then, scan it and keep track of the count of galaxies on each
+column. While we are at it, we can also do the same for rows, since the
+situation is analogous. As usual with grids, the
+[`enumerate()`][py-builtin-enumerate] will help iterating over both the
+row/column indices and the characters at the same time.
+
+```python
+with open(...) as fin:
+    grid = fin.read().splitlines()
+
+row_counts = [0] * len(grid)
+col_counts = [0] * len(grid[0])
+
+for r, row in enumerate(grid):
+    for c, char in enumerate(row):
+        if char == '#':
+            row_counts[r] += 1
+            col_counts[c] += 1
+```
+
+Now that we have our counts we can easily identify empty rows/columns: those
+will be the ones where the count is zero. Let's modify the `expand()` function
+we wrote earlier to take the counts into account. It's simple enough, for each
+zero count we have a space, and for each non-zero count we will just need to
+`yield` the same index as many times as the count.
+
+```python
+def expand(counts):
+    real_index = 0
+
+    for count in counts:
+        if count > 0:
+            # One or more galaxies, yield all of them
+            for _ in range(count):
+                yield real_index
+
+            real_index += 1
+        else:
+            # Empty space expands: each '.' becomes two '.'
+            real_index += 2
+```
+
+Now that we are able to calculate the expanded indices for both rows and
+columns, we need to calculate the sum of all pairwise distances. How can we do
+this? The simplest solution would be to iterate over all possible pairs of
+indices using two nested loops, but we can do better.
+
+Let's take for example the following case:
+
+```
+.##.#
+##...
+12101 <-- counts per column
+```
+
+As we can see, the above gives us the column counts `[1, 2, 1, 0, 1]`, which
+translate to the expanded column indices `[0, 1, 1, 2, 5]` (the double `1` is
+because of the two galaxies on the same column).
+
+How do we calculate the sum of all the pairwise distances (which in this case
+is nothing else than the sum of pairwise differences)? Simply iterate over
+all possible pairs. In order to avoid counting pairs twice, we can write one
+loop iterating from the firt to the last, and a second inner loop iterating from
+the first to the current position of the outer loop:
+
+```python
+indices = [0, 1, 1, 2, 5]
+total   = 0
+
+for i in range(len(indices)):
+    for j in range(0, i):
+        total += indices[i] - indices[j]
+```
+
+What we just calculated is:
+
+- $(1 - 0)$
+- $+ (1 - 1) + (1 - 0)$
+- $+ (2 - 1) + (2 - 1) + (2 - 0)$
+- $+ (5 - 2) + (5 - 1) + (5 - 1) + (5 - 0)$
+
+If we take a closer look, we can see that the above simplifies to:
+
+- $1 - 0$
+- $+ 2\cdot1 - (1 + 0)$
+- $+ 3\cdot2 - (1 + 1 + 0)$
+- $+ 4\cdot5 - (2 + 1 + 1 + 0)$
+
+In general, for a given element $x_i$, the sum of the differences between $x_i$
+and its predecessors will be:
+
+$(x_i - x_{i-1}) + (x_i - x_{i-2}) + ... + (x_i - x_1) + (x_i - x_0)$
+
+Which is equal to:
+
+$i \cdot x_i - (x_{i-1} + x_{i-2} + ... + x_1 + x_0) = ix_i - \sum\limits_{j=0}^{i-1}x_j$
+
+The first term is the `i`-th element multiplied by the number of elements
+preceding it, and the second term is the sum of all the elements preceding it.
+
+The above formula allows us to calculate the sum of pairwise differences in a
+single linear sweep of the values from lowest to highest. All we have to do is
+keep track of the index, and a partial sum of preceding values. Let's implement
+it!
+
+```python
+def sum_pairwise_distances(values):
+    total = partial_sum = 0
+
+    for i, x in enumerate(values):
+        total += i * x - partial_sum
+        partial_sum += x
+
+    return total
+```
+
+As simple as that. Now, all we need to do to solve the problem is first
+`expand()` the row and column coordinates given the row and column counts, then
+calculate the sum of pairwise distances for the rows and for the columns. Let's
+write a functio to do it:
+
+```python
+def solve(row_counts, col_counts):
+    return sum_pairwise_distances(expand(row_counts)) + \
+           sum_pairwise_distances(expand(col_counts))
+```
+
+And the solution is one function call away!
+
+```python
+total = solve(row_counts, col_counts)
+print('Part 1:', total)
+```
+
+### Part 2
+
+The problem remains the same, but this time the expansion factor is 1000000,
+meaning that each space `.` turns into 1000000 spaces. Thankfully, we already
+have everything we need to solve the problem. We are already accounting for
+expansion in the `expand()` function, we can simply add an additional
+`multiplier` to make it more generic:
+
+```diff
+-def expand(counts):
++def expand(counts, multiplier):
+     real_index = 0
+
+     for count in counts:
+         if count > 0:
+             for _ in range(count):
+                 yield real_index
+
+             real_index += 1
+         else:
+-            real_index += 2
++            real_index += multiplier
+```
+
+The `solve()` function can be modified to take a `multiplier` parameter as well,
+and pass it down:
+
+```python
+def solve(row_counts, col_counts, multiplier=2):
+    return sum_pairwise_distances(expand(row_counts, multiplier)) + \
+           sum_pairwise_distances(expand(col_counts, multiplier))
+```
+
+And we can now solve part 2:
+
+```python
+total2 = solve(row_counts, col_counts, 1000000)
+print('Part 2:', total2)
+```
+
+### Optimized solution
+
+The algorithm we wrote is already fast as is for a moderate number of galaxies
+like the one we are dealing with, but it can technically be made faster by
+getting rid of the `expand()` function and incorporating the calculations into
+the `sum_pairwise_distances()`. This is what I did for my final solution.
+
+The key takeaway is that instead of yielding the same $x_i$ value $n_i$ times
+(where $n_i$ is the count), we can incorporate $n_i$ into the calculations. This
+allows to solve the problem with a single linear scan of the counts, keeping
+track of:
+
+- The current real value $x_i$ taking into account the expansion multiplier (the
+  same way as `expand()` does);
+- The partial sum of the previous values, which can be expressed as the sum of
+  each previous value multiplied by its count: $S_i = \sum\limits_{j=0}^{i-1} n_j x_j$;
+- The number of previous values, which can be expressed as a partial sum of the
+  counts: $N_i = \sum\limits_{j=0}^{i-1} n_j$.
+
+The total then grows of $n_i(N_i x_i - S_i)$ each iteration. In
+[my solution][d11-solution], `space` corresponds to $x_i$, `previous`
+corresponds to $N_i$, and `partial_sum` corresponds to $S_i$.
+
+Doing this, we get the following simplified function that computes the result
+in significantly less iterations:
+
+```python
+def sum_distances(counts, multiplier):
+    total = partial_sum = previous = space = 0
+
+    for n in counts:
+        if n:
+            total       += n * (previous * space - partial_sum)
+            partial_sum += n * space
+            previous    += n
+            space       += 1
+        else:
+            space += multiplier
+
+    return total
 ```
 
 
@@ -2982,289 +3265,6 @@ print('Part 2:', total)
 ```
 
 
-Day 11 - Cosmic Expansion
--------------------------
-
-[Problem statement][d11-problem] — [Complete solution][d11-solution] — [Back to top][top]
-
-### Part 1
-
-We are going off on grid problems this year it seems. This time the grid is
-relatively simple, and we won't even need it for much else than extracting some
-coordinates. In fact, the only thing we care about is the position of each
-galaxy (`#`) in the grid. As we need to find rows or columns that are empty
-(composed only of empty space `.` and no galaxy `#`).
-
-Let's take a top-down approach this time and leave the input parsing for later.
-
-The problem statements asks us to alculate the [taxicab distance][wiki-taxicab]
-between all possible pairs of galaxies in the grid. The taxicab distance between
-two points $A$ and $B$ with coordinates $(r_A, c_A)$ and $(r_B, c_B)$ can be
-calculated as $|r_A - r_B| + |c_A - c_B|$. It's not hard to notice that such
-distance can be computed separately first on one axis (vertical) and then on the
-other axis (horizontal), as the two components of the sum, namely the vertical
-distance and the horizontal distance, are independent. The 2D problem we are
-dealing with is therefore just two instances of the same 1D problem.
-
-Here's an example 1D input (consisting of a single row):
-
-```none
-.##.#..#.#
-```
-
-Now, given that we are told that each space (`.`) expands to two spaces, and
-therefore each empty column in reality corresponds to *two* empty columns, we
-cannot simply calculate the distance right away with a handful of subtractions.
-We first need to figure out the *real* coordinates of each galaxy after the
-expansion. This can be done by scanning the only row we have from left to right
-and keeping track of the real column index: each time a space (`.`) is crossed,
-increment the index by two, while each time a galaxy (`#`) is encountered,
-remember its index and then increment by one.
-
-Let's write a [generator function][py-generators] for this:
-
-```python
-def expand(row):
-    column = 0
-
-    for char in row:
-        if char == '#':
-            yield column
-            column += 1
-        else:
-            # Empty space expands: each '.' becomes two '.'
-            column += 2
-```
-
-Simple enough. However, we are dealing with a *grid* of galaxies, so while it is
-true that the above works for the simple 1D case, in the more general 2D case
-there can be more than one galaxy on each column, for example:
-
-```none
-.##.#..#.#
-##...#.##.
-```
-
-In order to account for this, we can build a list of counts for each column.
-Let's do this with our actual input. The parsing couldn't be easier, just
-`.read()` everyting and use [`str.splitlines()`][py-str-splitlines] to get a
-list of strings. Then, scan it and keep track of the count of galaxies on each
-column. While we are at it, we can also do the same for rows, since the
-situation is analogous. As usual with grids, the
-[`enumerate()`][py-builtin-enumerate] will help iterating over both the
-row/column indices and the characters at the same time.
-
-```python
-with open(...) as fin:
-    grid = fin.read().splitlines()
-
-row_counts = [0] * len(grid)
-col_counts = [0] * len(grid[0])
-
-for r, row in enumerate(grid):
-    for c, char in enumerate(row):
-        if char == '#':
-            row_counts[r] += 1
-            col_counts[c] += 1
-```
-
-Now that we have our counts we can easily identify empty rows/columns: those
-will be the ones where the count is zero. Let's modify the `expand()` function
-we wrote earlier to take the counts into account. It's simple enough, for each
-zero count we have a space, and for each non-zero count we will just need to
-`yield` the same index as many times as the count.
-
-```python
-def expand(counts):
-    real_index = 0
-
-    for count in counts:
-        if count > 0:
-            # One or more galaxies, yield all of them
-            for _ in range(count):
-                yield real_index
-
-            real_index += 1
-        else:
-            # Empty space expands: each '.' becomes two '.'
-            real_index += 2
-```
-
-Now that we are able to calculate the expanded indices for both rows and
-columns, we need to calculate the sum of all pairwise distances. How can we do
-this? The simplest solution would be to iterate over all possible pairs of
-indices using two nested loops, but we can do better.
-
-Let's take for example the following case:
-
-```
-.##.#
-##...
-12101 <-- counts per column
-```
-
-As we can see, the above gives us the column counts `[1, 2, 1, 0, 1]`, which
-translate to the expanded column indices `[0, 1, 1, 2, 5]` (the double `1` is
-because of the two galaxies on the same column).
-
-How do we calculate the sum of all the pairwise distances (which in this case
-is nothing else than the sum of pairwise differences)? Simply iterate over
-all possible pairs. In order to avoid counting pairs twice, we can write one
-loop iterating from the firt to the last, and a second inner loop iterating from
-the first to the current position of the outer loop:
-
-```python
-indices = [0, 1, 1, 2, 5]
-total   = 0
-
-for i in range(len(indices)):
-    for j in range(0, i):
-        total += indices[i] - indices[j]
-```
-
-What we just calculated is:
-
-- $(1 - 0)$
-- $+ (1 - 1) + (1 - 0)$
-- $+ (2 - 1) + (2 - 1) + (2 - 0)$
-- $+ (5 - 2) + (5 - 1) + (5 - 1) + (5 - 0)$
-
-If we take a closer look, we can see that the above simplifies to:
-
-- $1 - 0$
-- $+ 2\cdot1 - (1 + 0)$
-- $+ 3\cdot2 - (1 + 1 + 0)$
-- $+ 4\cdot5 - (2 + 1 + 1 + 0)$
-
-In general, for a given element $x_i$, the sum of the differences between $x_i$
-and its predecessors will be:
-
-$(x_i - x_{i-1}) + (x_i - x_{i-2}) + ... + (x_i - x_1) + (x_i - x_0)$
-
-Which is equal to:
-
-$i \cdot x_i - (x_{i-1} + x_{i-2} + ... + x_1 + x_0) = ix_i - \sum\limits_{j=0}^{i-1}x_j$
-
-The first term is the `i`-th element multiplied by the number of elements
-preceding it, and the second term is the sum of all the elements preceding it.
-
-The above formula allows us to calculate the sum of pairwise differences in a
-single linear sweep of the values from lowest to highest. All we have to do is
-keep track of the index, and a partial sum of preceding values. Let's implement
-it!
-
-```python
-def sum_pairwise_distances(values):
-    total = partial_sum = 0
-
-    for i, x in enumerate(values):
-        total += i * x - partial_sum
-        partial_sum += x
-
-    return total
-```
-
-As simple as that. Now, all we need to do to solve the problem is first
-`expand()` the row and column coordinates given the row and column counts, then
-calculate the sum of pairwise distances for the rows and for the columns. Let's
-write a functio to do it:
-
-```python
-def solve(row_counts, col_counts):
-    return sum_pairwise_distances(expand(row_counts)) + \
-           sum_pairwise_distances(expand(col_counts))
-```
-
-And the solution is one function call away!
-
-```python
-total = solve(row_counts, col_counts)
-print('Part 1:', total)
-```
-
-### Part 2
-
-The problem remains the same, but this time the expansion factor is 1000000,
-meaning that each space `.` turns into 1000000 spaces. Thankfully, we already
-have everything we need to solve the problem. We are already accounting for
-expansion in the `expand()` function, we can simply add an additional
-`multiplier` to make it more generic:
-
-```diff
--def expand(counts):
-+def expand(counts, multiplier):
-     real_index = 0
-
-     for count in counts:
-         if count > 0:
-             for _ in range(count):
-                 yield real_index
-
-             real_index += 1
-         else:
--            real_index += 2
-+            real_index += multiplier
-```
-
-The `solve()` function can be modified to take a `multiplier` parameter as well,
-and pass it down:
-
-```python
-def solve(row_counts, col_counts, multiplier=2):
-    return sum_pairwise_distances(expand(row_counts, multiplier)) + \
-           sum_pairwise_distances(expand(col_counts, multiplier))
-```
-
-And we can now solve part 2:
-
-```python
-total = solve(row_counts, col_counts, 1000000)
-print('Part 2:', total2)
-```
-
-### Optimized solution
-
-The algorithm we wrote is already fast as is for a moderate number of galaxies
-like the one we are dealing with, but it can technically be made faster by
-getting rid of the `expand()` function and incorporating the calculations into
-the `sum_pairwise_distances()`. This is what I did for my final solution.
-
-The key takeaway is that instead of yielding the same $x_i$ value $n_i$ times
-(where $n_i$ is the count), we can incorporate $n_i$ into the calculations. This
-allows to solve the problem with a single linear scan of the counts, keeping
-track of:
-
-- The current real value $x_i$ taking into account the expansion multiplier (the
-  same way as `expand()` does);
-- The partial sum of the previous values, which can be expressed as the sum of
-  each previous value multiplied by its count: $S_i = \sum\limits_{j=0}^{i-1} n_j x_j$;
-- The number of previous values, which can be expressed as a partial sum of the
-  counts: $N_i = \sum\limits_{j=0}^{i-1} n_j$.
-
-The total then grows of $n_i(N_i x_i - S_i)$ each iteration. In
-[my solution][d11-solution], `space` corresponds to $x_i$, `previous`
-corresponds to $N_i$, and `partial_sum` corresponds to $S_i$.
-
-Doing this, we get the following simplified function that computes the result
-in significantly less iterations:
-
-```python
-def sum_distances(counts, multiplier):
-    total = partial_sum = previous = space = 0
-
-    for n in counts:
-        if n:
-            total       += n * (previous * space - partial_sum)
-            partial_sum += n * space
-            previous    += n
-            space       += 1
-        else:
-            space += multiplier
-
-    return total
-```
-
-
 Day 15 - Lens Library
 ---------------------
 
@@ -3554,12 +3554,12 @@ def travel(grid):
 
     while 1:
         # Are we out of bounds?
-        if 0 <= r < height and 0 <= c < width:
+        if not (0 <= r < height and 0 <= c < width):
             # Can't possibly continue!
             break
 
         # Dif we already get here while also going in the same direction?
-        if (r, c, dr, dc) not in seen:
+        if (r, c, dr, dc) in seen:
             # This is a loop!
             break
 
@@ -4108,7 +4108,7 @@ To make it generic enough, let's take these numbers as parameters:
      weight = 0
 
 -    for _ in range(1, 3 + 1):
-+    for i in range(start, stop + 1):
++    for i in range(1, stop + 1):
          r += deltar
          c += deltac
 
