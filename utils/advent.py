@@ -134,7 +134,7 @@ def submit_answer(part, answer):
 		if DAY == 25 and part == 1:
 			log("It's Christmas! Automatically submitting second part...\n")
 			S.post(URL.format(YEAR, 25, 'answer'), data={'level': 2, 'answer': 0})
-			logcont('done!\n')
+			log('Done!\n')
 			log('Go check it out: https://adventofcode.com/{}/day/25#part2\n', YEAR)
 
 		return True
