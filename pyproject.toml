@@ -1,0 +1,2 @@
+[tool.ruff.per-file-ignores]
+'*/original_solutions/day*.py' = ['F403', 'F405', 'E701', 'E702', 'E722', 'E741']
