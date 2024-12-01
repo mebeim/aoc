@@ -1,8 +1,94 @@
 Advent of Code 2024 walkthrough
 ===============================
 
-*Coming soon!*
+Table of Contents
+-----------------
 
+- [Day 1 - Historian Hysteria][d01]
+<!--
+- [Day 2 - xxx][d02]
+- [Day 3 - xxx][d03]
+- [Day 4 - xxx][d04]
+- [Day 5 - xxx][d05]
+- [Day 6 - xxx][d06]
+- [Day 7 - xxx][d07]
+- [Day 8 - xxx][d08]
+- [Day 9 - xxx][d09]
+- [Day 10 - xxx][d10]
+- [Day 11 - xxx][d11]
+- [Day 12 - xxx][d12]
+- [Day 13 - xxx][d13]
+- [Day 14 - xxx][d14]
+- [Day 15 - xxx][d15]
+- [Day 16 - xxx][d16]
+- [Day 17 - xxx][d17]
+- [Day 18 - xxx][d18]
+- [Day 19 - xxx][d19]
+- [Day 20 - xxx][d20]
+- [Day 21 - xxx][d20]
+- [Day 22 - xxx][d20]
+- [Day 23 - xxx][d20]
+- [Day 24 - xxx][d20]
+- [Day 25 - xxx][d20]
+-->
+
+
+
+Day 1 - Historian Hysteria
+--------------------------
+
+[Problem statement][d01-problem] — [Complete solution][d01-solution] — [Back to top][top]
+
+### Part 1
+
+All right, let's get this year started! We have two lists of integers and need
+to find differences between their elements, pairing them up in increasing order.
+First, read each input line, split it and convert to `int` using
+[`map()`][py-builtin-map].
+
+```python
+fin = open(...)
+
+total = 0
+left = []
+right = []
+
+for line in fin:
+    l, r = map(int, line.split())
+    left.append(l)
+    right.append(r)
+```
+
+Now all we need to do is [`.sort()`][py-list-sort] them, then then iterate over
+the sorted pairs obtained via [`zip()`][py-builtin-zip] summing up their
+differences. For that, [`sum()`][py-builtin-sum] plus a [generator
+expression][py-gen-expr] will do the trick.
+
+
+```python
+left.sort()
+right.sort()
+
+total = sum(abs(l - r) for l, r in zip(left, right))
+print('Part 1:', total)
+```
+
+### Part 2
+
+Now instead of summing differences we need to sum products. Each number on the
+left list needs to be multiplied by the number of times it appears on the right
+list. We can again use a generator expression or convert everything into a `for`
+loop to do both parts at once. The number of occurrences can be obtained via
+[`.count()`][py-list-count].
+
+```python
+for l, r in zip(left, right):
+    total1 += abs(l - r)
+    total2 += l * right.count(l)
+
+print('Part 1:', total1)
+print('Part 2:', total2)
+```
 
 ---
 
@@ -86,3 +172,12 @@ Advent of Code 2024 walkthrough
 [d22-solution]: solutions/day22.py
 [d24-solution]: solutions/day24.py
 [d25-solution]: solutions/day25.py
+
+
+[py-gen-expr]: https://docs.python.org/3/reference/expressions.html#generator-expressions
+
+[py-builtin-map]: https://docs.python.org/3/library/functions.html#map
+[py-builtin-sum]: https://docs.python.org/3/library/functions.html#sum
+[py-builtin-zip]: https://docs.python.org/3/library/functions.html#zip
+[py-list-count]:  https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-list-sort]:   https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
