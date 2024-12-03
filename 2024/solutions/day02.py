@@ -17,6 +17,8 @@ def safe(ints, allow_removal=False):
 
 	for j in range(len(rest) - 1):
 		if not 1 <= rest[j + 1] - rest[j] <= 3:
+			if j > 0:
+				return False
 			break
 	else:
 		return True
