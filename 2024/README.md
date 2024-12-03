@@ -6,8 +6,8 @@ Table of Contents
 
 - [Day 1 - Historian Hysteria][d01]
 - [Day 2 - Red-Nosed Reports][d02]
+- [Day 3 - Mull It Over][d03]
 <!--
-- [Day 3 - xxx][d03]
 - [Day 4 - xxx][d04]
 - [Day 5 - xxx][d05]
 - [Day 6 - xxx][d06]
@@ -278,6 +278,93 @@ print('Part 2:', n_safe_with_removal)
 ```
 
 
+Day 3 - Mull It Over
+--------------------
+
+[Problem statement][d03-problem] — [Complete solution][d03-solution] — [Back to top][top]
+
+### Part 1
+
+Task looks simpler than yesterday's. We have a bunch of data that almost looks
+like garbage in input, but hidden in there are some strings that look like
+`mul(X,Y)`, where `X` and `Y` are non-negative integers. We need to extract
+those, compute the `mul`tiplications and sum them up.
+
+Regular expressions come in handy here. If we write the appropriate regexp, the
+[`re.findall()`][py-re-findall] function will do the heavy lifting for us and
+nicely extract all the `X` and `Y` pairs of integers. All we need is a couple of
+capture groups (`(...)`) in the expression: `re.findall()` will return a bunch
+of lists of matches (each list contains one match per capture group).
+
+The regexp we want is `mul\((\d+),(\d+)\)`. The `\d+` part matches one or more
+digits, and the `(...)` part captures the match. Actual literal parentheses to
+match are escaped with `\`.
+
+```python
+from re import findall
+
+fin = open(...)
+total = 0
+
+for a, b in findall(r"mul\((\d+),(\d+)\)", fin.read()):
+	total += int(a) * int(b)
+
+print('Part 1:', total)
+```
+
+That's it! Wow. If we feel like code-golfind, we can even use
+[`sum()`][py-builtin-sum] plus a [generator expression][py-gen-expr] to make it
+a one-liner:
+
+```python
+total = sum(int(a) * int(b) for a, b in findall(r"mul\((\d+),(\d+)\)", fin.read()))
+print('Part 1:', total)
+```
+
+### Part 2
+
+Now we also need to toggle the multiplications on or off based on what we find
+the input. Initially they need to be performed, but if we encounter the string
+`don't()` we need to stop performing subsequent multiplications until we
+encounter the string `do()`. A small modification to the regular expression we
+wrote earlier and a bit more logic will do the trick.
+
+We can match either `mul(X,Y)`, `do()` or `don't()` with the regexp by simply
+using the `|` operator. Put the `do()` and `don't()` strings inside their own
+capture groups and we will have 4 elements per match.
+
+```python
+for a, b, do, dont in findall(r"mul\((\d+),(\d+)\)|(do\(\))|(don't\(\))", fin.read()):
+    # ...
+```
+
+Now even though we have 4 values, some of them can be empty strings. In our case
+we can either have `a` and `b` together, or `do` alone, or `dont` alone. Based
+on this, with the help of a boolean flag to remember whether we should be
+multiplying or not, we can finalize our solution:
+
+```python
+enabled = True
+
+for a, b, do, dont in findall(r"mul\((\d+),(\d+)\)|(do\(\))|(don't\(\))", fin.read()):
+    if do or dont:
+        # Encountered either do() or don't(), enable if we matched do()
+        # (i.e. the do variable is not empty)
+        enabled = bool(do)
+    else:
+        # Encountered a multiplication
+        x = int(a) * int(b)
+        # For part 1, always perform it
+        total1 += x
+        # For part 2, perform it only if enabled
+        # (multiplying by a bool is the same as multiplying by 1 or 0)
+        total2 += x * enabled
+
+print('Part 1:', total1)
+print('Part 2:', total2)
+```
+
+6 stars and counting!
 
 ---
 
@@ -289,7 +376,7 @@ print('Part 2:', n_safe_with_removal)
 [top]: #advent-of-code-2024-walkthrough
 [d01]: #day-1---historian-hysteria
 [d02]: #day-2---red-nosed-reports
-[d03]: #day-3---
+[d03]: #day-3---mull-it-over
 [d04]: #day-4---
 [d05]: #day-5---
 [d06]: #day-6---
@@ -372,3 +459,4 @@ print('Part 2:', n_safe_with_removal)
 [py-builtin-zip]: https://docs.python.org/3/library/functions.html#zip
 [py-list-count]:  https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-sort]:   https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-re-findall]:  https://docs.python.org/3/library/re.html#re.findall
