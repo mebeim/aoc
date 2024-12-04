@@ -7,8 +7,8 @@ Table of Contents
 - [Day 1 - Historian Hysteria][d01]
 - [Day 2 - Red-Nosed Reports][d02]
 - [Day 3 - Mull It Over][d03]
+- [Day 4 - Ceres Search][d04]
 <!--
-- [Day 4 - xxx][d04]
 - [Day 5 - xxx][d05]
 - [Day 6 - xxx][d06]
 - [Day 7 - xxx][d07]
@@ -366,6 +366,207 @@ print('Part 2:', total2)
 
 6 stars and counting!
 
+
+Day 4 - Ceres Search
+--------------------
+
+[Problem statement][d04-problem] — [Complete solution][d04-solution] — [Back to top][top]
+
+### Part 1
+
+Ah yes, grids of ASCII characters are back. We need to perform a simple word
+search puzzle on a grid of letters, counting how many times the word "XMAS"
+appears in any possible direction, including overlaps.
+
+First of all input parsing. It doesn't really take much: read the file and use
+[`.splitlines()`][py-str-splitlines] it to get a list of lines. Let's save the
+grid and its dimensions in global variables for convenience:
+
+```python
+fin = open(...)
+
+GRID = fin.read().splitlines()
+HEIGHT, WIDTH = len(GRID), len(GRID[0])
+```
+
+Now to the counting. There isn't much to do except iterate over the whole grid.
+For each cell, we'll check each possible direction and see if the word "XMAS" is
+present. Since we'll have to constantly perform bounds-checking on the grid,
+let's start by writing a helper function to retrieve a grid character with bound
+checking:
+
+```python
+def grid_char(r, c):
+    global GRID, WIDTH, HEIGHT
+
+    if 0 <= r < HEIGHT and 0 <= c < WIDTH:
+        return GRID[r][c]
+    return ''
+```
+
+Now we can write a second function to perform the actual counting. Given the
+coordinates of a starting cell, we can look for 4 characters in all 8
+directions, accumulate them in a string and check if it's equal to `'XMAS'`.
+Checking for a single direction is simple enough:
+
+```python
+# Example of checking the right direction
+r, c = 10, 10
+word = ''
+
+for i in range(3):
+    c += 1
+    word += grid_char(r, c)
+
+if word == 'XMAS':
+    ...
+```
+
+Checking for multiple directions is just a matter of repeating the above code,
+but using different deltas for the row and column. We can use a list of tuples
+with the deltas of each direction for this.
+
+```python
+def count_xmas(r, c):
+    global GRID
+
+    deltas = ((0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1))
+    count = 0
+
+    for dr, dc in deltas:
+        word = ''
+        rr, cc = r, c
+
+        for i in range(4):
+            word += grid_char(rr, cc)
+            rr += dr
+            cc += dc
+
+        if word == 'XMAS':
+            count += 1
+
+    return count
+```
+
+The above function works and returns a number between 0 and 8. However, it is
+pretty slow because it always checks all the characters: for example, even if
+`GRID[r][c]` is different from `'X'`, it will still compose 8 words and check
+them, querying up to 32 characters. We can optimize this by returning early if
+the first character is not `'X'`.
+
+```diff
+ def count_xmas(r, c):
+     global GRID
+
++    if GRID[r][c] != 'X':
++        return 0
++
+     # ... rest of the code unchanged
+```
+
+Additionally, we can also optimize the inner loop getting rid of the temporary
+`word` variable and make it check the characters one by one with a constant.
+Since we now already know the first character is `'X'`, we can also perform one
+less iteration. The [`for ... break`][py-loop-else] construct comes in handy
+once again for simpler exit condition handling.
+
+```diff
+ def count_xmas(r, c):
+     global GRID
+
+     if GRID[r][c] != 'X':
+         return 0
+
+     deltas = ((0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1))
+     count = 0
+
+     for dr, dc in deltas:
+-        word = ''
+         rr, cc = r, c
+
+-        for i in range(4):
+-            word += grid_char(rr, cc)
+-            rr += dr
+-            cc += dc
+-
+-        if word == 'XMAS':
+-            count += 1
++        for i in range(3):
++            rr += dr
++            cc += dc
++            if grid_char(rr, cc) != 'MAS'[i]:
++                break
++        else:
++            count += 1
+
+     return count
+```
+
+Now all that's left to do is iterate over the grid coordinates and call the
+`count_xmas()` function in a loop:
+
+```python
+total1 = 0
+
+for r in range(HEIGHT):
+    for c in range(WIDTH):
+        total1 += count_xmas(r, c)
+
+print('Part 1:', total1)
+```
+
+The above code can be shrinked down to a single line using
+[`sum()`][py-builtin-sum] plus a [generator expression][py-gen-expr]:
+
+```python
+total1 = sum(count_xmas(r, c) for r in range(HEIGHT) for c in range(WIDTH))
+print('Part 1:', total1)
+```
+
+### Part 2
+
+For the second part we need to count a special arrangement of characters, that
+is, two occurrences of the word "MAS" written in an cross shape:
+
+```
+M.S  S.M  S.S
+.A.  .A.  .A.  (... other options possible)
+M.S  S.M  M.M
+```
+
+This seems almost simpler than the first part: just make sure that the center
+is an `'A'`, extract the other 4 characters and check that the two pairs are
+equal to either `'MS'` or `'SM'`. Let's write a new function for this second
+check:
+
+```python
+def check_xmas(r, c):
+    global GRID
+
+    if GRID[r][c] != 'A':
+        return False
+
+    word = grid_char(r - 1, c - 1) + grid_char(r + 1, c + 1)
+    if word != 'MS' and word != 'SM':
+        return False
+
+    word = grid_char(r + 1, c - 1) + grid_char(r - 1, c + 1)
+    return word == 'MS' or word == 'SM'
+```
+
+Now we can again iterate over the grid and count the occurrences. Since the X
+shape covers a 3x3 section, we can also start the iteration from the second row
+and column and stop at the second-to-last row and column.
+
+In golfing-style, we can again use the same one-liner as before:
+
+```python
+total2 = sum(check_xmas(r, c) for r in range(1, HEIGHT - 1) for c in range(1, WIDTH - 1))
+print('Part 2:', total2)
+```
+
+Sweet! 8 stars.
+
 ---
 
 *Copyright &copy; 2024 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -377,7 +578,7 @@ print('Part 2:', total2)
 [d01]: #day-1---historian-hysteria
 [d02]: #day-2---red-nosed-reports
 [d03]: #day-3---mull-it-over
-[d04]: #day-4---
+[d04]: #day-4---ceres-search
 [d05]: #day-5---
 [d06]: #day-6---
 [d07]: #day-7---
@@ -453,10 +654,11 @@ print('Part 2:', total2)
 [py-gen-expr]:  https://docs.python.org/3/reference/expressions.html#generator-expressions
 [py-loop-else]: https://docs.python.org/3/tutorial/controlflow.html#else-clauses-on-loops
 
-[py-builtin-all]: https://docs.python.org/3/library/functions.html#all
-[py-builtin-map]: https://docs.python.org/3/library/functions.html#map
-[py-builtin-sum]: https://docs.python.org/3/library/functions.html#sum
-[py-builtin-zip]: https://docs.python.org/3/library/functions.html#zip
-[py-list-count]:  https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
-[py-list-sort]:   https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
-[py-re-findall]:  https://docs.python.org/3/library/re.html#re.findall
+[py-builtin-all]:    https://docs.python.org/3/library/functions.html#all
+[py-builtin-map]:    https://docs.python.org/3/library/functions.html#map
+[py-builtin-sum]:    https://docs.python.org/3/library/functions.html#sum
+[py-builtin-zip]:    https://docs.python.org/3/library/functions.html#zip
+[py-list-count]:     https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-list-sort]:      https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-re-findall]:     https://docs.python.org/3/library/re.html#re.findall
+[py-str-splitlines]: https://docs.python.org/3/library/stdtypes.html#str.splitlines
