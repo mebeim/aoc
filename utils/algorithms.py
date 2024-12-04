@@ -42,13 +42,14 @@ IntOrFloat          = Union[int,float]
 MAX_CACHE_SIZE = 256 * 2**20 # 256Mi entries -> ~8GiB if one entry is 32 bytes
 
 def grid_neighbors_gen(deltas: Iterable[Coord2D]) -> GridNeighborsFunc:
-	'''Create a generator function for finding coordinates of neighbors in a
-	grid (2D matrix) given a list of deltas to apply to the source coordinates
-	to get neighboring cells.
+	'''Create a generator function yielding coordinates of neighbors of a given
+	cell in a grid (2D matrix) given a list of deltas to apply to the source
+	coordinates to get neighboring cells.
 	'''
 	def g(grid: Grid2D, r: int, c: int, avoid: Container=()) -> Iterator[Coord2D]:
-		'''Get neighbors of a cell in a 2D grid (matrix) i.e. list of lists or
-		similar. Performs bounds checking. Grid is assumed to be rectangular.
+		'''Yield coordinates of neighbors of a cell in a 2D grid (matrix) i.e.
+		list of lists or similar. Performs bounds checking. Grid is assumed to
+		be rectangular.
 		'''
 		maxr = len(grid) - 1
 		maxc = len(grid[0]) - 1
@@ -70,13 +71,17 @@ def grid_neighbors_gen(deltas: Iterable[Coord2D]) -> GridNeighborsFunc:
 
 def grid_neighbors_values_gen(deltas: Iterable[Coord2D]) \
 		-> Callable[[Grid2D,int,int,Container],Iterator[Any]]:
-	'''Create a generator function for finding values of neighbors in a grid
-	(2D matrix) given a list of deltas to apply to the source coordinates
-	to get neighboring cells.
+	'''Create a generator function yielding values of neighbors of a given cell
+	in a grid (2D matrix) given a list of deltas to apply to the source
+	coordinates to get neighboring cells.
 	'''
 	g = grid_neighbors_gen(deltas)
 
 	def v(grid: Grid2D, r: int, c: int, avoid: Container=()) -> Iterator[Any]:
+		'''Yield values of neighbors of a cell in a 2D grid (matrix) i.e. list
+		of lists or similar. Performs bounds checking. Grid is assumed to be
+		rectangular.
+		'''
 		for rr, cc in g(grid, r, c, avoid):
 			yield grid[rr][cc]
 
@@ -91,19 +96,26 @@ def neighbors_coords_gen(deltas: Iterable[Coord2D]) \
 	Useful for cases where bound-checking is not needed, like sparse matrices.
 	'''
 	def neighbor_coords(r: int, c: int) -> Iterator[Coord2D]:
+		'''Yield hypotetical coordinates of neighbors of a cell in a 2D grid
+		(matrix) i.e. list of lists or similar. No grid is given. Does NOT
+		perform any bounds checking.
+		'''
 		for dr, dc in deltas:
 			yield r + dr, c + dc
 
 	return neighbor_coords
 
+# These return coords, take a grid and do bound-check + avoid set check
 neighbors4  = grid_neighbors_gen(((-1, 0), (0, -1), (0, 1), (1, 0)))
 neighbors4x = grid_neighbors_gen(((-1, -1), (-1, 1), (1, -1), (1, 1)))
 neighbors8  = grid_neighbors_gen(((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)))
 
+# These return values, take a grid and do bound-check + avoid set check
 neighbors4_values  = grid_neighbors_values_gen(((-1, 0), (0, -1), (0, 1), (1, 0)))
 neighbors4x_values = grid_neighbors_values_gen(((-1, -1), (-1, 1), (1, -1), (1, 1)))
 neighbors8_values  = grid_neighbors_values_gen(((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)))
 
+# These return coords, don't take a grid and therefore do no bound-check and no avoid set check
 neighbors4_coords  = neighbors_coords_gen(((-1, 0), (0, -1), (0, 1), (1, 0)))
 neighbors4x_coords = neighbors_coords_gen(((-1, -1), (-1, 1), (1, -1), (1, 1)))
 neighbors8_coords  = neighbors_coords_gen(((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)))
