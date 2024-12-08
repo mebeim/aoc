@@ -8,11 +8,11 @@ Table of Contents
 - [Day 2 - Red-Nosed Reports][d02]
 - [Day 3 - Mull It Over][d03]
 - [Day 4 - Ceres Search][d04]
+- *Day 5 - Print Queue: TODO*
+- *Day 6 - Guard Gallivant: TODO*
+- *Day 7 - Bridge Repair: TODO*
+- [Day 8 - Resonant Collinearity][d08]
 <!--
-- [Day 5 - xxx][d05]
-- [Day 6 - xxx][d06]
-- [Day 7 - xxx][d07]
-- [Day 8 - xxx][d08]
 - [Day 9 - xxx][d09]
 - [Day 10 - xxx][d10]
 - [Day 11 - xxx][d11]
@@ -567,6 +567,187 @@ print('Part 2:', total2)
 
 Sweet! 8 stars.
 
+
+Day 8 - Resonant Collinearity
+-----------------------------
+
+[Problem statement][d08-problem] — [Complete solution][d08-solution] — [Back to top][top]
+
+### Part 1
+
+We are given a grid with a bunch of "antennas" each of a given frequency. For
+each pair of antennas with the same frequency, we need to find any existing
+"antinodes". An antinode is a point within the grid that is on the line
+connecting a pair of antennas of the same frequency and is exactly at some
+distance *d* from the first antenna and *2d* from the second antenna. We need to
+count how many unique antinodes we have.
+
+Parsing the grid is again simple: read everything and split by line. Let's also
+immediately calculate the grid dimensions and store them in global variables for
+convenience.
+
+```python
+fin = open(...)
+grid = fin.read().splitlines()
+HEIGHT, WIDTH = len(grid), len(grid[0])
+```
+
+Now let's find the antennas. Each character different than `.` is an antenna and
+the character itself indicates the frequency. Let's group all antennas of the
+same frequency in a dictionary. We can use a
+[`defaultdict`][py-collections-defaultdict] for this, with the key being the
+frequency and the values being sets of coordinates. It will have the form
+`{freq: {(r1, c1), (r2, c2), ...}}`.
+
+To iterate over the grid, we can use two nested loop with [`enumerate()`][py-builtin-enumerate]:
+
+```python
+from collections import defaultdict
+
+frequencies = defaultdict(set)
+for r, row in enumerate(grid):
+    for c, cell in enumerate(row):
+        if cell != '.':
+            frequencies[cell].add((r, c))
+```
+
+Let's look again at the definition of "antinode": it is a point on the line
+connecting the two antennas that is exactly at distance *d* from the first and
+*2d* from the second. Let's say we have two antennas `a = (r1, c1)` and
+`b = (r2, c2)`. Breaking it down from two dimensions to one, this means that we
+want to find:
+
+- A row `R` such that `abs(r1 - R) == dr` and `abs(r2 - R) == 2*dr`.
+- A column `C` such that `abs(c1 - C) == dc` and `abs(c2 - C) == 2*dc`.
+
+If we only look in one direction we can get rid of the absolute values and we
+have:
+
+- A row `R` such that `r1 - R == dr` and `r2 - R == 2*dr`.
+- A column `C` such that `c1 - C == dc` and `c2 - C == 2*dc`.
+
+This means that:
+
+- `r1 + d == r2 - 2*dr`, therefore `dr = r2 - r1`.
+- `c1 + d == c2 - 2*dc`, therefore `dc = c2 - c1`.
+
+Come to think about it, the result is intuitive: given the two antennas A and B,
+the antinode on the B side is at *A + 2(B - A) = 2B - A*. The same goes for the
+opposite side, but with a negative sign.
+
+```none
+A----------------B----------------X
+|      B - A     |     B - A      |
+                                  A + 2(B - A) = 2B - A
+```
+
+Given the above, let's write a function that calculates the coordinates of an
+antinode given the coordinates of two antennas. We will write a generator
+function using `yield` to make it convenient to add the results (if any) to a
+set later.
+
+```python
+def antinode(r1, c1, r2, c2):
+    global HEIGHT, WIDTH
+
+    r = 2 * r2 - r1
+    c = 2 * c2 - c1
+    if 0 <= r < HEIGHT and 0 <= c < WIDTH:
+        yield r, c
+
+    r = 2 * r1 - r2
+    c = 2 * c1 - c2
+    if 0 <= r < HEIGHT and 0 <= c < WIDTH:
+        yield r, c
+```
+
+For all pairs `(a, b)` of antennas with the same frequency, we can call the
+function using the [unpack operator][py-unpacking] as `antinode(*a, *b)` and add
+the results to a set. The final count of unique antinodes will be the size of
+this set.
+
+```python
+points = set()
+
+for antennas in frequencies.values():
+    for a in antennas:
+        for b in antennas:
+            if a != b:
+                points.update(antinodes(*a, *b))
+```
+
+This can be simplified using
+[`itertools.combinations`][py-itertools-combinations] to avoid the `a != b`
+check and also to avoid checking the same pair twice:
+
+```python
+from itertools import combinations
+
+points = set()
+
+for antennas in frequencies.values():
+    for a, b in combinations(antennas, 2):
+        points.update(antinodes(*a, *b))
+
+print('Part 1:', len(points))
+```
+
+### Part 2
+
+For the second part we now need to find all points within the grid that are on
+the line connecting two antennas of the same frequency. Needless to say, for
+each pair of same-frequency antennas, this will include the antennas themselves.
+
+The logic is simple: for each pair of antennas, we can calculate the slope of
+the line connecting them and iterate over all points on the line, stoppig if we
+ever get out of bounds. Since we are dealing with integer coordinates, this
+means iterating over all possible integer multiples of the distance between the
+two antennas.
+
+Let's write another generator function for this. We can use the
+[`itertools.count`][py-itertools-count] to conut upwards from `0` and stop at
+the first point that is out of bounds of the grid.
+
+```python
+from itertools import count
+
+def points_on_line(r1, c1, r2, c2):
+    global HEIGHT, WIDTH
+
+    # Slope is (dr, dc)
+    dr = r2 - r1
+    dc = c2 - c1
+
+    # Each point is at (r1 + mult*dr, c1 + mult*dc)
+    for mult in count(0):
+        r = r1 + mult * dr
+        c = c1 + mult * dc
+
+        if 0 <= r < HEIGHT and 0 <= c < WIDTH:
+            yield r, c
+        else:
+            break
+```
+
+Both part 1 and part 2 answers can be calculated in the same loop, we only need
+an additional set for part 2. The `points_on_line()` function we wrote only
+checks in one direction (mult is always positive), so we need to call it twice
+for each pair of antennas.
+
+```python
+points1 = set()
+points2 = set()
+
+for antennas in frequencies.values():
+    for a, b in combinations(antennas, 2):
+        points1.update(antinodes(*a, *b))
+        points2.update(points_on_line(*a, *b))
+        points2.update(points_on_line(*b, *a))
+
+print('Part 1:', len(points1))
+print('Part 2:', len(points2))
+```
+
 ---
 
 *Copyright &copy; 2024 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -579,10 +760,10 @@ Sweet! 8 stars.
 [d02]: #day-2---red-nosed-reports
 [d03]: #day-3---mull-it-over
 [d04]: #day-4---ceres-search
-[d05]: #day-5---
-[d06]: #day-6---
-[d07]: #day-7---
-[d08]: #day-8---
+[d05]: #day-5---print-queue
+[d06]: #day-6---guard-gallivant
+[d07]: #day-7---bridge-repair
+[d08]: #day-8---resonant-collinearity
 [d09]: #day-9---
 [d10]: #day-10---
 [d11]: #day-11---
@@ -653,12 +834,17 @@ Sweet! 8 stars.
 
 [py-gen-expr]:  https://docs.python.org/3/reference/expressions.html#generator-expressions
 [py-loop-else]: https://docs.python.org/3/tutorial/controlflow.html#else-clauses-on-loops
+[py-unpacking]: https://docs.python.org/3/tutorial/controlflow.html#unpacking-argument-lists
 
-[py-builtin-all]:    https://docs.python.org/3/library/functions.html#all
-[py-builtin-map]:    https://docs.python.org/3/library/functions.html#map
-[py-builtin-sum]:    https://docs.python.org/3/library/functions.html#sum
-[py-builtin-zip]:    https://docs.python.org/3/library/functions.html#zip
-[py-list-count]:     https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
-[py-list-sort]:      https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
-[py-re-findall]:     https://docs.python.org/3/library/re.html#re.findall
-[py-str-splitlines]: https://docs.python.org/3/library/stdtypes.html#str.splitlines
+[py-builtin-all]:             https://docs.python.org/3/library/functions.html#all
+[py-builtin-enumerate]:       https://docs.python.org/3/library/functions.html#enumerate
+[py-builtin-map]:             https://docs.python.org/3/library/functions.html#map
+[py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
+[py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
+[py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
+[py-itertools-combinations]:  https://docs.python.org/3/library/itertools.html#itertools.combinations
+[py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
+[py-list-count]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-list-sort]:               https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-re-findall]:              https://docs.python.org/3/library/re.html#re.findall
+[py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
