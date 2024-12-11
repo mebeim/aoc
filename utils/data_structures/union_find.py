@@ -43,7 +43,8 @@ class UnionFind:
 		# the number of sets in the UF or the total number of elements in all
 		# sets of the UF.
 		raise NotImplementedError('len() not supported, use .size to get the '
-			'number of disjoint sets present in this UnionFind') from None
+			'number of disjoint sets or len(uf.elements) to get the total '
+			'number of elements') from None
 
 	def make_set(self, el):
 		'''Create a new set with el as the only member. Does nothing if el is
