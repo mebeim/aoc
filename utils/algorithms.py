@@ -637,10 +637,13 @@ def kruskal(G: WeightedGraphDict) -> WeightedGraphDict:
 def _toposort_dependencies(G: GraphDict, reverse: bool, weighted: bool) \
 		-> Tuple[DefaultDict[Any,int],DefaultDict[Any,int]]:
 	'''Calculate forward and reverse dependencies of the nodes in the directed
-	graph G. If reverse=True, edges of G are considered inverted.
+	acyclic graph G.
 
 	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
-	if weighted=True, in which case weights are discarded.
+	if weighted=True, in which case weights are ignored. G[src] should contain
+	the nodes that depend on src (i.e., should come after src). If reverse=True,
+	edges of G are considered inverted and the opposite relationship is
+	considered.
 
 	Returns two defaultdict:
 		dep: maps each node to its number of dependencies (0 for root nodes)
@@ -668,12 +671,15 @@ def _toposort_dependencies(G: GraphDict, reverse: bool, weighted: bool) \
 	return dep, revdep
 
 def toposort(G: GraphDict, reverse: bool=False, weighted: bool=False) -> List[Any]:
-	'''Perform a topological sort of G. If reverse=True, edges of G are
-	considered inverted. No particular order is guaranteed whenever there are
-	multiple nodes with no dependencies that can be chosen as next.
+	'''Perform a topological sort of the directed acyclic graph G. No particular
+	order is guaranteed whenever there are multiple nodes with no dependencies
+	that can be chosen as next.
 
 	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
-	if weighted=True, in which case weights are discarded.
+	if weighted=True, in which case weights are ignored. G[src] should contain
+	the nodes that depend on src (i.e., should come after src). If reverse=True,
+	edges of G are considered inverted and the opposite relationship is
+	considered.
 
 	Returns a list of nodes sorted in topological order.
 	'''
@@ -694,12 +700,15 @@ def toposort(G: GraphDict, reverse: bool=False, weighted: bool=False) -> List[An
 	return result
 
 def lex_toposort(G: GraphDict, reverse: bool=False, weighted: bool=False) -> List[Any]:
-	'''Perform a lexicographical topological sort of G. If reverse=True, edges
-	of G are considered inverted. The smallest node is always chosen whenever
-	there are multiple nodes with no dependencies that can be chosen as next.
+	'''Perform a lexicographical topological sort of the directed acyclic graph
+	G. The smallest node is always chosen whenever there are multiple nodes with
+	no dependencies that can be chosen as next.
 
 	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
-	if weighted=True, in which case weights are discarded.
+	if weighted=True, in which case weights are ignored. G[src] should contain
+	the nodes that depend on src (i.e., should come after src). If reverse=True,
+	edges of G are considered inverted and the opposite relationship is
+	considered.
 
 	Returns a list of nodes sorted in lexicographical topological order.
 	'''
