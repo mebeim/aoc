@@ -5,7 +5,7 @@ from functools import lru_cache
 from math import log10
 
 @lru_cache(None)
-def calc(n, blinks=75):
+def calc(n, blinks=25):
 	if blinks == 0:
 		return 1
 
@@ -25,8 +25,8 @@ fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
 numbers = list(map(int, fin.readline().split()))
 
-ans1 = sum(map(lambda n: calc(n, 25), numbers))
-print('Part 1:', ans1)
+total1 = sum(map(calc, numbers))
+print('Part 1:', total1)
 
-ans2 = sum(map(calc, numbers))
-print('Part 2:', ans2)
+total2 = sum(calc(n, 75) for n in numbers)
+print('Part 2:', total2)

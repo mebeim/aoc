@@ -12,10 +12,10 @@ Table of Contents
 - *Day 6 - Guard Gallivant: TODO*
 - *Day 7 - Bridge Repair: TODO*
 - [Day 8 - Resonant Collinearity][d08]
+- *Day 9 - Disk Fragmenter: TODO*
+- *Day 10 - Hoof Itxxx: TODO*
+- [Day 11 - Plutonian Pebbles][d11]
 <!--
-- [Day 9 - xxx][d09]
-- [Day 10 - xxx][d10]
-- [Day 11 - xxx][d11]
 - [Day 12 - xxx][d12]
 - [Day 13 - xxx][d13]
 - [Day 14 - xxx][d14]
@@ -748,6 +748,139 @@ print('Part 1:', len(points1))
 print('Part 2:', len(points2))
 ```
 
+
+Day 11 - Plutonian Pebbles
+--------------------------
+
+[Problem statement][d11-problem] — [Complete solution][d11-solution] — [Back to top][top]
+
+### Part 1
+
+We are given a list of integers and a simple set of rules to follow to transform
+them. We need to apply the rules 25 times in a row to all integers and count how
+many there are at the end.
+
+The rules are simple enough and the first that applies is used. For each integer
+`n`:
+
+1. If `n == 0`, it is replaced by `1`.
+2. If `n` has an even number of digits, it is replaced by two numbers: one made
+   from the higher half and one from the lower half of its digits (discardind
+   leading zeroes).
+3. Otherwise, it is multiplied by `2024`.
+
+Let's stop and think for a second, maybe with a piece of paper. The second rule
+is clearly the painful one: if we keep applying it, it makes the number of
+numbers we are dealing with grow exponentially. For example, if we start with
+just a single number with 32 digits, after only 5 iterations we will have 64
+numbers. 25 iterations don't look like much, just a few million numbers to deal
+with in the worst case, but still, that's a lot. Let's find a way around it.
+
+Looking at the first and third rules, it is clear that some sort of cycle will
+happen when we reach `0`: we will get `0 -> 1 -> 2024 -> ...`. That `2024` will
+then be split into `[20, 24]`, then `[2, 0, 2, 4]`. Now we are back to square
+one: the `0` in there will produce exactly the same list in a few more
+iterations.
+
+The key takeaway is that fixed a number `n` and a number of iterations to
+perform, the result will always be the same. For each unique pair
+`(n, iterations_left)` we will have a different result. Well, almost: some pairs
+may lead to the same result, but the important thing is that equal pairs will
+*always* lead to the same result.
+
+Given the above, we can implement our solution using
+[memoization][wiki-memoization]: we will keep a dictionary of results for each
+pair `(n, iterations_left)` and if we ever encounter the same pair again, we can
+return the result immediately. The result to keep track of is the final number
+of integers (when `iterations_left` hits `0`).
+
+We can either write this as a recursive function or in an iterative way using a
+queue. The recursive approach seems more natural and concise, so I'm going to go
+with that. The function we want to write will take a single number `n` and the
+number of `blinks` (i.e. what the problem statement calls the iterations) to
+perform. It will then return the total number of integers at the end.
+
+Following the rules, we have:
+
+1. If we reach 0 `blinks` left, return `1` (we only track one number).
+2. If `n == 0`, make a recursive call with `n=1` and one less blink.
+3. If `n` has an even number of digits, split it in half. Then, make two
+   recursive calls with (one for each half) with one less blink, and return the
+   sum of the two results.
+4. Otherwise, make a recursive call with `n * 2024` and one less blink.
+
+To count digits and split the number, I used [`math.log10()`][py-math-log10].
+Here's the code:
+
+```python
+from math import log10
+
+def calc(n, blinks):
+    if blinks == 0:
+        return 1
+
+    if n == 0:
+        return calc(1, blinks - 1)
+
+    n_digits = int(log10(n)) + 1
+    if n_digits % 2 == 0:
+        power = 10**(n_digits // 2)
+        hi_half = n // power
+        lo_half = n % power
+        return calc(hi_half, blinks - 1) + calc(low_half, blinks - 1)
+
+    return calc(n * 2024, blinks - 1)
+```
+
+This works fine. All we are missing is the memoization part. We are currently
+not "remembering" the results of the recursive calls, so we are recalculating
+them over and over. To do this, we can use a dictionary to store the results and
+check it at the start of the function, or we can whip out our best friend
+[`@functools.lru_cache()`][py-functools-lru_cache]: a decorator that can
+magically do this for us (behind the scenes, it also uses a dictionary).
+
+```diff
+ from math import log10
++from functools import lru_cache
+
++@lru_cache(max_size=None)
+ def calc(n, blinks=25):
+     # ... code unchanged ...
+```
+
+From Python 3.9 onwards we also have the [`functools.cache`][py-functools-cache]
+decorator which is a simpler version of `lru_cache`.
+
+Now we can actually get to parsing the input and calculating the result. We have
+a list of integers so a simple [`.split()`][py-str-split] plus
+[`map()`][py-builtin-map] will do the trick.
+
+```python
+fin = open(...)
+numbers = list(map(int, fin.read().split()))
+```
+
+The result can then be calculated applying our `calc()` function to each number,
+either with a loop, or with [`sum()`][py-builtin-sum] plus a
+[generator expression][py-gen-expr]:
+
+```python
+total = sum(calc(n, 25) for n in numbers)
+print('Part 1:', total)
+```
+
+### Part 2
+
+Since we were smart in part 1, we now have part 2 for free! The only thing that
+changes is the numbe of iterations, or "blinks": we need to perform 75.
+
+It's only a matter of calling our function with a different `blink` count:
+
+```python
+total2 = sum(calc(n, 75) for n in numbers)
+print('Part 2:', total2)
+```
+
 ---
 
 *Copyright &copy; 2024 Marco Bonelli. This document is licensed under the [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.*
@@ -764,9 +897,9 @@ print('Part 2:', len(points2))
 [d06]: #day-6---guard-gallivant
 [d07]: #day-7---bridge-repair
 [d08]: #day-8---resonant-collinearity
-[d09]: #day-9---
-[d10]: #day-10---
-[d11]: #day-11---
+[d09]: #day-9---disk-fragmenter
+[d10]: #day-10---hoof-itxxx
+[d11]: #day-11---plutonian-pebbles
 [d12]: #day-12---
 [d13]: #day-13---
 [d14]: #day-14---
@@ -842,9 +975,14 @@ print('Part 2:', len(points2))
 [py-builtin-sum]:             https://docs.python.org/3/library/functions.html#sum
 [py-builtin-zip]:             https://docs.python.org/3/library/functions.html#zip
 [py-collections-defaultdict]: https://docs.python.org/3/library/collections.html#collections.defaultdict
+[py-functools-cache]:         https://docs.python.org/3/library/functools.html#functools.cache
+[py-functools-lru_cache]:     https://docs.python.org/3/library/functools.html#functools.lru_cache
 [py-itertools-combinations]:  https://docs.python.org/3/library/itertools.html#itertools.combinations
 [py-itertools-count]:         https://docs.python.org/3/library/itertools.html#itertools.count
 [py-list-count]:              https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
 [py-list-sort]:               https://docs.python.org/3/tutorial/datastructures.html#more-on-lists
+[py-math-log10]:              https://docs.python.org/3/library/math.html#math.log10
 [py-re-findall]:              https://docs.python.org/3/library/re.html#re.findall
 [py-str-splitlines]:          https://docs.python.org/3/library/stdtypes.html#str.splitlines
+
+[wiki-memoization]: https://en.wikipedia.org/wiki/Memoization
