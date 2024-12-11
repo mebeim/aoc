@@ -153,14 +153,14 @@ def dump_char_matrix(mat: Sequence[Sequence[str]], transpose: bool=False):
 
 	sys.stderr.flush()
 
-def dump_sparse_matrix(mat: Union[Set[Tuple[int,int]],Dict[Tuple[int,int],Any]],
+def dump_sparse_matrix(mat: Union[Set[Tuple[int,int]],Dict[Tuple[int,int],str]],
 		chars: str='# ', transpose: bool=False, header: bool=False):
 	'''Dump the contents of a sparse matrix (e.g. a set or a dict, where the key
 	is the coordinates of a cell in the matrix) to standard error.
 
-	The TWO chars are used to represent coordinates present (first char) or not
-	present (second char) in the matrix. For a dict, values in the dict are used
-	for coordinates that are present instead.
+	For a dict, values in the dict are printed as is for present coordinates,
+	while chars[1] is printed for non-present ones. For a set, char[0] is
+	printed for present coordinates and char[1] for non-present ones.
 
 	If transpose=True, print the transposed matrix.
 
@@ -173,24 +173,28 @@ def dump_sparse_matrix(mat: Union[Set[Tuple[int,int]],Dict[Tuple[int,int],Any]],
 	minr, maxr = min(r for r, _ in mat), max(r for r, _ in mat)
 	minc, maxc = min(c for _, c in mat), max(c for _, c in mat)
 
-	if type(mat) is set:
-		char_at = lambda x: chars[x not in mat]
+	if isinstance(mat, (set, frozenset)):
+		value_at = lambda x: chars[x not in mat]
 	else:
-		char_at = lambda x: mat.get(x, chars[1])
-
-	if header:
-		fmt = ('TRANSPOSED s' if transpose else 'S') + 'parse matrix from ({}, {}) to ({}, {}):\n'
-		log(fmt, minr, minc, maxr, maxc)
+		value_at = lambda x: mat.get(x, chars[1])
 
 	if transpose:
+		if header:
+			log('TRANSPOSED sparse matrix from ({}, {}) to ({}, {}):\n',
+				minc, minr, maxc, maxr)
+
 		for c in range(minc, maxc + 1):
 			for r in range(minr, maxr + 1):
-				sys.stderr.write(char_at((r, c)))
+				sys.stderr.write(value_at((r, c)))
 			sys.stderr.write('\n')
 	else:
+		if header:
+			log('Sparse matrix from ({}, {}) to ({}, {}):\n',
+				minr, minc, maxr, maxc)
+
 		for r in range(minr, maxr + 1):
 			for c in range(minc, maxc + 1):
-				sys.stderr.write(char_at((r, c)))
+				sys.stderr.write(value_at((r, c)))
 			sys.stderr.write('\n')
 
 def extract_ints(str_or_bytes: AnyStr, container: Type[Collection]=list,
@@ -243,7 +247,7 @@ def read_int_matrix(file: TextIO, container: Type[Collection]=list,
 	int. Integers are extracted using a regular expression.
 
 	With negative=False, discard any leading hypen, effectively extracting
-	positive integer values even when perceded by hypens.
+	positive integer values even when preceeded by hypens.
 
 	The container= class is instantiated to hold the ints in each line.
 	The outer_container= class is instantiate to hold the lines.
@@ -269,11 +273,12 @@ def read_char_matrix(file: TextIO, rstrip: bool=False, lstrip: bool=False,
 		return outer_container(container(l.lstrip()) for l in lines)
 	return outer_container(map(container, lines))
 
-def read_digit_matrix(file: TextIO, rstrip: bool=False, lstrip: bool=False,
-		container: Type[Collection]=list,
+def read_digit_matrix(file: TextIO, container: Type[Collection]=list,
 		outer_container: Type[Collection]=list) -> Collection[Collection[int]]:
-	'''Same as read_char_matrix, but each character is assumed to be an ASCII
-	digit and is therefore transformed to int.
+	'''Parse file containing lines containing *digits* into a list of lists of
+	int. Each digit is converted to integer.
+
+	The container= class is instantiated to hold the ints in each line.
+	The outer_container= class is instantiate to hold the lines.
 	'''
-	mat = read_char_matrix(file, rstrip, lstrip)
-	return outer_container(container(map(int, l)) for l in mat)
+	return outer_container(container(map(int, line.strip())) for line in file)
