@@ -271,15 +271,20 @@ def connected_components(G: GraphDict, weighted: bool=False,
 	NOTE: for correct results in case of an undirected graph, all nodes must be
 	present in G as keys.
 	'''
-	visited = set()
-	components = []
+	if get_neighbors is None:
+		get_neighbors = G.get
 
-	for node in filterfalse(visited.__contains__, G):
-		component = bfs(G, node, weighted, get_neighbors)
-		visited |= component
-		components.append(component)
+	unweight = itemgetter(0) if weighted else lambda x: x
+	uf = UnionFind(G)
 
-	return components
+	for node in G:
+		uf.make_set(node)
+
+		for neighbor in map(unweight, get_neighbors(node)):
+			uf.make_set(neighbor)
+			uf.union(node, neighbor)
+
+	return uf.all_sets()
 
 def dijkstra(G: WeightedGraphDict, src: Any, dst: Any,
 		get_neighbors: Optional[GraphNeighborsFunc]=None) -> Distance:
