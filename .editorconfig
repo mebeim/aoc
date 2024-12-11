@@ -12,4 +12,4 @@ trim_trailing_whitespace = true
 trim_trailing_whitespace = false
 
 [*.md]
-indent_style = unset
+indent_style = space
