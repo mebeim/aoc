@@ -5,6 +5,7 @@ from utils.all import *
 advent.setup(2024, 11)
 fin = advent.get_input()
 
+data = fin.read()
 ints = extract_ints(data)
 ans1 = ans2 = 0
 
@@ -24,7 +25,9 @@ def blink(ints):
 
 	return new
 
-for _ in range(75):
+orig_ints = ints[:]
+
+for _ in range(25):
 	ints = blink(ints)
 
 ans1 = len(ints)
@@ -47,7 +50,7 @@ def calc(n, blinks=0, limit=75):
 
 	return calc(n * 2024, blinks + 1, limit)
 
-for i in ints:
+for i in orig_ints:
 	ans2 += calc(i)
 
 advent.print_answer(2, ans2)
