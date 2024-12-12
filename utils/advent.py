@@ -1,7 +1,6 @@
 import os
 import sys
 import re
-from importlib import find_loader
 from datetime import datetime, timedelta
 
 from .io_helpers import wait
@@ -162,9 +161,13 @@ SESSION   = ''
 CACHE_DIR = '../inputs'
 YEAR      = -1
 DAY       = -1
-REQUESTS  = find_loader('requests')
+
+try:
+	import requests
+	REQUESTS = True
+except ImportError:
+	REQUESTS = False
 
 if REQUESTS:
-	import requests
 	S = requests.Session()
 	S.headers['User-Agent'] = 'github.com/mebeim/aoc by marco AT mebeim.net'
