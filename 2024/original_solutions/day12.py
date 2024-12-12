@@ -48,7 +48,6 @@ def sides(comp):
 
 	for v in uside.elements:
 		for d in (L, R):
-			# LOL at my typo in the UF class
 			if v + d in uside:
 				uside.union(v, v + d)
 
