@@ -34,7 +34,7 @@ class UnionFind:
 			for el in initial_elements:
 				self.make_set(el)
 
-	def ___contains__(self, el):
+	def __contains__(self, el):
 		'''Check if an element is in any of the sets of the UnionFind.'''
 		return el in self.elements
 

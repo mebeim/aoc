@@ -49,22 +49,22 @@ def sides(comp):
 	for v in uside.elements:
 		for d in (L, R):
 			# LOL at my typo in the UF class
-			if uside.___contains__(v + d):
+			if v + d in uside:
 				uside.union(v, v + d)
 
 	for v in dside.elements:
 		for d in (L, R):
-			if dside.___contains__(v + d):
+			if v + d in dside:
 				dside.union(v, v + d)
 
 	for v in lside.elements:
 		for d in (U, D):
-			if lside.___contains__(v + d):
+			if v + d in lside:
 				lside.union(v, v + d)
 
 	for v in rside.elements:
 		for d in (U, D):
-			if rside.___contains__(v + d):
+			if v + d in rside:
 				rside.union(v, v + d)
 
 	return uside.size + dside.size + lside.size + rside.size
