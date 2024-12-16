@@ -1,12 +1,14 @@
 __all__ = ['Vector', 'Vec', 'MutableVector', 'MutVec']
 
 from math import sqrt
-from numbers import Number
-from operator import sub
-from itertools import starmap
 from collections.abc import MutableSequence, Sequence
+from itertools import starmap
+from operator import sub
+from typing import Union
 
 from ..polyfill import prod, isqrt
+
+IntOrFloat = Union[int,float]
 
 class Vector(Sequence):
 	'''An immutable N-dimensional vector of scalar numbers.
@@ -15,7 +17,7 @@ class Vector(Sequence):
 
 	__slots__ = ('components')
 
-	def __init__(self, *components: Number):
+	def __init__(self, *components: IntOrFloat):
 		self.components = components
 
 	def __hash__(self):
@@ -37,13 +39,13 @@ class Vector(Sequence):
 		# for performance
 		return reversed(self.components)
 
-	def __pos__(self) -> 'Vector':
+	def __pos__(self):
 		return self.__class__(*self)
 
-	def __neg__(self) -> 'Vector':
+	def __neg__(self):
 		return self.__class__(*map(int.__neg__, self))
 
-	def __abs__(self) -> Number:
+	def __abs__(self):
 		s = sum(x**2 for x in self)
 
 		# Try computing the integer square root to keep everything an `int`.
@@ -64,44 +66,56 @@ class Vector(Sequence):
 		return self.__class__(*starmap(sub, zip(self, other)))
 
 	def __mul__(self, v):
-		if not isinstance(v, Number):
+		if not isinstance(v, IntOrFloat):
 			raise ValueError('ambiguous product by non-scalar: use A.dot(B) or A.cross(B)')
-		return self.__class__(*map(lambda x: x * v, self))
+		return self.__class__(*(x * v for x in self))
 
-	def __truediv__(self, v):
-		if not isinstance(v, Number):
-			raise ValueError('division by non-scalar')
-		return self.__class__(*map(lambda x: x / v, self))
+	def __mod__(self, v):
+		if not isinstance(v, IntOrFloat):
+			raise ValueError('mod with non-scalar')
+		return self.__class__(*(x % v for x in self))
 
-	def __floordiv__(self, v):
-		if not isinstance(v, Number):
+	def __divmod__(self, v):
+		if not isinstance(v, IntOrFloat):
+			raise ValueError('divmod with non-scalar')
+		if isinstance(v, float):
+			return self / v, self % v
+		return self // v, self % v
+
+	def __truediv__(self, v: IntOrFloat):
+		if not isinstance(v, IntOrFloat):
 			raise ValueError('division by non-scalar')
-		return self.__class__(*map(lambda x: x // v, self))
+		return self.__class__(*(x / v for x in self))
+
+	def __floordiv__(self, v: IntOrFloat):
+		if not isinstance(v, IntOrFloat):
+			raise ValueError('division by non-scalar')
+		return self.__class__(*(x // v for x in self))
 
 	def __eq__(self, other):
-		return len(self) == len(other) and all(a == b for a, b in zip(self, other))
-	
+		return self.components == other.components
+
 	def __lt__(self, other):
 		return self.components < other.components
 
 	def __repr__(self):
 		return f'Vec{self.components}'
 
-	def _check_dim(self, dim: int, msg: str=None):
+	def _check_dim(self, dim: int, msg: Union[str,None]=None):
 		if len(self) != dim:
 			if msg is None:
-				msg = f'vector dimension mismatch: {len(self)} vs {dim}'
+				msg = f'vector dimension mismatch: have {len(self)}, expected {dim}'
 			raise ValueError(msg)
 
-	def dot(self, other: Sequence) -> Number:
+	def dot(self, other: Sequence) -> IntOrFloat:
 		'''Component-wise product yielding a scalar.
 
 			Vector(1, 2, 3).dot((4, 5, 6)) == 1*4 + 2*5 + 3*6 == 32
 		'''
 		self._check_dim(len(other))
-		return self.__class__(*map(prod, zip(self, other)))
+		return sum(map(prod, zip(self, other)))
 
-	def dot_product(self, other: Sequence) -> 'Vector':
+	def dot_product(self, other: Sequence) -> IntOrFloat:
 		'''Convenience alias for .dot().'''
 		return self.dot(other)
 
@@ -127,11 +141,11 @@ class Vector(Sequence):
 		'''Convenience alias for .cross().'''
 		return self.cross(other)
 
-	def magnitude(self) -> Number:
+	def magnitude(self) -> IntOrFloat:
 		'''Convenience alias for abs(vector).'''
 		return abs(self)
 
-	def rotate2d(self, n: int):
+	def rotate2d(self, n: int) -> 'Vector':
 		'''Rotate 2D vector 90 degrees n times, clockwise if n is positive,
 		counter-clockwise if n is negative.
 		'''
@@ -145,19 +159,19 @@ class Vector(Sequence):
 
 	# Convenience properties for 1D, 2D, 3D, 4D space
 	@property
-	def x(self): return self[0]
+	def x(self) -> IntOrFloat: return self[0]
 	@property
-	def y(self): return self[1]
+	def y(self) -> IntOrFloat: return self[1]
 	@property
-	def z(self): return self[2]
+	def z(self) -> IntOrFloat: return self[2]
 	@property
-	def w(self): return self[3]
+	def w(self) -> IntOrFloat: return self[3]
 
 	# Convenience properties for 2D grids
 	@property
-	def r(self): return self[0]
+	def r(self) -> IntOrFloat: return self[0]
 	@property
-	def c(self): return self[1]
+	def c(self) -> IntOrFloat: return self[1]
 
 
 class MutableVector(Vector, MutableSequence):
@@ -167,7 +181,7 @@ class MutableVector(Vector, MutableSequence):
 
 	__slots__ = ('components')
 
-	def __init__(self, *components: Number):
+	def __init__(self, *components: IntOrFloat):
 		self.components = list(components)
 
 	def __repr__(self):
@@ -192,14 +206,14 @@ class MutableVector(Vector, MutableSequence):
 		# Do not support expanding a Vector (also called for `append` and `extend`)
 		raise NotImplementedError('what the hell are you doing?')
 
-	def __iadd__(self, other) -> 'MutableVector':
+	def __iadd__(self, other):
 		self._check_dim(len(other))
 
 		for i, x in enumerate(other):
 			self[i] += x
 		return self
 
-	def __isub__(self, other) -> 'MutableVector':
+	def __isub__(self, other):
 		self._check_dim(len(other))
 
 		for i, x in enumerate(other):
@@ -207,7 +221,7 @@ class MutableVector(Vector, MutableSequence):
 		return self
 
 	def __imul__(self, v):
-		if not isinstance(v, Number):
+		if not isinstance(v, IntOrFloat):
 			raise ValueError('ambiguous product by non-scalar: use A.dot(B) or A.cross(B)')
 
 		for i in range(len(self)):
@@ -215,7 +229,7 @@ class MutableVector(Vector, MutableSequence):
 		return self
 
 	def __itruediv__(self, v):
-		if not isinstance(v, Number):
+		if not isinstance(v, IntOrFloat):
 			raise ValueError('division by non-scalar')
 
 		for i in range(len(self)):
@@ -223,7 +237,7 @@ class MutableVector(Vector, MutableSequence):
 		return self
 
 	def __ifloordiv__(self, v):
-		if not isinstance(v, Number):
+		if not isinstance(v, IntOrFloat):
 			raise ValueError('division by non-scalar')
 
 		for i in range(len(self)):
