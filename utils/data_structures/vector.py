@@ -80,6 +80,9 @@ class Vector(Sequence):
 
 	def __eq__(self, other):
 		return len(self) == len(other) and all(a == b for a, b in zip(self, other))
+	
+	def __lt__(self, other):
+		return self.components < other.components
 
 	def __repr__(self):
 		return f'Vec{self.components}'
