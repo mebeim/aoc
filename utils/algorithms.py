@@ -164,8 +164,9 @@ def grid_find_adjacent(grid: Grid2D, src: Coord2D, find: Container,
 				queue.append((dist + 1, neighbor))
 
 def graph_from_grid(grid: Grid2D, find: Container, avoid: Container=(),
-		coords: bool=False, get_neighbors: GridNeighborsFunc=neighbors4) \
-		-> WeightedGraphDict:
+		coords: bool=False, weighted: bool=False,
+		get_neighbors: GridNeighborsFunc=neighbors4) \
+		-> GraphDict:
 	'''Reduce a grid (2D matrix) to an undirected graph by finding all nodes and
 	calculating their distance to others. Note: can return a disconnected graph.
 
@@ -177,15 +178,21 @@ def graph_from_grid(grid: Grid2D, find: Container, avoid: Container=(),
 	If coord=False (default), nodes of the graph will be represented by the
 	found value only, otherwise by a tuple of the form (row, col, char).
 
-	Returns a "graph dictionary" of the form {node: [(node, dist)]}.
+	Returns a "graph dictionary" of the form {src: [dst]} if weighted=False
+	(default) or {src: [(dst, distance)]} if weighted=True.
 	'''
 	graph: GraphDict = {}
 
 	for r, row in enumerate(grid):
-		for c, char in enumerate(row):
-			if char in find:
-				node = (r, c, char) if coords else char
-				graph[node] = list(grid_find_adjacent(grid, (r, c), find, avoid, coords, get_neighbors))
+		for c, node in enumerate(row):
+			if node in find:
+				node = (r, c, node) if coords else node
+				adj = grid_find_adjacent(grid, (r, c), find, avoid, coords, get_neighbors)
+
+				if weighted:
+					graph[node] = list(adj)
+				else:
+					graph[node] = list(map(itemgetter(0), adj))
 
 	return graph
 

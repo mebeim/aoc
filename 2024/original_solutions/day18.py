@@ -19,7 +19,7 @@ for i, line in enumerate(lines):
 
 # dump_char_matrix(grid)
 
-g = graph_from_grid(grid, find='.', avoid='#', coords=True, get_neighbors=neighbors4)
+g = graph_from_grid(grid, find='.', avoid='#', coords=True, weighted=True, get_neighbors=neighbors4)
 # dump_dict(g)
 
 ans1 = dijkstra(g, (0,0,'.'), (70,70,'.'))
@@ -44,7 +44,7 @@ for i, line in enumerate(lines):
 	x,y = map(int, line.split(','))
 	grid[x][y] = '#'
 
-	g = graph_from_grid(grid, find='.', avoid='#', coords=True, get_neighbors=neighbors4)
+	g = graph_from_grid(grid, find='.', avoid='#', coords=True, weighted=True, get_neighbors=neighbors4)
 	dist = dijkstra(g, (0, 0,'.'), (70, 70, '.'))
 	# eprint(x, y, dist)
 
