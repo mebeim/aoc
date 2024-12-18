@@ -8,12 +8,12 @@ from typing import Optional, Union
 IntOrFloat = Union[int,float]
 
 def rangesum(a: int, b: Optional[int]=None) -> int:
-	'''With 1 arg: calculate the sum of all the integers in the range [1, a].
+	'''With 1 arg: calculate the sum of all the integers in the range [0, a].
 	With 2 args: calculate the sum of all the integers in the range [a, b].
 	'''
 	if b is None:
 		if a < 0:
-			raise ValueError(f'a must be non-negative, got a={a}')
+			raise ValueError(f'a must be non-negative unless b is also provided, got a={a}')
 		return a * (a + 1) // 2
 	if b < a:
 		raise ValueError(f'invalid range, need a <= b, got a={a} b={b}')
@@ -39,7 +39,7 @@ def geometric_series(first_term: IntOrFloat, factor: IntOrFloat, n: int) -> IntO
 	if n < 0:
 		raise ValueError(f'n must be non-negative, got n={n}')
 	if factor == 0:
-		raise ValueError(f'a zero factor does not make much sense, does it?')
+		raise ValueError('factor must be non-zero')
 
 	if factor == 1:
 		return first_term * (n > 0)
