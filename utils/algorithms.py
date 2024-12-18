@@ -127,14 +127,14 @@ def grid_find_adjacent(grid: Grid2D, src: Coord2D, find: Container,
 	'''Find and yield edges to reachable nodes in grid (2D matrix) from src,
 	considering the values in find as nodes, and the values in avoid as walls.
 
-	src: (row, col) to start searching from
-	find: values to consider nodes
-	avoid: values to consider walls
-	anyting else is considered open space
-	get_neighbors(grid, r, c, avoid) is called to determine cell neighbors
+	- src: (row, col) to start searching from
+	- find: values to consider nodes
+	- avoid: values to consider walls
+	- anyting else is considered open space
+	- get_neighbors(grid, r, c, avoid) is called to determine cell neighbors
 
 	If coords=False (default), yields edges in the form (node, dist), otherwise
-	in the form ((row, col, node), dist). For a character grid node will be a
+	in the form ((row, col, node), dist). For a character grid, node will be a
 	single character.
 
 	Uses breadth-first search.
@@ -170,10 +170,10 @@ def graph_from_grid(grid: Grid2D, find: Container, avoid: Container=(),
 	'''Reduce a grid (2D matrix) to an undirected graph by finding all nodes and
 	calculating their distance to others. Note: can return a disconnected graph.
 
-	find: values to consider nodes of the graph
-	avoid: values to consider walls
-	anything else is considered open space
-	get_neighbors(grid, r, c, avoid) is called to determine cell neighbors
+	- find: values to consider nodes of the graph
+	- avoid: values to consider walls
+	- anything else is considered open space
+	- get_neighbors(grid, r, c, avoid) is called to determine cell neighbors
 
 	If coord=False (default), nodes of the graph will be represented by the
 	found value only, otherwise by a tuple of the form (row, col, char).
@@ -198,14 +198,16 @@ def graph_from_grid(grid: Grid2D, find: Container, avoid: Container=(),
 
 def grid_bfs(grid: Grid2D, src: Coord2D, dst: Coord2D, avoid: Container=(),
 		get_neighbors: GridNeighborsFunc=neighbors4) -> Distance:
-	'''Find the length of any path from src to dst in grid using breadth-first
+	'''Find the length of the path from src to dst in grid using breadth-first
 	search. Returns INFINITY if no path is found.
 
-	grid is a 2D matrix i.e. list of lists or similar.
-	src and dst are tuples in the form (row, col)
-	get_neighbors(grid, r, c, avoid) is called to determine cell neighbors
+	- grid is a 2D matrix i.e. list of lists or similar.
+	- src and dst are tuples in the form (row, col)
+	- get_neighbors(grid, r, c, avoid) is called to determine cell neighbors
 
-	For memoization, use: bfs = bfs_grid_lru(grid); bfs(src, dst).
+	For memoization use:
+		gbfs = bfs_grid_lru(grid)
+		distance = gbfs(src, dst)
 	'''
 	queue   = deque([(0, src)])
 	visited = set()
@@ -227,6 +229,11 @@ def grid_bfs(grid: Grid2D, src: Coord2D, dst: Coord2D, avoid: Container=(),
 def grid_bfs_lru(grid: Grid2D, avoid: Container=(),
 		get_neighbors: GridNeighborsFunc=neighbors4) \
 		-> Callable[[Coord2D,Coord2D],Distance]:
+	'''
+	Memoized version of grid_bfs():
+		gbfs = bfs_grid_lru(grid)
+		distance = gbfs(src, dst)
+	'''
 	@lru_cache(MAX_CACHE_SIZE)
 	def wrapper(src: Coord2D, dst: Coord2D) -> Distance:
 		nonlocal grid, get_neighbors
@@ -300,7 +307,9 @@ def dijkstra(G: WeightedGraphDict, src: Any, dst: Any,
 
 	G is a weighted "graph dictionary" of the form {src: [(dst, weight)]}.
 
-	For memoization, use: djk = dijkstra_lru(G); djk(src, dst).
+	For memoization use:
+		djk = dijkstra_lru(G)
+		distance = djk(src, dst)
 	'''
 	if get_neighbors is None:
 		get_neighbors = G.get
@@ -334,7 +343,10 @@ def dijkstra(G: WeightedGraphDict, src: Any, dst: Any,
 def dijkstra_lru(G: WeightedGraphDict,
 		get_neighbors: Optional[GraphNeighborsFunc]=None) \
 		-> Callable[[Any,Any],Distance]:
-	'''Memoized version of dijkstra(): djk = dijkstra_lru(G); djk(src, dst).
+	'''
+	Memoized version of dijkstra():
+		djk = dijkstra_lru(G)
+		distance = djk(src, dst)
 	'''
 	@lru_cache(MAX_CACHE_SIZE)
 	def wrapper(src: Any, dst: Any) -> Distance:
@@ -356,7 +368,9 @@ def dijkstra_path(G: WeightedGraphDict, src: Any, dst: Any,
 	NOTE that the returned length is the length of the shortest path (i.e. sum
 	of edge weights along the path), not the number of nodes in the path.
 
-	For memoization, use: djk = dijkstra_path_lru(G); djk(src, dst).
+	For memoization use:
+		djk = dijkstra_path_lru(G)
+		path, pathlen = djk(src, dst)
 	'''
 	if get_neighbors is None:
 		get_neighbors = G.get
@@ -398,8 +412,10 @@ def dijkstra_path(G: WeightedGraphDict, src: Any, dst: Any,
 def dijkstra_path_lru(G: WeightedGraphDict,
 		get_neighbors: Optional[GraphNeighborsFunc]=None) \
 		-> Callable[[Any,Any],Tuple[Tuple[Any],Distance]]:
-	'''Memoized version of dijkstra_path():
-	djk = dijkstra_path_lru(G); djk(src, dst).
+	'''
+	Memoized version of dijkstra_path():
+		djk = dijkstra_path_lru(G)
+		path, pathlen = djk(src, dst)
 	'''
 	@lru_cache(MAX_CACHE_SIZE)
 	def wrapper(src: Any, dst: Any) -> Tuple[Tuple[Any],Distance]:
