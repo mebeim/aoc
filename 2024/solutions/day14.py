@@ -6,6 +6,7 @@ from collections import Counter
 from dataclasses import dataclass
 from math import prod
 
+
 @dataclass
 class Robot:
 	x: int

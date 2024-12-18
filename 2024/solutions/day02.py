@@ -2,6 +2,7 @@
 
 import sys
 
+
 def safe(ints, allow_removal=False):
 	for i in range(len(ints) - 1):
 		if not 1 <= ints[i + 1] - ints[i] <= 3:

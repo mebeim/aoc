@@ -6,17 +6,17 @@ from itertools import combinations, count
 
 
 def antinodes(r1, c1, r2, c2):
-    global HEIGHT, WIDTH
+	global HEIGHT, WIDTH
 
-    r = 2 * r2 - r1
-    c = 2 * c2 - c1
-    if 0 <= r < HEIGHT and 0 <= c < WIDTH:
-        yield r, c
+	r = 2 * r2 - r1
+	c = 2 * c2 - c1
+	if 0 <= r < HEIGHT and 0 <= c < WIDTH:
+		yield r, c
 
-    r = 2 * r1 - r2
-    c = 2 * c1 - c2
-    if 0 <= r < HEIGHT and 0 <= c < WIDTH:
-        yield r, c
+	r = 2 * r1 - r2
+	c = 2 * c1 - c2
+	if 0 <= r < HEIGHT and 0 <= c < WIDTH:
+		yield r, c
 
 
 def points_on_line(r1, c1, r2, c2):

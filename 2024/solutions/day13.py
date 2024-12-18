@@ -3,6 +3,7 @@
 import sys
 from re import findall
 
+
 def solve(ax, ay, bx, by, px, py):
 	# Solve the linear system of two equations (with a and b unknown):
 	#     ax * a + bx * b = px

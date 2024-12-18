@@ -2,12 +2,14 @@
 
 import sys
 
+
 def grid_char(r, c):
 	global GRID, WIDTH, HEIGHT
 
 	if 0 <= r < HEIGHT and 0 <= c < WIDTH:
 		return GRID[r][c]
 	return ''
+
 
 def count_xmas(r, c):
 	global GRID
@@ -30,6 +32,7 @@ def count_xmas(r, c):
 			count += 1
 
 	return count
+
 
 def check_xmas(r, c):
 	global GRID
