@@ -794,7 +794,6 @@ def bisection(fn: Callable[[IntOrFloat],IntOrFloat], y: IntOrFloat,
 
 	If not supplied, lo and hi are found through exponential search.
 
-	```
 	                 * * *
 	               * |
 	             *   |
@@ -804,7 +803,6 @@ def bisection(fn: Callable[[IntOrFloat],IntOrFloat], y: IntOrFloat,
 	       *         |
 	    *  |         |
 	       lo        hi
-	```
 	'''
 	if type(y) not in (int, float):
 		raise TypeError('y must be int or float, got {}'.format(type(y).__name__))
