@@ -18,6 +18,7 @@ for line in lines:
 l.sort()
 r.sort()
 
+ans1 = ans2 = 0
 for a, b in zip(l, r):
 	ans1 += abs(a - b)
 	ans2 += a * r.count(a)
