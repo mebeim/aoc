@@ -5,7 +5,7 @@ from functools import total_ordering, wraps
 from itertools import starmap
 from math import prod, sqrt, isqrt
 from operator import sub
-from typing import Self, Union
+from typing import Union
 
 
 IntOrFloat = Union[int,float]
@@ -38,7 +38,7 @@ def ensure3d_binop(operator):
 	Vectors (self and other). In particular, other can also be a Sequence.'''
 
 	@wraps(operator)
-	def wrapper(self, other: Sequence[IntOrFloat]) -> Self:
+	def wrapper(self, other: Sequence[IntOrFloat]) -> 'Vector':
 		self._check_dim(3, 'this vector is not 3-dimensional')
 		if len(other) != 3:
 			raise TypeError('operand is not 3-dimensional')
@@ -81,46 +81,46 @@ class Vector(Sequence):
 		# for performance
 		return reversed(self.components)
 
-	def __pos__(self) -> Self:
+	def __pos__(self) -> 'Vector':
 		# +vec: component-wise (no-op)
 		return type(self)(*self)
 
-	def __neg__(self) -> Self:
+	def __neg__(self) -> 'Vector':
 		# -vec: component-wise negation
 		return type(self)(*(-x for x in self))
 
-	def __abs__(self) -> Self:
+	def __abs__(self) -> 'Vector':
 		# abs(vec): component-wise absolute value
 		return type(self)(*(abs(x) for x in self))
 
-	def __invert__(self) -> Self:
+	def __invert__(self) -> 'Vector':
 		# ~vec: component-wise bitwise NOT
 		return type(self)(*(~x for x in self))
 
-	def __add__(self, other: Iterable[IntOrFloat]) -> Self:
+	def __add__(self, other: Iterable[IntOrFloat]) -> 'Vector':
 		# vec + other: component-wise sum
 		self._check_dim(len(other))
 		return type(self)(*map(sum, zip(self, other)))
 
-	def __sub__(self, other: Iterable[IntOrFloat]) -> Self:
+	def __sub__(self, other: Iterable[IntOrFloat]) -> 'Vector':
 		# vec - other: component-wise difference
 		self._check_dim(len(other))
 		return type(self)(*starmap(sub, zip(self, other)))
 
-	def __mul__(self, v: IntOrFloat) -> Self:
+	def __mul__(self, v: IntOrFloat) -> 'Vector':
 		# vec * v: component-wise product by scalar
 		if not isinstance(v, IntOrFloat):
 			raise TypeError('ambiguous product by non-scalar: use '
 				'vec.dot(other) or vec.cross(other)')
 		return type(self)(*(x * v for x in self))
 
-	def __mod__(self, v: IntOrFloat) -> Self:
+	def __mod__(self, v: IntOrFloat) -> 'Vector':
 		# vec % v: component-wise modulo by scalar
 		if not isinstance(v, IntOrFloat):
 			return NotImplemented
 		return type(self)(*(x % v for x in self))
 
-	def __divmod__(self, v: IntOrFloat) -> Self:
+	def __divmod__(self, v: IntOrFloat) -> 'Vector':
 		# divmod(vec, v): component-wise divmod by scalar
 		if not isinstance(v, IntOrFloat):
 			return NotImplemented
@@ -128,13 +128,13 @@ class Vector(Sequence):
 			return self / v, self % v
 		return self // v, self % v
 
-	def __truediv__(self, v: IntOrFloat) -> Self:
+	def __truediv__(self, v: IntOrFloat) -> 'Vector':
 		# vec / v: component-wise float division by scalar
 		if not isinstance(v, IntOrFloat):
 			return NotImplemented
 		return type(self)(*(x / v for x in self))
 
-	def __floordiv__(self, v: IntOrFloat) -> Self:
+	def __floordiv__(self, v: IntOrFloat) -> 'Vector':
 		# vec // v: component-wise integer division by scalar
 		if not isinstance(v, IntOrFloat):
 			return NotImplemented
@@ -172,7 +172,7 @@ class Vector(Sequence):
 			raise TypeError(msg)
 
 	@property
-	def sign(self) -> Self:
+	def sign(self) -> 'Vector':
 		'''Component-wise sign of the vector yielding another vector.
 		NOTE: 0 and -0.0 will have a sign of 0.
 		'''
@@ -235,7 +235,7 @@ class Vector(Sequence):
 		return self.manhattan(other)
 
 	@ensure2d
-	def rot2d(self, n: int) -> Self:
+	def rot2d(self, n: int) -> 'Vector':
 		'''2D vector rotation in *Cartesian plane* (NOT grid) of 90 degrees n
 		times: clockwise if n is positive, counter-clockwise if n is negative.
 
@@ -249,7 +249,7 @@ class Vector(Sequence):
 		return type(self)(self.y, -self.x)
 
 	@ensure2d
-	def grid_rot2d(self, n: int) -> Self:
+	def grid_rot2d(self, n: int) -> 'Vector':
 		'''2D vector rotation in *grid* (NOT Cartesian plane) of 90 degrees n
 		times: clockwise if n is positive, counter-clockwise if n is negative.
 
@@ -263,7 +263,7 @@ class Vector(Sequence):
 		return type(self)(-self.c, self.r)
 
 	@ensure2d
-	def reflect2d(self, vertical=False) -> Self:
+	def reflect2d(self, vertical=False) -> 'Vector':
 		'''2D vector reflection using *Cartesian* coordinates.
 
 		vertical=False: horizontal reflection  x|x
@@ -279,7 +279,7 @@ class Vector(Sequence):
 		return type(self)(-self.x, self.y)
 
 	@ensure2d
-	def grid_reflect2d(self, vertical=False) -> Self:
+	def grid_reflect2d(self, vertical=False) -> 'Vector':
 		'''2D vector reflection using *grid* coordinates.
 
 		vertical=False: horizontal reflection  o|o
@@ -295,7 +295,7 @@ class Vector(Sequence):
 		return type(self)(self.r, -self.c)
 
 	@ensure2d
-	def adj4(self) -> Iterator[Self]:
+	def adj4(self) -> Iterator['Vector']:
 		'''Yield the 4 cardinal neighbor coordinates (N, S, W, E) of a 2D vector
 		representing Cartesian or grid coordinates.
 
@@ -307,7 +307,7 @@ class Vector(Sequence):
 		yield self + (-1, 0)
 
 	@ensure2d
-	def adj8(self) -> Iterator[Self]:
+	def adj8(self) -> Iterator['Vector']:
 		'''Yield the 8 neighbor coordinates (N, S, W, E, NW, NE, SW, SE) of a 2D
 		vector representing Cartesian or grid coordinates.
 
@@ -323,7 +323,7 @@ class Vector(Sequence):
 		yield self + (-1, 1)
 
 	@ensure3d
-	def adj4_3d(self) -> Iterator[Self]:
+	def adj4_3d(self) -> Iterator['Vector']:
 		'''Yield the 4 cardinal neighbor coordinates (N, S, W, E) on the same Z
 		plane of a 3D vector representing 3D-space coordinates.
 
@@ -335,7 +335,7 @@ class Vector(Sequence):
 		yield self + (-1, 0, 0)
 
 	@ensure3d
-	def adj8_3d(self) -> Iterator[Self]:
+	def adj8_3d(self) -> Iterator['Vector']:
 		'''Yield the 8 neighbor coordinates (N, S, W, E, NW, NE, SW, SE) on the
 		same Z plane of a 3D vector representing 3D-space coordinates.
 
@@ -351,7 +351,7 @@ class Vector(Sequence):
 		yield self + (-1, 1, 0)
 
 	@ensure3d
-	def adj6(self) -> Iterator[Self]:
+	def adj6(self) -> Iterator['Vector']:
 		'''Yield the 6 neighbor coordinates (N, S, W, E, UP, DOWN) of a 3D
 		vector representing 3D-space coordinates. These correspond to the center
 		of the 6 faces of a 3x3x3 cube where this vector represents the coords
@@ -367,7 +367,7 @@ class Vector(Sequence):
 		yield self + (0, 0, -1)
 
 	@ensure3d
-	def adj26(self) -> Iterator[Self]:
+	def adj26(self) -> Iterator['Vector']:
 		'''Yield the 26 neighbor coordinates of a 3D vector representing
 		3D-space coordinates. These correspond to the 26 "cells" of a 3x3x3 cube
 		where this vector represents the coords of the center.
@@ -382,7 +382,7 @@ class Vector(Sequence):
 					yield self + (dx, dy, dz)
 
 	@ensure3d_binop
-	def cross(self, other: Sequence[IntOrFloat]) -> Self:
+	def cross(self, other: Sequence[IntOrFloat]) -> 'Vector':
 		'''3D cross product (aka vector product) yielding a vector. The result
 		is a vector orthogonal to both this vector and the operand, with a
 		direction given by the right-hand rule.
@@ -396,7 +396,7 @@ class Vector(Sequence):
 			self[0] * other[1] - self[1] * other[0]
 		)
 
-	def cross_product(self, other: Sequence[IntOrFloat]) -> Self:
+	def cross_product(self, other: Sequence[IntOrFloat]) -> 'Vector':
 		'''Convenience alias for vec.cross()'''
 		return self.cross(other)
 
@@ -425,42 +425,42 @@ class Vector(Sequence):
 
 	@property
 	@ensure2d
-	def north(self) -> Self:
+	def north(self) -> 'Vector':
 		return self + (0, 1)
 
 	@property
 	@ensure2d
-	def south(self) -> Self:
+	def south(self) -> 'Vector':
 		return self + (0, -1)
 
 	@property
 	@ensure2d
-	def west(self) -> Self:
+	def west(self) -> 'Vector':
 		return self + (-1, 0)
 
 	@property
 	@ensure2d
-	def east(self) -> Self:
+	def east(self) -> 'Vector':
 		return self + (1, 0)
 
 	@property
 	@ensure2d
-	def nw(self) -> Self:
+	def nw(self) -> 'Vector':
 		return self + (-1, 1)
 
 	@property
 	@ensure2d
-	def ne(self) -> Self:
+	def ne(self) -> 'Vector':
 		return self + (1, 1)
 
 	@property
 	@ensure2d
-	def sw(self) -> Self:
+	def sw(self) -> 'Vector':
 		return self + (-1, -1)
 
 	@property
 	@ensure2d
-	def se(self) -> Self:
+	def se(self) -> 'Vector':
 		return self + (1, -1)
 
 	### Convenience properties for 2D grids ###
@@ -478,42 +478,42 @@ class Vector(Sequence):
 
 	@property
 	@ensure2d
-	def grid_north(self) -> Self:
+	def grid_north(self) -> 'Vector':
 		return self + (-1, 0)
 
 	@property
 	@ensure2d
-	def grid_south(self) -> Self:
+	def grid_south(self) -> 'Vector':
 		return self + (1, 0)
 
 	@property
 	@ensure2d
-	def grid_west(self) -> Self:
+	def grid_west(self) -> 'Vector':
 		return self + (0, -1)
 
 	@property
 	@ensure2d
-	def grid_east(self) -> Self:
+	def grid_east(self) -> 'Vector':
 		return self + (0, 1)
 
 	@property
 	@ensure2d
-	def grid_nw(self) -> Self:
+	def grid_nw(self) -> 'Vector':
 		return self + (-1, -1)
 
 	@property
 	@ensure2d
-	def grid_ne(self) -> Self:
+	def grid_ne(self) -> 'Vector':
 		return self + (-1, 1)
 
 	@property
 	@ensure2d
-	def grid_sw(self) -> Self:
+	def grid_sw(self) -> 'Vector':
 		return self + (1, -1)
 
 	@property
 	@ensure2d
-	def grid_se(self) -> Self:
+	def grid_se(self) -> 'Vector':
 		return self + (1, 1)
 
 
@@ -554,7 +554,7 @@ class MutableVector(Vector, MutableSequence):
 		# Do not support expanding a Vector (also called for `append` and `extend`)
 		raise NotImplementedError('what the hell are you doing?')
 
-	def __iadd__(self, other: Iterable[IntOrFloat]) -> Self:
+	def __iadd__(self, other: Iterable[IntOrFloat]) -> 'MutableVector':
 		# vec += other: in-place component-wise sum
 		self._check_dim(len(other))
 
@@ -562,7 +562,7 @@ class MutableVector(Vector, MutableSequence):
 			self[i] += x
 		return self
 
-	def __isub__(self, other: Iterable[IntOrFloat]) -> Self:
+	def __isub__(self, other: Iterable[IntOrFloat]) -> 'MutableVector':
 		# vec -= other: in-place component-wise difference
 		self._check_dim(len(other))
 
@@ -570,7 +570,7 @@ class MutableVector(Vector, MutableSequence):
 			self[i] -= x
 		return self
 
-	def __imul__(self, v: IntOrFloat) -> Self:
+	def __imul__(self, v: IntOrFloat) -> 'MutableVector':
 		# vec *= v: in-place component-wise product by scalar
 		if not isinstance(v, IntOrFloat):
 			raise TypeError('ambiguous product by non-scalar: use '
@@ -580,7 +580,7 @@ class MutableVector(Vector, MutableSequence):
 			self[i] *= v
 		return self
 
-	def __itruediv__(self, v: IntOrFloat) -> Self:
+	def __itruediv__(self, v: IntOrFloat) -> 'MutableVector':
 		# vec /= v: in-place component-wise float division by scalar
 		if not isinstance(v, IntOrFloat):
 			return NotImplemented
@@ -589,7 +589,7 @@ class MutableVector(Vector, MutableSequence):
 			self[i] /= v
 		return self
 
-	def __ifloordiv__(self, v: IntOrFloat) -> Self:
+	def __ifloordiv__(self, v: IntOrFloat) -> 'MutableVector':
 		# vec //= v: in-place component-wise integer division by scalar
 		if not isinstance(v, IntOrFloat):
 			return NotImplemented
