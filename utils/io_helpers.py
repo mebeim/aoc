@@ -5,11 +5,16 @@ __all__ = [
 	'read_int_matrix', 'read_char_matrix', 'read_digit_matrix'
 ]
 
+
 import sys
 import re
+from collections.abc import Callable, Collection, Iterable, Sequence
 from functools import wraps
-from typing import Any, Callable, Iterable, Sequence, Collection, TextIO, Type
-from typing import Tuple, Dict, AnyStr, Set, Union
+from typing import Any, TextIO, Union
+
+
+StrOrBytes = Union[str,bytes]
+
 
 def log(s: str, *a: Any):
 	'''Log a string to standard error after formatting it with any additionally
@@ -127,7 +132,7 @@ def dump_iterable(iterable: Iterable, fmt: str='{:d}: {!r}'):
 	for i, item in enumerate(iterable):
 		log(fmt + '\n', i, item)
 
-def dump_dict(dct: Dict[Any,Any], fmt: str='{}: {!r}'):
+def dump_dict(dct: dict[Any,Any], fmt: str='{}: {!r}'):
 	'''Dump keys and values of a dictionary using the specified format string to
 	standard error.
 	'''
@@ -153,7 +158,7 @@ def dump_char_matrix(mat: Sequence[Sequence[str]], transpose: bool=False):
 
 	sys.stderr.flush()
 
-def dump_sparse_matrix(mat: Union[Set[Tuple[int,int]],Dict[Tuple[int,int],str]],
+def dump_sparse_matrix(mat: Union[set[tuple[int,int]],dict[tuple[int,int],str]],
 		chars: str='# ', transpose: bool=False, header: bool=False):
 	'''Dump the contents of a sparse matrix (e.g. a set or a dict, where the key
 	is the coordinates of a cell in the matrix) to standard error.
@@ -197,7 +202,7 @@ def dump_sparse_matrix(mat: Union[Set[Tuple[int,int]],Dict[Tuple[int,int],str]],
 				sys.stderr.write(value_at((r, c)))
 			sys.stderr.write('\n')
 
-def extract_ints(str_or_bytes: AnyStr, container: Type[Collection]=list,
+def extract_ints(str_or_bytes: StrOrBytes, container: type[Collection]=list,
 		negatives: bool=True) -> Collection[int]:
 	'''Extract integers within a string or a bytes object using a regular
 	expression and return a list of int.
@@ -213,7 +218,7 @@ def extract_ints(str_or_bytes: AnyStr, container: Type[Collection]=list,
 	return container(map(int, re.findall(exp, str_or_bytes)))
 
 def read_lines(file: TextIO, rstrip: bool=True, lstrip: bool=True,
-		container: Type[Collection]=list) -> Collection[str]:
+		container: type[Collection]=list) -> Collection[str]:
 	'''Read file into a list of lines. Strips lines on both ends by default
 	unless rstrip=False or lstrip=False.
 
@@ -229,7 +234,7 @@ def read_lines(file: TextIO, rstrip: bool=True, lstrip: bool=True,
 		return container(map(str.lstrip, lines))
 	return container(lines)
 
-def read_ints(file: TextIO, container: Type[Collection]=list,
+def read_ints(file: TextIO, container: type[Collection]=list,
 		negatives: bool=True) -> Collection[int]:
 	'''Parse file containing integers into a list of integers.
 
@@ -240,8 +245,8 @@ def read_ints(file: TextIO, container: Type[Collection]=list,
 	'''
 	return extract_ints(file.read(), container, negatives)
 
-def read_int_matrix(file: TextIO, container: Type[Collection]=list,
-		outer_container: Type[Collection]=list, negatives: bool=True) \
+def read_int_matrix(file: TextIO, container: type[Collection]=list,
+		outer_container: type[Collection]=list, negatives: bool=True) \
 		-> Collection[Collection[int]]:
 	'''Parse file containing lines containing integers into a list of lists of
 	int. Integers are extracted using a regular expression.
@@ -255,8 +260,8 @@ def read_int_matrix(file: TextIO, container: Type[Collection]=list,
 	return outer_container(extract_ints(l, container, negatives) for l in file)
 
 def read_char_matrix(file: TextIO, rstrip: bool=False, lstrip: bool=False,
-		container: Type[Collection]=list,
-		outer_container: Type[Collection]=list) -> Collection[Collection[str]]:
+		container: type[Collection]=list,
+		outer_container: type[Collection]=list) -> Collection[Collection[str]]:
 	'''Read file into a matrix of characters (effectively a grid). Avoids
 	stripping whitespace other than newlines, unless rstrip=True or lstrip=True.
 
@@ -273,8 +278,8 @@ def read_char_matrix(file: TextIO, rstrip: bool=False, lstrip: bool=False,
 		return outer_container(container(l.lstrip()) for l in lines)
 	return outer_container(map(container, lines))
 
-def read_digit_matrix(file: TextIO, container: Type[Collection]=list,
-		outer_container: Type[Collection]=list) -> Collection[Collection[int]]:
+def read_digit_matrix(file: TextIO, container: type[Collection]=list,
+		outer_container: type[Collection]=list) -> Collection[Collection[int]]:
 	'''Parse file containing lines containing *digits* into a list of lists of
 	int. Each digit is converted to integer.
 

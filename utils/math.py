@@ -1,11 +1,17 @@
 __all__ = ['rangesum', 'arithmetic_series', 'geometric_series']
 
+
 from operator import floordiv, truediv
 from typing import Optional, Union
+
 
 # PEP 484 says that when float is used int is acceptable too, but we want to
 # be explicit for clarity
 IntOrFloat = Union[int,float]
+
+def modinv(x: int, mod: int) -> int:
+	'''Modular multiplicative inverse of x modulo mod.'''
+	return pow(x, -1, mod)
 
 def rangesum(a: int, b: Optional[int]=None) -> int:
 	'''With 1 arg: calculate the sum of all the integers in the range [0, a].

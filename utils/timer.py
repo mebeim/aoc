@@ -1,26 +1,28 @@
 __all__ = ['timer_start', 'timer_lap', 'timer_stop', 'timer_stop_all']
 
+
+import atexit
 import sys
 import time
-import atexit
 
 from .io_helpers import log
+
 
 def seconds_to_most_relevant_unit(s: float) -> str:
 	s *= 1e6
 	if s < 1000:
-		return '{:.3f}µs'.format(s)
+		return f'{s:.3f}µs'
 
 	s /= 1000
 	if s < 1000:
-		return '{:.3f}ms'.format(s)
+		return f'{s:.3f}ms'
 
 	s /= 1000
 	if s < 60:
-		return '{:.3f}s'.format(s)
+		return f'{s:.3f}s'
 
 	s /= 60
-	return '{:d}m {:.3f}s'.format(int(s), s/60%60)
+	return f'{int(s):d}m {(s / 60) % 60:.3f}s'
 
 def timer_start(name: str=sys.argv[0]):
 	now_wall, now_cpu = time.perf_counter(), time.process_time()
@@ -33,7 +35,7 @@ def timer_lap(name: str=sys.argv[0]):
 	dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
 	dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
 
-	log('Timer {} lap #{}: {} wall, {} CPU\n'.format(name, lap, dt_wall, dt_cpu))
+	log(f'Timer {name} lap #{lap}: {dt_wall} wall, {dt_cpu} CPU\n')
 
 	timers[name] = (*x,  time.perf_counter(), time.process_time(), lap + 1)
 
@@ -44,7 +46,7 @@ def timer_stop(name: str=sys.argv[0]):
 	dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
 	dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
 
-	log('Timer {}: {} wall, {} CPU\n'.format(name, dt_wall, dt_cpu))
+	log(f'Timer {name}: {dt_wall} wall, {dt_cpu} CPU\n')
 
 def timer_stop_all():
 	now_wall, now_cpu = time.perf_counter(), time.process_time()
@@ -55,7 +57,7 @@ def timer_stop_all():
 		dt_wall = seconds_to_most_relevant_unit(now_wall - prev_wall)
 		dt_cpu  = seconds_to_most_relevant_unit(now_cpu  - prev_cpu )
 
-		log('Timer {}: {} wall, {} CPU\n'.format(k, dt_wall, dt_cpu))
+		log(f'Timer {k}: {dt_wall} wall, {dt_cpu} CPU\n')
 
 ################################################################################
 

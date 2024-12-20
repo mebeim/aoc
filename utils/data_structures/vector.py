@@ -3,11 +3,10 @@ __all__ = ['Vector', 'Vec', 'MutableVector', 'MutVec']
 from collections.abc import Iterable, Iterator, MutableSequence, Sequence
 from functools import total_ordering, wraps
 from itertools import starmap
-from math import sqrt
+from math import prod, sqrt, isqrt
 from operator import sub
 from typing import Self, Union
 
-from ..polyfill import prod, isqrt
 
 IntOrFloat = Union[int,float]
 

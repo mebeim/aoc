@@ -1,7 +1,9 @@
+__all__ = ['UnionFind']
+
+
 from collections.abc import Hashable, Iterable, Iterator
 from typing import Optional
 
-__all__ = ['UnionFind']
 
 class UnionFind:
 	'''Generic disjoint-set data structure a.k.a. union-find.'''

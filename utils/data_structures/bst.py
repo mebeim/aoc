@@ -1,9 +1,11 @@
 import json
-from operator import attrgetter
 from collections import deque
 from collections.abc import Mapping, MutableMapping, MappingView, KeysView, ValuesView, ItemsView
+from operator import attrgetter
+
 
 __all__ = ['BST', 'AVLTree', 'RBTree']
+
 
 class BSTNode:
 	__slots__ = ('left', 'right', 'parent', 'key', 'value')
@@ -64,12 +66,16 @@ class BSTNode:
 
 		return res
 
+
 class BST(MutableMapping):
-	# NOTE: .setdefault(), .update(), .__eq__(), .__ne__() are provided by
-	#       MutableMapping's default implementation, which might not be optimal.
-	# NOTE: In particular, __eq__/__ne__ only care about whether two instances
-	#       contain the same .items(), and DO NOT check the tree shape! This
-	#       means that e.g. BST(((1, 2), (3, 4))) == {1: 2, 3: 4}.
+	'''Binary search tree implementation as a mutable mapping.
+
+	NOTE: .setdefault(), .update(), .__eq__(), .__ne__() are provided by
+	      MutableMapping's default implementation, which might not be optimal.
+	NOTE: In particular, __eq__/__ne__ only care about whether two instances
+	      contain the same .items(), and DO NOT check the tree shape! This
+	      means that e.g. BST(((1, 2), (3, 4))) == {1: 2, 3: 4}.
+	'''
 
 	__slots__ = ('root', '_len')
 
@@ -455,6 +461,7 @@ class BST(MutableMapping):
 
 		return res + '}\n'
 
+
 class bst_view(MappingView):
 	__slots__ = ('bst', '_getter', '_visit')
 
@@ -488,6 +495,7 @@ class bst_view(MappingView):
 	def __repr__(self):
 		return f'{self.__class__.__name__}({list(self)})'
 
+
 class bst_keys(bst_view, KeysView):
 	def __init__(self, bst, order=None, iter_nodes=None):
 		super().__init__(bst, ('key',), order, iter_nodes)
@@ -495,9 +503,11 @@ class bst_keys(bst_view, KeysView):
 	def __contains__(self, k):
 		k in self.bst
 
+
 class bst_values(bst_view, ValuesView):
 	def __init__(self, bst, order=None, iter_nodes=None):
 		super().__init__(bst, ('value',), order, iter_nodes)
+
 
 class bst_items(bst_view, ItemsView):
 	def __init__(self, bst, order=None, iter_nodes=None):
@@ -507,6 +517,7 @@ class bst_items(bst_view, ItemsView):
 		k, v = item
 		node = self.bst._find_node(k)
 		return node is not None and node.value == v
+
 
 class bst_subview(MappingView):
 	__slots__ = ('bst',)
@@ -538,6 +549,7 @@ class bst_subview(MappingView):
 	def items(self):
 		return bst_items(self.bst, iter_nodes=self._iter_nodes)
 
+
 class bst_head(bst_subview):
 	__slots__ = ('maxkey',)
 
@@ -568,6 +580,7 @@ class bst_head(bst_subview):
 	def range(self, minkey, maxkey):
 		return bst_range(self.bst, minkey, min(maxkey, self.maxkey))
 
+
 class bst_tail(bst_subview):
 	__slots__ = ('minkey',)
 
@@ -594,6 +607,7 @@ class bst_tail(bst_subview):
 
 	def range(self, minkey, maxkey):
 		return bst_range(self.bst, max(minkey, self.minkey), maxkey)
+
 
 class bst_range(bst_subview):
 	__slots__ = ('minkey', 'maxkey')
@@ -630,6 +644,7 @@ class bst_range(bst_subview):
 			return self
 		return bst_range(self.bst, max(minkey, self.minkey), min(maxkey, self.maxkey))
 
+
 class RBNode(BSTNode):
 	__slots__ = ('red',)
 
@@ -646,7 +661,17 @@ class RBNode(BSTNode):
 		label = json.dumps(f'{self.key}\n{self.value}')
 		return f'[label={label}, style=filled, fillcolor={bg}, fontcolor={fg}]'
 
+
 class RBTree(BST):
+	'''Red-black binary search tree implementation as a mutable mapping.
+
+	NOTE: .setdefault(), .update(), .__eq__(), .__ne__() are provided by
+	      MutableMapping's default implementation, which might not be optimal.
+	NOTE: In particular, __eq__/__ne__ only care about whether two instances
+	      contain the same .items(), and DO NOT check the tree shape! This
+	      means that e.g. RBTree(((1, 2), (3, 4))) == {1: 2, 3: 4}.
+	'''
+
 	def __setitem__(self, key, value):
 		node = RBNode(key, value)
 		if self._set(node):
@@ -771,6 +796,7 @@ class RBTree(BST):
 			p = node.parent
 			right = node is p.right
 
+
 class AVLNode(BSTNode):
 	__slots__ = ('bf',)
 
@@ -785,7 +811,17 @@ class AVLNode(BSTNode):
 		label = json.dumps(f'{self.key}\n{self.value}')
 		return  f'[label={label}]'
 
+
 class AVLTree(BST):
+	'''AVL binary search tree implementation as a mutable mapping.
+
+	NOTE: .setdefault(), .update(), .__eq__(), .__ne__() are provided by
+	      MutableMapping's default implementation, which might not be optimal.
+	NOTE: In particular, __eq__/__ne__ only care about whether two instances
+	      contain the same .items(), and DO NOT check the tree shape! This
+	      means that e.g. AVLTree(((1, 2), (3, 4))) == {1: 2, 3: 4}.
+	'''
+
 	def __setitem__(self, key, value):
 		node = AVLNode(key, value)
 

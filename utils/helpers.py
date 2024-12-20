@@ -1,7 +1,10 @@
 __all__ = ['autorange', 'transpose', 'sliding_window']
 
+
 from collections import deque
-from typing import Any, Iterable, Iterator, Sequence, Tuple
+from collections.abc import Iterable, Iterator, Sequence
+from typing import Any
+
 
 def autorange(start: int, end: int, step: int=1) -> range:
 	'''Range from start to end (end is INCLUDED) in steps of +/- step regardless
@@ -34,7 +37,7 @@ def transpose(matrix: Sequence[Sequence[Any]]) -> Sequence[Sequence[Any]]:
 		return outer(map(bytes, map(bytearray, zip(*matrix))))
 	return outer(map(inner, zip(*matrix)))
 
-def sliding_window(iterable: Iterable[Any], length: int) -> Iterator[Tuple[Any,...]]:
+def sliding_window(iterable: Iterable[Any], length: int) -> Iterator[tuple[Any,...]]:
 	'''Return an iterator over a sliding window of the specified length from the
 	given iterable. NOTE that if length is larger than the total number of
 	elements in iterable, the returned iterator will stop immediately.

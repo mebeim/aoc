@@ -14,24 +14,23 @@ __all__ = [
 ]
 
 import heapq
-from collections import deque, defaultdict
-from functools import lru_cache
 from bisect import bisect_left
+from collections import deque, defaultdict
+from collections.abc import Iterable, Iterator, Callable, Collection, Container, Sequence
+from functools import lru_cache
+from itertools import filterfalse, product
 from math import inf as INFINITY
-from itertools import filterfalse
 from operator import itemgetter
-from itertools import product
-from typing import TypeVar, Any, Iterable, Iterator, Callable, Union, Optional
-from typing import List, Tuple, Dict, DefaultDict, Set, Deque, Sequence, Container
+from typing import Any, TypeVar, Union, Optional
 
 from .data_structures import UnionFind
 
 T = TypeVar('T')
 
 Grid2D              = Sequence[Sequence[Any]]
-Coord2D             = Tuple[int,int]
-WeightedGraphDict   = Dict[T,List[Tuple[T,int]]]
-UnweightedGraphDict = Dict[T,List[T]]
+Coord2D             = tuple[int,int]
+WeightedGraphDict   = dict[T,Collection[tuple[T,int]]]
+UnweightedGraphDict = dict[T,Collection[T]]
 GraphDict           = Union[WeightedGraphDict,UnweightedGraphDict]
 GridNeighborsFunc   = Callable[[Grid2D,int,int,Container],Iterator[Coord2D]]
 GraphNeighborsFunc  = Callable[[GraphDict,T],Iterator[T]]
@@ -123,7 +122,7 @@ neighbors8_coords  = neighbors_coords_gen(((-1, -1), (-1, 0), (-1, 1), (0, -1), 
 def grid_find_adjacent(grid: Grid2D, src: Coord2D, find: Container,
 		avoid: Container=(), coords: bool=False,
 		get_neighbors: GridNeighborsFunc=neighbors4) \
-		-> Union[Tuple[Tuple[int,int,Any],int],Tuple[Any,int]]:
+		-> Union[tuple[tuple[int,int,Any],int],tuple[Any,int]]:
 	'''Find and yield edges to reachable nodes in grid (2D matrix) from src,
 	considering the values in find as nodes, and the values in avoid as walls.
 
@@ -198,9 +197,9 @@ def graph_from_grid(grid: Grid2D, find: Container, avoid: Container=(),
 
 	return graph
 
-def grid_bfs(grid: Grid2D, src: Coord2D, dst: Union[Coord2D,None]=None,
+def grid_bfs(grid: Grid2D, src: Coord2D, dst: Optional[Coord2D]=None,
 		avoid: Container=(), get_neighbors: GridNeighborsFunc=neighbors4) \
-		-> Union[Dict[Coord2D,Distance],Distance]:
+		-> Union[dict[Coord2D,Distance],Distance]:
 	'''If dst is None (default): find all coordinates of grid reachable from src
 	and their distance from src using breadth-first search. Returns a
 	defaultdict {coord: distance}.
@@ -240,13 +239,13 @@ def grid_bfs_lru(grid: Grid2D, avoid: Container=(),
 		distance = gbfs(src, dst)
 	'''
 	@lru_cache(MAX_CACHE_SIZE)
-	def wrapper(src: Coord2D, dst: Coord2D) -> Union[Dict[Coord2D,Distance],Distance]:
+	def wrapper(src: Coord2D, dst: Coord2D) -> Union[dict[Coord2D,Distance],Distance]:
 		nonlocal grid, get_neighbors
 		return grid_bfs(grid, src, dst, avoid, get_neighbors)
 	return wrapper
 
-def bfs(G: GraphDict, src: Any, dst: Union[Any,None]=None, weighted: bool=False,
-		get_neighbors: Optional[GraphNeighborsFunc]=None) -> Union[Dict[Any,Distance],Distance]:
+def bfs(G: GraphDict, src: Any, dst: Optional[Any]=None, weighted: bool=False,
+		get_neighbors: Optional[GraphNeighborsFunc]=None) -> Union[dict[Any,Distance],Distance]:
 	'''If dst is None (default): find all nodes in G reachable from src and
 	their distance from src using breadth-first search. Returns a defaultdict
 	{node: distance}.
@@ -291,7 +290,7 @@ def bfs(G: GraphDict, src: Any, dst: Union[Any,None]=None, weighted: bool=False,
 	return distance if dst is None else distance[dst]
 
 def connected_components(G: GraphDict, weighted: bool=False,
-		get_neighbors: Optional[GraphNeighborsFunc]=None) -> List[Set[Any]]:
+		get_neighbors: Optional[GraphNeighborsFunc]=None) -> list[set[Any]]:
 	'''Find and return a list of all the connected components of G.
 
 	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
@@ -375,7 +374,7 @@ def dijkstra_lru(G: WeightedGraphDict,
 
 def dijkstra_path(G: WeightedGraphDict, src: Any, dst: Any,
 		get_neighbors: Optional[GraphNeighborsFunc]=None) \
-		-> Tuple[Tuple[Any],Distance]:
+		-> tuple[tuple[Any],Distance]:
 	'''Find the shortest path from src to dst in G using Dijkstra's algorithm.
 
 	G is a weighted "graph dictionary" of the form {src: [(dst, weight)]}
@@ -430,21 +429,21 @@ def dijkstra_path(G: WeightedGraphDict, src: Any, dst: Any,
 
 def dijkstra_path_lru(G: WeightedGraphDict,
 		get_neighbors: Optional[GraphNeighborsFunc]=None) \
-		-> Callable[[Any,Any],Tuple[Tuple[Any],Distance]]:
+		-> Callable[[Any,Any],tuple[tuple[Any],Distance]]:
 	'''
 	Memoized version of dijkstra_path():
 		djk = dijkstra_path_lru(G)
 		path, pathlen = djk(src, dst)
 	'''
 	@lru_cache(MAX_CACHE_SIZE)
-	def wrapper(src: Any, dst: Any) -> Tuple[Tuple[Any],Distance]:
+	def wrapper(src: Any, dst: Any) -> tuple[tuple[Any],Distance]:
 		nonlocal G, get_neighbors
 		return dijkstra_path(G, src, dst, get_neighbors)
 	return wrapper
 
 def dijkstra_all(G: WeightedGraphDict, src: Any,
 		get_neighbors: Optional[GraphNeighborsFunc]=None) \
-		-> DefaultDict[Any,Distance]:
+		-> defaultdict[Any,Distance]:
 	'''Find the length of all the shortest paths from src to any reachable node
 	in G using Dijkstra's algorithm.
 
@@ -482,7 +481,7 @@ def dijkstra_all(G: WeightedGraphDict, src: Any,
 
 def dijkstra_all_paths(G: WeightedGraphDict, src: Any,
 		get_neighbors: Optional[GraphNeighborsFunc]=None) \
-		-> DefaultDict[Any,Tuple[Tuple[Any],Distance]]:
+		-> defaultdict[Any,tuple[tuple[Any],Distance]]:
 	'''Find all the shortest paths from src to any reachable node in G and their
 	using Dijkstra's algorithm.
 
@@ -521,10 +520,10 @@ def dijkstra_all_paths(G: WeightedGraphDict, src: Any,
 	return pd
 
 def bellman_ford(G: WeightedGraphDict, src: Any) \
-		-> Tuple[
-			DefaultDict[Any,Distance],
-			DefaultDict[Any,Distance],
-			Callable[[Any],Deque[Any]]
+		-> tuple[
+			defaultdict[Any,Distance],
+			defaultdict[Any,Distance],
+			Callable[[Any],deque[Any]]
 		]:
 	'''Find all the shortest paths from src to any reachable node in G and their
 	lengths using the Bellman-Ford algorithm. IMPORTANT: all nodes of the graph
@@ -550,7 +549,7 @@ def bellman_ford(G: WeightedGraphDict, src: Any) \
 	distance = defaultdict(lambda: INFINITY, {src: 0})
 	previous = defaultdict(lambda: None)
 
-	def path_to(dst: Any) -> Deque[Any]:
+	def path_to(dst: Any) -> deque[Any]:
 		nonlocal previous
 		res = deque([])
 
@@ -584,10 +583,10 @@ def bellman_ford(G: WeightedGraphDict, src: Any) \
 	return distance, previous, path_to
 
 def floyd_warshall(G: WeightedGraphDict) \
-		-> Tuple[
-			DefaultDict[Any,DefaultDict[Any,Distance]],
-			DefaultDict[Any,DefaultDict[Any,Distance]],
-			Callable[[Any,Any],List[Any]]
+		-> tuple[
+			defaultdict[Any,defaultdict[Any,Distance]],
+			defaultdict[Any,defaultdict[Any,Distance]],
+			Callable[[Any,Any],list[Any]]
 		]:
 	'''Find the length of the shortest paths between any pair of nodes in G and
 	using the Floyd-Warshall algorithm.
@@ -612,7 +611,7 @@ def floyd_warshall(G: WeightedGraphDict) \
 	distance  = defaultdict(lambda: defaultdict(lambda: INFINITY))
 	successor = defaultdict(lambda: defaultdict(lambda: None))
 
-	def path(src: Any, dst: Any) -> List[Any]:
+	def path(src: Any, dst: Any) -> list[Any]:
 		nonlocal successor
 
 		if successor[src][dst] is None:
@@ -677,7 +676,7 @@ def kruskal(G: WeightedGraphDict) -> WeightedGraphDict:
 	return mst
 
 def _toposort_dependencies(G: GraphDict, reverse: bool, weighted: bool) \
-		-> Tuple[DefaultDict[Any,int],DefaultDict[Any,int]]:
+		-> tuple[defaultdict[Any,int],defaultdict[Any,int]]:
 	'''Calculate forward and reverse dependencies of the nodes in the directed
 	acyclic graph G.
 
@@ -712,7 +711,7 @@ def _toposort_dependencies(G: GraphDict, reverse: bool, weighted: bool) \
 
 	return dep, revdep
 
-def toposort(G: GraphDict, reverse: bool=False, weighted: bool=False) -> List[Any]:
+def toposort(G: GraphDict, reverse: bool=False, weighted: bool=False) -> list[Any]:
 	'''Perform a topological sort of the directed acyclic graph G. No particular
 	order is guaranteed whenever there are multiple nodes with no dependencies
 	that can be chosen as next.
@@ -741,7 +740,7 @@ def toposort(G: GraphDict, reverse: bool=False, weighted: bool=False) -> List[An
 
 	return result
 
-def lex_toposort(G: GraphDict, reverse: bool=False, weighted: bool=False) -> List[Any]:
+def lex_toposort(G: GraphDict, reverse: bool=False, weighted: bool=False) -> list[Any]:
 	'''Perform a lexicographical topological sort of the directed acyclic graph
 	G. The smallest node is always chosen whenever there are multiple nodes with
 	no dependencies that can be chosen as next.
@@ -872,8 +871,8 @@ def binary_search(seq: Sequence[Any], x: Any) -> int:
 		return i
 	return -1
 
-def knapsack(items: Dict[T,Tuple[Any,IntOrFloat]], weight_limit: IntOrFloat) \
-		-> Tuple[IntOrFloat,List[T]]:
+def knapsack(items: dict[T,tuple[Any,IntOrFloat]], weight_limit: IntOrFloat) \
+		-> tuple[IntOrFloat,list[T]]:
 	'''0-1 knapsack: find the best subset of items to choose to get the maximum
 	total value with the given total weight limit.
 
