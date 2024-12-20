@@ -104,7 +104,7 @@ def reprint(recursion_depth: int):
 		│ └> 1
 		└> 7
 	'''
-	@wraps(log)
+	@wraps(eprint)
 	def fn(*a, is_header=False, is_retval=False, **kwa):
 		pre = ' │' * recursion_depth
 		pre += ' ┌' if is_header else ' └>' if is_retval else ' │'
