@@ -102,4 +102,5 @@ while prio:
 	# eprint('>', bid, hoff, bsz)
 	ans2 += sum(i * bid for i in range(hoff, hoff + bsz))
 
+# FIXME: result is the same for p1 and p2, must have copy-pasted something wrong!
 advent.print_answer(2, ans2)
