@@ -240,7 +240,7 @@ def grid_bfs_lru(grid: Grid2D, avoid: Container=(),
 		distance = gbfs(src, dst)
 	'''
 	@lru_cache(MAX_CACHE_SIZE)
-	def wrapper(src: Coord2D, dst: Coord2D) -> Distance:
+	def wrapper(src: Coord2D, dst: Coord2D) -> Union[Dict[Coord2D,Distance],Distance]:
 		nonlocal grid, get_neighbors
 		return grid_bfs(grid, src, dst, avoid, get_neighbors)
 	return wrapper
