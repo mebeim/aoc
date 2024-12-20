@@ -86,7 +86,7 @@ for m in moves.strip():
 for box in boxes:
 	ans1 += 100 * box.r + box.c
 
-advent.print_and_submit(1, ans1)
+advent.print_answer(1, ans1)
 
 
 walls = set()
