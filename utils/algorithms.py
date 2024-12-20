@@ -184,47 +184,52 @@ def graph_from_grid(grid: Grid2D, find: Container, avoid: Container=(),
 	graph: GraphDict = {}
 
 	for r, row in enumerate(grid):
-		for c, node in enumerate(row):
-			if node in find:
-				node = (r, c, node) if coords else node
-				adj = grid_find_adjacent(grid, (r, c), find, avoid, coords, get_neighbors)
+		for c, x in enumerate(row):
+			if x not in find:
+				continue
 
-				if weighted:
-					graph[node] = list(adj)
-				else:
-					graph[node] = list(map(itemgetter(0), adj))
+			node = (r, c, x) if coords else x
+			adj = grid_find_adjacent(grid, (r, c), find, avoid, coords, get_neighbors)
+
+			if weighted:
+				graph[node] = list(adj)
+			else:
+				graph[node] = list(map(itemgetter(0), adj))
 
 	return graph
 
-def grid_bfs(grid: Grid2D, src: Coord2D, dst: Coord2D, avoid: Container=(),
-		get_neighbors: GridNeighborsFunc=neighbors4) -> Distance:
-	'''Find the length of the path from src to dst in grid using breadth-first
-	search. Returns INFINITY if no path is found.
+def grid_bfs(grid: Grid2D, src: Coord2D, dst: Union[Coord2D,None]=None,
+		avoid: Container=(), get_neighbors: GridNeighborsFunc=neighbors4) \
+		-> Union[Dict[Coord2D,Distance],Distance]:
+	'''If dst is None (default): find all coordinates of grid reachable from src
+	and their distance from src using breadth-first search. Returns a
+	defaultdict {coord: distance}.
+
+	If dst is not None: find and return the length of the path from src to dst
+	in grid using breadth-first search. Returns INFINITY if no path is found.
 
 	- grid is a 2D matrix i.e. list of lists or similar.
 	- src and dst are tuples in the form (row, col)
-	- get_neighbors(grid, r, c, avoid) is called to determine cell neighbors
+	- get_neighbors(grid, r, c, avoid) is called to determine cell neighbors and
+	  should yield coordinates
 
 	For memoization use:
 		gbfs = bfs_grid_lru(grid)
 		distance = gbfs(src, dst)
 	'''
-	queue   = deque([(0, src)])
-	visited = set()
+	queue    = deque([src])
+	distance = defaultdict(lambda: INFINITY, {src: 0})
 
 	while queue:
-		dist, rc = queue.popleft()
+		pos = queue.popleft()
+		if dst is not None and pos == dst:
+			break
 
-		if rc == dst:
-			return dist
+		for n in filterfalse(distance.__contains__, get_neighbors(grid, *pos, avoid)):
+			distance[n] = distance[pos] + 1
+			queue.append(n)
 
-		if rc not in visited:
-			visited.add(rc)
-
-			for n in filterfalse(visited.__contains__, get_neighbors(grid, *rc, avoid)):
-				queue.append((dist + 1, n))
-
-	return INFINITY
+	return distance if dst is None else distance[dst]
 
 def grid_bfs_lru(grid: Grid2D, avoid: Container=(),
 		get_neighbors: GridNeighborsFunc=neighbors4) \
@@ -242,8 +247,9 @@ def grid_bfs_lru(grid: Grid2D, avoid: Container=(),
 
 def bfs(G: GraphDict, src: Any, dst: Union[Any,None]=None, weighted: bool=False,
 		get_neighbors: Optional[GraphNeighborsFunc]=None) -> Union[Dict[Any,Distance],Distance]:
-	'''If dst is None: find all nodes in G reachable from src and their distance
-	from src using breadth-first search. Returns a defaultdict {node: distance}.
+	'''If dst is None (default): find all nodes in G reachable from src and
+	their distance from src using breadth-first search. Returns a defaultdict
+	{node: distance}.
 
 	If dst is not None: find and return the length of the path from src to dst
 	in G using breadth-first search. Returns INFINITY if no path is found.
