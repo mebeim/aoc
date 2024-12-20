@@ -240,36 +240,49 @@ def grid_bfs_lru(grid: Grid2D, avoid: Container=(),
 		return grid_bfs(grid, src, dst, avoid, get_neighbors)
 	return wrapper
 
-def bfs(G: GraphDict, src: Any, weighted: bool=False,
-		get_neighbors: Optional[GraphNeighborsFunc]=None) -> Set[Any]:
-	'''Find and return the set of all nodes reachable from src in G using
-	breadth-first search.
+def bfs(G: GraphDict, src: Any, dst: Union[Any,None]=None, weighted: bool=False,
+		get_neighbors: Optional[GraphNeighborsFunc]=None) -> Union[Dict[Any,Distance],Distance]:
+	'''If dst is None: find all nodes in G reachable from src and their distance
+	from src using breadth-first search. Returns a defaultdict {node: distance}.
+
+	If dst is not None: find and return the length of the path from src to dst
+	in G using breadth-first search. Returns INFINITY if no path is found.
 
 	G is a "graph dictionary" of the form {src: [dst]} or {src: [(dst, weight)]}
-	if weighted=True, in which case weights are ignored.
+	if weighted=True.
 
 	get_neighbors(node) is called to determine node neighbors (default is G.get)
 
 	NOTE: for correct results in case of an undirected graph, all nodes must be
 	present in G as keys.
+
+	NOTE: by definition BFS will only find the length of the shortest path
+	between two nodes if all edge weights are equal.
 	'''
 	if get_neighbors is None:
 		get_neighbors = G.get
 
-	queue   = deque([src])
-	visited = set()
+	queue    = deque([src])
+	distance = defaultdict(lambda: INFINITY, {src: 0})
 
 	while queue:
 		node = queue.popleft()
-		if node in visited:
-			continue
+		if dst is not None and node == dst:
+			break
 
-		visited.add(node)
 		neighbors = get_neighbors(node) or ()
-		neighbors = map(itemgetter(0), neighbors) if weighted else neighbors
-		queue.extend(filterfalse(visited.__contains__, neighbors))
 
-	return visited
+		if weighted:
+			for neighbor, weight in neighbors:
+				if neighbor not in distance:
+					distance[neighbor] = distance[node] + weight
+					queue.append(neighbor)
+		else:
+			for neighbor in filterfalse(distance.__contains__, neighbors):
+				distance[neighbor] = distance[node] + 1
+				queue.append(neighbor)
+
+	return distance if dst is None else distance[dst]
 
 def connected_components(G: GraphDict, weighted: bool=False,
 		get_neighbors: Optional[GraphNeighborsFunc]=None) -> List[Set[Any]]:
