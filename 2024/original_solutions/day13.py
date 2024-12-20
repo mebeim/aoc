@@ -71,7 +71,7 @@ for i in range(0, len(ints), 6):
 
 for m in machines:
 	ok, c = calc(*m)
-	print(m, '->', ok, c)
+	# print(m, '->', ok, c)
 	if ok:
 		ans1 += c
 
