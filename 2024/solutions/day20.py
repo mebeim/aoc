@@ -5,24 +5,22 @@ from collections import deque
 
 
 def parse_grid(fin):
-	walls  = set()
-	spaces = set()
+	grid = set()
 
 	for r, row in enumerate(map(str.rstrip, fin)):
 		for c, char in enumerate(row):
-			pos = r, c
-
 			if char == '#':
-				walls.add(pos)
-			elif char in '.SE':
-				spaces.add(pos)
+				continue
 
-				if char == 'S':
-					start = pos
-				elif char == 'E':
-					end = pos
+			pos = r, c
+			grid.add(pos)
 
-	return spaces, walls, start, end
+			if char == 'S':
+				start = pos
+			elif char == 'E':
+				end = pos
+
+	return grid, start, end
 
 
 def neighbors(r, c):
@@ -30,7 +28,7 @@ def neighbors(r, c):
 		yield r + dr, c + dc
 
 
-def bfs_distances(spaces, walls, start):
+def bfs_distances(spaces, start):
 	q = deque([start])
 	dist = {start: 0}
 
@@ -38,7 +36,7 @@ def bfs_distances(spaces, walls, start):
 		p = q.popleft()
 
 		for n in neighbors(*p):
-			if n in dist or n in walls:
+			if n in dist or n not in spaces:
 				continue
 
 			dist[n] = dist[p] + 1
@@ -76,10 +74,10 @@ def count_good_cheats(dist_from_start, dist_from_end, target_dist, max_cheat_len
 # Open the first argument as input or use stdin if no arguments were given
 fin = open(sys.argv[1]) if len(sys.argv) > 1 else sys.stdin
 
-spaces, walls, start, end = parse_grid(fin)
+grid, start, end = parse_grid(fin)
 
-dist_from_start = bfs_distances(spaces, walls, start)
-dist_from_end   = bfs_distances(spaces, walls, end)
+dist_from_start = bfs_distances(grid, start)
+dist_from_end   = bfs_distances(grid, end)
 target_dist     = dist_from_start[end] - 100
 
 total1 = count_good_cheats(dist_from_start, dist_from_end, target_dist)
