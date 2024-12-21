@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 import sys
-from functools import lru_cache, partial
+from functools import cache, partial
 
 
-@lru_cache(None)
+@cache
 def count(design, op=any):
 	if design == '':
 		return True

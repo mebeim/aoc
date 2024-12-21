@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 import sys
-from functools import lru_cache
+from functools import cache
 from math import log10
 
 
-@lru_cache(None)
+@cache
 def calc(n, blinks=25):
 	if blinks == 0:
 		return 1
