@@ -14,9 +14,9 @@ def transform(n):
 
 
 def map_sequence(n):
-	key = 0
-	prev = n % 10
 	value_map = {}
+	prev = n % 10
+	key = 0
 
 	for i in range(2000):
 		n = ((n << 6) ^ n) & 0xffffff
@@ -27,6 +27,8 @@ def map_sequence(n):
 		diff = value - prev
 		prev = value
 
+		# Use key as a compact hash of the last 4 diff values, using 5 bits
+		# per value ([-9, 9] -> [1, 19]) with 0 meaning "no value".
 		key = ((key & 0x7fff) << 5) | (diff + 10)
 		if key not in value_map:
 			value_map[key] = value
