@@ -45,7 +45,9 @@ def solve(pad, code, robot, cur='A', cache={}):
 	paths = bfs_all_paths(pad, cur, nxt)
 
 	if robot == 0:
-		# "Root" dirpad operated by human: just follow any shortest path
+		# "Root" dirpad operated by first robot: the number of buttons the human
+		# will have to press equals the length of the shortest path passing
+		# through all chars of the code
 		best = len(paths[0]) + 1
 	else:
 		# Non-root pad: find the optimal path based on how many steps it takes
