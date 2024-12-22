@@ -33,13 +33,12 @@ def bfs_all_paths(g, src, dst, cache={}):
 
 
 def solve(pad, code, robot, cur='A', cache={}):
+	if not code:
+		return 0
+
 	k = code, robot, cur
 	if k in cache:
 		return cache[k]
-
-	if not code:
-		cache[k] = 0
-		return 0
 
 	nxt = code[0]
 	paths = bfs_all_paths(pad, cur, nxt)
