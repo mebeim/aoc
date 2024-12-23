@@ -24,14 +24,15 @@ def map_sequence(n):
 		n = ((n << 11) ^ n) & 0xffffff
 
 		value = n % 10
-		diff = value - prev
-		prev = value
 
-		# Use key as a compact hash of the last 4 diff values, using 5 bits
-		# per value ([-9, 9] -> [1, 19]) with 0 meaning "no value".
-		key = ((key & 0x7fff) << 5) | (diff + 10)
-		if key not in value_map:
-			value_map[key] = value
+		if i >= 3:
+			# Use key as a compact hash of the last 4 diff values, using 5 bits
+			# per value ([-9, 9] -> [1, 19]) with 0 meaning "no value".
+			key = ((key & 0x7fff) << 5) | (value - prev + 10)
+			if key not in value_map:
+				value_map[key] = value
+
+		prev = value
 
 	return value_map
 
