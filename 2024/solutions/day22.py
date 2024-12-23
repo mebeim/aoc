@@ -15,15 +15,13 @@ def map_sequence(n):
 		n = ((n << 11) ^ n) & 0xffffff
 
 		value = n % 10
-
-		if i >= 3:
-			# Use key as a compact hash of the last 4 diff values, using 5 bits
-			# per value ([-9, 9] -> [1, 19]) with 0 meaning "no value".
-			key = ((key & 0x7fff) << 5) | (value - prev + 10)
-			if key not in diff_map:
-				diff_map[key] = value
-
+		# Use key as a compact hash of the last 4 diff values, using 5 bits
+		# per value ([-9, 9] -> [1, 19]) with 0 meaning "no value".
+		key = ((key & 0x7fff) << 5) | (value - prev + 10)
 		prev = value
+
+		if i >= 3 and key not in diff_map:
+			diff_map[key] = value
 
 	return n, diff_map
 
