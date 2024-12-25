@@ -4,9 +4,11 @@ import sys
 
 
 def grid_to_set(grid):
+	h = len(grid)
+
 	points = set()
 	for r, row in enumerate(grid):
-		points.update((r, c) for c, char in enumerate(row) if char == '#')
+		points.update(r * h + c for c, char in enumerate(row) if char == '#')
 
 	return points, row == '#####'
 
